@@ -32,3 +32,22 @@ def test_echo_topic_returns_sample():
         samples={"/scan": sample},
     )
     assert backend.echo_topic("/scan") == sample
+
+
+from ros2_introspection.server import build_server
+
+
+def test_build_server_registers_expected_tools():
+    backend = FakeBackend(
+        topics=[TopicInfo(name="/scan", types=["sensor_msgs/msg/LaserScan"])],
+    )
+    server = build_server(backend)
+    tool_names = {t.name for t in server.list_tools_sync()}
+    assert {
+        "list_topics",
+        "list_nodes",
+        "get_topic_type",
+        "get_message_definition",
+        "echo_topic",
+        "list_interfaces",
+    } <= tool_names
