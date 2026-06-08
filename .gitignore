@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Build artefacts (no deberían existir aquí, pero por si acaso)
+build/
+*.vpk
+*.velf
+*.self
+
+# Editor/OS
+.DS_Store
+*.swp
