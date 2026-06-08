@@ -22,6 +22,7 @@ DEST="${DEST_OVERRIDE:-$DEST_DEFAULT}"
 
 RSYNC_OPTS=(-av --delete
   --exclude '.git/'
+  --exclude '.claude/'
   --exclude '.venv/'
   --exclude '__pycache__/'
   --exclude '*.pyc'

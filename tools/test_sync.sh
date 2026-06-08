@@ -11,8 +11,9 @@ trap 'rm -rf "$DEST"' EXIT
 # Modo test: DEST_OVERRIDE fuerza destino local y DRY_RUN=0 ejecuta de verdad.
 DRY_RUN=0 DEST_OVERRIDE="$DEST" "$SCRIPT_DIR/sync-to-devpc.sh"
 
-# Debe haber copiado README.md y docs, pero NO .git ni .venv
+# Debe haber copiado README.md y docs, pero NO .git, .venv ni .claude
 test -f "$DEST/README.md" || { echo "FALLO: README.md no copiado"; exit 1; }
 test -d "$DEST/docs" || { echo "FALLO: docs/ no copiado"; exit 1; }
 test ! -d "$DEST/.git" || { echo "FALLO: .git no debía copiarse"; exit 1; }
+test ! -d "$DEST/.claude" || { echo "FALLO: .claude no debía copiarse"; exit 1; }
 echo "OK: sync test passed"
