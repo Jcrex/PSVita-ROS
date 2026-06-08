@@ -1,6 +1,6 @@
 # PS Vita ↔ ROS2 — Taller de preparación (Fase 0)
 
-Este repositorio es el **taller de preparación** del proyecto PS Vita ↔ ROS2. Aquí se produce la capa meta: documentación, skills de Claude Code, el servidor MCP y scripts de sincronización. El código C/C++/Rust que correrá en la Vita se desarrolla en el PC de desarrollo.
+Este repositorio es el **taller de preparación** del proyecto PS Vita ↔ ROS2. Aquí se produce la capa meta: documentación, skills de Claude Code y el servidor MCP. El código C/C++/Rust que correrá en la Vita se desarrolla en el PC de desarrollo.
 
 ---
 
@@ -8,7 +8,7 @@ Este repositorio es el **taller de preparación** del proyecto PS Vita ↔ ROS2.
 
 | Rol | Equipo | IP | Función |
 |---|---|---|---|
-| **Taller** | Laptop (este repo) | 192.168.1.108 | Produce docs, skills, MCP y scripts. Sin instalaciones del proyecto. |
+| **Taller** | Laptop (este repo) | 192.168.1.108 | Produce docs, skills y MCP. Sin instalaciones del proyecto. |
 | **Desarrollo** | PC CachyOS | 192.168.1.65 | Desarrollo continuo. Toda instalación y ejecución ocurre aquí. |
 | **Objetivo** | PS Vita 1000 | — | ARM Cortex-A9 32-bit, 512 MB RAM. Homebrew vía VitaSDK. |
 
@@ -41,22 +41,25 @@ ps-vita-ros2/
 │   └── superpowers/
 │       └── specs/                   # especificaciones de diseño
 ├── skills/                          # skills de Claude Code
-├── mcp/                             # servidor MCP (ros2-introspection)
-└── tools/                           # scripts de utilidad
-    └── sync-to-devpc.sh
+└── mcp/                             # servidor MCP (ros2-introspection)
 ```
 
 ---
 
-## Sincronizar al PC
+## Transferir al PC (vía git)
 
-Para transferir el contenido de este taller al PC de desarrollo, ejecuta el script de sincronización:
+La transferencia laptop → PC se hace por **git** (no por SMB). El repo está en
+`https://github.com/Jcrex/PSVita-ROS.git`.
+
+En el PC de desarrollo, la primera vez:
 
 ```bash
-bash tools/sync-to-devpc.sh
+git clone https://github.com/Jcrex/PSVita-ROS.git
+cd PSVita-ROS
 ```
 
-La transferencia se realiza por SMB desde la laptop (192.168.1.108) al PC CachyOS (192.168.1.65). El script lo dispara el usuario manualmente.
+Después, el PC es la fuente de verdad: se trabaja y commitea allí. Si en algún momento
+se toca algo en la laptop, se sincroniza con `git pull` / `git push` en ambos lados.
 
 ---
 
@@ -85,7 +88,6 @@ La Fase 0 («Fundación») está **completa**. Entregables producidos en este ta
   - `vita-build-package` — construcción y empaquetado para la Vita
   - `vita-deploy-logs` — despliegue y captura de logs
 - **Servidor MCP** `ros2-introspection` (Python): 5 tests pasando con `FakeBackend`
-- **Script** `tools/sync-to-devpc.sh`: sincronización al PC de desarrollo (dry-run por defecto)
 
 ### Próximo paso (en el PC)
 
