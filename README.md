@@ -65,3 +65,29 @@ La transferencia se realiza por SMB desde la laptop (192.168.1.108) al PC CachyO
 El documento de diseño completo de la Fase 0 se encuentra en:
 
 [`docs/superpowers/specs/2026-06-08-fundacion-psvita-ros2-design.md`](docs/superpowers/specs/2026-06-08-fundacion-psvita-ros2-design.md)
+
+---
+
+## Estado de la Fase 0
+
+La Fase 0 («Fundación») está **completa**. Entregables producidos en este taller:
+
+- **Documentación** (6 docs):
+  - `docs/00-vision-y-objetivos.md` — visión y objetivos del proyecto
+  - `docs/01-hardware-y-plataforma.md` — hardware y plataforma PS Vita
+  - `docs/02-arquitectura-fase1-microros.md` — arquitectura micro-ROS
+  - `docs/03-estrategia-dual-rust-cpp.md` — estrategia dual Rust/C++
+  - `docs/04-investigacion-portabilidad-rviz2.md` — investigación de portabilidad rviz2
+  - `docs/05-setup-entorno-cachyos.md` — setup del entorno en CachyOS
+- **ADRs** (4 registros de decisión de arquitectura): ADR-0001 a ADR-0004 en `docs/adr/`
+- **Skills de Claude Code** (3):
+  - `vita-dual-module` — guía para el módulo dual Rust/C++
+  - `vita-build-package` — construcción y empaquetado para la Vita
+  - `vita-deploy-logs` — despliegue y captura de logs
+- **Servidor MCP** `ros2-introspection` (Python): 5 tests pasando con `FakeBackend`
+- **Script** `tools/sync-to-devpc.sh`: sincronización al PC de desarrollo (dry-run por defecto)
+
+### Próximo paso (en el PC)
+
+1. Seguir `docs/05-setup-entorno-cachyos.md` para preparar el entorno de desarrollo en el PC CachyOS.
+2. Validar la incógnita dura de micro-ROS descrita en `docs/02-arquitectura-fase1-microros.md`: ¿levanta la sesión XRCE con transporte UDP propio sobre `sceNet`?
