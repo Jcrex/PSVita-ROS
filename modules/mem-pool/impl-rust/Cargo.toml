@@ -1,0 +1,39 @@
+# Cargo.toml — manifiesto del crate Rust del módulo `mem-pool`.
+#
+# ¿Qué es Cargo? Es el gestor de paquetes y build system de Rust (equivale a
+# CMake + pip juntos). Cada "crate" (unidad de compilación) tiene un Cargo.toml.
+
+[package]
+name = "mem_pool_rust"      # nombre del crate (guiones bajos por convención)
+version = "0.1.0"
+edition = "2024"            # "edición" del lenguaje: conjunto de reglas de sintaxis
+
+[lib]
+# crate-type controla QUÉ produce el compilador:
+#  - "staticlib": un archivo .a estilo C (libmem_pool_rust.a) que CMake/gcc
+#    enlazan igual que cualquier biblioteca estática. Es la clave de la
+#    estrategia dual: el linker no sabe que dentro hay Rust.
+#  - "rlib": el formato nativo de Rust, para que otros crates nuestros
+#    (el crate paraguas de la app Vita) puedan usar este módulo como
+#    dependencia normal de Rust.
+crate-type = ["staticlib", "rlib"]
+
+[features]
+# Las "features" son flags de compilación condicional (como #ifdef en C).
+#
+# `standalone`: incluye un panic_handler propio. Un binario Rust necesita
+# exactamente UN panic_handler; cuando este crate se compila solo (tests de
+# paridad) lo aporta él mismo, pero cuando lo absorbe el crate paraguas de
+# la app, el paraguas aporta el suyo y este se desactiva con
+# `default-features = false`.
+default = ["standalone"]
+standalone = []
+
+# panic = "abort": al entrar en pánico, abortar en vez de "desenrollar" la
+# pila (unwinding). El unwinding necesita soporte del runtime que no existe
+# en no_std ni en newlib; abort es lo correcto en embebido.
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

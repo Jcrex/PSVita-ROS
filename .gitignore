@@ -14,3 +14,10 @@ build/
 # Editor/OS
 .DS_Store
 *.swp
+
+# Rust
+target/
+.cargo-home/
+
+# Tests de paridad en host
+build-host/
