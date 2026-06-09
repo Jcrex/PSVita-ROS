@@ -1,6 +1,13 @@
-# PS Vita ↔ ROS2 — Taller de preparación (Fase 0)
+# PS Vita ↔ ROS2
 
-Este repositorio es el **taller de preparación** del proyecto PS Vita ↔ ROS2. Aquí se produce la capa meta: documentación, skills de Claude Code y el servidor MCP. El código C/C++/Rust que correrá en la Vita se desarrolla en el PC de desarrollo.
+Convertir una **PS Vita 1000** en un nodo real del ecosistema **ROS2 Jazzy**:
+publica y recibe topics vía micro-ROS (XRCE-DDS) sobre WiFi/UDP, con cada
+módulo de bajo nivel implementado **dos veces** (Rust y C/C++) tras un mismo
+header C. Proyecto experimental de largo plazo con vocación de publicarse.
+
+**Estado:** Fase 0 (fundación) completa · **Fase 1 con todo el código escrito
+y verificado en host** — pendiente de cross-compilar en el PC y validar en
+hardware. Detalle vivo en [`docs/06-bitacora-estado.md`](docs/06-bitacora-estado.md).
 
 ---
 
@@ -8,88 +15,70 @@ Este repositorio es el **taller de preparación** del proyecto PS Vita ↔ ROS2.
 
 | Rol | Equipo | IP | Función |
 |---|---|---|---|
-| **Taller** | Laptop (este repo) | 192.168.1.108 | Produce docs, skills y MCP. Sin instalaciones del proyecto. |
-| **Desarrollo** | PC CachyOS | 192.168.1.65 | Desarrollo continuo. Toda instalación y ejecución ocurre aquí. |
-| **Objetivo** | PS Vita 1000 | — | ARM Cortex-A9 32-bit, 512 MB RAM. Homebrew vía VitaSDK. |
+| **Taller** | Laptop (este repo) | 192.168.1.108 | Código portable, docs, web, MCP, tests host. También correrá el **agente micro-ROS** (está en la red WiFi de la Vita y tiene ROS2 Jazzy en docker). |
+| **Desarrollo** | PC CachyOS | 192.168.1.65 | VitaSDK: cross-compilación y empaquetado `.vpk`. |
+| **Objetivo** | PS Vita 1000 | — | ARM Cortex-A9 ×4 32-bit, 512 MB RAM. Homebrew vía VitaSDK. |
+
+**Regla de frontera (versión actual):** en la laptop se escribe y verifica
+todo lo que se pueda verificar en host (módulos con tests de paridad, MCP,
+web, docs); **ninguna toolchain del proyecto se instala en la laptop**
+(Rust corre vía docker). La compilación para la Vita ocurre en el PC.
 
 ---
 
-## Regla de frontera
-
-**En este repo se escriben** docs, skills, el código del MCP y scripts (la capa meta).
-
-**No se escribe** el código C/C++/Rust que correrá en la Vita — ese nace en el PC de desarrollo.
-
-**No se instala nada** del proyecto en la laptop. Todo se ejecuta e instala en el PC CachyOS.
-
----
-
-## Mapa de carpetas
+## Mapa del repo
 
 ```
-ps-vita-ros2/
-├── README.md                        # este archivo
-├── .gitignore
-├── docs/
-│   ├── 00-vision-y-objetivos.md
-│   ├── 01-hardware-y-plataforma.md
-│   ├── 02-arquitectura-fase1-microros.md
-│   ├── 03-estrategia-dual-rust-cpp.md
-│   ├── 04-investigacion-portabilidad-rviz2.md
-│   ├── 05-setup-entorno-cachyos.md
-│   ├── adr/                         # Architecture Decision Records
-│   └── superpowers/
-│       └── specs/                   # especificaciones de diseño
-├── skills/                          # skills de Claude Code
-└── mcp/                             # servidor MCP (ros2-introspection)
+PSVita-ROS/
+├── docs/                  # 00-06 + ADRs + rust/ (aprendizaje) + guias-vita/
+├── modules/               # los 3 módulos duales de la Fase 1
+│   ├── mem-pool/          #   asignador de bloques fijos sin malloc
+│   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
+│   └── microros-transport/#   los 4 callbacks XRCE (la incógnita dura)
+├── vita-app/              # app "Vita ROS2 Hello" (.vpk, se compila en el PC)
+├── mcp/ros2-introspection/# servidor MCP: el grafo ROS2 visible para Claude
+├── skills/                # 3 skills de Claude Code para el PC
+├── tools/                 # run-parity-tests.sh (host) y sync legado
+└── web/                   # sitio Astro+SQLite+Docker (guías y progreso)
 ```
+
+Cada módulo y la app tienen su propio `README.md` con API, diseño y estado.
 
 ---
 
-## Transferir al PC (vía git)
-
-La transferencia laptop → PC se hace por **git** (no por SMB). El repo está en
-`https://github.com/Jcrex/PSVita-ROS.git`.
-
-En el PC de desarrollo, la primera vez:
+## Verificación rápida (laptop)
 
 ```bash
-git clone https://github.com/Jcrex/PSVita-ROS.git
-cd PSVita-ROS
+tools/run-parity-tests.sh        # paridad C/Rust de los 3 módulos (docker para Rust)
+cd mcp/ros2-introspection && .venv/bin/python -m pytest tests/ -q
+cd web && docker compose up -d --build   # la web en localhost:4321
 ```
 
-Después, el PC es la fuente de verdad: se trabaja y commitea allí. Si en algún momento
-se toca algo en la laptop, se sincroniza con `git pull` / `git push` en ambos lados.
+## Compilar para la Vita (PC)
+
+```bash
+cd vita-app
+./scripts/build-xrce-client-vita.sh   # una vez: micro-XRCE para armv7/newlib
+cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake \
+      -DVITA_IMPL=c -B build && cmake --build build   # -> .vpk
+```
+
+`-DVITA_IMPL=rust` genera la variante con los módulos en Rust (ADR 0003).
 
 ---
 
-## Especificación de diseño
+## Documentación
 
-El documento de diseño completo de la Fase 0 se encuentra en:
+| Doc | Contenido |
+|---|---|
+| `docs/00-vision-y-objetivos.md` | Los 6 objetivos y las restricciones |
+| `docs/01` … `docs/05` | Hardware, arquitectura micro-ROS, estrategia dual, investigación rviz2, setup del PC |
+| `docs/06-bitacora-estado.md` | **Dónde estamos y próximos pasos exactos** |
+| `docs/adr/0001-0004` | Decisiones de arquitectura registradas |
+| `docs/rust/00-02` | Aprendizaje de Rust ligado al código del repo |
+| `docs/guias-vita/` | Instalar el homebrew de la consola (también en la web) |
 
-[`docs/superpowers/specs/2026-06-08-fundacion-psvita-ros2-design.md`](docs/superpowers/specs/2026-06-08-fundacion-psvita-ros2-design.md)
+## Transferencia laptop ↔ PC
 
----
-
-## Estado de la Fase 0
-
-La Fase 0 («Fundación») está **completa**. Entregables producidos en este taller:
-
-- **Documentación** (6 docs):
-  - `docs/00-vision-y-objetivos.md` — visión y objetivos del proyecto
-  - `docs/01-hardware-y-plataforma.md` — hardware y plataforma PS Vita
-  - `docs/02-arquitectura-fase1-microros.md` — arquitectura micro-ROS
-  - `docs/03-estrategia-dual-rust-cpp.md` — estrategia dual Rust/C++
-  - `docs/04-investigacion-portabilidad-rviz2.md` — investigación de portabilidad rviz2
-  - `docs/05-setup-entorno-cachyos.md` — setup del entorno en CachyOS
-- **ADRs** (4 registros de decisión de arquitectura): ADR-0001 a ADR-0004 en `docs/adr/`
-- **Skills de Claude Code** (3):
-  - `vita-dual-module` — guía para el módulo dual Rust/C++
-  - `vita-build-package` — construcción y empaquetado para la Vita
-  - `vita-deploy-logs` — despliegue y captura de logs
-- **Servidor MCP** `ros2-introspection` (Python): 5 tests pasando con `FakeBackend`
-
-### Próximo paso (en el PC)
-
-1. Seguir `docs/05-setup-entorno-cachyos.md` para preparar el entorno de desarrollo en el PC CachyOS.
-2. Validar la incógnita dura de micro-ROS descrita en `docs/02-arquitectura-fase1-microros.md`: ¿levanta la sesión XRCE con transporte UDP propio sobre `sceNet`?
+Por **git**: `https://github.com/Jcrex/PSVita-ROS.git` (`git push` aquí,
+`git pull` en el PC).
