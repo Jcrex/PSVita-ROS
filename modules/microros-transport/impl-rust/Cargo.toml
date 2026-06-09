@@ -1,0 +1,30 @@
+# Crate Rust del módulo dual `microros-transport`.
+#
+# NOVEDAD respecto a los crates anteriores: este crate DEPENDE de otro crate
+# nuestro (net_udp_rust) mediante una dependencia de ruta (path dependency).
+# Cargo compila ambos y el staticlib resultante contiene los dos módulos:
+# en el build "todo Rust" no se enlaza ningún .c.
+#
+# `default-features = false` desactiva la feature `standalone` de net_udp:
+# así solo ESTE crate aporta el panic_handler (Rust exige exactamente uno
+# por binario; dos staticlibs con panic_handler duplicado no enlazan).
+[package]
+name = "microros_transport_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+net_udp_rust = { path = "../../net-udp/impl-rust", default-features = false }
+
+[features]
+default = ["standalone"]
+standalone = []
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

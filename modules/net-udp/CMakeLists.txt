@@ -19,11 +19,11 @@ if(VITA_IMPL STREQUAL "rust")
     if(CMAKE_CROSSCOMPILING)
         # Target tier-3 de la Vita: requiere nightly + build-std (ADR 0003).
         set(CARGO_TARGET armv7-sony-vita-newlibeabihf)
-        set(CARGO_CMD cargo +nightly build --release
+        set(CARGO_CMD cargo +nightly rustc --release --crate-type staticlib
             -Zbuild-std=std,panic_abort --target ${CARGO_TARGET})
         set(RUST_LIB ${RUST_DIR}/target/${CARGO_TARGET}/release/libnet_udp_rust.a)
     else()
-        set(CARGO_CMD cargo build --release)
+        set(CARGO_CMD cargo rustc --release --crate-type staticlib)
         set(RUST_LIB ${RUST_DIR}/target/release/libnet_udp_rust.a)
     endif()
 

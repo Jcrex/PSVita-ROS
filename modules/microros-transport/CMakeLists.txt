@@ -1,4 +1,4 @@
-# CMakeLists.txt — módulo dual `mem-pool`.
+# CMakeLists.txt — módulo dual `microros-transport`.
 #
 # Selección de implementación en build time (docs/03-estrategia-dual-rust-cpp.md):
 #   cmake -DVITA_IMPL=c    ...  -> enlaza impl-c/ (por defecto)
@@ -10,7 +10,7 @@
 #   cmake -B build && cmake --build build && ctest --test-dir build
 
 cmake_minimum_required(VERSION 3.16)
-project(mem_pool C)
+project(microros_transport C)
 
 set(VITA_IMPL "c" CACHE STRING "Implementación a enlazar: c | rust")
 
@@ -21,35 +21,35 @@ if(VITA_IMPL STREQUAL "rust")
         set(CARGO_TARGET armv7-sony-vita-newlibeabihf)
         set(CARGO_CMD cargo +nightly rustc --release --crate-type staticlib
             -Zbuild-std=std,panic_abort --target ${CARGO_TARGET})
-        set(RUST_LIB ${RUST_DIR}/target/${CARGO_TARGET}/release/libmem_pool_rust.a)
+        set(RUST_LIB ${RUST_DIR}/target/${CARGO_TARGET}/release/libmicroros_transport_rust.a)
     else()
         set(CARGO_CMD cargo rustc --release --crate-type staticlib)
-        set(RUST_LIB ${RUST_DIR}/target/release/libmem_pool_rust.a)
+        set(RUST_LIB ${RUST_DIR}/target/release/libmicroros_transport_rust.a)
     endif()
 
     add_custom_command(
         OUTPUT ${RUST_LIB}
         COMMAND ${CARGO_CMD}
         WORKING_DIRECTORY ${RUST_DIR}
-        COMMENT "cargo build (mem_pool_rust, ${VITA_IMPL})"
+        COMMENT "cargo build (microros_transport_rust, ${VITA_IMPL})"
         VERBATIM
     )
-    add_custom_target(mem_pool_rust_build DEPENDS ${RUST_LIB})
+    add_custom_target(microros_transport_rust_build DEPENDS ${RUST_LIB})
 
-    add_library(mem_pool STATIC IMPORTED GLOBAL)
-    set_target_properties(mem_pool PROPERTIES IMPORTED_LOCATION ${RUST_LIB})
-    add_dependencies(mem_pool mem_pool_rust_build)
-    target_include_directories(mem_pool INTERFACE include)
+    add_library(microros_transport STATIC IMPORTED GLOBAL)
+    set_target_properties(microros_transport PROPERTIES IMPORTED_LOCATION ${RUST_LIB})
+    add_dependencies(microros_transport microros_transport_rust_build)
+    target_include_directories(microros_transport INTERFACE include)
 else()
-    add_library(mem_pool STATIC impl-c/mem_pool.c)
-    target_include_directories(mem_pool PUBLIC include)
+    add_library(microros_transport STATIC impl-c/microros_transport.c)
+    target_include_directories(microros_transport PUBLIC include)
 endif()
 
 # Test de paridad: solo tiene sentido donde se puede ejecutar (host).
 if(NOT CMAKE_CROSSCOMPILING)
     enable_testing()
-    add_executable(mem_pool_parity_test tests/parity_test.c)
-    target_compile_definitions(mem_pool_parity_test PRIVATE IMPL_NAME="${VITA_IMPL}")
-    target_link_libraries(mem_pool_parity_test mem_pool)
-    add_test(NAME mem_pool_parity COMMAND mem_pool_parity_test)
+    add_executable(microros_transport_parity_test tests/parity_test.c)
+    target_compile_definitions(microros_transport_parity_test PRIVATE IMPL_NAME="${VITA_IMPL}")
+    target_link_libraries(microros_transport_parity_test microros_transport)
+    add_test(NAME microros_transport_parity COMMAND microros_transport_parity_test)
 endif()

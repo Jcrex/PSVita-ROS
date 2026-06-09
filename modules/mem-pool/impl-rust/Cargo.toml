@@ -10,13 +10,16 @@ edition = "2024"            # "edición" del lenguaje: conjunto de reglas de sin
 
 [lib]
 # crate-type controla QUÉ produce el compilador:
-#  - "staticlib": un archivo .a estilo C (libmem_pool_rust.a) que CMake/gcc
-#    enlazan igual que cualquier biblioteca estática. Es la clave de la
-#    estrategia dual: el linker no sabe que dentro hay Rust.
 #  - "rlib": el formato nativo de Rust, para que otros crates nuestros
-#    (el crate paraguas de la app Vita) puedan usar este módulo como
-#    dependencia normal de Rust.
-crate-type = ["staticlib", "rlib"]
+#    (microros-transport, el crate paraguas de la app Vita) usen este módulo
+#    como dependencia normal.
+#  - El staticlib estilo C (libmem_pool_rust.a, lo que enlaza gcc/CMake) NO
+#    se declara aquí: se pide explícitamente con
+#       cargo rustc --release --crate-type staticlib
+#    Si estuviera declarado, cada vez que otro crate dependiera de este,
+#    cargo intentaría producir también el .a, y un staticlib exige tener su
+#    propio panic_handler -> colisiones al componer módulos.
+crate-type = ["rlib"]
 
 [features]
 # Las "features" son flags de compilación condicional (como #ifdef en C).

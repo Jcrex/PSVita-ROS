@@ -1,12 +1,13 @@
 # Crate Rust del módulo dual `net-udp`. Mismo esquema que mem-pool:
-# staticlib para enlazar desde C, rlib para el crate paraguas de la app.
+# rlib para componer con otros crates; el staticlib que enlaza C se genera
+# con `cargo rustc --release --crate-type staticlib` (ver mem-pool/Cargo.toml).
 [package]
 name = "net_udp_rust"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-crate-type = ["staticlib", "rlib"]
+crate-type = ["rlib"]
 
 [features]
 default = ["standalone"]
