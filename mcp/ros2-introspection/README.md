@@ -19,19 +19,23 @@ ROS2 Jazzy) y se comunica con Claude Code mediante transporte **stdio**.
 | `list_topics` | Lista todos los tópicos activos con sus tipos de mensaje. |
 | `list_nodes` | Lista todos los nodos activos con su nombre y namespace. |
 | `get_topic_type` | Devuelve el tipo de mensaje principal de un tópico dado. |
-| `get_message_definition` | Devuelve el texto de definición `.msg` de un tipo de mensaje. ⚠️ Pendiente de validar en el PC (ver Estado). |
-| `echo_topic` | Captura una muestra de un tópico y la devuelve como JSON. ⚠️ Pendiente de validar en el PC (ver Estado). |
+| `get_message_definition` | Devuelve el texto de definición `.msg` de un tipo de mensaje (resuelto vía `rosidl_runtime_py`/ament index). |
+| `echo_topic` | Se suscribe una vez (QoS BEST_EFFORT, compatible con cualquier publisher) y devuelve la primera muestra como dict. `TimeoutError` si no llega nada en el plazo. |
 | `list_interfaces` | Lista todos los tipos de mensaje presentes en el grafo. |
 
 ---
 
 ## Estado
 
-- `list_topics`, `list_nodes`, `get_topic_type`, `list_interfaces`: implementados
-  en `RclpyBackend` y listos para validar en el PC con un grafo ROS2 activo.
-- `get_message_definition` y `echo_topic` en `RclpyBackend`: lanzarán
-  `NotImplementedError` hasta completar la implementación en el PC. Ambas
-  tools funcionan correctamente con el `FakeBackend` (tests en el laptop pasan).
+**`RclpyBackend` completo y validado** (2026-06-10) contra un grafo ROS2
+Jazzy vivo en el contenedor `robotnik_dev` de la laptop: las 6 tools
+funcionan con topics reales (`list_topics`, `get_topic_type`, `echo_topic`
+con publisher activo, `get_message_definition` de `std_msgs/String` y
+`sensor_msgs/LaserScan`, errores `KeyError`/`TimeoutError` verificados).
+Los tests unitarios con `FakeBackend` (5) pasan en la laptop sin ROS2.
+
+Pendiente: registrar el servidor en el Claude Code del PC y probarlo end-to-end
+como MCP (la lógica de backend ya está validada).
 
 ---
 
