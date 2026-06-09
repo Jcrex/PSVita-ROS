@@ -1,0 +1,30 @@
+# Crate "paraguas" de la app Vita: junta TODOS los módulos duales Rust en
+# un único staticlib (libvita_modules_rust.a) que CMake enlaza cuando se
+# compila con -DVITA_IMPL=rust.
+#
+# ¿Por qué un paraguas? Un binario no puede enlazar dos staticlibs de Rust
+# (cada una arrastra su copia de `core` y su panic_handler: símbolos
+# duplicados). La solución es UNA compilación de Rust que contenga todos
+# los crates como rlibs internas. Este crate no tiene lógica: depende de
+# los módulos (re-exportándolos para que el linker conserve sus símbolos
+# no_mangle) y aporta el único panic_handler del lado Rust.
+[package]
+name = "vita_modules_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+# default-features = false: ningún módulo trae su panic_handler `standalone`;
+# lo aporta este crate exactamente una vez.
+mem_pool_rust = { path = "../../modules/mem-pool/impl-rust", default-features = false }
+net_udp_rust = { path = "../../modules/net-udp/impl-rust", default-features = false }
+microros_transport_rust = { path = "../../modules/microros-transport/impl-rust", default-features = false }
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
