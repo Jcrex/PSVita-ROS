@@ -1,0 +1,13 @@
+# Contexto de build de web/Dockerfile = raíz del repo.
+# Excluir todo lo pesado que el build de la web no necesita.
+.git/
+web/node_modules/
+web/dist/
+web/data/
+web/.astro/
+mcp/ros2-introspection/.venv/
+mcp/ros2-introspection/.pytest_cache/
+modules/*/impl-rust/target/
+vita-app/rust-modules/target/
+vita-app/third_party/
+build-host/

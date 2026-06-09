@@ -1,0 +1,7 @@
+# dependencias y artefactos del sitio
+node_modules/
+dist/
+.astro/
+
+# base de datos local (el volumen docker escribe aquí)
+data/

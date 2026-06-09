@@ -1,0 +1,47 @@
+---
+// progreso.astro — estado de fases e hitos (datos en src/data/fases.ts).
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+import { estadoLabels, fases } from '../data/fases';
+---
+
+<Base title="Progreso" description="Estado de las fases del proyecto PS Vita ↔ ROS2: qué está hecho, qué espera al PC de desarrollo y qué necesita hardware real.">
+  <h1>Progreso del proyecto</h1>
+  <p>
+    El proyecto es <strong>secuencial por objetivos</strong>: no se diseña en
+    detalle el siguiente hasta validar el actual. Leyenda:
+    <span class="badge done">Hecho</span>
+    <span class="badge pc">Siguiente: en el PC</span>
+    <span class="badge hw">Requiere la Vita</span>
+    <span class="badge todo">Pendiente</span>
+  </p>
+
+  {fases.map((fase) => (
+    <section class="panel" style="margin-bottom:1.2rem">
+      <h2 style="margin-top:0;border:none">{fase.nombre}</h2>
+      <p style="color:var(--text-dim)">{fase.resumen}</p>
+      <ul style="list-style:none;padding:0">
+        {fase.hitos.map((h) => (
+          <li style="padding:.3rem 0">
+            {h.texto}
+            <span class={`badge ${estadoLabels[h.estado].cls}`}>
+              {estadoLabels[h.estado].label}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  <h2>¿Y una previsualización / emulador en la web?</h2>
+  <p>
+    Se evaluó incluir una emulación de la app de la Vita en el navegador y
+    <strong>se descartó por inviable hoy</strong>: el único emulador funcional
+    de PS Vita (<a href="https://vita3k.org/" target="_blank" rel="noopener">Vita3K</a>)
+    es una aplicación nativa de escritorio sin port a WebAssembly, y emular
+    el SO de la consola en el navegador queda fuera del alcance del proyecto.
+    Lo que sí llegará aquí cuando la Fase 1 esté validada en hardware:
+    <strong>vídeos y capturas reales</strong> de la consola publicando topics,
+    y una vista en vivo del grafo ROS2 si el proyecto monta telemetría.
+  </p>
+</Base>

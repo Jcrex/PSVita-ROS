@@ -1,0 +1,7 @@
+# pnpm bloquea por defecto los scripts de build de las dependencias
+# (medida de seguridad frente a paquetes maliciosos). Aquí se aprueban
+# SOLO las que necesitan compilar binarios nativos legítimos.
+allowBuilds:
+  better-sqlite3: true   # bindings nativos de SQLite
+  esbuild: true          # binario del bundler que usa Astro/Vite
+  sharp: true            # procesado de imágenes de Astro

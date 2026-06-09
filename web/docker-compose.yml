@@ -1,0 +1,27 @@
+# docker-compose.yml — levanta la web del proyecto.
+#
+#   cd web && docker compose up -d --build
+#   -> http://localhost:4321
+#
+# La base de datos SQLite persiste en ./web/data (dentro del propio repo,
+# como pide la organización del proyecto: todo junto).
+#
+# Despliegue futuro en psvita-ros.jcrex999.com: este mismo contenedor
+# detrás de un reverse proxy (Caddy/Traefik/nginx) que termine TLS y
+# apunte a :4321. Documentado en web/README.md.
+services:
+  web:
+    build:
+      context: ..            # raíz del repo: el build necesita docs/guias-vita
+      dockerfile: web/Dockerfile
+    image: psvita-ros-web:latest
+    container_name: psvita-ros-web
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./data:/app/web/data   # SQLite (app.db) sobrevive a los redeploys
+    environment:
+      - PORT=4321
+      - HOST=0.0.0.0
+      - DB_PATH=/app/web/data/app.db

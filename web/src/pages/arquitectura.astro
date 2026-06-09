@@ -1,0 +1,89 @@
+---
+// arquitectura.astro — resumen de la arquitectura para alguien nuevo.
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Arquitectura">
+  <h1>Arquitectura</h1>
+  <p>
+    Resumen pensado para alguien que llega de nuevas. El detalle completo
+    vive en el repositorio (<code>docs/00</code> a <code>docs/05</code> y los
+    ADRs).
+  </p>
+
+  <h2>Las tres máquinas</h2>
+  <table>
+    <thead><tr><th>Rol</th><th>Máquina</th><th>Responsabilidad</th></tr></thead>
+    <tbody>
+      <tr><td>Taller</td><td>Laptop</td><td>Documentación, skills, MCP, código portable y tests de paridad en host</td></tr>
+      <tr><td>Desarrollo</td><td>PC CachyOS</td><td>VitaSDK, cross-compilación, agente micro-ROS, ROS2/Gazebo</td></tr>
+      <tr><td>Objetivo</td><td>PS Vita 1000</td><td>Ejecuta el homebrew; ARM Cortex-A9 ×4, 512 MB RAM, WiFi</td></tr>
+    </tbody>
+  </table>
+
+  <h2>La pila de la Fase 1, capa a capa</h2>
+  <div class="panel">
+    <pre class="diagram">
+┌──────────────────────────────────────────────┐
+│ main.c — app "Vita ROS2 Hello"               │  ciclo de vida, pub/sub
+├──────────────────────────────────────────────┤
+│ microxrcedds_client (lib estática armv7)     │  protocolo XRCE-DDS
+├──────────────────────────────────────────────┤
+│ uxr_glue.c — 4 callbacks                     │  pegamento (solo PC)
+├──────────────────────────────────────────────┤
+│ microros-transport ★ open/close/write/read   │  módulo DUAL Rust+C
+├──────────────────────────────────────────────┤
+│ net-udp ★ sockets UDP                        │  módulo DUAL Rust+C
+│   #ifdef __vita__ → sceNet | host → POSIX    │
+├──────────────────────────────────────────────┤
+│ mem-pool ★ asignador de bloques fijos        │  módulo DUAL Rust+C
+└──────────────────────────────────────────────┘
+        ★ = mismo header C, dos implementaciones, tests de paridad</pre>
+  </div>
+
+  <h2>La estrategia dual Rust + C/C++</h2>
+  <p>
+    Regla sin excepciones: <strong>el header C es la verdad</strong>. Cada
+    módulo que toca hardware, memoria o sistema tiene una implementación C
+    (<code>impl-c/</code>) y una Rust (<code>impl-rust/</code>, compilada a
+    biblioteca estática con ABI de C). El binario final lleva una sola,
+    elegida al compilar con <code>-DVITA_IMPL=c|rust</code>. La misma batería
+    de tests se ejecuta contra ambas: cualquier divergencia es un fallo.
+  </p>
+  <p>
+    ¿Por qué? Rust aporta seguridad de memoria y es objetivo de aprendizaje
+    del proyecto; C/C++ es la garantía de que siempre hay un camino que
+    funciona sobre VitaSDK. Ninguna de las dos se abandona jamás.
+  </p>
+
+  <h2>Por qué micro-ROS y no ROS2 completo</h2>
+  <p>
+    ROS2 (rclcpp + DDS) asume Linux, glibc y cientos de MB solo para él. La
+    Vita ejecuta su propio SO con <strong>newlib</strong> — no es Linux. La
+    implementación cliente de <strong>XRCE-DDS</strong> (micro-ROS) fue
+    diseñada para microcontroladores con KB de RAM: en una consola con 512 MB
+    va sobrada, y solo necesita que le demos 4 callbacks de transporte sobre
+    los sockets de Sony (<code>sceNet</code>). Esos 4 callbacks son nuestro
+    módulo <code>microros-transport</code>.
+  </p>
+
+  <h2>La incógnita dura</h2>
+  <blockquote>
+    ¿El cliente micro-ROS levanta y mantiene sesión con el agente usando
+    nuestro transporte UDP sobre <code>sceNet</code>? De esta pregunta cuelga
+    toda la Fase 1: si la sesión no levanta, no hay topics ni criterio de
+    éxito. El código está listo; la respuesta la dará el hardware.
+  </blockquote>
+
+  <h2>Decisiones registradas (ADRs)</h2>
+  <table>
+    <thead><tr><th>ADR</th><th>Decisión</th></tr></thead>
+    <tbody>
+      <tr><td>0001</td><td>VitaSDK como toolchain base (newlib, no glibc)</td></tr>
+      <tr><td>0002</td><td>micro-ROS con transporte UDP propio sobre sceNet</td></tr>
+      <tr><td>0003</td><td>Rust target tier-3 <code>armv7-sony-vita-newlibeabihf</code> (nightly + build-std)</td></tr>
+      <tr><td>0004</td><td>Empaquetado .vpk con CMake + cadena de VitaSDK</td></tr>
+    </tbody>
+  </table>
+</Base>

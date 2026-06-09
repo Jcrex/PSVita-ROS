@@ -1,0 +1,91 @@
+---
+// guias/[slug].astro — página de cada guía: markdown + checklist persistente.
+export const prerender = true;
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { checklists } from '../../data/checklists';
+
+export async function getStaticPaths() {
+  const guias = await getCollection('guias');
+  return guias.map((g) => ({ params: { slug: g.data.slug }, props: { entry: g } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const steps = checklists[entry.data.slug] ?? [];
+---
+
+<Base title={entry.data.title} description={entry.data.description}>
+  <p><a href="/guias">← Todas las guías</a></p>
+
+  {steps.length > 0 && (
+    <aside class="panel" id="checklist-panel" data-slug={entry.data.slug}>
+      <h2 style="margin-top:0">Tu progreso</h2>
+      <div class="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
+      <ul class="checklist">
+        {steps.map((s) => (
+          <li data-step={s.id}>
+            <input type="checkbox" id={`step-${s.id}`} data-step={s.id} />
+            <label for={`step-${s.id}`}>{s.text}</label>
+          </li>
+        ))}
+      </ul>
+      <p style="color:var(--text-dim);font-size:.85rem">
+        El progreso se guarda en el servidor (SQLite) asociado a un
+        identificador anónimo de este navegador.
+      </p>
+    </aside>
+  )}
+
+  <article>
+    <Content />
+  </article>
+
+  <p>
+    <a class="btn ghost" href={entry.data.repo} target="_blank" rel="noopener">
+      Repositorio oficial ↗
+    </a>
+  </p>
+
+  <script>
+    // Checklist interactivo: estado en SQLite vía /api/checklist.
+    // El visitante se identifica con un UUID anónimo en localStorage.
+    const panel = document.getElementById('checklist-panel');
+    if (panel) {
+      const slug = panel.dataset.slug!;
+      let clientId = localStorage.getItem('psvita-ros-client');
+      if (!clientId) {
+        clientId = crypto.randomUUID();
+        localStorage.setItem('psvita-ros-client', clientId);
+      }
+
+      const boxes = panel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+      const fill = document.getElementById('progress-fill')!;
+
+      const updateBar = () => {
+        const done = [...boxes].filter((b) => b.checked).length;
+        fill.style.width = `${(done / boxes.length) * 100}%`;
+        boxes.forEach((b) => b.closest('li')!.classList.toggle('done', b.checked));
+      };
+
+      fetch(`/api/checklist?slug=${slug}`, { headers: { 'x-client-id': clientId } })
+        .then((r) => (r.ok ? r.json() : {}))
+        .then((state: Record<string, boolean>) => {
+          boxes.forEach((b) => { b.checked = !!state[b.dataset.step!]; });
+          updateBar();
+        })
+        .catch(() => updateBar());
+
+      boxes.forEach((b) =>
+        b.addEventListener('change', () => {
+          updateBar();
+          fetch('/api/checklist', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-client-id': clientId! },
+            body: JSON.stringify({ slug, step: b.dataset.step, done: b.checked }),
+          }).catch(() => {});
+        }),
+      );
+    }
+  </script>
+</Base>

@@ -1,0 +1,47 @@
+---
+// guias/index.astro — índice de guías de instalación, ordenadas.
+export const prerender = true;
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+const guias = (await getCollection('guias')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+---
+
+<Base title="Guías Vita" description="Guías de instalación del homebrew necesario en una PS Vita desbloqueada: VitaShell, iTLS-Enso, Autoplugin II y más.">
+  <h1>Guías de instalación — PS Vita</h1>
+  <p>
+    Todo lo que una Vita <strong>ya desbloqueada</strong> necesita para este
+    proyecto, en el orden recomendado. Cada guía incluye un checklist
+    interactivo que recuerda tu progreso.
+  </p>
+  <blockquote>
+    ¿Tu consola aún no está desbloqueada? Empieza por la guía canónica de la
+    comunidad: <a href="https://vita.hacks.guide/" target="_blank" rel="noopener">vita.hacks.guide</a>.
+    Cubre todos los firmwares y está mantenida al día.
+  </blockquote>
+
+  <div class="card-grid">
+    {guias.map((g, i) => (
+      <a class="card" href={`/guias/${g.data.slug}`}>
+        <h3>
+          {i + 1}. {g.data.title}
+          {g.data.essential && <span class="badge essential">esencial</span>}
+        </h3>
+        <p>{g.data.description}</p>
+      </a>
+    ))}
+  </div>
+
+  <h2>Después de las guías: instalar nuestra app</h2>
+  <p>
+    Con VitaShell en modo FTP (botón SELECT), el <code>.vpk</code> de
+    <em>Vita ROS2 Hello</em> se sube con un solo comando desde el PC:
+  </p>
+  <pre><code>curl -T vita-ros2-hello.vpk "ftp://IP_DE_LA_VITA:1337/ux0:/"</code></pre>
+  <p>
+    Después, en VitaShell: <code>ux0:/</code> → X sobre el archivo → instalar
+    → aceptar los permisos extendidos (la app usa red).
+  </p>
+</Base>

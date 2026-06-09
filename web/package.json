@@ -1,0 +1,25 @@
+{
+  "name": "psvita-ros-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Web del proyecto PS Vita <-> ROS2: presentación, guías y progreso",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node ./dist/server/entry.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.0.0",
+    "astro": "^5.0.0",
+    "better-sqlite3": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.5.2"
+}

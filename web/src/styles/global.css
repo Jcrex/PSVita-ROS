@@ -1,0 +1,184 @@
+/* global.css — tema oscuro/azul del proyecto PS Vita <-> ROS2 */
+:root {
+  --bg: #070b16;
+  --bg-soft: #0d1426;
+  --panel: #111a31;
+  --panel-border: #1e2c4f;
+  --text: #d7e1f5;
+  --text-dim: #8fa1c4;
+  --accent: #3b82f6;
+  --accent-soft: #60a5fa;
+  --accent-glow: rgba(59, 130, 246, 0.25);
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --hw: #f472b6;
+  --radius: 12px;
+  --mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.65;
+  scroll-behavior: smooth;
+}
+
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
+
+main { flex: 1; width: min(960px, 92%); margin: 0 auto; padding: 2.5rem 0 4rem; }
+
+h1, h2, h3 { line-height: 1.25; color: #fff; }
+h1 { font-size: 2rem; }
+h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--panel-border); padding-bottom: .35rem; }
+
+a { color: var(--accent-soft); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code {
+  font-family: var(--mono);
+  font-size: .92em;
+  background: var(--bg-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  padding: .1em .35em;
+}
+
+pre {
+  background: var(--bg-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+}
+pre code { background: none; border: none; padding: 0; }
+
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+th, td { border: 1px solid var(--panel-border); padding: .5rem .7rem; text-align: left; }
+th { background: var(--panel); color: #fff; }
+tr:nth-child(even) { background: rgba(17, 26, 49, .5); }
+
+blockquote {
+  margin: 1rem 0;
+  padding: .6rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: var(--panel);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-dim);
+}
+
+/* ---- componentes ---- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.3rem;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+  display: block;
+  color: var(--text);
+}
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 24px var(--accent-glow);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.card h3 { margin: 0 0 .4rem; color: var(--accent-soft); }
+.card p { margin: 0; color: var(--text-dim); font-size: .92rem; }
+
+.badge {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  margin-left: .5rem;
+  vertical-align: middle;
+}
+.badge.done { background: rgba(52, 211, 153, .15); color: var(--ok); }
+.badge.wip { background: rgba(96, 165, 250, .15); color: var(--accent-soft); }
+.badge.pc { background: rgba(251, 191, 36, .15); color: var(--warn); }
+.badge.hw { background: rgba(244, 114, 182, .15); color: var(--hw); }
+.badge.todo { background: rgba(143, 161, 196, .15); color: var(--text-dim); }
+.badge.essential { background: rgba(59, 130, 246, .2); color: var(--accent-soft); }
+
+.hero {
+  text-align: center;
+  padding: 3.5rem 1rem 2.5rem;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% -10%, var(--accent-glow), transparent),
+    linear-gradient(180deg, rgba(13, 20, 38, .0), rgba(13, 20, 38, .6));
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+}
+.hero h1 { font-size: 2.4rem; margin: .2rem 0; }
+.hero .tag { color: var(--accent-soft); font-family: var(--mono); }
+.hero p.lead { max-width: 620px; margin: 1rem auto; color: var(--text-dim); font-size: 1.08rem; }
+
+.diagram {
+  font-family: var(--mono);
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--accent-soft);
+}
+
+/* checklist */
+.checklist { list-style: none; padding: 0; }
+.checklist li {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .45rem .6rem;
+  border-radius: 8px;
+}
+.checklist li:hover { background: var(--bg-soft); }
+.checklist input[type='checkbox'] {
+  width: 1.15rem; height: 1.15rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.checklist label { cursor: pointer; }
+.checklist li.done label { color: var(--text-dim); text-decoration: line-through; }
+.progress-bar {
+  height: 8px;
+  background: var(--bg-soft);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: .6rem 0 1rem;
+}
+.progress-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+  transition: width .25s;
+}
+
+.btn {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: .55rem 1.2rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+.btn:hover { background: var(--accent-soft); text-decoration: none; }
+.btn.ghost { background: transparent; border: 1px solid var(--accent); color: var(--accent-soft); }

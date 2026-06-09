@@ -1,0 +1,90 @@
+---
+// Base.astro — layout común: <head>, cabecera de navegación y pie.
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'PS Vita 1000 como nodo del ecosistema ROS2 Jazzy: micro-ROS, módulos duales Rust+C y homebrew con VitaSDK.' } = Astro.props;
+
+const nav = [
+  { href: '/', label: 'Inicio' },
+  { href: '/arquitectura', label: 'Arquitectura' },
+  { href: '/guias', label: 'Guías Vita' },
+  { href: '/progreso', label: 'Progreso' },
+];
+const current = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} · PSVita-ROS</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-vita">PSVita</span><span class="brand-sep">↔</span><span class="brand-ros">ROS2</span>
+      </a>
+      <nav>
+        {nav.map((item) => (
+          <a href={item.href} class:list={[{ active: current === item.href || (item.href !== '/' && current.startsWith(item.href)) }]}>
+            {item.label}
+          </a>
+        ))}
+        <a href="https://github.com/Jcrex/PSVita-ROS" target="_blank" rel="noopener">GitHub ↗</a>
+      </nav>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Proyecto experimental de <strong>Jcrex</strong> — futuro hogar:
+        <code>psvita-ros.jcrex999.com</code>. Construido con Astro + SQLite,
+        documentado para la comunidad homebrew y robótica.
+      </p>
+    </footer>
+
+    <style>
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .6rem;
+        padding: .9rem clamp(1rem, 4vw, 2.5rem);
+        border-bottom: 1px solid var(--panel-border);
+        background: rgba(13, 20, 38, 0.85);
+        backdrop-filter: blur(8px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .brand { font-weight: 700; font-size: 1.15rem; color: #fff; }
+      .brand:hover { text-decoration: none; }
+      .brand-vita { color: var(--accent-soft); }
+      .brand-sep { margin: 0 .3rem; color: var(--text-dim); }
+      .brand-ros { color: #fff; }
+      nav { display: flex; gap: 1.1rem; flex-wrap: wrap; }
+      nav a { color: var(--text-dim); font-weight: 500; }
+      nav a:hover { color: var(--accent-soft); text-decoration: none; }
+      nav a.active { color: #fff; border-bottom: 2px solid var(--accent); }
+      .site-footer {
+        border-top: 1px solid var(--panel-border);
+        padding: 1.2rem clamp(1rem, 4vw, 2.5rem);
+        color: var(--text-dim);
+        font-size: .88rem;
+        text-align: center;
+      }
+    </style>
+  </body>
+</html>

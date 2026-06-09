@@ -1,0 +1,79 @@
+---
+// index.astro — portada: qué es el proyecto, en lenguaje llano.
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Inicio">
+  <section class="hero">
+    <p class="tag">// experimento de largo plazo</p>
+    <h1>Una PS Vita dentro del grafo ROS2</h1>
+    <p class="lead">
+      Convertimos una <strong>PS Vita 1000</strong> (2011, 512 MB de RAM) en un
+      nodo real de <strong>ROS2 Jazzy</strong>: publica y recibe topics por
+      WiFi, controlará robots con sus sticks y pantallas táctiles, y — si la
+      ingeniería lo permite — ejecutará su propio visualizador estilo rviz2.
+    </p>
+    <p>
+      <a class="btn" href="/arquitectura">Cómo funciona</a>
+      <a class="btn ghost" href="/guias">Preparar tu Vita</a>
+    </p>
+  </section>
+
+  <h2>La idea en 30 segundos</h2>
+  <div class="panel">
+    <pre class="diagram">
+[ PS Vita 1000 ]                      [ Laptop / PC ]
+ app homebrew (VitaSDK)                micro-ROS Agent (Docker)
+ ├─ cliente micro-ROS      WiFi/UDP        │
+ │  (XRCE-DDS)         ─────────────►  puentea a DDS
+ └─ módulos duales                         │
+    Rust + C/C++                      grafo ROS2 Jazzy
+    (red, transporte,                  ├─ ros2 topic echo /vita_hello
+     memoria)                          └─ robots, rviz2, gazebo</pre>
+    <p>
+      ROS2 completo no cabe en la consola, pero <strong>micro-ROS</strong> —
+      la variante para microcontroladores — sí, y de sobra. Un
+      <em>agente</em> en el PC traduce entre el protocolo ligero de la Vita
+      (XRCE-DDS sobre UDP) y el bus DDS completo del robot.
+    </p>
+  </div>
+
+  <h2>Qué lo hace especial</h2>
+  <div class="card-grid">
+    <div class="card">
+      <h3>Doble implementación</h3>
+      <p>
+        Cada módulo de bajo nivel existe dos veces: en <strong>Rust</strong> y
+        en <strong>C/C++</strong>, tras un mismo header C. La misma batería de
+        tests corre contra ambas; si divergen, es un bug. C/C++ es el respaldo
+        permanente, Rust el vehículo de aprendizaje.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Hardware único</h3>
+      <p>
+        Dos sticks, cruceta, pantalla OLED táctil, <em>panel táctil
+        trasero</em>, giroscopio y dos cámaras: un mando de operador de robot
+        que ya existía en 2011 y nadie usó así.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Todo documentado</h3>
+      <p>
+        Decisiones en ADRs, muros de ingeniería con la misma seriedad que los
+        logros, guías de Rust para quien viene de C, y un toolkit publicable
+        para que otros repliquen el entorno.
+      </p>
+    </div>
+  </div>
+
+  <h2>Estado ahora mismo</h2>
+  <p>
+    La <strong>Fase 1</strong> (la Vita publica y recibe topics) tiene todo el
+    código escrito y los módulos duales verificados con tests de paridad; el
+    siguiente paso es compilar para la consola en el PC de desarrollo y
+    responder la <em>incógnita dura</em>: ¿levanta la sesión XRCE sobre el
+    stack de red de Sony? Sigue el detalle en <a href="/progreso">Progreso</a>.
+  </p>
+</Base>
