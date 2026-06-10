@@ -4,4 +4,5 @@ dist/
 .astro/
 
 # base de datos local (el volumen docker escribe aquí)
-data/
+# anclado a la raíz de web/: un "data/" suelto ignoraba también src/data/
+/data/
