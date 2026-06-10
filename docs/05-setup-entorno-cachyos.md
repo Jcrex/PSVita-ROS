@@ -1,7 +1,26 @@
 # Guía de setup del entorno de desarrollo en CachyOS
 
 **Fecha de creación:** 2026-06-08
-**Estado:** Fundación aprobada — ejecutar en el PC de desarrollo
+**Estado:** EJECUTADA en el PC el 2026-06-10 — ver nota de instalación real
+
+> **Nota de instalación real (2026-06-10):** el entorno se instaló **dentro
+> del repo, en `toolchains/`** (gitignorado), no en las rutas globales que
+> describe esta guía. Diferencias respecto al texto original:
+>
+> - `VITASDK` = `<repo>/toolchains/vitasdk` (toolchain v2.540 descargado a
+>   mano; `bootstrap-vitasdk.sh` falla sin sudo porque hace `sudo mkdir`).
+> - rustup vive en `toolchains/rustup` y cargo en `toolchains/cargo`
+>   (`RUSTUP_HOME`/`CARGO_HOME` locales, nightly 1.98.0 + `rust-src`,
+>   `cargo-vita` 0.2.2). No se tocó `~/.rustup` ni `~/.cargo`.
+> - Se añadió un **cmake 4.3.3 portable** en `toolchains/cmake` (el PC no
+>   tenía cmake y pacman requiere sudo).
+> - No se editó ningún perfil de shell: el entorno se carga por sesión con
+>   `source tools/env-devpc.fish` (fish) o `source tools/env-devpc.sh`
+>   (bash/zsh).
+> - La imagen `microros/micro-ros-agent:jazzy` **sí existe** en Docker Hub y
+>   está descargada en el PC (la duda del paso 3 queda resuelta).
+>
+> Los pasos 4 (registro del MCP) y 5 (skills) siguen pendientes.
 
 ---
 

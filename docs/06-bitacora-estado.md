@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-06-10 (sesión de desarrollo en la laptop)
+**Última actualización:** 2026-06-10 (sesión corta en el PC CachyOS: entorno instalado)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -136,8 +136,16 @@ cd web && pnpm build                      # o: docker compose up -d --build
 
 ### En el PC (CachyOS, con VitaSDK) — desbloquea el resto
 
-1. `git pull` y seguir `docs/05-setup-entorno-cachyos.md` (VitaSDK, rustup
-   nightly + rust-src, cargo-vita).
+1. ~~Seguir `docs/05-setup-entorno-cachyos.md`~~ **HECHO (2026-06-10):**
+   todo el entorno quedó instalado **dentro del repo, en `toolchains/`**
+   (gitignorado), sin tocar `/usr/local` ni el perfil global:
+   - VitaSDK v2.540 (gcc 15.2.0 + vita-elf-create/make-fself/mksfoex/pack-vpk)
+   - rustup con nightly 1.98.0 + `rust-src` (`RUSTUP_HOME`/`CARGO_HOME` locales)
+   - `cargo-vita` 0.2.2 y cmake 4.3.3 portable (no hay sudo para pacman)
+   - imagen docker `microros/micro-ros-agent:jazzy` descargada (el tag existe)
+
+   **Antes de compilar, cargar el entorno:** `source tools/env-devpc.fish`
+   (o `tools/env-devpc.sh` en bash/zsh). Exporta `VITASDK` y mete todo al PATH.
 2. `cd vita-app && ./scripts/build-xrce-client-vita.sh` — primer muro
    posible: microxrcedds_client vs newlib. Documentar lo que salga.
 3. `cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake

@@ -21,3 +21,6 @@ target/
 
 # Tests de paridad en host
 build-host/
+
+# Toolchains locales del PC de desarrollo (VitaSDK, rustup, cargo, cmake)
+toolchains/
