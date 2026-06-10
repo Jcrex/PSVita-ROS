@@ -20,9 +20,14 @@ WORKDIR /app/web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Código del sitio + las guías (fuente de verdad en docs/).
+# Código del sitio + TODA la documentación que renderiza (fuente de verdad
+# en el repo: docs/ completo y los READMEs técnicos del código; ver las
+# colecciones en src/content.config.ts). Lo pesado lo filtra .dockerignore.
 COPY web/ ./
-COPY docs/guias-vita/ /app/docs/guias-vita/
+COPY docs/ /app/docs/
+COPY modules/ /app/modules/
+COPY vita-app/ /app/vita-app/
+COPY mcp/ /app/mcp/
 RUN pnpm build
 
 # Quitar devDependencies del node_modules que viajará a runtime.

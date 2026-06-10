@@ -1,0 +1,64 @@
+---
+// docs/[seccion]/[slug].astro — render de cualquier documento del repo.
+export const prerender = true;
+import { getCollection, render } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import { docSlug, docTitle, seccionesDocs, sortDocs } from '../../../lib/docs';
+
+export async function getStaticPaths() {
+  const paths = [];
+  for (const sec of seccionesDocs) {
+    const entries = sortDocs(await getCollection(sec.key));
+    for (const entry of entries) {
+      paths.push({
+        params: { seccion: sec.key, slug: docSlug(entry) },
+        props: { entry, seccion: sec, entries },
+      });
+    }
+  }
+  return paths;
+}
+
+const { entry, seccion, entries } = Astro.props;
+const { Content } = await render(entry);
+
+// navegación anterior/siguiente dentro de la misma sección
+const idx = entries.findIndex((e) => e.id === entry.id);
+const prev = idx > 0 ? entries[idx - 1] : null;
+const next = idx < entries.length - 1 ? entries[idx + 1] : null;
+---
+
+<Base title={docTitle(entry)} description={`${seccion.titulo} — documentación del proyecto PS Vita ↔ ROS2`}>
+  <p>
+    <a href="/docs">← Documentación</a>
+    <span style="color:var(--text-dim)"> / {seccion.titulo}</span>
+  </p>
+
+  <article>
+    <Content />
+  </article>
+
+  <nav class="doc-nav">
+    {prev ? (
+      <a class="btn ghost" href={`/docs/${seccion.key}/${docSlug(prev)}`}>
+        ← {docTitle(prev)}
+      </a>
+    ) : <span />}
+    {next && (
+      <a class="btn ghost" href={`/docs/${seccion.key}/${docSlug(next)}`}>
+        {docTitle(next)} →
+      </a>
+    )}
+  </nav>
+
+  <style>
+    .doc-nav {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 2.5rem;
+      flex-wrap: wrap;
+    }
+    .doc-nav .btn { font-size: .85rem; }
+  </style>
+</Base>

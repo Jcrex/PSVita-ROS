@@ -60,6 +60,12 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   renders them directly from here — do not duplicate content into web/).
 - `web/` — Astro 5 SSR + better-sqlite3 + Docker; DB volume at `web/data/`.
   Future home: psvita-ros.jcrex999.com (recipe in `web/README.md`).
+  **All documentation must be published on the web in its section** (user
+  rule). This is automated via glob collections in `src/content.config.ts`:
+  any new .md under `docs/`, `docs/adr/`, `docs/rust/`, `docs/guias-vita/`
+  or a module/app/MCP README shows up after a rebuild. If you create a NEW
+  docs folder or category, add a collection + section for it (and a COPY
+  line in `web/Dockerfile` if it's a new top-level path).
 
 ## Conventions
 

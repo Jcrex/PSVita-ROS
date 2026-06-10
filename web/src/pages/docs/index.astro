@@ -1,0 +1,41 @@
+---
+// docs/index.astro — índice de TODA la documentación del repo, por secciones.
+// Las colecciones leen docs/ directamente: un doc nuevo aparece aquí solo.
+export const prerender = true;
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { docExcerpt, docSlug, docTitle, seccionesDocs, sortDocs } from '../../lib/docs';
+
+const colecciones = {
+  fundacion: sortDocs(await getCollection('fundacion')),
+  adrs: sortDocs(await getCollection('adrs')),
+  rust: sortDocs(await getCollection('rust')),
+  codigo: sortDocs(await getCollection('codigo')),
+};
+---
+
+<Base title="Documentación" description="Toda la documentación del proyecto PS Vita ↔ ROS2: fundación, decisiones de arquitectura, aprendizaje de Rust y documentación técnica del código.">
+  <h1>Documentación</h1>
+  <p>
+    Todo lo escrito en el proyecto, organizado por secciones. La fuente de
+    verdad vive en el repositorio (<code>docs/</code> y los READMEs del
+    código); esta web la publica tal cual. Las
+    <a href="/guias">guías de instalación de la Vita</a> tienen su propia
+    sección con checklist interactivo.
+  </p>
+
+  {seccionesDocs.map((sec) => (
+    <section>
+      <h2>{sec.titulo}</h2>
+      <p style="color:var(--text-dim)">{sec.descripcion}</p>
+      <div class="card-grid">
+        {colecciones[sec.key].map((doc) => (
+          <a class="card" href={`/docs/${sec.key}/${docSlug(doc)}`}>
+            <h3>{docTitle(doc)}</h3>
+            <p>{docExcerpt(doc)}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+</Base>

@@ -14,9 +14,17 @@ build-scripts: solo `better-sqlite3`, `esbuild` y `sharp` aprobados en
 |---|---|
 | `/` | Presentación: la idea, el diagrama, la estrategia dual |
 | `/arquitectura` | La pila Fase 1 capa a capa, ADRs, la incógnita dura |
+| `/docs` + `/docs/<sección>/<slug>` | **Toda la documentación del repo**, por secciones: Fundación y estado (docs/00-06), ADRs, Aprendiendo Rust (docs/rust/) y Documentación del código (READMEs de módulos, app y MCP) |
 | `/guias` + `/guias/<slug>` | Las 7 guías (leídas de `docs/guias-vita/` — una sola fuente de verdad) con **checklist interactivo persistente** |
 | `/progreso` | Fases e hitos con su estado (datos en `src/data/fases.ts`) |
 | `/api/checklist` | GET/POST del checklist (SQLite, validación estricta) |
+
+**Regla del proyecto:** toda documentación nueva se publica en la web en su
+sección. Está automatizado: las colecciones (`src/content.config.ts`) leen
+las carpetas del repo con globs, así que basta escribir el `.md` en
+`docs/`, `docs/adr/`, `docs/rust/` o `docs/guias-vita/` (o un README de
+módulo) y reconstruir el sitio. Sin frontmatter, el título sale del primer
+`# encabezado` (`src/lib/docs.ts`); las guías sí llevan frontmatter.
 
 ### Cómo funciona el checklist
 
