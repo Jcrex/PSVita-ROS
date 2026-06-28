@@ -39,7 +39,7 @@ export const fases: Fase[] = [
       { texto: 'App "Vita ROS2 Hello" (código completo + crate paraguas Rust)', estado: 'hecho' },
       { texto: 'Entorno del PC: VitaSDK, Rust nightly + cargo-vita, cmake, agente micro-ROS', estado: 'hecho' },
       { texto: 'Cross-compilar microxrcedds_client (libs ARM para la Vita)', estado: 'hecho' },
-      { texto: 'Cross-compilar la app y empaquetar el .vpk', estado: 'bloqueado-pc' },
+      { texto: 'Empaquetar el .vpk (variantes C y Rust, ambas construidas)', estado: 'hecho' },
       { texto: 'Incógnita dura: sesión XRCE sobre sceNet', estado: 'bloqueado-hw' },
       { texto: 'Criterios: /vita_hello visible + /pc_hello recibido', estado: 'bloqueado-hw' },
     ],

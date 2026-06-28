@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-06-28 (PC CachyOS: cliente XRCE cross-compilado — muro #1 superado)
+**Última actualización:** 2026-06-28 (PC CachyOS: `.vpk` C y Rust construidos — muros #1 y #2 superados; solo falta hardware)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -154,9 +154,19 @@ cd web && pnpm build                      # o: docker compose up -d --build
    separados (microcdr + uclient) encadenados por `CMAKE_PREFIX_PATH`. Detalle
    en `docs/02` (sección "Muro previo (compilación)"). `third_party/` quedó
    gitignored.
-3. **(SIGUIENTE)** `cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake
-   -DVITA_IMPL=c -B build && cmake --build build` → `.vpk`. Repetir con
-   `-DVITA_IMPL=rust` (segundo muro posible: target tier 3).
+3. ~~`cmake … -DVITA_IMPL=c … && cmake --build build` → `.vpk`; repetir con
+   `-DVITA_IMPL=rust`~~ **HECHO (2026-06-28): las DOS variantes generan
+   `.vpk` instalable** (`build/vita-ros2-hello.vpk`, ~77 KB, con `eboot.bin`
+   + `param.sfo`). El segundo muro (Rust tier 3) **no apareció**: el target
+   `armv7-sony-vita-newlibeabihf` viene integrado en rustc y compila con
+   `-Zbuild-std`. Sí hubo un muro nuevo: `vita-elf-create: Invalid relocation
+   type 25!` al empaquetar — lo causaba el código **PIC** de las libs XRCE
+   (relocaciones GOT `R_ARM_BASE_PREL`). Solución: recompilarlas con
+   `UCLIENT_PIC=OFF`/`UCDR_PIC=OFF` (ya en el script). El homebrew de la Vita
+   es estático/position-dependent. **Pendiente de la app:** las IPs del agente
+   y del netlog están baked-in en el `.vpk` (`AGENT_IP`/`NETLOG_IP` =
+   192.168.1.108 por defecto en `CMakeLists.txt`); al probar en hardware,
+   reconfigurar con `-DAGENT_IP=…` si la laptop cambia de IP.
 4. Compilación cruzada de los módulos sueltos: `cmake` en cada
    `modules/*/` con el toolchain (los CMakeLists ya están).
 5. Registrar el MCP en el Claude Code del PC.

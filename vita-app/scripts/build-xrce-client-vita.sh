@@ -25,6 +25,10 @@
 #    código POSIX que newlib no tiene.
 #  - *_ISOLATED_INSTALL=OFF: instalamos plano en $PREFIX (sin subcarpeta
 #    nombre-versión) para que el encadenado por CMAKE_PREFIX_PATH sea directo.
+#  - *_PIC=OFF: el código PIC (Position Independent Code) genera relocaciones
+#    GOT-relativas (R_ARM_BASE_PREL, tipo 25) que vita-elf-create NO admite
+#    ("Invalid relocation type 25!" al empaquetar el .vpk). El homebrew de la
+#    Vita es estático/position-dependent, así que apagamos PIC en ambas libs.
 #  - Si la compilación choca con algo de newlib, documentar el muro en
 #    docs/02 (sección incógnita dura) antes de parchear.
 set -euo pipefail
@@ -62,7 +66,8 @@ COMMON_ARGS=(
 
 # 1) microcdr (serialización CDR) — dependencia del cliente.
 cmake -S Micro-CDR -B build-microcdr "${COMMON_ARGS[@]}" \
-    -DUCDR_ISOLATED_INSTALL=OFF
+    -DUCDR_ISOLATED_INSTALL=OFF \
+    -DUCDR_PIC=OFF
 cmake --build build-microcdr -j"$(nproc)"
 cmake --install build-microcdr
 
@@ -71,6 +76,7 @@ cmake -S Micro-XRCE-DDS-Client -B build-uclient "${COMMON_ARGS[@]}" \
     -DCMAKE_PREFIX_PATH="$PREFIX" \
     -DUCLIENT_SUPERBUILD=OFF \
     -DUCLIENT_ISOLATED_INSTALL=OFF \
+    -DUCLIENT_PIC=OFF \
     -DUCLIENT_PROFILE_UDP=OFF \
     -DUCLIENT_PROFILE_TCP=OFF \
     -DUCLIENT_PROFILE_SERIAL=OFF \

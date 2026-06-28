@@ -111,6 +111,17 @@ el superbuild; compilar `microcdr` y `uclient` como dos configuraciones cmake
 separadas, ambas con el toolchain de VitaSDK, encadenadas por
 `CMAKE_PREFIX_PATH`.
 
+### Muro de empaquetado (PIC): RESUELTO el 2026-06-28
+
+Al empaquetar el `.vpk`, `vita-elf-create` abortaba con `Invalid relocation
+type 25!`. Causa: las libs XRCE se compilaron con **PIC** (Position Independent
+Code, su valor por defecto), que genera relocaciones GOT-relativas
+(`R_ARM_BASE_PREL` = tipo 25) que la herramienta de Sony no admite. El homebrew
+de la Vita es estático/position-dependent. Solución: recompilar las dos libs
+con `UCLIENT_PIC=OFF`/`UCDR_PIC=OFF`. Con eso, **ambas variantes de la app
+(C y Rust) generan un `.vpk` instalable**; el target Rust tier 3
+`armv7-sony-vita-newlibeabihf` compiló sin incidencias con `-Zbuild-std`.
+
 ---
 
 ## Criterio de validación de la Fase 1
