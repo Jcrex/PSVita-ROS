@@ -93,6 +93,24 @@ Esta pregunta es una incógnita dura porque de su respuesta cuelga absolutamente
 
 El módulo `microros-transport` se desarrolla primero con el objetivo explícito de validar este punto. Hasta que no se tenga un "hello" XRCE exitoso —sesión abierta, agente respondiendo, cliente reconociendo la respuesta— la Fase 1 no está desbloqueada.
 
+### Muro previo (compilación): RESUELTO el 2026-06-28 en el PC
+
+Antes de poder probar la sesión en hardware había un muro anterior: **¿compila
+el cliente `microxrcedds_client` para armv7/newlib?** Respuesta: **sí**, con el
+perfil custom-transport-only (UDP/TCP/SERIAL/DISCOVERY apagados). El cliente no
+necesita POSIX; con nuestro transporte propio no arrastra nada que newlib no
+tenga. Las dos `.a` resultantes (`libmicrocdr.a`, `libmicroxrcedds_client.a`)
+son ELF ARM EABI5.
+
+El obstáculo real **no fue newlib** sino el *superbuild* de eProsima: su
+`ExternalProject_Add(uclient)` no reenvía `CMAKE_TOOLCHAIN_FILE` al build
+interno del cliente (solo lo hace para `microcdr`), así que en cross-compilación
+fallaba el `find_package(microcdr)` y, de pasar, habría compilado el cliente
+para el host. Solución en `vita-app/scripts/build-xrce-client-vita.sh`: no usar
+el superbuild; compilar `microcdr` y `uclient` como dos configuraciones cmake
+separadas, ambas con el toolchain de VitaSDK, encadenadas por
+`CMAKE_PREFIX_PATH`.
+
 ---
 
 ## Criterio de validación de la Fase 1

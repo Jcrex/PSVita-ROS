@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-06-10 (sesión corta en el PC CachyOS: entorno instalado)
+**Última actualización:** 2026-06-28 (PC CachyOS: cliente XRCE cross-compilado — muro #1 superado)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -146,9 +146,15 @@ cd web && pnpm build                      # o: docker compose up -d --build
 
    **Antes de compilar, cargar el entorno:** `source tools/env-devpc.fish`
    (o `tools/env-devpc.sh` en bash/zsh). Exporta `VITASDK` y mete todo al PATH.
-2. `cd vita-app && ./scripts/build-xrce-client-vita.sh` — primer muro
-   posible: microxrcedds_client vs newlib. Documentar lo que salga.
-3. `cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake
+2. ~~`cd vita-app && ./scripts/build-xrce-client-vita.sh`~~ **HECHO (2026-06-28):**
+   `libmicrocdr.a` + `libmicroxrcedds_client.a` cross-compiladas (ELF ARM EABI5)
+   en `vita-app/third_party/xrce-vita/`. El muro **no era newlib** (el cliente
+   compila perfecto con perfil custom-transport-only); era el superbuild de
+   eProsima que no reenvía el toolchain. El script se reescribió a dos cmake
+   separados (microcdr + uclient) encadenados por `CMAKE_PREFIX_PATH`. Detalle
+   en `docs/02` (sección "Muro previo (compilación)"). `third_party/` quedó
+   gitignored.
+3. **(SIGUIENTE)** `cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake
    -DVITA_IMPL=c -B build && cmake --build build` → `.vpk`. Repetir con
    `-DVITA_IMPL=rust` (segundo muro posible: target tier 3).
 4. Compilación cruzada de los módulos sueltos: `cmake` en cada

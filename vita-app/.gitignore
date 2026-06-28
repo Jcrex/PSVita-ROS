@@ -1,0 +1,9 @@
+# Dependencias cross-compiladas por scripts/build-xrce-client-vita.sh
+# (fuentes clonadas de eProsima + artefactos ARM). Todo regenerable; no se versiona.
+third_party/
+
+# Artefactos de build de la app (CMake/VitaSDK)
+build/
+*.vpk
+*.velf
+*.self
