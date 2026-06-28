@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-06-28 (PC CachyOS: `.vpk` C y Rust construidos — muros #1 y #2 superados; solo falta hardware)
+**Última actualización:** 2026-06-28 (PC CachyOS: todo lo desbloqueado en el PC HECHO — `.vpk` C/Rust, módulos sueltos cross-compilados, MCP registrado; Fase 1 solo pendiente de hardware)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -20,8 +20,13 @@ todo el código escrito y verificado hasta donde la laptop permite**:
 - Existen guías de instalación del homebrew de la Vita y una **web**
   (Astro+SQLite+Docker) que las publica, verificada en contenedor.
 
-**El proyecto está bloqueado únicamente por pasos que exigen el PC (con
-VitaSDK) y la consola física.** Ver "Próximos pasos" al final.
+- **(2026-06-28, en el PC) Todo lo que el PC desbloqueaba está hecho:** el
+  cliente XRCE y los 3 módulos cross-compilan para la Vita, la app se empaqueta
+  en `.vpk` (variantes C y Rust), y el MCP quedó registrado en Claude Code.
+
+**El proyecto está bloqueado ahora ÚNICAMENTE por la consola física** (instalar
+el `.vpk` y responder la incógnita dura: ¿levanta la sesión XRCE sobre sceNet?).
+Ver "Próximos pasos" al final.
 
 ---
 
@@ -167,9 +172,24 @@ cd web && pnpm build                      # o: docker compose up -d --build
    y del netlog están baked-in en el `.vpk` (`AGENT_IP`/`NETLOG_IP` =
    192.168.1.108 por defecto en `CMakeLists.txt`); al probar en hardware,
    reconfigurar con `-DAGENT_IP=…` si la laptop cambia de IP.
-4. Compilación cruzada de los módulos sueltos: `cmake` en cada
-   `modules/*/` con el toolchain (los CMakeLists ya están).
-5. Registrar el MCP en el Claude Code del PC.
+4. ~~Compilación cruzada de los módulos sueltos~~ **HECHO (2026-06-28):** los
+   3 módulos cross-compilan standalone en C y Rust (6 libs ELF ARM). Se
+   arreglaron dos bugs latentes de los CMakeLists de módulo: (a) el build C de
+   `microros-transport` no añadía el include de `net-udp` (necesita
+   `net_udp.h`); (b) en Rust+cross el `add_custom_target` no tenía `ALL`, así
+   que `cmake --build` no emitía el `.a` (nadie lo consumía, con la paridad
+   desactivada en cross). El Rust de los módulos ya estaba probado vía el crate
+   paraguas de la app.
+5. ~~Registrar el MCP en el Claude Code del PC~~ **HECHO (2026-06-28):**
+   `.mcp.json` local (gitignored; ruta del venv específica de la máquina) en
+   la raíz, apuntando al venv del MCP. Como el host del PC no tiene `rclpy`
+   (ROS2 vive en contenedores), se hizo el server robusto: `main()` elige
+   backend por `ROS2_INTROSPECTION_BACKEND` y cae a `FakeBackend` con aviso si
+   no hay rclpy (ya no crashea). En el PC hay contenedores ROS2 Jazzy
+   utilizables (`~/Documentos/IR2134/DOCKER`, open-RMF) para datos reales si se
+   ejecuta el server dentro. Falta: **reiniciar Claude Code** para que cargue
+   el MCP (no se puede hot-load en la sesión actual). Plantilla y receta de
+   contenedor en el README del MCP.
 
 ### Con la Vita (hardware)
 

@@ -34,7 +34,10 @@ if(VITA_IMPL STREQUAL "rust")
         COMMENT "cargo build (microros_transport_rust, ${VITA_IMPL})"
         VERBATIM
     )
-    add_custom_target(microros_transport_rust_build DEPENDS ${RUST_LIB})
+    # ALL: en cross-compile el test de paridad está desactivado, así que nadie
+    # consumiría este target y `cmake --build` no emitiría el .a. Con ALL el
+    # módulo es construible de forma independiente para la Vita.
+    add_custom_target(microros_transport_rust_build ALL DEPENDS ${RUST_LIB})
 
     add_library(microros_transport STATIC IMPORTED GLOBAL)
     set_target_properties(microros_transport PROPERTIES IMPORTED_LOCATION ${RUST_LIB})
@@ -42,7 +45,13 @@ if(VITA_IMPL STREQUAL "rust")
     target_include_directories(microros_transport INTERFACE include)
 else()
     add_library(microros_transport STATIC impl-c/microros_transport.c)
-    target_include_directories(microros_transport PUBLIC include)
+    # impl-c/microros_transport.c incluye net_udp.h (header del módulo vecino,
+    # contrato único C). Sin enlazar net-udp: solo necesitamos el header para
+    # compilar; los símbolos los resuelve el binario final (la app). Mismo -I
+    # que usa la paridad en host (tests/host_common_flags).
+    target_include_directories(microros_transport PUBLIC
+        include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../net-udp/include)
 endif()
 
 # Test de paridad: solo tiene sentido donde se puede ejecutar (host).

@@ -34,7 +34,10 @@ if(VITA_IMPL STREQUAL "rust")
         COMMENT "cargo build (mem_pool_rust, ${VITA_IMPL})"
         VERBATIM
     )
-    add_custom_target(mem_pool_rust_build DEPENDS ${RUST_LIB})
+    # ALL: en cross-compile el test de paridad está desactivado, así que nadie
+    # consumiría este target y `cmake --build` no emitiría el .a. Con ALL el
+    # módulo es construible de forma independiente para la Vita.
+    add_custom_target(mem_pool_rust_build ALL DEPENDS ${RUST_LIB})
 
     add_library(mem_pool STATIC IMPORTED GLOBAL)
     set_target_properties(mem_pool PROPERTIES IMPORTED_LOCATION ${RUST_LIB})

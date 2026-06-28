@@ -34,7 +34,10 @@ if(VITA_IMPL STREQUAL "rust")
         COMMENT "cargo build (net_udp_rust, ${VITA_IMPL})"
         VERBATIM
     )
-    add_custom_target(net_udp_rust_build DEPENDS ${RUST_LIB})
+    # ALL: en cross-compile el test de paridad está desactivado, así que nadie
+    # consumiría este target y `cmake --build` no emitiría el .a. Con ALL el
+    # módulo es construible de forma independiente para la Vita.
+    add_custom_target(net_udp_rust_build ALL DEPENDS ${RUST_LIB})
 
     add_library(net_udp STATIC IMPORTED GLOBAL)
     set_target_properties(net_udp PROPERTIES IMPORTED_LOCATION ${RUST_LIB})

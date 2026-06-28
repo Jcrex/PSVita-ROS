@@ -5,6 +5,11 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
+# Registro local del MCP en Claude Code: la ruta al python del venv es
+# específica de cada máquina (en la laptop el MCP corre en un contenedor).
+# Plantilla reproducible en mcp/ros2-introspection/README.md.
+.mcp.json
+
 # Build artefacts (no deberían existir aquí, pero por si acaso)
 build/
 *.vpk

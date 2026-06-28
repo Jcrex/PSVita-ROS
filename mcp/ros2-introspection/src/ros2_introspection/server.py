@@ -63,9 +63,40 @@ def build_server(backend: Ros2Backend) -> FastMCP:
     return mcp
 
 
+def _select_backend() -> Ros2Backend:
+    """Elige el backend según el entorno.
+
+    ROS2_INTROSPECTION_BACKEND = rclpy | fake controla la preferencia
+    (por defecto: rclpy). Si se pide rclpy pero no está disponible (el host
+    no tiene ROS2: rclpy vive dentro de un contenedor Jazzy), se cae a
+    FakeBackend con un aviso por stderr en vez de crashear. Así el MCP es
+    registrable en cualquier máquina; los datos reales aparecen allí donde
+    rclpy existe (p. ej. ejecutando el server dentro de un contenedor ROS2).
+    """
+    import os
+    import sys
+
+    choice = os.environ.get("ROS2_INTROSPECTION_BACKEND", "rclpy").lower()
+    if choice == "fake":
+        from .backend import FakeBackend
+        return FakeBackend()
+    try:
+        from .rclpy_backend import RclpyBackend
+        return RclpyBackend()
+    except ImportError:
+        from .backend import FakeBackend
+        print(
+            "[ros2-introspection] rclpy no disponible en este entorno; "
+            "usando FakeBackend (datos de prueba). Para datos reales, ejecuta "
+            "el server donde haya ROS2/rclpy o fija "
+            "ROS2_INTROSPECTION_BACKEND=fake para silenciar este aviso.",
+            file=sys.stderr,
+        )
+        return FakeBackend()
+
+
 def main() -> None:
-    from .rclpy_backend import RclpyBackend
-    server = build_server(RclpyBackend())
+    server = build_server(_select_backend())
     server.run()
 
 

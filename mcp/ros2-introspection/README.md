@@ -34,8 +34,22 @@ con publisher activo, `get_message_definition` de `std_msgs/String` y
 `sensor_msgs/LaserScan`, errores `KeyError`/`TimeoutError` verificados).
 Los tests unitarios con `FakeBackend` (5) pasan en la laptop sin ROS2.
 
-Pendiente: registrar el servidor en el Claude Code del PC y probarlo end-to-end
-como MCP (la lógica de backend ya está validada).
+Registrado en el Claude Code del PC el 2026-06-28 (ver "Registro en Claude
+Code"). En el host del PC no hay `rclpy` (ROS2 vive en contenedores), así que
+el server cae a `FakeBackend`; para datos reales se ejecuta donde haya ROS2.
+
+### Selección de backend (no crashea sin ROS2)
+
+`main()` elige el backend según la variable de entorno
+`ROS2_INTROSPECTION_BACKEND`:
+
+| Valor | Comportamiento |
+|---|---|
+| `rclpy` (por defecto) | Usa `RclpyBackend`; si `import rclpy` falla (host sin ROS2), **cae a `FakeBackend`** con un aviso por stderr en vez de abortar. |
+| `fake` | Fuerza `FakeBackend` (datos de prueba), sin intentar rclpy ni avisar. |
+
+Esto permite registrar el MCP en cualquier máquina: datos de prueba en el host,
+datos reales allí donde `rclpy` existe (un contenedor ROS2 Jazzy).
 
 ---
 
@@ -55,23 +69,38 @@ pip install -e .
 
 ### Registro en Claude Code
 
-Añade la siguiente entrada a `.mcp.json` en la raíz del proyecto (o en la
-configuración global de Claude Code según prefieras):
+El registro vive en `.mcp.json` en la raíz del proyecto. **Está gitignorado**
+porque la ruta al intérprete es específica de cada máquina (en la laptop el MCP
+corre dentro de un contenedor). Plantilla — ajusta `command` a tu Python con el
+paquete instalado (el venv del PC, o `python` dentro de un contenedor ROS2):
 
 ```json
 {
   "mcpServers": {
     "ros2-introspection": {
-      "command": "python",
-      "args": ["-m", "ros2_introspection.server"],
-      "transport": "stdio"
+      "command": "/ruta/al/mcp/ros2-introspection/.venv/bin/python",
+      "args": ["-m", "ros2_introspection.server"]
     }
   }
 }
 ```
 
 > El transporte **stdio** es el predeterminado del MCP SDK; no se necesita
-> puerto ni servidor HTTP.
+> puerto ni servidor HTTP. Tras crear/editar `.mcp.json`, **reinicia Claude
+> Code** para que cargue el server.
+
+#### Datos reales con un contenedor ROS2 (prueba rápida en el PC)
+
+El host del PC no tiene `rclpy`. Para ver un grafo vivo, ejecuta el server
+dentro de un contenedor ROS2 Jazzy (con el paquete instalado ahí). Como los
+contenedores ROS2 usan `network_mode: host`, el grafo DDS se comparte con el
+host por `localhost`. Ejemplo de `command` apuntando a un contenedor:
+
+```json
+"command": "docker", "args": ["exec", "-i", "<contenedor>", "python3", "-m", "ros2_introspection.server"]
+```
+
+(Requiere instalar este paquete dentro del contenedor con `pip install -e .`.)
 
 ---
 
