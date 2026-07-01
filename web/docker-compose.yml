@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
     ports:
       - "4321:4321"
+      - "9999:9999/udp"
     volumes:
       - ./data:/app/web/data   # SQLite (app.db) sobrevive a los redeploys
     environment:

@@ -45,10 +45,11 @@ WORKDIR /app/web
 COPY --from=build /app/web/dist ./dist
 COPY --from=build /app/web/node_modules ./node_modules
 COPY --from=build /app/web/package.json ./package.json
+COPY --from=build /app/web/scripts ./scripts
 
 # La DB vive en un volumen montado aquí (ver docker-compose.yml).
 RUN mkdir -p /app/web/data && chown -R node:node /app/web
 USER node
 
 EXPOSE 4321
-CMD ["node", "dist/server/entry.mjs"]
+CMD ["sh", "scripts/docker-entrypoint.sh"]
