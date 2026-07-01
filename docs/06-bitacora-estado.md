@@ -1,10 +1,9 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-01 (laptop: **incógnita dura RESUELTA y
-confirmada en hardware** — `uxr_create_session` levanta con el cliente
-v2.4.3, reproducido en 4 lanzamientos distintos; falta solo el criterio
-2 formal — `ros2 topic echo /vita_hello` + `ros2 topic pub /pc_hello` —
-para cerrar del todo la Fase 1)
+**Última actualización:** 2026-07-01 (laptop: **Fase 1 COMPLETA —
+objetivo 1 de topics ROS2 validado de punta a punta en hardware real**:
+sesión XRCE, `/vita_hello` visible por `ros2 topic echo` y `/pc_hello`
+recibido por la Vita, confirmados simultáneamente y en vivo)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -116,16 +115,43 @@ todo el código escrito y verificado hasta donde la laptop permite**:
   paquete UDP truncado/reordenado del propio socket, no afecta al
   resultado; no investigado más a fondo.)
 
-  **Pendiente para cerrar el criterio 2 formalmente** (no bloquea el
-  hito de la incógnita dura, que ya se considera resuelto): correr
-  `ros2 topic echo /vita_hello` y `ros2 topic pub /pc_hello ...` dentro
-  del contenedor ROS2 Jazzy mientras la Vita esté corriendo, para
-  verificar desde el lado ROS2 que el topic es visible y que
-  `g_pc_hello_received` se dispara en el netlog al recibir el pub.
+- **(2026-07-01, en la laptop) Criterio 2 bloqueado — segunda causa raíz
+  encontrada y resuelta, sin tocar la Vita ni el PC:** con la sesión XRCE
+  ya establecida, `ros2 topic list` dentro de `rmf_unified` **sí** mostraba
+  `/vita_hello` con publisher/subscriber "emparejados" (1/1), pero
+  `ros2 topic echo /vita_hello` no recibía nada, y el netlog tampoco
+  mostraba nunca `/pc_hello recibido` pese a que `ros2 topic pub` llevaba
+  cientos de mensajes publicados. Se descartó primero que fuera un
+  problema general del entorno: un pub/sub normal (`/test_sanity`) dentro
+  del propio contenedor `rmf_unified` funcionó sin problema. La causa
+  real: el contenedor del agente (`docker run --net=host ...`, sin más
+  flags) tiene `IpcMode: private`, mientras que `rmf_unified` corre con
+  `IpcMode: host` — **namespaces IPC distintos**. Fast-DDS (la librería DDS
+  de ambos) usa memoria compartida (`/dev/shm`) para transportar datos
+  entre procesos del mismo host, y Docker **no comparte `/dev/shm` entre
+  contenedores salvo que compartan namespace IPC**. El *discovery* SPDP
+  (por UDP multicast) sí funciona con solo `--net=host`, por eso los
+  topics se veían "emparejados" — pero los datos reales nunca cruzaban.
+  Confirmado con la documentación oficial de eProsima (Fast DDS docs,
+  sección "Leveraging Fast DDS SHM in Docker deployments"): el fix
+  estándar es añadir `--ipc=host` al contenedor. Se relanzó el agente
+  como `docker run -d --net=host --ipc=host microros/micro-ros-agent:jazzy
+  udp4 --port 8888 -v6`, se relanzó `vita-ros2-hello` en la Vita (sesión
+  nueva) y **ambas direcciones del criterio 2 se confirmaron en vivo,
+  simultáneamente**: `ros2 topic echo /vita_hello` mostrando
+  `"hola desde la vita #14"` … `#18` incrementando, y el netlog mostrando
+  `[vita-ros2] /pc_hello recibido: "hola desde el pc"` +
+  `criterio 2 de la Fase 1 CUMPLIDO` repitiéndose cada segundo. Los tres
+  docs que documentan el comando de arranque del agente
+  (`docs/05-setup-entorno-cachyos.md`, `docs/02-arquitectura-fase1-microros.md`,
+  `vita-app/README.md`) se actualizaron con `--ipc=host` y la explicación,
+  para que este muro no se repita.
 
-**La incógnita dura de la Fase 1 está resuelta y confirmada en hardware.**
-Lo único pendiente es el criterio 2 formal (ver arriba y "Próximos
-pasos").
+**Fase 1 (objetivo 1: topics ROS2) COMPLETA y confirmada en hardware
+real**: incógnita dura resuelta + criterio 1 (`/vita_hello` visible) +
+criterio 2 (`/pc_hello` recibido), los tres verificados en la misma
+sesión en vivo. Solo quedan tareas de cierre de documentación (ver
+"Próximos pasos") antes de empezar el Objetivo 2 (control de robot).
 
 ---
 
@@ -315,25 +341,22 @@ cd web && pnpm build                      # o: docker compose up -d --build
    (2026-07-01): incógnita dura RESUELTA y confirmada en hardware** — ver
    el bloque de arriba (4 lanzamientos con `SESION XRCE ESTABLECIDA` +
    `DataWriter.write` publicando en bucle).
-10. **PENDIENTE — cerrar el criterio 2 formal, en la laptop:** con la
-    Vita corriendo `vita-ros2-hello` y el agente/netlog arriba, dentro
-    del contenedor ROS2 Jazzy (`robotnik_dev`/`rmf_unified`):
-    ```bash
-    ros2 topic echo /vita_hello
-    ros2 topic pub /pc_hello std_msgs/msg/String "data: 'hola desde el pc'"
-    ```
-    - `ros2 topic echo /vita_hello` debe imprimir los mismos mensajes
-      que ya se ven en el log del agente (`hola desde la vita #N`).
-    - Tras el `pub`, el netlog debe mostrar
-      `[vita-ros2] /pc_hello recibido: "hola desde el pc"` (la Vita
-      dispara `g_pc_hello_received` en `on_topic()`, `main.c:81-82`).
-11. Actualizar esta bitácora y `web/src/data/fases.ts` marcando el hito
-    "Criterios: /vita_hello visible + /pc_hello recibido" como `hecho`
-    (con eso se cierra por completo la Fase 1: objetivo 1 de topics
-    ROS2).
+10. ~~Cerrar el criterio 2 formal, en la laptop~~ **HECHO (2026-07-01):**
+    `ros2 topic echo /vita_hello` mostró los mensajes de la Vita en vivo
+    y el netlog confirmó `/pc_hello recibido` + `criterio 2 CUMPLIDO`.
+    Bloqueado a mitad de camino por un segundo muro (namespace IPC no
+    compartido entre contenedores Docker — ver bloque de arriba),
+    resuelto con `--ipc=host` en el agente, sin tocar la Vita ni el PC.
+11. ~~Actualizar esta bitácora y `web/src/data/fases.ts`~~ **HECHO
+    (2026-07-01):** hito "Criterios: /vita_hello visible + /pc_hello
+    recibido" marcado `hecho`. **Fase 1 (objetivo 1) cerrada por
+    completo.**
 
-### En la laptop (sin bloqueo, cuando se quiera)
+### Siguiente hito: Objetivo 2 — control de robot (sin bloqueo, cuando se quiera)
 
+- Diseño detallado del Objetivo 2 (sticks/botones/táctil → `geometry_msgs/Twist`)
+  — no se había diseñado en detalle hasta validar la Fase 1 (regla
+  secuencial de `docs/00-vision-y-objetivos.md`), que ya está validada.
 - Levantar la web con docker y dejarla corriendo.
 - Más entradas en `docs/rust/` a medida que aparezcan construcciones nuevas.
 - Cuando llegue el dominio: DNS + reverse proxy (receta en `web/README.md`).

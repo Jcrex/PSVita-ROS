@@ -135,10 +135,11 @@ El micro-ROS Agent actúa como puente entre el cliente XRCE-DDS de la Vita y el 
 ### Arrancar el agente
 
 ```bash
-docker run -it --rm --net=host microros/micro-ros-agent:jazzy udp4 --port 8888
+docker run -it --rm --net=host --ipc=host microros/micro-ros-agent:jazzy udp4 --port 8888
 ```
 
 - `--net=host`: el contenedor usa directamente la red del host, lo que permite recibir tráfico UDP de la Vita en la misma red WiFi sin traducción de puertos.
+- `--ipc=host`: **imprescindible** si el grafo ROS2 (p. ej. `ros2 topic echo`) corre en OTRO contenedor. Sin él, Fast-DDS descubre los topics igualmente (el discovery va por UDP multicast, que sí comparte `--net=host`), pero los datos reales se transportan por memoria compartida (`/dev/shm`), que Docker NO comparte entre contenedores salvo que tengan el mismo namespace IPC. Sin `--ipc=host` el síntoma es "el topic aparece en `ros2 topic list` con publisher/subscriber emparejados, pero `ros2 topic echo` nunca recibe nada" — bloqueó la Fase 1 hasta diagnosticarlo el 2026-07-01 (ver `docs/06-bitacora-estado.md`).
 - `udp4`: transporte UDP sobre IPv4.
 - `--port 8888`: puerto en el que el agente escucha conexiones del cliente. Este debe coincidir con el puerto configurado en el módulo `microros-transport` de la Vita.
 

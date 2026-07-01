@@ -42,14 +42,14 @@ export const fases: Fase[] = [
       { texto: 'Empaquetar el .vpk (variantes C y Rust, ambas construidas)', estado: 'hecho' },
       { texto: 'Primer .vpk instalado en la Vita real (USB, VitaShell)', estado: 'hecho' },
       { texto: 'Incógnita dura: sesión XRCE sobre sceNet (RESUELTA — confirmada en hardware, reproducible en 4 lanzamientos)', estado: 'hecho' },
-      { texto: 'Criterios: /vita_hello visible + /pc_hello recibido', estado: 'pendiente' },
+      { texto: 'Criterios: /vita_hello visible + /pc_hello recibido (confirmados en vivo y simultáneos)', estado: 'hecho' },
     ],
   },
   {
     id: 'fase-2',
     nombre: 'Objetivo 2 — Control de robot',
     resumen:
-      'Sticks, botones y táctiles publicando geometry_msgs/Twist. No se diseña en detalle hasta validar la Fase 1 (regla secuencial).',
+      'Sticks, botones y táctiles publicando geometry_msgs/Twist. La Fase 1 ya está validada, así que el diseño detallado puede arrancar.',
     hitos: [{ texto: 'Diseño detallado', estado: 'pendiente' }],
   },
   {

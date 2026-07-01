@@ -53,10 +53,18 @@ está en la red WiFi y tiene ROS2 Jazzy:
 
 ```bash
 # en la laptop:
-docker run -it --rm --net=host microros/micro-ros-agent:jazzy udp4 --port 8888 -v6
+docker run -it --rm --net=host --ipc=host microros/micro-ros-agent:jazzy udp4 --port 8888 -v6
 # en otra terminal (logs de la Vita):
-nc -u -l -p 9999
+tools/netlog-listen.sh 9999
 ```
+
+**`--ipc=host` es obligatorio** si el grafo ROS2 (`ros2 topic echo`/`pub`) corre
+en otro contenedor: sin namespace IPC compartido, Fast-DDS descubre los
+topics por UDP multicast (comparte `--net=host`) pero no puede entregar
+datos reales por memoria compartida entre contenedores — el topic aparece
+"emparejado" en `ros2 topic info` y aun así no llega nada. Bloqueó el
+criterio 2 de la Fase 1 hasta diagnosticarlo el 2026-07-01 (ver
+`docs/06-bitacora-estado.md`).
 
 ## Validación de la Fase 1 (en hardware)
 

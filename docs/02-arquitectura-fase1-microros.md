@@ -55,10 +55,12 @@ El transporte configurado en el agente es **`udp4`** (UDP sobre IPv4), escuchand
 Ejemplo de arranque del agente:
 
 ```bash
-docker run -it --rm --net=host microros/micro-ros-agent:jazzy udp4 --port 8888
+docker run -it --rm --net=host --ipc=host microros/micro-ros-agent:jazzy udp4 --port 8888
 ```
 
 > **Nota:** verificar la disponibilidad del tag `jazzy` en Docker Hub antes de usarlo. Si no existe, usar el tag correspondiente a la distribución de micro-ROS más cercana a Jazzy o compilar el agente manualmente. El tag exacto a usar se documenta en `docs/05-setup-entorno-cachyos.md` y en el ADR correspondiente.
+>
+> **`--ipc=host` es obligatorio** si `ros2 topic echo`/`pub` corren en otro contenedor (p. ej. el `robotnik_dev`/`rmf_unified` de ROS2 Jazzy): sin namespace IPC compartido, Fast-DDS descubre los topics por UDP multicast pero no puede entregar datos por memoria compartida entre contenedores — el topic aparece "emparejado" y aun así no llega nada. Diagnosticado y resuelto el 2026-07-01 (`docs/06-bitacora-estado.md`).
 
 El flag `--net=host` es importante: permite que el contenedor vea el tráfico UDP de la red local sin traducción de puertos (NAT), lo cual simplifica la conectividad con la Vita que está en la misma red WiFi.
 
