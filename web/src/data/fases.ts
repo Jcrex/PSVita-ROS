@@ -41,8 +41,8 @@ export const fases: Fase[] = [
       { texto: 'Cross-compilar microxrcedds_client (libs ARM para la Vita)', estado: 'hecho' },
       { texto: 'Empaquetar el .vpk (variantes C y Rust, ambas construidas)', estado: 'hecho' },
       { texto: 'Primer .vpk instalado en la Vita real (USB, VitaShell)', estado: 'hecho' },
-      { texto: 'Incógnita dura: sesión XRCE sobre sceNet (causa raíz hallada — desajuste de versión cliente/agente — y fix aplicado; validar en hardware)', estado: 'bloqueado-hw' },
-      { texto: 'Criterios: /vita_hello visible + /pc_hello recibido', estado: 'bloqueado-hw' },
+      { texto: 'Incógnita dura: sesión XRCE sobre sceNet (RESUELTA — confirmada en hardware, reproducible en 4 lanzamientos)', estado: 'hecho' },
+      { texto: 'Criterios: /vita_hello visible + /pc_hello recibido', estado: 'pendiente' },
     ],
   },
   {

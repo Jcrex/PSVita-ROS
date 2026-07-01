@@ -1,9 +1,10 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-01 (PC CachyOS: aplicado el fix del
-desajuste de versión XRCE — cliente recompilado en v2.4.3, `.vpk`
-regenerado en ambas variantes y subido por FTP a la Vita en
-`192.168.1.94`; falta repetir la prueba en vivo desde la laptop)
+**Última actualización:** 2026-07-01 (laptop: **incógnita dura RESUELTA y
+confirmada en hardware** — `uxr_create_session` levanta con el cliente
+v2.4.3, reproducido en 4 lanzamientos distintos; falta solo el criterio
+2 formal — `ros2 topic echo /vita_hello` + `ros2 topic pub /pc_hello` —
+para cerrar del todo la Fase 1)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -95,10 +96,36 @@ todo el código escrito y verificado hasta donde la laptop permite**:
   `.vpk` desde VitaShell en la Vita y repetir la prueba en vivo (agente +
   netlog) desde la laptop** — ver "Próximos pasos".
 
-**El proyecto está desbloqueado en el fix**: el desajuste de versión de
-protocolo XRCE cliente/agente ya se corrigió y compiló. Lo que falta es
-**validar en hardware** que la sesión XRCE ahora sí levanta. Ver "Próximos
-pasos" al final.
+- **(2026-07-01, en la laptop) Incógnita dura RESUELTA — confirmado en
+  hardware:** con el `.vpk` Rust reconstruido (cliente XRCE v2.4.3)
+  instalado en la Vita (`192.168.1.94`) y, en la laptop, el agente
+  (`docker run -it --rm --net=host microros/micro-ros-agent:jazzy udp4
+  --port 8888 -v6`) y `tools/netlog-listen.sh 9999` arriba: el log del
+  agente muestra `create_client` → `session established` →
+  `create_participant`/`create_topic` (x2) /`create_publisher`/
+  `create_datawriter`/`create_subscriber`/`create_datareader` → y luego
+  `DataWriter.cpp | write` repitiéndose cada ~1 s con el contenido exacto
+  que manda la Vita (`"hola desde la vita #0"` … `#17`, incrementando).
+  El netlog confirma `*** SESION XRCE ESTABLECIDA: incognita dura OK ***`
+  en **4 lanzamientos distintos** de la app (17:36:34, 17:42:42, 17:47:38,
+  17:52:35) — resultado reproducible, no un golpe de suerte. El
+  diagnóstico de la sesión anterior era exacto: era 100% el desajuste de
+  versión de protocolo del cliente XRCE, nada de red/sceNet/módulos.
+  (Nota menor: el netlog muestra algo de ruido binario antes de la
+  primera línea de texto en cada sesión — probablemente arrastre de un
+  paquete UDP truncado/reordenado del propio socket, no afecta al
+  resultado; no investigado más a fondo.)
+
+  **Pendiente para cerrar el criterio 2 formalmente** (no bloquea el
+  hito de la incógnita dura, que ya se considera resuelto): correr
+  `ros2 topic echo /vita_hello` y `ros2 topic pub /pc_hello ...` dentro
+  del contenedor ROS2 Jazzy mientras la Vita esté corriendo, para
+  verificar desde el lado ROS2 que el topic es visible y que
+  `g_pc_hello_received` se dispara en el netlog al recibir el pub.
+
+**La incógnita dura de la Fase 1 está resuelta y confirmada en hardware.**
+Lo único pendiente es el criterio 2 formal (ver arriba y "Próximos
+pasos").
 
 ---
 
@@ -284,19 +311,26 @@ cd web && pnpm build                      # o: docker compose up -d --build
    `vita-app/src/main.c:100` ahora comprueba el retorno de `netlog_init`.
    **Pendiente manual en la Vita:** entrar a VitaShell → `ux0:/` →
    `vita-ros2-hello.vpk` → instalar (sobrescribir la versión anterior).
-9. Repetir la prueba (agente + netlog + `ros2 topic echo /vita_hello` +
-   `ros2 topic pub /pc_hello`), esta vez **desde la laptop** (la que
-   corre el agente y el netlog-listener). Leer `tools/netlog-listen.sh`:
-   - Silencio total → problema de red/subred (poco probable, ya
-     descartado una vez).
-   - `FATAL` → transporte/sesión XRCE falló por otra razón (documentar
-     el muro nuevo).
-   - `*** SESION XRCE ESTABLECIDA ***` (verde) → **incógnita dura
-     resuelta**; comprobar `/vita_hello` con `ros2 topic echo` y el
-     criterio 2 (`/pc_hello` recibido) en el propio log.
-10. Actualizar esta bitácora y `web/src/data/fases.ts` con el resultado
-    (marcar el hito de la incógnita dura como `hecho` o documentar el
-    muro nuevo si vuelve a fallar).
+9. ~~Repetir la prueba (agente + netlog) desde la laptop~~ **HECHO
+   (2026-07-01): incógnita dura RESUELTA y confirmada en hardware** — ver
+   el bloque de arriba (4 lanzamientos con `SESION XRCE ESTABLECIDA` +
+   `DataWriter.write` publicando en bucle).
+10. **PENDIENTE — cerrar el criterio 2 formal, en la laptop:** con la
+    Vita corriendo `vita-ros2-hello` y el agente/netlog arriba, dentro
+    del contenedor ROS2 Jazzy (`robotnik_dev`/`rmf_unified`):
+    ```bash
+    ros2 topic echo /vita_hello
+    ros2 topic pub /pc_hello std_msgs/msg/String "data: 'hola desde el pc'"
+    ```
+    - `ros2 topic echo /vita_hello` debe imprimir los mismos mensajes
+      que ya se ven en el log del agente (`hola desde la vita #N`).
+    - Tras el `pub`, el netlog debe mostrar
+      `[vita-ros2] /pc_hello recibido: "hola desde el pc"` (la Vita
+      dispara `g_pc_hello_received` en `on_topic()`, `main.c:81-82`).
+11. Actualizar esta bitácora y `web/src/data/fases.ts` marcando el hito
+    "Criterios: /vita_hello visible + /pc_hello recibido" como `hecho`
+    (con eso se cierra por completo la Fase 1: objetivo 1 de topics
+    ROS2).
 
 ### En la laptop (sin bloqueo, cuando se quiera)
 
