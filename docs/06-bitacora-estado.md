@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-06-28 (PC CachyOS: todo lo desbloqueado en el PC HECHO — `.vpk` C/Rust, módulos sueltos cross-compilados, MCP registrado; Fase 1 solo pendiente de hardware)
+**Última actualización:** 2026-07-01 (PC CachyOS, Vita conectada por USB+WiFi: primer `.vpk` real instalado en hardware; falta confirmar la sesión XRCE — ver "Próximos pasos")
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -24,9 +24,28 @@ todo el código escrito y verificado hasta donde la laptop permite**:
   cliente XRCE y los 3 módulos cross-compilan para la Vita, la app se empaqueta
   en `.vpk` (variantes C y Rust), y el MCP quedó registrado en Claude Code.
 
-**El proyecto está bloqueado ahora ÚNICAMENTE por la consola física** (instalar
-el `.vpk` y responder la incógnita dura: ¿levanta la sesión XRCE sobre sceNet?).
-Ver "Próximos pasos" al final.
+- **(2026-07-01, en el PC) Primer deploy real en la Vita física:** el `.vpk`
+  Rust (`vita-app/build/vita-ros2-hello.vpk`, baked con
+  `AGENT_IP`/`NETLOG_IP=192.168.1.108`, la laptop) se subió por **USB**
+  (modo USB de VitaShell, documentado en
+  `docs/guias-vita/vitashell.md#modo-usb-deploy-sin-red`) e instaló sin
+  problema. Al lanzarlo: pantalla negra (**esperado**, la app no dibuja
+  nada) y se cierra a los ~5 s — eso **no es un cuelgue**, es el camino
+  `fatal:` de `vita-app/src/main.c` (línea ~233,
+  `sceKernelDelayThread(5*1000*1000)`) que se dispara si `net_udp_init`,
+  la apertura del transporte o `uxr_create_session` fallan. Como el PC no
+  corre el agente ni el listener de logs (esos van en la laptop, según la
+  topología de red del proyecto), no se pudo leer todavía **por qué**
+  falló. Se creó `tools/netlog-listen.sh` (visor de logs UDP con
+  timestamp y color, reemplaza el `nc -u -l` manual) y se actualizó la
+  skill `vita-deploy-logs` con el flujo real. La Vita ya está en la misma
+  red WiFi que la laptop (confirmado por el usuario) — **falta el paso
+  siguiente: repetir el lanzamiento con el agente y el listener corriendo
+  en la laptop**, para ver si la sesión XRCE llega a establecerse.
+
+**El proyecto está bloqueado ahora ÚNICAMENTE por la consola física** —
+concretamente por confirmar, viendo el log en vivo, si la sesión XRCE
+levanta sobre sceNet. Ver "Próximos pasos" al final.
 
 ---
 
@@ -191,15 +210,31 @@ cd web && pnpm build                      # o: docker compose up -d --build
    el MCP (no se puede hot-load en la sesión actual). Plantilla y receta de
    contenedor en el README del MCP.
 
-### Con la Vita (hardware)
+### Con la Vita (hardware) — **siguiente paso exacto, retomar en la laptop**
 
-6. Preparar la consola con `docs/guias-vita/` (VitaShell + PrincessLog).
-7. Lanzar en la laptop: agente (`docker run --net=host
-   microros/micro-ros-agent:jazzy udp4 --port 8888 -v6`) y `nc -u -l -p 9999`.
-8. Instalar el `.vpk`, abrir la app y mirar el netlog: la línea
-   `SESION XRCE ESTABLECIDA` responde la incógnita dura.
-9. Criterios Fase 1: `ros2 topic echo /vita_hello` y publicar `/pc_hello`.
-10. Actualizar esta bitácora y `web/src/data/fases.ts` con el resultado.
+6. ~~Preparar la consola con `docs/guias-vita/` (VitaShell + PrincessLog)~~
+   **HECHO (2026-07-01):** VitaShell ya estaba instalado; el `.vpk` se
+   subió por USB (`docs/guias-vita/vitashell.md#modo-usb-deploy-sin-red`)
+   e instaló. La Vita ya está en la misma WiFi que la laptop.
+7. **PENDIENTE — hacer esto en la laptop:**
+   ```bash
+   git pull                                                        # trae tools/netlog-listen.sh
+   docker run --net=host microros/micro-ros-agent:jazzy udp4 --port 8888 -v6   # terminal 1
+   tools/netlog-listen.sh 9999                                     # terminal 2
+   ```
+   Luego lanzar `vita-ros2-hello` desde la LiveArea de la Vita.
+8. Leer lo que sale en `tools/netlog-listen.sh`:
+   - Silencio total → problema de red/subred (la Vita no llega a
+     `192.168.1.108:9999`).
+   - `FATAL` a los ~5 s → red OK pero el transporte/sesión XRCE falló
+     (revisar terminal 1, ¿el agente ve intentos de conexión?).
+   - `*** SESION XRCE ESTABLECIDA ***` (verde) → **incógnita dura
+     resuelta**.
+9. Si se estableció la sesión, criterios Fase 1: `ros2 topic echo
+   /vita_hello` y publicar en `/pc_hello` desde la laptop.
+10. Actualizar esta bitácora y `web/src/data/fases.ts` con el resultado
+    (marcar el hito de la incógnita dura como `hecho` o documentar el
+    muro nuevo si vuelve a fallar).
 
 ### En la laptop (sin bloqueo, cuando se quiera)
 

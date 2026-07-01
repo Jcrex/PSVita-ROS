@@ -40,6 +40,7 @@ export const fases: Fase[] = [
       { texto: 'Entorno del PC: VitaSDK, Rust nightly + cargo-vita, cmake, agente micro-ROS', estado: 'hecho' },
       { texto: 'Cross-compilar microxrcedds_client (libs ARM para la Vita)', estado: 'hecho' },
       { texto: 'Empaquetar el .vpk (variantes C y Rust, ambas construidas)', estado: 'hecho' },
+      { texto: 'Primer .vpk instalado en la Vita real (USB, VitaShell)', estado: 'hecho' },
       { texto: 'Incógnita dura: sesión XRCE sobre sceNet', estado: 'bloqueado-hw' },
       { texto: 'Criterios: /vita_hello visible + /pc_hello recibido', estado: 'bloqueado-hw' },
     ],
