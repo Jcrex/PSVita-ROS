@@ -1,9 +1,9 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-01 (laptop, sesión de pruebas en vivo con el
-agente micro-ROS + la Vita real: diagnosticada la causa raíz de por qué la
-sesión XRCE no levanta — desajuste de versión de protocolo cliente/agente;
-ver "Próximos pasos")
+**Última actualización:** 2026-07-01 (PC CachyOS: aplicado el fix del
+desajuste de versión XRCE — cliente recompilado en v2.4.3, `.vpk`
+regenerado en ambas variantes y subido por FTP a la Vita en
+`192.168.1.94`; falta repetir la prueba en vivo desde la laptop)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -76,10 +76,29 @@ todo el código escrito y verificado hasta donde la laptop permite**:
   duales** — la incógnita dura sigue sin resolverse, pero ahora se sabe
   exactamente por qué y cómo arreglarlo (ver "Próximos pasos").
 
-**El proyecto está bloqueado ahora ÚNICAMENTE por un desajuste de versión
-de protocolo XRCE cliente/agente**, ya diagnosticado. El siguiente paso es
-mecánico: recompilar el cliente en el PC con un tag compatible con el
-agente v2.4.3. Ver "Próximos pasos" al final.
+- **(2026-07-01, en el PC) Fix del desajuste de versión aplicado:** en
+  `vita-app/scripts/build-xrce-client-vita.sh:40` se cambió
+  `XRCE_TAG="${XRCE_TAG:-v3.0.0}"` por `v2.4.3` (coincide con el agente
+  `microros/micro-ros-agent:jazzy`). Se confirmó además que `CDR_TAG`
+  (v2.0.1) sigue siendo correcto: el `CMakeLists.txt` del cliente v2.4.3
+  fija `_microcdr_version=2.0.1` `EXACT REQUIRED`, igual que v3.0.0 —
+  no hacía falta tocarlo. Se borró `vita-app/third_party/` y se
+  recompiló desde cero (`libmicrocdr.a` + `libmicroxrcedds_client.a`,
+  ambas ELF ARM, sin errores). De paso se arregló el bug de visibilidad
+  de `vita-app/src/main.c:100`: ahora comprueba el valor de retorno de
+  `netlog_init()` y avisa por `sceClibPrintf` si falla, para no quedarse
+  ciego si el socket de logs no abre. Las dos variantes del `.vpk` se
+  regeneraron limpias (`vita-app/build-c/` y `vita-app/build-rust/`,
+  ~77 KB cada una) y la variante Rust se subió por **FTP** (modo FTP de
+  VitaShell, `curl -T … ftp://192.168.1.94:1337/ux0:/`) a la Vita, que
+  ahora tiene esa IP en la red WiFi del proyecto. **Falta instalar el
+  `.vpk` desde VitaShell en la Vita y repetir la prueba en vivo (agente +
+  netlog) desde la laptop** — ver "Próximos pasos".
+
+**El proyecto está desbloqueado en el fix**: el desajuste de versión de
+protocolo XRCE cliente/agente ya se corrigió y compiló. Lo que falta es
+**validar en hardware** que la sesión XRCE ahora sí levanta. Ver "Próximos
+pasos" al final.
 
 ---
 
@@ -254,23 +273,20 @@ cd web && pnpm build                      # o: docker compose up -d --build
    laptop~~ **HECHO (2026-07-01):** sesión de pruebas completa (agente +
    netlog + `ros2 topic echo/pub` en `rmf_unified`). Resultado: **causa
    raíz encontrada, no es un problema de red** — ver el bloque de arriba.
-8. **PENDIENTE — en el PC (CachyOS):**
-   - En `vita-app/scripts/build-xrce-client-vita.sh:40`, cambiar
-     `XRCE_TAG="${XRCE_TAG:-v3.0.0}"` por `v2.4.3` (coincide con
-     `libmicroxrcedds_agent.so.2.4.3` de la imagen
-     `microros/micro-ros-agent:jazzy`). Revisar si `CDR_TAG` (línea 41,
-     hoy `v2.0.1`) sigue siendo la versión exacta que exige el cliente
-     v2.4.3, o si hay que ajustarla también (mirar `find_package(microcdr)`
-     en el `CMakeLists.txt` del cliente en ese tag).
-   - Volver a correr `./scripts/build-xrce-client-vita.sh` (borrar antes
-     `vita-app/third_party/` para forzar re-clone con el tag nuevo).
-   - Regenerar el `.vpk` (`cmake --build build`) y reinstalar en la Vita.
-   - De paso, arreglar el bug de visibilidad en
-     `vita-app/src/main.c:100`: comprobar el valor de retorno de
-     `netlog_init(...)` y avisar (al menos con `sceClibPrintf`) si falla,
-     para no quedarse ciego si vuelve a pasar algo similar.
+8. ~~En el PC: recompilar el cliente XRCE con el tag correcto y arreglar
+   la visibilidad de `netlog_init`~~ **HECHO (2026-07-01):**
+   `XRCE_TAG` pasó a `v2.4.3` en
+   `vita-app/scripts/build-xrce-client-vita.sh:40` (`CDR_TAG=v2.0.1` se
+   confirmó correcto sin cambios, ver bloque de arriba). Cliente
+   recompilado, `.vpk` regenerado en las dos variantes
+   (`vita-app/build-c/`, `vita-app/build-rust/`) y la variante Rust
+   subida por FTP a la Vita (`192.168.1.94:1337`, modo FTP de VitaShell).
+   `vita-app/src/main.c:100` ahora comprueba el retorno de `netlog_init`.
+   **Pendiente manual en la Vita:** entrar a VitaShell → `ux0:/` →
+   `vita-ros2-hello.vpk` → instalar (sobrescribir la versión anterior).
 9. Repetir la prueba (agente + netlog + `ros2 topic echo /vita_hello` +
-   `ros2 topic pub /pc_hello`). Leer `tools/netlog-listen.sh`:
+   `ros2 topic pub /pc_hello`), esta vez **desde la laptop** (la que
+   corre el agente y el netlog-listener). Leer `tools/netlog-listen.sh`:
    - Silencio total → problema de red/subred (poco probable, ya
      descartado una vez).
    - `FATAL` → transporte/sesión XRCE falló por otra razón (documentar

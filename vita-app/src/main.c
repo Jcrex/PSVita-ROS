@@ -97,7 +97,11 @@ int main(void)
         sceKernelExitProcess(1);
         return 1;
     }
-    netlog_init(NETLOG_IP, NETLOG_PORT);
+    if (!netlog_init(NETLOG_IP, NETLOG_PORT)) {
+        sceClibPrintf("[vita-ros2] WARN: netlog_init fallo (ip=%s:%d); "
+                       "sin logs UDP, solo sceClibPrintf\n",
+                       NETLOG_IP, NETLOG_PORT);
+    }
     LOG("[vita-ros2] red inicializada; agente=%s:%d\n", AGENT_IP, AGENT_PORT);
 
     /* --- Transporte XRCE: módulo dual microros-transport vía glue --- */

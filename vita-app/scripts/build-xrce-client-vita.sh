@@ -19,7 +19,13 @@
 #   no de newlib.)
 #
 # Notas:
-#  - microcdr v2.0.1 (la versión EXACT que exige el cliente v3.0.0).
+#  - XRCE_TAG=v2.4.3: debe coincidir con la versión del AGENTE
+#    (microros/micro-ros-agent:jazzy corre libmicroxrcedds_agent.so.2.4.3).
+#    El cliente v3.0.0 rompe compatibilidad con agentes < v3.0.0 (release
+#    note oficial de eProsima) y el agente descarta el CREATE_CLIENT en
+#    silencio — causa raíz diagnosticada el 2026-07-01, ver docs/06.
+#  - microcdr v2.0.1 (la versión EXACT que exige el cliente v2.4.3 también,
+#    confirmado en su CMakeLists.txt: _microcdr_version=2.0.1).
 #  - UCLIENT_PROFILE_UDP/TCP/SERIAL/DISCOVERY se apagan: nuestro transporte
 #    es CUSTOM (módulo microros-transport); el cliente no debe arrastrar
 #    código POSIX que newlib no tiene.
@@ -37,7 +43,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PREFIX="$APP_DIR/third_party/xrce-vita"
 WORK="$APP_DIR/third_party/_build"
-XRCE_TAG="${XRCE_TAG:-v3.0.0}"
+XRCE_TAG="${XRCE_TAG:-v2.4.3}"
 CDR_TAG="${CDR_TAG:-v2.0.1}"
 
 if [[ -z "${VITASDK:-}" ]]; then
