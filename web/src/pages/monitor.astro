@@ -44,7 +44,12 @@ const statusLabel: Record<string, string> = {
       </ul>
     </aside>
 
-    <section class="panel" id="log-panel" data-session-id={latest?.id ?? ''}>
+    <section
+      class="panel"
+      id="log-panel"
+      data-session-id={latest?.id ?? ''}
+      data-last-line-id={initialLines.at(-1)?.id ?? 0}
+    >
       <h2 style="margin-top:0;border:none" id="log-title">
         {latest ? `Sesión #${latest.id}` : 'Sin sesiones todavía'}
       </h2>
@@ -90,6 +95,7 @@ const statusLabel: Record<string, string> = {
 
   <script>
     interface LogLine {
+      id: number;
       session_id: number;
       received_at: string;
       raw_text: string;
@@ -108,6 +114,11 @@ const statusLabel: Record<string, string> = {
       ? Number(logPanel.dataset.sessionId)
       : null;
 
+    // Marca de agua: id de línea más alto ya renderizado. Sirve para
+    // descartar el reenvío completo del historial que el SSE hace en cada
+    // conexión/reconexión (ver stream.ts), evitando líneas duplicadas.
+    let lastRenderedLineId = Number(logPanel.dataset.lastLineId ?? 0);
+
     function lineNode(l: { received_at: string; raw_text: string; kind: string }) {
       const span = document.createElement('span');
       span.className =
@@ -125,6 +136,9 @@ const statusLabel: Record<string, string> = {
       logLines.innerHTML = '';
       for (const l of lines) logLines.appendChild(lineNode(l));
       logLines.scrollTop = logLines.scrollHeight;
+      if (lines.length > 0) {
+        lastRenderedLineId = Math.max(...lines.map((l: LogLine) => l.id));
+      }
     }
 
     document.querySelectorAll<HTMLButtonElement>('.session-btn').forEach((btn) => {
@@ -135,7 +149,7 @@ const statusLabel: Record<string, string> = {
     const source = new EventSource('/api/monitor/stream');
     source.addEventListener('session-changed', (ev) => {
       const { sessionId } = JSON.parse((ev as MessageEvent).data) as { sessionId: number };
-      if (currentLiveSessionId !== null && sessionId !== currentLiveSessionId) {
+      if (sessionId !== currentLiveSessionId) {
         location.reload();
         return;
       }
@@ -143,10 +157,12 @@ const statusLabel: Record<string, string> = {
     });
     source.onmessage = (ev) => {
       const line: LogLine = JSON.parse(ev.data);
+      if (line.id <= lastRenderedLineId) return;
       if (logPanel.dataset.sessionId === String(line.session_id)) {
         logLines.appendChild(lineNode(line));
         logLines.scrollTop = logLines.scrollHeight;
       }
+      lastRenderedLineId = line.id;
     };
 
     // Indicador global: ¿llegó algo en los últimos 5s?
