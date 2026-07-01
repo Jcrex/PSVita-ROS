@@ -9,7 +9,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "start": "node ./dist/server/entry.mjs",
-    "test:ingester": "node --test 'scripts/**/*.test.mjs'"
+    "test:ingester": "node --test 'scripts/**/*.test.mjs'",
+    "ingester": "node scripts/netlog-ingester.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",
