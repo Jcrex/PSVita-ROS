@@ -8,7 +8,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "start": "node ./dist/server/entry.mjs"
+    "start": "node ./dist/server/entry.mjs",
+    "test:ingester": "node --test 'scripts/**/*.test.mjs'"
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",
