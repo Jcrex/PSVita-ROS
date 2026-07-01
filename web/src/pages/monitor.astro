@@ -101,6 +101,13 @@ const statusLabel: Record<string, string> = {
     const logPanel = document.getElementById('log-panel')!;
     const globalStatus = document.getElementById('global-status')!;
 
+    // Sesión que el cliente ya considera "en vivo": se siembra desde el
+    // dato ya renderizado por el servidor, para no confundir la
+    // sincronización inicial del EventSource con una transición real.
+    let currentLiveSessionId: number | null = logPanel.dataset.sessionId
+      ? Number(logPanel.dataset.sessionId)
+      : null;
+
     function lineNode(l: { received_at: string; raw_text: string; kind: string }) {
       const span = document.createElement('span');
       span.className =
@@ -126,8 +133,13 @@ const statusLabel: Record<string, string> = {
 
     // Vista en vivo: sigue siempre la sesión más reciente vía SSE.
     const source = new EventSource('/api/monitor/stream');
-    source.addEventListener('session-changed', () => {
-      location.reload();
+    source.addEventListener('session-changed', (ev) => {
+      const { sessionId } = JSON.parse((ev as MessageEvent).data) as { sessionId: number };
+      if (currentLiveSessionId !== null && sessionId !== currentLiveSessionId) {
+        location.reload();
+        return;
+      }
+      currentLiveSessionId = sessionId;
     });
     source.onmessage = (ev) => {
       const line: LogLine = JSON.parse(ev.data);
