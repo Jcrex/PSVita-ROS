@@ -86,14 +86,14 @@ export interface VitaLogLine {
 }
 
 const listSessionsStmt = db.prepare(
-  `SELECT * FROM vita_sessions ORDER BY started_at DESC LIMIT 50`,
+  `SELECT * FROM vita_sessions ORDER BY id DESC LIMIT 50`,
 );
 const getSessionStmt = db.prepare(`SELECT * FROM vita_sessions WHERE id = ?`);
 const getSessionLinesStmt = db.prepare(
   `SELECT * FROM vita_log_lines WHERE session_id = ? ORDER BY id ASC`,
 );
 const getLatestSessionStmt = db.prepare(
-  `SELECT * FROM vita_sessions ORDER BY started_at DESC LIMIT 1`,
+  `SELECT * FROM vita_sessions ORDER BY id DESC LIMIT 1`,
 );
 const getLinesAfterStmt = db.prepare(
   `SELECT * FROM vita_log_lines WHERE session_id = ? AND id > ? ORDER BY id ASC`,
