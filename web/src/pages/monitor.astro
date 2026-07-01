@@ -1,0 +1,152 @@
+---
+// monitor.astro — dashboard en vivo del netlog de la Vita. Ver
+// docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md.
+export const prerender = false;
+import Base from '../layouts/Base.astro';
+import { listSessions, getSessionLines } from '../lib/db';
+
+const sessions = listSessions();
+const latest = sessions[0];
+const initialLines = latest ? getSessionLines(latest.id) : [];
+
+const statusLabel: Record<string, string> = {
+  'en-curso': '🟢 viva',
+  establecida: '✅ establecida',
+  fatal: '🔴 fatal',
+  cerrada: '⚪ cerrada',
+};
+---
+
+<Base title="Monitor" description="Logs en vivo de la PS Vita, por sesión.">
+  <h1>Monitor de la Vita <span id="global-status">⚪</span></h1>
+  <p style="color:var(--text-dim)">
+    Sustituye la lectura manual con <code>tools/netlog-listen.sh</code>:
+    cada lanzamiento de <code>vita-ros2-hello</code> queda aquí como una
+    sesión navegable.
+  </p>
+
+  {sessions.length === 0 && (
+    <p>Todavía no ha llegado ningún log de la Vita.</p>
+  )}
+
+  <div class="monitor-grid">
+    <aside class="panel" id="session-list">
+      <h2 style="margin-top:0;border:none">Sesiones</h2>
+      <ul id="sessions-ul" style="list-style:none;padding:0">
+        {sessions.map((s) => (
+          <li>
+            <button class="session-btn" data-id={s.id}>
+              #{s.id} — {s.started_at}{' '}
+              <span class="badge">{statusLabel[s.status]}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </aside>
+
+    <section class="panel" id="log-panel" data-session-id={latest?.id ?? ''}>
+      <h2 style="margin-top:0;border:none" id="log-title">
+        {latest ? `Sesión #${latest.id}` : 'Sin sesiones todavía'}
+      </h2>
+      <pre id="log-lines">{initialLines
+        .map((l) => `[${l.received_at}] ${l.raw_text}`)
+        .join('\n')}</pre>
+    </section>
+  </div>
+
+  <style>
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 1.2rem;
+      align-items: start;
+    }
+    .session-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: var(--text);
+      padding: .4rem .3rem;
+      cursor: pointer;
+      font: inherit;
+      border-radius: 6px;
+    }
+    .session-btn:hover { background: var(--panel-border); }
+    #log-lines {
+      max-height: 60vh;
+      overflow-y: auto;
+      background: var(--bg-soft);
+      padding: 1rem;
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: .85rem;
+      white-space: pre-wrap;
+    }
+    .log-fatal { color: #f87171; }
+    .log-hito { color: var(--ok); font-weight: 600; }
+  </style>
+
+  <script>
+    interface LogLine {
+      session_id: number;
+      received_at: string;
+      raw_text: string;
+      kind: 'normal' | 'hito' | 'fatal';
+    }
+
+    const logLines = document.getElementById('log-lines')!;
+    const logTitle = document.getElementById('log-title')!;
+    const logPanel = document.getElementById('log-panel')!;
+    const globalStatus = document.getElementById('global-status')!;
+
+    function lineNode(l: { received_at: string; raw_text: string; kind: string }) {
+      const span = document.createElement('span');
+      span.className =
+        l.kind === 'fatal' ? 'log-fatal' : l.kind === 'hito' ? 'log-hito' : '';
+      span.textContent = `[${l.received_at}] ${l.raw_text}\n`;
+      return span;
+    }
+
+    async function loadSession(id: string) {
+      const res = await fetch(`/api/monitor/session/${id}`);
+      if (!res.ok) return;
+      const { session, lines } = await res.json();
+      logTitle.textContent = `Sesión #${session.id}`;
+      logPanel.dataset.sessionId = String(session.id);
+      logLines.innerHTML = '';
+      for (const l of lines) logLines.appendChild(lineNode(l));
+      logLines.scrollTop = logLines.scrollHeight;
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('.session-btn').forEach((btn) => {
+      btn.addEventListener('click', () => loadSession(btn.dataset.id!));
+    });
+
+    // Vista en vivo: sigue siempre la sesión más reciente vía SSE.
+    const source = new EventSource('/api/monitor/stream');
+    source.addEventListener('session-changed', () => {
+      location.reload();
+    });
+    source.onmessage = (ev) => {
+      const line: LogLine = JSON.parse(ev.data);
+      if (logPanel.dataset.sessionId === String(line.session_id)) {
+        logLines.appendChild(lineNode(line));
+        logLines.scrollTop = logLines.scrollHeight;
+      }
+    };
+
+    // Indicador global: ¿llegó algo en los últimos 5s?
+    async function pollStatus() {
+      const res = await fetch('/api/monitor/status');
+      const { lastReceivedAt } = (await res.json()) as { lastReceivedAt: string | null };
+      const fresh =
+        !!lastReceivedAt &&
+        Date.now() - new Date(lastReceivedAt.replace(' ', 'T') + 'Z').getTime() < 5000;
+      globalStatus.textContent = fresh ? '🟢' : '⚪';
+      setTimeout(pollStatus, 5000);
+    }
+    pollStatus();
+  </script>
+</Base>
