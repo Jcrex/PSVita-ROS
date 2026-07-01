@@ -15,6 +15,12 @@ const statusLabel: Record<string, string> = {
   fatal: '🔴 fatal',
   cerrada: '⚪ cerrada',
 };
+
+function lineClass(kind: string) {
+  if (kind === 'fatal') return 'log-fatal';
+  if (kind === 'hito') return 'log-hito';
+  return '';
+}
 ---
 
 <Base title="Monitor" description="Logs en vivo de la PS Vita, por sesión.">
@@ -53,9 +59,14 @@ const statusLabel: Record<string, string> = {
       <h2 style="margin-top:0;border:none" id="log-title">
         {latest ? `Sesión #${latest.id}` : 'Sin sesiones todavía'}
       </h2>
-      <pre id="log-lines">{initialLines
-        .map((l) => `[${l.received_at}] ${l.raw_text}`)
-        .join('\n')}</pre>
+      {/* Nota: se usa concatenación con '+' en vez de un template literal
+          porque el compilador de Astro falla al parsear un contenedor de
+          expresión JSX que sea (o termine en) un `'\n'` literal aislado o
+          dentro de un template string aquí — error reproducido y acotado
+          a mano; la concatenación produce el mismo texto y evita el bug. */}
+      <pre id="log-lines">{initialLines.map((l) => (
+        <span class={lineClass(l.kind)}>{'[' + l.received_at + '] ' + l.raw_text + '\n'}</span>
+      ))}</pre>
     </section>
   </div>
 
@@ -107,6 +118,11 @@ const statusLabel: Record<string, string> = {
     const logPanel = document.getElementById('log-panel')!;
     const globalStatus = document.getElementById('global-status')!;
 
+    // Autoscroll inicial: el historial renderizado por el servidor puede
+    // superar los 60vh visibles; sin esto la página abriría con el scroll
+    // arriba en vez de mostrar las líneas más recientes.
+    logLines.scrollTop = logLines.scrollHeight;
+
     // Sesión que el cliente ya considera "en vivo": se siembra desde el
     // dato ya renderizado por el servidor, para no confundir la
     // sincronización inicial del EventSource con una transición real.
@@ -153,7 +169,6 @@ const statusLabel: Record<string, string> = {
         location.reload();
         return;
       }
-      currentLiveSessionId = sessionId;
     });
     source.onmessage = (ev) => {
       const line: LogLine = JSON.parse(ev.data);
