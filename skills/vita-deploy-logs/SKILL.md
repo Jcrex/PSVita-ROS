@@ -59,21 +59,35 @@ Si ya existe una versión anterior instalada con el mismo ID de título, VitaShe
 
 La PS Vita (homebrew) no tiene salida de consola accesible directamente. Los logs de ejecución se capturan por red redirigiendo `sceClibPrintf` (o un wrapper equivalente) a un socket UDP hacia el PC. Este es el método habitual en el ecosistema homebrew (estilo PrincessLog).
 
-**En el PC**, antes de lanzar la app, poner a escuchar el receptor de logs:
+**Validado en hardware (2026-07-01):** `vita-ros2-hello` ya implementa esto
+en `vita-app/src/netlog.c` (socket UDP propio, sin PrincessLog): cada
+llamada a `LOG(...)` en `main.c` manda la línea por `sceClibPrintf` (local)
+y por UDP a `NETLOG_IP:NETLOG_PORT` (por defecto `192.168.1.108:9999`, la
+laptop — ver `vita-app/CMakeLists.txt`).
+
+**En la máquina cuya IP quedó baked-in como `NETLOG_IP`**, antes de lanzar
+la app, poner a escuchar el receptor de logs — usar el script del repo
+(colorea FATAL/hitos y opcionalmente guarda a archivo):
 
 ```bash
-# Con netcat en modo UDP:
-nc -u -l <puerto>
-
-# Con socat (alternativa más robusta):
-socat UDP-RECV:<puerto> STDOUT
+tools/netlog-listen.sh 9999              # solo pantalla
+tools/netlog-listen.sh 9999 sesion.log   # además guarda una copia
 ```
 
-Reemplazar `<puerto>` con el puerto UDP configurado en el código de la app (p. ej. `18194`, valor habitual en PrincessLog).
+Equivalente manual: `socat -u UDP-RECV:<puerto> STDOUT` (o `nc -u -l
+<puerto>` si no hay `socat`).
 
-**En la Vita**, lanzar la app desde la LiveArea. Los mensajes de `sceClibPrintf` / `psvDebugScreenPrintf` redirigidos a UDP aparecerán en la terminal del PC en tiempo real.
+**En la Vita**, lanzar la app desde la LiveArea. Los mensajes aparecerán en
+la terminal en tiempo real. Si no aparece nada, lo más probable no es un
+problema de logging sino que **`net_udp_init()` o la sesión XRCE fallaron
+antes de mandar el primer log** (revisar que la Vita esté en la misma red
+WiFi que la máquina que escucha, y que el agente micro-ROS esté arriba en
+`AGENT_IP:AGENT_PORT`).
 
-**Nota de estado — validar en hardware:** el método exacto de redirección de logs (PrincessLog, socket propio, o debugScreen) depende de cómo el código de la app inicialice la salida. Este workflow se afina tras la primera prueba en hardware real. Si la app no envía logs, revisar que la inicialización del socket de log apunta a la IP del PC y al puerto correcto.
+Backup sin red: **PrincessLog** (plugin taiHEN, ver
+`docs/guias-vita/autoplugin2.md`) captura los mismos `sceClibPrintf` a un
+archivo en la tarjeta, legible desde VitaShell aunque la Vita no tenga
+WiFi o el listener UDP no esté escuchando.
 
 ---
 
@@ -90,7 +104,7 @@ El ciclo completo de desarrollo embebido en la Vita sigue este flujo:
        ↓
 [vita-deploy-logs: instalar] → VitaShell en la Vita
        ↓
-[vita-deploy-logs: lanzar + leer logs] → nc -u -l <puerto>
+[vita-deploy-logs: lanzar + leer logs] → tools/netlog-listen.sh <puerto>
        ↓
 [Analizar logs, identificar el problema]
        ↓
@@ -103,6 +117,11 @@ Cada iteración completa este ciclo. No saltarse el paso de lectura de logs: en 
 
 ## Nota de estado general
 
-Los pasos de esta skill están marcados como **"validar en hardware"** porque la PS Vita real del proyecto aún no se ha usado en el desarrollo. Las instrucciones reflejan el procedimiento documentado y probado por la comunidad homebrew, pero pueden requerir ajustes menores (puerto FTP, ruta de destino, método de captura de logs) según el firmware de la consola, la versión de VitaShell y la configuración de red específica.
-
-Al realizar la primera prueba real, anotar cualquier desviación del procedimiento documentado aquí y actualizar esta skill con los valores concretos validados.
+La instalación por USB/VitaShell se validó en hardware el 2026-07-01
+(primer `.vpk` real instalado en la Vita 1000 del proyecto). La captura de
+logs por UDP (`tools/netlog-listen.sh`) usa el mecanismo ya implementado
+en `vita-app/src/netlog.c`, pero su recepción real sobre WiFi (Vita y
+listener en la misma red) todavía no se confirmó en esta sesión — sigue
+marcada **"validar en hardware"** hasta que se vea una línea de log
+llegar. Si al lanzar la app no llega nada, lo primero a revisar es la
+conectividad WiFi de la Vita, no la skill en sí.

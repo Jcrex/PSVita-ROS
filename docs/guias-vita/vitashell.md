@@ -49,6 +49,48 @@ la versión vieja.
 
 La skill `vita-deploy-logs` del repo automatiza este bucle.
 
+### Modo USB (deploy sin red)
+
+Si tienes la Vita conectada por cable al PC (útil en el PC CachyOS de
+desarrollo, que no siempre comparte WiFi con la consola):
+
+1. Conecta el cable USB Vita↔PC.
+2. En VitaShell, pulsa **SELECT**: al detectar el cable, activa modo USB
+   en vez de FTP (la pantalla cambia y avisa que la partición está
+   expuesta como almacenamiento USB).
+3. En el PC (Linux), identifica el dispositivo nuevo:
+   ```bash
+   lsblk
+   ```
+   Debe aparecer un disco extraíble del tamaño de tu tarjeta de memoria
+   (la partición de `ux0:` va formateada en exFAT — soportado nativamente
+   desde el kernel 5.4, sin paquetes extra en CachyOS).
+4. Móntalo sin sudo con udisks:
+   ```bash
+   udisksctl mount -b /dev/sdX1   # sustituye sdX1 por lo que muestre lsblk
+   ```
+5. Copia el `.vpk`:
+   ```bash
+   cp vita-app/build/vita-ros2-hello.vpk /run/media/$USER/*/
+   ```
+6. Desmonta limpio **antes** de tocar nada en la Vita:
+   ```bash
+   udisksctl unmount -b /dev/sdX1
+   ```
+7. En la Vita: pulsa **SELECT** de nuevo para salir del modo USB, vuelve a
+   `ux0:/` en VitaShell, pulsa X sobre el `.vpk` → instalar → acepta el
+   aviso de permisos extendidos (la app usa red).
+8. Opcional: borra el `.vpk` de `ux0:/` una vez instalado, para no gastar
+   espacio de la tarjeta.
+
+> Nota: el `.vpk` de este proyecto trae **la IP del agente/netlog
+> baked-in** (por defecto `192.168.1.108`, la laptop — ver
+> `vita-app/CMakeLists.txt`). Instalarlo desde el PC por USB no cambia
+> eso: para ver la sesión XRCE en marcha (criterios de Fase 1) necesitas
+> tener el agente micro-ROS y el listener de netlog corriendo en la
+> laptop y ambas máquinas en la misma WiFi (pasos 6-9 de
+> `docs/06-bitacora-estado.md`).
+
 ### Atajos útiles
 
 | Tecla | Acción |

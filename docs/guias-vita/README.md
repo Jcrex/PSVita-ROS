@@ -38,6 +38,9 @@ Estas guías también se publican en la web del proyecto.
 3. En VitaShell: navegar a `ux0:/`, pulsar X sobre el `.vpk` → instalar.
 4. Aceptar el aviso de permisos extendidos (nuestra app usa red).
 
+Alternativa sin WiFi (p. ej. en el PC de desarrollo, con la Vita por
+cable): modo USB de VitaShell — detallado en [VitaShell](vitashell.md#modo-usb-deploy-sin-red).
+
 > Advertencia general: instala homebrew solo desde los repositorios
 > oficiales enlazados en cada guía. Un plugin mal instalado puede impedir
 > el arranque (se recupera con el "safe mode" de taiHEN: mantener L al
