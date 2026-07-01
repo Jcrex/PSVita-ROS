@@ -1,6 +1,9 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-01 (PC CachyOS, Vita conectada por USB+WiFi: primer `.vpk` real instalado en hardware; falta confirmar la sesión XRCE — ver "Próximos pasos")
+**Última actualización:** 2026-07-01 (laptop, sesión de pruebas en vivo con el
+agente micro-ROS + la Vita real: diagnosticada la causa raíz de por qué la
+sesión XRCE no levanta — desajuste de versión de protocolo cliente/agente;
+ver "Próximos pasos")
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -39,13 +42,44 @@ todo el código escrito y verificado hasta donde la laptop permite**:
   falló. Se creó `tools/netlog-listen.sh` (visor de logs UDP con
   timestamp y color, reemplaza el `nc -u -l` manual) y se actualizó la
   skill `vita-deploy-logs` con el flujo real. La Vita ya está en la misma
-  red WiFi que la laptop (confirmado por el usuario) — **falta el paso
-  siguiente: repetir el lanzamiento con el agente y el listener corriendo
-  en la laptop**, para ver si la sesión XRCE llega a establecerse.
+  red WiFi que la laptop (confirmado por el usuario).
 
-**El proyecto está bloqueado ahora ÚNICAMENTE por la consola física** —
-concretamente por confirmar, viendo el log en vivo, si la sesión XRCE
-levanta sobre sceNet. Ver "Próximos pasos" al final.
+- **(2026-07-01, en la laptop) Sesión de pruebas en vivo — causa raíz
+  encontrada:** con la Vita corriendo `vita-ros2-hello`, el agente
+  (`docker run --net=host microros/micro-ros-agent:jazzy udp4 --port 8888
+  -v6`) y `tools/netlog-listen.sh 9999` arriba, más `ros2 topic echo
+  /vita_hello` y `ros2 topic pub /pc_hello ...` corriendo dentro del
+  contenedor ROS2 Jazzy (`rmf_unified`): la Vita **sí llega por WiFi** al
+  agente (tráfico UDP continuo en el puerto 8888, minutos seguidos), pero
+  la sesión XRCE **nunca se establece** — el agente recibe el mismo
+  paquete de 13 bytes (reintentos de `CREATE_CLIENT`) una y otra vez y
+  **jamás responde** (0 mensajes salientes, sin ningún warning/error ni a
+  verbosidad máxima `-v6`, en más de 4400 líneas de log). `/vita_hello`
+  nunca publica nada y `/pc_hello` se publica sin confirmación de
+  recepción. Además se detectó que **`tools/netlog-listen.sh` no recibió
+  ni un solo byte** en toda la sesión, pese a que `main.c` manda un log
+  justo después de `netlog_init()` y antes de abrir el transporte (que sí
+  funciona) — bug de visibilidad: `main.c:100` no comprueba el valor de
+  retorno de `netlog_init()`, así que un fallo ahí queda mudo.
+  **Causa raíz de la sesión XRCE:** desajuste de versión de protocolo.
+  El contenedor `microros/micro-ros-agent:jazzy` corre
+  `libmicroxrcedds_agent.so.2.4.3` (confirmado inspeccionando el
+  contenedor), pero `vita-app/scripts/build-xrce-client-vita.sh` compila
+  el cliente con `XRCE_TAG=v3.0.0` (línea 40). El *release note* oficial
+  de eProsima para el cliente v3.0.0 dice explícitamente: *"This version
+  is not compatible with eProsima Micro XRCE-DDS Agent version < v3.0.0"*
+  (es un release de conveniencia solo para emparejar la major version del
+  Agent v3.0.0). El agente v2.4.3 recibe el `CREATE_CLIENT` del cliente
+  v3.0.0, no lo reconoce como válido para su versión de protocolo y lo
+  descarta en silencio — de ahí el silencio total incluso a verbosidad
+  máxima. **No es un problema de red, de sceNet, ni de los módulos
+  duales** — la incógnita dura sigue sin resolverse, pero ahora se sabe
+  exactamente por qué y cómo arreglarlo (ver "Próximos pasos").
+
+**El proyecto está bloqueado ahora ÚNICAMENTE por un desajuste de versión
+de protocolo XRCE cliente/agente**, ya diagnosticado. El siguiente paso es
+mecánico: recompilar el cliente en el PC con un tag compatible con el
+agente v2.4.3. Ver "Próximos pasos" al final.
 
 ---
 
@@ -210,28 +244,40 @@ cd web && pnpm build                      # o: docker compose up -d --build
    el MCP (no se puede hot-load en la sesión actual). Plantilla y receta de
    contenedor en el README del MCP.
 
-### Con la Vita (hardware) — **siguiente paso exacto, retomar en la laptop**
+### Con la Vita (hardware) — **siguiente paso exacto, en el PC**
 
 6. ~~Preparar la consola con `docs/guias-vita/` (VitaShell + PrincessLog)~~
    **HECHO (2026-07-01):** VitaShell ya estaba instalado; el `.vpk` se
    subió por USB (`docs/guias-vita/vitashell.md#modo-usb-deploy-sin-red`)
    e instaló. La Vita ya está en la misma WiFi que la laptop.
-7. **PENDIENTE — hacer esto en la laptop:**
-   ```bash
-   git pull                                                        # trae tools/netlog-listen.sh
-   docker run --net=host microros/micro-ros-agent:jazzy udp4 --port 8888 -v6   # terminal 1
-   tools/netlog-listen.sh 9999                                     # terminal 2
-   ```
-   Luego lanzar `vita-ros2-hello` desde la LiveArea de la Vita.
-8. Leer lo que sale en `tools/netlog-listen.sh`:
-   - Silencio total → problema de red/subred (la Vita no llega a
-     `192.168.1.108:9999`).
-   - `FATAL` a los ~5 s → red OK pero el transporte/sesión XRCE falló
-     (revisar terminal 1, ¿el agente ve intentos de conexión?).
+7. ~~Repetir el lanzamiento con el agente y el listener corriendo en la
+   laptop~~ **HECHO (2026-07-01):** sesión de pruebas completa (agente +
+   netlog + `ros2 topic echo/pub` en `rmf_unified`). Resultado: **causa
+   raíz encontrada, no es un problema de red** — ver el bloque de arriba.
+8. **PENDIENTE — en el PC (CachyOS):**
+   - En `vita-app/scripts/build-xrce-client-vita.sh:40`, cambiar
+     `XRCE_TAG="${XRCE_TAG:-v3.0.0}"` por `v2.4.3` (coincide con
+     `libmicroxrcedds_agent.so.2.4.3` de la imagen
+     `microros/micro-ros-agent:jazzy`). Revisar si `CDR_TAG` (línea 41,
+     hoy `v2.0.1`) sigue siendo la versión exacta que exige el cliente
+     v2.4.3, o si hay que ajustarla también (mirar `find_package(microcdr)`
+     en el `CMakeLists.txt` del cliente en ese tag).
+   - Volver a correr `./scripts/build-xrce-client-vita.sh` (borrar antes
+     `vita-app/third_party/` para forzar re-clone con el tag nuevo).
+   - Regenerar el `.vpk` (`cmake --build build`) y reinstalar en la Vita.
+   - De paso, arreglar el bug de visibilidad en
+     `vita-app/src/main.c:100`: comprobar el valor de retorno de
+     `netlog_init(...)` y avisar (al menos con `sceClibPrintf`) si falla,
+     para no quedarse ciego si vuelve a pasar algo similar.
+9. Repetir la prueba (agente + netlog + `ros2 topic echo /vita_hello` +
+   `ros2 topic pub /pc_hello`). Leer `tools/netlog-listen.sh`:
+   - Silencio total → problema de red/subred (poco probable, ya
+     descartado una vez).
+   - `FATAL` → transporte/sesión XRCE falló por otra razón (documentar
+     el muro nuevo).
    - `*** SESION XRCE ESTABLECIDA ***` (verde) → **incógnita dura
-     resuelta**.
-9. Si se estableció la sesión, criterios Fase 1: `ros2 topic echo
-   /vita_hello` y publicar en `/pc_hello` desde la laptop.
+     resuelta**; comprobar `/vita_hello` con `ros2 topic echo` y el
+     criterio 2 (`/pc_hello` recibido) en el propio log.
 10. Actualizar esta bitácora y `web/src/data/fases.ts` con el resultado
     (marcar el hito de la incógnita dura como `hecho` o documentar el
     muro nuevo si vuelve a fallar).
