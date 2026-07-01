@@ -35,17 +35,29 @@ en el navegador (sin frameworks de frontend nuevos).
   `node:test` y Astro, que ya están en `web/package.json`.
 - Docs y comentarios en español; commits con prefijo `feat(web):` o
   `test(web):` según corresponda, uno por tarea coherente.
+- El esquema SQL de `vita_sessions`/`vita_log_lines` vive en un único
+  archivo (`web/scripts/vita-monitor-schema.sql`, Task 1) leído tanto por
+  `db.ts` (import `?raw` de Vite) como por `netlog-ingester.mjs`
+  (`readFileSync`, Task 3) — no se duplica el DDL entre los dos procesos.
+- El contenedor reinicia solo el proceso del ingestor si muere
+  (`web/scripts/docker-entrypoint.sh`, Task 7); el servidor Astro sigue
+  siendo el único que recibe señales de apagado de Docker.
 
 ---
 
-### Task 1: Esquema y funciones de consulta en `db.ts`
+### Task 1: Esquema compartido y funciones de consulta en `db.ts`
 
 **Files:**
+- Create: `web/scripts/vita-monitor-schema.sql`
 - Modify: `web/src/lib/db.ts`
 
 **Interfaces:**
 - Consumes: nada nuevo (usa el mismo `Database` de `better-sqlite3` ya
   importado en el archivo).
+- Produce además `web/scripts/vita-monitor-schema.sql`, que la Task 3
+  reutiliza tal cual (mismo archivo, no una copia) para que el ingestor
+  (proceso Node separado, sin acceso a `db.ts` en TypeScript) cree las
+  mismas tablas sin duplicar el DDL.
 - Produces (quedan disponibles para las Tasks 4, 5 y 6):
   - `interface VitaSession { id: number; started_at: string; ended_at: string | null; source_ip: string | null; status: 'en-curso' | 'establecida' | 'fatal' | 'cerrada'; }`
   - `interface VitaLogLine { id: number; session_id: number; received_at: string; raw_text: string; kind: 'normal' | 'hito' | 'fatal'; }`
@@ -61,47 +73,53 @@ proyecto no tiene tests automatizados para `db.ts` hoy (ver spec, sección
 Testing), así que se verifica manualmente contra la DB real en vez de con
 TDD estricto.
 
-- [ ] **Step 1: Añadir las tablas nuevas justo después del `db.exec` de `checklist_progress`**
+- [ ] **Step 1: Crear el esquema SQL compartido**
 
-En `web/src/lib/db.ts`, después del bloque:
-```ts
-db.exec(`
-  CREATE TABLE IF NOT EXISTS checklist_progress (
-    client_id TEXT NOT NULL,
-    guide_slug TEXT NOT NULL,
-    step_id TEXT NOT NULL,
-    done INTEGER NOT NULL DEFAULT 0,
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (client_id, guide_slug, step_id)
-  );
-`);
+Crear `web/scripts/vita-monitor-schema.sql` (un único archivo fuente de
+verdad, leído tanto por `db.ts` — vía import `?raw` de Vite, inlined en
+el build de Astro — como por `web/scripts/netlog-ingester.mjs` en la
+Task 3 — vía `readFileSync` en runtime, ya que es un proceso Node aparte
+que no pasa por el bundler):
+```sql
+-- vita-monitor-schema.sql — esquema del dashboard /monitor (netlog en
+-- vivo de la Vita). Un solo archivo, leído por dos consumidores:
+--   - web/src/lib/db.ts (Astro): import ?raw de Vite, se inlinea en el
+--     build, por eso no necesita resolver una ruta en runtime.
+--   - web/scripts/netlog-ingester.mjs: proceso Node aparte, sin bundler,
+--     lo lee con readFileSync relativo a su propio directorio.
+CREATE TABLE IF NOT EXISTS vita_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  ended_at TEXT,
+  source_ip TEXT,
+  status TEXT NOT NULL DEFAULT 'en-curso'
+);
+
+CREATE TABLE IF NOT EXISTS vita_log_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES vita_sessions(id),
+  received_at TEXT NOT NULL DEFAULT (datetime('now')),
+  raw_text TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'normal'
+);
 ```
-añadir:
+
+- [ ] **Step 2: Ejecutar ese esquema desde `db.ts`**
+
+En `web/src/lib/db.ts`, añadir el import al principio del archivo (junto a
+los que ya existen) y ejecutar el esquema justo después del bloque
+existente `db.exec(\`CREATE TABLE IF NOT EXISTS checklist_progress...\`)`:
+```ts
+import vitaMonitorSchema from '../../scripts/vita-monitor-schema.sql?raw';
+```
 ```ts
 // vita_sessions / vita_log_lines — dashboard /monitor (netlog en vivo).
-// MISMO ESQUEMA que web/scripts/netlog-ingester.mjs: ese script corre en
-// un proceso Node separado que no puede importar este archivo TypeScript
-// en runtime, así que crea las mismas tablas por su cuenta. Si cambias
-// una columna aquí, cámbiala también allá.
-db.exec(`
-  CREATE TABLE IF NOT EXISTS vita_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    started_at TEXT NOT NULL DEFAULT (datetime('now')),
-    ended_at TEXT,
-    source_ip TEXT,
-    status TEXT NOT NULL DEFAULT 'en-curso'
-  );
-  CREATE TABLE IF NOT EXISTS vita_log_lines (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER NOT NULL REFERENCES vita_sessions(id),
-    received_at TEXT NOT NULL DEFAULT (datetime('now')),
-    raw_text TEXT NOT NULL,
-    kind TEXT NOT NULL DEFAULT 'normal'
-  );
-`);
+// Esquema compartido con web/scripts/netlog-ingester.mjs: ver
+// web/scripts/vita-monitor-schema.sql (un solo archivo, no una copia).
+db.exec(vitaMonitorSchema);
 ```
 
-- [ ] **Step 2: Añadir tipos, prepared statements y funciones al final del archivo**
+- [ ] **Step 3: Añadir tipos, prepared statements y funciones al final del archivo**
 
 Al final de `web/src/lib/db.ts`, después de `getSteps`, añadir:
 ```ts
@@ -164,11 +182,19 @@ export function getLastReceivedAt(): string | null {
 }
 ```
 
-- [ ] **Step 3: Verificar el esquema a mano**
+- [ ] **Step 4: Verificar que el build tipa y ejecuta el esquema bien**
 
 ```bash
 cd web
 corepack enable pnpm && pnpm install    # si no se ha hecho ya en esta máquina
+pnpm build 2>&1 | tail -20
+```
+Expected: build sin errores de TypeScript (el import `?raw` debe resolver
+sin problema — Astro incluye los tipos de Vite; si aparece un error de
+tipos en ese import, añadir `web/src/env.d.ts` con
+`/// <reference types="astro/client" />` y repetir).
+
+```bash
 rm -f data/app.db && pnpm dev &
 sleep 2
 curl -s localhost:4321/api/checklist > /dev/null   # fuerza a cargar db.ts (400 esperado, no importa)
@@ -181,11 +207,11 @@ Expected: la salida de `.tables` incluye `checklist_progress`,
 kill %1   # para el pnpm dev del paso anterior
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add web/src/lib/db.ts
-git commit -m "feat(web): esquema y consultas de sesiones/líneas de netlog en db.ts"
+git add web/scripts/vita-monitor-schema.sql web/src/lib/db.ts
+git commit -m "feat(web): esquema compartido y consultas de sesiones/líneas de netlog"
 ```
 
 ---
@@ -386,10 +412,11 @@ git commit -m "test(web): funciones puras de parseo del netlog con node:test"
 
 **Interfaces:**
 - Consumes: `cleanLine`, `classifyKind`, `isSessionStart`, `deriveStatusUpdate`
-  de `./netlog-parser.mjs` (Task 2).
+  de `./netlog-parser.mjs` (Task 2); `./vita-monitor-schema.sql` (Task 1 —
+  mismo archivo, se lee con `readFileSync`, no se copia el DDL).
 - Produces: proceso que escribe filas en `vita_sessions` / `vita_log_lines`
-  (mismo esquema que la Task 1) al recibir paquetes UDP. No expone API en
-  proceso; se usa lanzándolo (`node scripts/netlog-ingester.mjs`).
+  al recibir paquetes UDP. No expone API en proceso; se usa lanzándolo
+  (`node scripts/netlog-ingester.mjs`).
 
 No hay TDD estricto aquí (es un proceso con efectos de red + disco); se
 verifica end-to-end simulando paquetes UDP reales, igual que se hará en
@@ -406,11 +433,11 @@ Crear `web/scripts/netlog-ingester.mjs`:
 //
 // Proceso separado del servidor Astro (ver
 // docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md): no
-// puede importar db.ts (TypeScript) en runtime, así que crea el MISMO
-// esquema por su cuenta. Si cambias una columna aquí, cámbiala también
-// en src/lib/db.ts.
+// puede importar db.ts (TypeScript) en runtime, así que lee el MISMO
+// archivo de esquema que usa db.ts (./vita-monitor-schema.sql, junto a
+// este script) en vez de duplicar el DDL.
 import dgram from 'node:dgram';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import {
@@ -428,22 +455,11 @@ const IDLE_CHECK_INTERVAL_MS = Number(process.env.NETLOG_IDLE_CHECK_INTERVAL_MS 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
-db.exec(`
-  CREATE TABLE IF NOT EXISTS vita_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    started_at TEXT NOT NULL DEFAULT (datetime('now')),
-    ended_at TEXT,
-    source_ip TEXT,
-    status TEXT NOT NULL DEFAULT 'en-curso'
-  );
-  CREATE TABLE IF NOT EXISTS vita_log_lines (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER NOT NULL REFERENCES vita_sessions(id),
-    received_at TEXT NOT NULL DEFAULT (datetime('now')),
-    raw_text TEXT NOT NULL,
-    kind TEXT NOT NULL DEFAULT 'normal'
-  );
-`);
+const schemaSql = readFileSync(
+  new URL('./vita-monitor-schema.sql', import.meta.url),
+  'utf8',
+);
+db.exec(schemaSql);
 
 const insertSession = db.prepare(
   `INSERT INTO vita_sessions (started_at, source_ip, status) VALUES (datetime('now'), ?, 'en-curso')`,
@@ -1011,6 +1027,7 @@ git commit -m "feat(web): página /monitor con vista en vivo y navegación por s
 ### Task 7: Empaquetado Docker (dos procesos, un contenedor) y documentación
 
 **Files:**
+- Create: `web/scripts/docker-entrypoint.sh`
 - Modify: `web/Dockerfile`
 - Modify: `web/docker-compose.yml`
 - Modify: `web/README.md`
@@ -1018,8 +1035,9 @@ git commit -m "feat(web): página /monitor con vista en vivo y navegación por s
 **Interfaces:**
 - Consumes: `web/scripts/netlog-ingester.mjs` (Task 3), `dist/server/entry.mjs`
   (build normal de Astro, sin cambios).
-- Produces: imagen Docker que arranca ambos procesos y publica el puerto
-  UDP 9999 además del 4321 ya existente.
+- Produces: imagen Docker que arranca ambos procesos (el ingestor con
+  reinicio automático si muere) y publica el puerto UDP 9999 además del
+  4321 ya existente.
 
 - [ ] **Step 1: Copiar `scripts/` a la etapa de runtime del Dockerfile**
 
@@ -1029,7 +1047,34 @@ En `web/Dockerfile`, en la etapa `runtime`, después de la línea
 COPY --from=build /app/web/scripts ./scripts
 ```
 
-- [ ] **Step 2: Cambiar el `CMD` para arrancar los dos procesos**
+- [ ] **Step 2: Crear el script de arranque con reinicio del ingestor**
+
+Crear `web/scripts/docker-entrypoint.sh`:
+```sh
+#!/bin/sh
+# docker-entrypoint.sh — arranca los dos procesos del contenedor de la web.
+#
+# El ingestor UDP del netlog (best-effort, no crítico para el dashboard)
+# corre en un bucle que lo reinicia si muere, con una pausa corta para no
+# entrar en un bucle de reinicio a toda velocidad si el fallo es
+# persistente (p. ej. el puerto 9999 ocupado). El servidor Astro es el
+# proceso principal: `exec` lo convierte en PID 1, así que recibe
+# directamente las señales de `docker stop`/`docker compose down` para un
+# apagado limpio. El bucle del ingestor no recibe esa señal explícita,
+# pero muere igualmente cuando el contenedor se detiene (todo el
+# namespace de procesos se destruye junto con él).
+set -e
+
+(
+  while true; do
+    node scripts/netlog-ingester.mjs
+    echo "[docker-entrypoint] netlog-ingester salió (código $?); reintentando en 2s..." >&2
+    sleep 2
+  done
+) &
+
+exec node dist/server/entry.mjs
+```
 
 En `web/Dockerfile`, reemplazar:
 ```dockerfile
@@ -1037,12 +1082,7 @@ CMD ["node", "dist/server/entry.mjs"]
 ```
 por:
 ```dockerfile
-# Dos procesos en el mismo contenedor: el ingestor UDP del netlog (best
-# effort, no crítico si falla) y el servidor Astro (recibe las señales de
-# Docker gracias a `exec`). Ver docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md
-# — limitación conocida: si el ingestor muere, no se reinicia solo; se
-# verá en `docker logs` porque cada proceso imprime su propio prefijo.
-CMD ["sh", "-c", "node scripts/netlog-ingester.mjs & exec node dist/server/entry.mjs"]
+CMD ["sh", "scripts/docker-entrypoint.sh"]
 ```
 
 - [ ] **Step 3: Publicar el puerto UDP 9999 en `docker-compose.yml`**
@@ -1075,6 +1115,11 @@ expone esos datos por HTTP y por Server-Sent Events. Solo un proceso puede
 escuchar el puerto 9999 a la vez, así que `tools/netlog-listen.sh` y este
 dashboard son alternativas, no complementos simultáneos.
 
+En Docker, `scripts/docker-entrypoint.sh` arranca ambos procesos: si el
+ingestor muere (p. ej. el puerto 9999 falla al abrir), un bucle lo
+reinicia solo cada 2s — no hace falta reiniciar el contenedor entero para
+recuperar el dashboard.
+
 En desarrollo, arrancar los dos procesos en terminales separadas:
 ```bash
 cd web
@@ -1106,6 +1151,17 @@ Expected: un array con una sesión cuyo `source_ip` empieza por `127.0.0.1:`.
 Abrir `http://localhost:4321/monitor` en el navegador y confirmar
 visualmente que aparece.
 
+Ahora comprobar que el ingestor se reinicia solo si muere:
+```bash
+docker compose exec web sh -c "pkill -f netlog-ingester.mjs"
+sleep 3
+docker compose logs | grep "netlog-ingester"
+```
+Expected: se ve la línea `[docker-entrypoint] netlog-ingester salió...
+reintentando en 2s...` seguida de un nuevo `[netlog-ingester] escuchando
+UDP :9999...` — el proceso volvió a arrancar solo, sin reiniciar el
+contenedor.
+
 ```bash
 docker compose down
 ```
@@ -1113,7 +1169,7 @@ docker compose down
 - [ ] **Step 6: Commit**
 
 ```bash
-git add web/Dockerfile web/docker-compose.yml web/README.md
+git add web/scripts/docker-entrypoint.sh web/Dockerfile web/docker-compose.yml web/README.md
 git commit -m "feat(web): empaquetar el dashboard de monitor en el contenedor de la web"
 ```
 
