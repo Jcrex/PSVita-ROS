@@ -59,13 +59,23 @@ web/data/app.db (SQLite, la misma que ya usa el checklist de instalación)
    ▼
 Astro (proceso existente, sin tocar su arranque)
    ├─ GET /monitor                    → página: lista de sesiones + visor en vivo
-   ├─ GET /api/monitor/stream         → SSE: poll corto a SQLite, empuja líneas nuevas
-   └─ GET /api/monitor/session/[id]   → historial estático de una sesión pasada
+   ├─ GET /api/monitor/sessions       → lista de sesiones (JSON)
+   ├─ GET /api/monitor/session/[id]   → historial estático de una sesión pasada
+   ├─ GET /api/monitor/status         → último timestamp recibido (indicador global)
+   └─ GET /api/monitor/stream         → SSE: poll corto a SQLite, empuja líneas nuevas
 ```
 
+*(Actualizado tras la implementación: la versión final tiene 4 endpoints,
+no 3 — `/api/monitor/sessions` y `/api/monitor/status` se añadieron en el
+plan. Detalle completo en
+`docs/superpowers/plans/2026-07-01-dashboard-logs-vita.md`.)*
+
 Los dos procesos (Astro + `netlog-ingester.mjs`) arrancan en el mismo
-contenedor Docker (dos `node` en el `CMD` del `Dockerfile`/`docker-compose.yml`),
-compartiendo el volumen `./data` ya montado. Si `tools/netlog-listen.sh`
+contenedor Docker, vía `web/scripts/docker-entrypoint.sh` (no dos `node`
+sueltos en el `CMD` como se planteó aquí originalmente): el ingestor corre
+en un bucle que lo reinicia si muere, y `exec node dist/server/entry.mjs`
+deja a Astro como proceso principal para las señales de Docker. Comparten
+el volumen `./data` ya montado. Si `tools/netlog-listen.sh`
 corre en paralelo, solo uno de los dos procesos podrá bindear el puerto
 9999 — se documenta como limitación conocida, no se resuelve con
 `SO_REUSEPORT` ni reintentos (YAGNI para una herramienta de un solo
