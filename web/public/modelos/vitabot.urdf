@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<!-- vitabot.urdf — modelo de prueba del visor 3D de la web del proyecto.
+     Un robot diferencial imaginario que lleva una PS Vita como "cara":
+     base + 2 ruedas motrices (continuous) + rueda loca + mástil con la
+     Vita en un joint pan (revolute) + un "lidar" decorativo.
+     Solo primitivas: se visualiza sin mallas externas. -->
+<robot name="vitabot">
+
+  <material name="azul_vita">
+    <color rgba="0.23 0.51 0.96 1.0"/>
+  </material>
+  <material name="gris_oscuro">
+    <color rgba="0.12 0.16 0.25 1.0"/>
+  </material>
+  <material name="negro_rueda">
+    <color rgba="0.05 0.05 0.07 1.0"/>
+  </material>
+  <material name="pantalla">
+    <color rgba="0.38 0.65 0.98 1.0"/>
+  </material>
+  <material name="acento">
+    <color rgba="0.96 0.45 0.71 1.0"/>
+  </material>
+
+  <!-- ================= base ================= -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.08" rpy="0 0 0"/>
+      <geometry><box size="0.36 0.26 0.10"/></geometry>
+      <material name="gris_oscuro"/>
+    </visual>
+    <visual>
+      <!-- tapa superior -->
+      <origin xyz="0 0 0.135" rpy="0 0 0"/>
+      <geometry><box size="0.30 0.20 0.012"/></geometry>
+      <material name="azul_vita"/>
+    </visual>
+  </link>
+
+  <!-- ================= ruedas motrices ================= -->
+  <link name="rueda_izq">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.07" length="0.035"/></geometry>
+      <material name="negro_rueda"/>
+    </visual>
+  </link>
+  <joint name="rueda_izq_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="rueda_izq"/>
+    <origin xyz="0.10 0.15 0.07" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="rueda_der">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.07" length="0.035"/></geometry>
+      <material name="negro_rueda"/>
+    </visual>
+  </link>
+  <joint name="rueda_der_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="rueda_der"/>
+    <origin xyz="0.10 -0.15 0.07" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- rueda loca trasera -->
+  <link name="rueda_loca">
+    <visual>
+      <geometry><sphere radius="0.035"/></geometry>
+      <material name="negro_rueda"/>
+    </visual>
+  </link>
+  <joint name="rueda_loca_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="rueda_loca"/>
+    <origin xyz="-0.13 0 0.035" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= mástil ================= -->
+  <link name="mastil">
+    <visual>
+      <origin xyz="0 0 0.11" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.014" length="0.22"/></geometry>
+      <material name="gris_oscuro"/>
+    </visual>
+  </link>
+  <joint name="mastil_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="mastil"/>
+    <origin xyz="-0.05 0 0.14" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============ la Vita (pan + tilt) ============ -->
+  <link name="soporte_vita">
+    <visual>
+      <geometry><box size="0.03 0.03 0.03"/></geometry>
+      <material name="acento"/>
+    </visual>
+  </link>
+  <joint name="vita_pan" type="revolute">
+    <parent link="mastil"/>
+    <child link="soporte_vita"/>
+    <origin xyz="0 0 0.235" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.618" upper="2.618" effort="1" velocity="1"/>
+  </joint>
+
+  <link name="vita">
+    <!-- cuerpo de la consola -->
+    <visual>
+      <origin xyz="0.006 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.012 0.182 0.084"/></geometry>
+      <material name="gris_oscuro"/>
+    </visual>
+    <!-- pantalla OLED de 5" -->
+    <visual>
+      <origin xyz="0.0125 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.002 0.110 0.063"/></geometry>
+      <material name="pantalla"/>
+    </visual>
+    <!-- sticks -->
+    <visual>
+      <origin xyz="0.013 0.075 -0.025" rpy="0 1.5708 0"/>
+      <geometry><cylinder radius="0.008" length="0.006"/></geometry>
+      <material name="negro_rueda"/>
+    </visual>
+    <visual>
+      <origin xyz="0.013 -0.075 -0.025" rpy="0 1.5708 0"/>
+      <geometry><cylinder radius="0.008" length="0.006"/></geometry>
+      <material name="negro_rueda"/>
+    </visual>
+  </link>
+  <joint name="vita_tilt" type="revolute">
+    <parent link="soporte_vita"/>
+    <child link="vita"/>
+    <origin xyz="0.02 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.8" upper="0.8" effort="1" velocity="1"/>
+  </joint>
+
+  <!-- ================= "lidar" decorativo ================= -->
+  <link name="lidar">
+    <visual>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.035" length="0.04"/></geometry>
+      <material name="acento"/>
+    </visual>
+  </link>
+  <joint name="lidar_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="lidar"/>
+    <origin xyz="0.10 0 0.141" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+</robot>

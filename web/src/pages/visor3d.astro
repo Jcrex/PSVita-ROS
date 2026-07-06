@@ -1,0 +1,262 @@
+---
+// visor3d.astro — visor 3D/URDF/SDF standalone (docs/07 §3, docs/08).
+// Todo el trabajo ocurre en el navegador (three.js); el servidor solo
+// sirve la página y el modelo de ejemplo (public/modelos/).
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Visor 3D — URDF/SDF"
+  description="Visor 3D de modelos de robot (URDF, SDF, STL, OBJ, DAE) en el navegador: preparación del Objetivo 3/4 sin tocar la Vita."
+>
+  <h1>Visor 3D — URDF / SDF / mallas</h1>
+  <p>
+    Carga un modelo de robot y explóralo: órbita con el ratón, mueve los
+    joints con los sliders. Es la preparación adelantada del Objetivo 3/4
+    (visualización tipo RViz): el parser y la UI ya quedan hechos para
+    cuando toque renderizar en la propia Vita.
+  </p>
+
+  <div class="visor">
+    <aside class="lateral">
+      <section class="bloque">
+        <h3>Modelo</h3>
+        <button class="btn" id="btn-ejemplo">Cargar VitaBot (ejemplo)</button>
+        <label class="btn ghost" for="archivo">Abrir archivo(s)…</label>
+        <input type="file" id="archivo" multiple
+          accept=".urdf,.xml,.sdf,.world,.stl,.obj,.dae" />
+        <p class="ayuda">
+          URDF/SDF + sus mallas (STL/OBJ/DAE): selecciona o arrastra
+          <em>todos los archivos a la vez</em> sobre el visor.
+        </p>
+      </section>
+
+      <section class="bloque" id="info" hidden>
+        <h3 id="info-nombre"></h3>
+        <p class="ayuda" id="info-detalle"></p>
+        <ul id="avisos" class="avisos"></ul>
+      </section>
+
+      <section class="bloque" id="joints-bloque" hidden>
+        <h3>Joints</h3>
+        <div id="joints"></div>
+        <button class="btn ghost" id="btn-reset">Reset joints</button>
+      </section>
+
+      <section class="bloque">
+        <h3>Vista</h3>
+        <label class="check"><input type="checkbox" id="chk-rejilla" checked /> Rejilla</label>
+        <label class="check"><input type="checkbox" id="chk-ejes" checked /> Ejes (ROS: X rojo, Y verde, Z azul)</label>
+        <label class="check"><input type="checkbox" id="chk-wire" /> Wireframe</label>
+        <label class="check"><input type="checkbox" id="chk-rotar" /> Autorotar</label>
+        <button class="btn ghost" id="btn-encuadrar">Encuadrar</button>
+      </section>
+    </aside>
+
+    <div class="lienzo-wrap" id="dropzone">
+      <canvas id="lienzo"></canvas>
+      <div class="drop-hint" id="drop-hint">Suelta aquí el URDF/SDF (+ mallas)</div>
+    </div>
+  </div>
+
+  <style>
+    .visor {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 800px) { .visor { grid-template-columns: 1fr; } }
+
+    .lateral { display: flex; flex-direction: column; gap: 1rem; }
+    .bloque {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      padding: .9rem 1rem;
+    }
+    .bloque h3 { margin: 0 0 .6rem; font-size: .95rem; }
+    .bloque .btn { display: block; width: 100%; text-align: center; margin-bottom: .5rem; font-size: .88rem; }
+    #archivo { display: none; }
+    .ayuda { color: var(--text-dim); font-size: .78rem; margin: .4rem 0 0; }
+    .check { display: flex; gap: .5rem; align-items: center; font-size: .88rem; margin: .3rem 0; cursor: pointer; }
+    .avisos { margin: .4rem 0 0; padding-left: 1.1rem; color: var(--warn); font-size: .78rem; }
+
+    .lienzo-wrap {
+      position: relative;
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg-soft);
+      height: min(70vh, 620px);
+    }
+    #lienzo { width: 100%; height: 100%; display: block; }
+    .drop-hint {
+      position: absolute; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(59, 130, 246, .2);
+      border: 2px dashed var(--accent);
+      border-radius: var(--radius);
+      font-weight: 600; color: #fff;
+      pointer-events: none;
+    }
+    .lienzo-wrap.arrastrando .drop-hint { display: flex; }
+
+    .joint { margin-bottom: .7rem; }
+    .joint label {
+      display: flex; justify-content: space-between;
+      font-family: var(--mono); font-size: .74rem; color: var(--text-dim);
+    }
+    .joint input[type='range'] { width: 100%; accent-color: var(--accent); }
+  </style>
+
+  <script>
+    import {
+      crearEscena,
+      parseUrdf,
+      parseSdf,
+      cargarMallaSuelta,
+      type ModeloCargado,
+      type Recursos,
+    } from '../lib/visor3d';
+
+    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+    // Sin WebGL (navegadores headless/antiguos) el resto de la página
+    // sigue viva: se parsea el modelo y se muestra su info, sin dibujo.
+    let escena: ReturnType<typeof crearEscena> | null = null;
+    try {
+      escena = crearEscena($<HTMLCanvasElement>('lienzo'));
+    } catch (e) {
+      const aviso = document.createElement('p');
+      aviso.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--warn);padding:1rem;text-align:center';
+      aviso.textContent = `WebGL no disponible en este navegador: ${(e as Error).message}`;
+      $('dropzone').appendChild(aviso);
+    }
+
+    const mostrarModelo = (m: ModeloCargado) => {
+      escena?.cargar(m);
+      $('info').hidden = false;
+      $('info-nombre').textContent = m.nombre;
+      $('info-detalle').textContent =
+        `${m.formato.toUpperCase()} · ${m.nLinks} link(s) · ${m.joints.length} joint(s) articulables`;
+      const avisos = $('avisos');
+      avisos.innerHTML = '';
+      for (const a of m.avisos) {
+        const li = document.createElement('li');
+        li.textContent = a;
+        avisos.appendChild(li);
+      }
+      // Sliders de joints.
+      const cont = $('joints');
+      cont.innerHTML = '';
+      $('joints-bloque').hidden = m.joints.length === 0;
+      for (const j of m.joints) {
+        const div = document.createElement('div');
+        div.className = 'joint';
+        const label = document.createElement('label');
+        const nombre = document.createElement('span');
+        nombre.textContent = j.nombre;
+        const valor = document.createElement('span');
+        valor.textContent = j.valor.toFixed(2);
+        label.append(nombre, valor);
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = String(j.lower);
+        slider.max = String(j.upper);
+        slider.step = '0.01';
+        slider.value = String(j.valor);
+        slider.addEventListener('input', () => {
+          const v = Number(slider.value);
+          valor.textContent = v.toFixed(2);
+          j.aplicar(v);
+        });
+        div.append(label, slider);
+        cont.appendChild(div);
+      }
+      escena?.setWireframe($<HTMLInputElement>('chk-wire').checked);
+    };
+
+    const cargarArchivos = async (archivos: File[]) => {
+      // Separar modelo principal (urdf/sdf) de recursos (mallas).
+      const recursos: Recursos = new Map();
+      let principal: File | null = null;
+      let malla: File | null = null;
+      for (const f of archivos) {
+        const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+        if (['urdf', 'xml', 'sdf', 'world'].includes(ext)) principal ??= f;
+        else if (['stl', 'obj', 'dae'].includes(ext)) {
+          malla ??= f;
+          recursos.set(f.name.toLowerCase(), await f.arrayBuffer());
+        }
+      }
+      try {
+        if (principal) {
+          const texto = await principal.text();
+          const esSdf =
+            principal.name.endsWith('.sdf') ||
+            principal.name.endsWith('.world') ||
+            texto.includes('<sdf');
+          mostrarModelo(
+            esSdf
+              ? parseSdf(texto, principal.name, recursos)
+              : parseUrdf(texto, principal.name, recursos),
+          );
+        } else if (malla) {
+          mostrarModelo(cargarMallaSuelta(malla.name, await malla.arrayBuffer()));
+        } else {
+          alert('Ningún archivo soportado (URDF, SDF, STL, OBJ, DAE).');
+        }
+      } catch (e) {
+        alert(`No se pudo cargar el modelo: ${(e as Error).message}`);
+      }
+    };
+
+    // Ejemplo incluido.
+    $('btn-ejemplo').addEventListener('click', async () => {
+      const r = await fetch('/modelos/vitabot.urdf');
+      mostrarModelo(parseUrdf(await r.text(), 'vitabot', new Map()));
+    });
+
+    // Input de archivos + drag&drop.
+    const input = $<HTMLInputElement>('archivo');
+    input.addEventListener('change', () => {
+      if (input.files?.length) cargarArchivos([...input.files]);
+      input.value = '';
+    });
+    const zona = $('dropzone');
+    zona.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zona.classList.add('arrastrando');
+    });
+    zona.addEventListener('dragleave', () => zona.classList.remove('arrastrando'));
+    zona.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zona.classList.remove('arrastrando');
+      if (e.dataTransfer?.files.length) cargarArchivos([...e.dataTransfer.files]);
+    });
+
+    // Opciones de vista.
+    $<HTMLInputElement>('chk-rejilla').addEventListener('change', (e) =>
+      escena?.setRejilla((e.target as HTMLInputElement).checked));
+    $<HTMLInputElement>('chk-ejes').addEventListener('change', (e) =>
+      escena?.setEjes((e.target as HTMLInputElement).checked));
+    $<HTMLInputElement>('chk-wire').addEventListener('change', (e) =>
+      escena?.setWireframe((e.target as HTMLInputElement).checked));
+    $<HTMLInputElement>('chk-rotar').addEventListener('change', (e) =>
+      escena?.setAutorotar((e.target as HTMLInputElement).checked));
+    $('btn-encuadrar').addEventListener('click', () => escena?.encuadrar());
+    $('btn-reset').addEventListener('click', () => {
+      document.querySelectorAll<HTMLInputElement>('#joints input[type="range"]').forEach((s) => {
+        s.value = '0';
+        s.dispatchEvent(new Event('input'));
+      });
+    });
+
+    // Arrancar con el ejemplo cargado (el hito pide "cargando al menos
+    // un modelo de prueba" — que se vea nada más entrar).
+    $('btn-ejemplo').click();
+  </script>
+</Base>
