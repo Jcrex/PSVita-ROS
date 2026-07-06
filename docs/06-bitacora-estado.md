@@ -1,9 +1,11 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-01 (laptop: **Fase 1 COMPLETA —
-objetivo 1 de topics ROS2 validado de punta a punta en hardware real**:
-sesión XRCE, `/vita_hello` visible por `ros2 topic echo` y `/pc_hello`
-recibido por la Vita, confirmados simultáneamente y en vivo)
+**Última actualización:** 2026-07-06 (PC: **primer hito de la fase web
+ALCANZADO** — los seis frentes de `docs/08-fase-desarrollo-web.md` están
+operativos en la web real: comparador C↔Rust, tutorial del SDK, dashboard
+con datos reales, visor 3D/URDF, debug en host y base del compilador
+`.vpk`; el Objetivo 2 sigue pendiente sin diseño detallado; la Fase 1
+sigue **COMPLETA** y confirmada en hardware real)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -360,3 +362,88 @@ cd web && pnpm build                      # o: docker compose up -d --build
 - Levantar la web con docker y dejarla corriendo.
 - Más entradas en `docs/rust/` a medida que aparezcan construcciones nuevas.
 - Cuando llegue el dominio: DNS + reverse proxy (receta en `web/README.md`).
+
+- **(2026-07-06, en el PC) Decisión: preparar la web hacia el Objetivo
+  3/4 por adelantado.** El usuario pidió empezar ya la infraestructura web
+  necesaria para el Objetivo 3/4 (rviz2 en la Vita + visualización),
+  aunque el Objetivo 2 (control) no haya empezado. Se documentó en
+  `docs/07-requisitos-web-ide.md` (recopilación de requisitos de la web:
+  dashboard ROS2 editable, editor de la app/VPK, visor URDF/SDF/3D,
+  comparador C++↔Rust, compilador web→`.vpk`→Vita, debug integrado,
+  tutorial del SDK). Entran en alcance activo ya: el visor 3D/URDF/SDF
+  standalone (sin tocar la Vita) y la base del compilador web — esta
+  sesión corre en el propio PC de desarrollo (`cachyos-x8664`,
+  `192.168.1.65`, `toolchains/vitasdk/` presente), así que el compilador
+  puede diseñarse primero como invocación local del toolchain (sin SSH/
+  runner remoto) y añadir la capa remota después, para cuando la web
+  vuelva a servirse desde la laptop u otro host. Lo que sigue sin empezar:
+  el diseño detallado del Objetivo 2 y la integración real de assets
+  3D/URDF/SDF *dentro* de la app de la Vita (bloqueada por la incógnita de
+  `docs/04-investigacion-portabilidad-rviz2.md`).
+
+- **(2026-07-06, en el PC) Arranca formalmente la fase de desarrollo de la
+  web.** Tras repasar de nuevo el Objetivo 2, el usuario decidió darle
+  prioridad ahora al desarrollo real de la web por encima del diseño
+  detallado del Objetivo 2 (que sigue pendiente, sin empezar). Se declaró
+  en `docs/08-fase-desarrollo-web.md`, con alcance limitado a los seis
+  frentes que `docs/07-requisitos-web-ide.md` ya identificó como no
+  bloqueados: comparador C++/Rust, tutorial del SDK de VitaSDK, dashboard
+  ROS2 editable, debug de módulos duales en host, visor 3D/URDF/SDF
+  standalone y la base local del compilador web. `web/src/data/fases.ts`
+  ganó una entrada `fase-web` para seguirle el estado desde `/progreso`.
+  Primer hito definido (ver `docs/08`): comparador navegable + tutorial
+  publicado + visor cargando un modelo de prueba + un widget del dashboard
+  con datos reales — todo pendiente todavía, ninguno arrancado aún.
+
+- **(2026-07-06, en el PC) Primer hito de la fase web ALCANZADO — los seis
+  frentes implementados y verificados en la web real** (no maquetas; cada
+  backend se probó con datos/procesos reales en esta misma sesión):
+  1. **Comparador C↔Rust** (`/comparador`, `/comparador/<módulo>`): split
+     view de los 3 módulos duales con resaltado shiki, el header-contrato
+     colgable arriba y "qué mirar al comparar" por módulo. Lee las fuentes
+     reales de `modules/*` en build (prerender); nada duplicado.
+  2. **Tutorial del SDK** (`docs/guias-vita/vitasdk-toolchain.md`, sale en
+     `/guias` con checklist propio): VitaSDK de punta a punta —
+     toolchain/stubs/newlib, cmake (`vita.toolchain.cmake` + `vita.cmake`),
+     el pipeline `vita-elf-create → vita-make-fself → vita-mksfoex →
+     vita-pack-vpk`, anatomía del `.vpk` y los muros reales ya vividos
+     (PIC/reloc 25, superbuild, versión XRCE).
+  3. **Dashboard ROS2 editable** (`/dashboard`): el backend Astro abre él
+     mismo el socket UDP del netlog (puerto 9999, `src/lib/netlog.ts`) y lo
+     sirve por **SSE** — widget de logs en vivo con filtro/pausa; widget de
+     salud XRCE (IP de la Vita, último paquete, hitos "SESION XRCE
+     ESTABLECIDA" y "/pc_hello recibido" detectados en el propio stream);
+     widget de topics vía comando configurable `ROS2_TOPICS_CMD`
+     (**verificado contra el grafo Jazzy vivo del contenedor
+     `robotnik_dev` del PC**). Layout añadir/quitar/reordenar persistido en
+     SQLite por client-id (patrón del checklist). Verificado end-to-end
+     mandando datagramas UDP reales al 9999 y leyendo el SSE.
+  4. **Visor 3D/URDF/SDF** (`/visor3d`): three.js con parser URDF propio
+     (primitivas + mallas STL/OBJ/DAE adjuntas, materiales, jerarquía de
+     joints con **sliders** para revolute/continuous/prismatic, ejes
+     Z-arriba→Y-arriba), SDF básico (links por pose), drag&drop
+     multi-archivo y modelo de prueba incluido
+     (`web/public/modelos/vitabot.urdf` — robot diferencial con la Vita de
+     "cara", carga al entrar).
+  5. **Debug de módulos duales en host** (`/taller/debug`): compila el
+     parity test vía `tools/run-parity-tests.sh` (con `-g`) y corre **gdb
+     --batch** con guion editable (recetas incluidas), salida en vivo.
+     Verificado: breakpoint en `mem_pool_alloc`, backtrace hasta
+     `parity_test.c` y `info args` reales. De paso quedó confirmado que
+     **la paridad C/Rust también pasa en el PC**.
+  6. **Base del compilador web** (`/taller/compilador`, docs/07 §5 Opción
+     1): endpoint que hace `source tools/env-devpc.sh` + cmake
+     (toolchain VitaSDK) + build con salida en streaming, variantes C/Rust,
+     `AGENT_IP`/`NETLOG_IP` opcionales, historial en SQLite, descarga del
+     `.vpk` y deploy FTP a la Vita (`curl -T … ftp://<vita>:1337/ux0:/`).
+     **Verificado: un `.vpk` Rust real compilado y descargado desde la
+     web** (eboot.bin + param.sfo, ~77 KB).
+  Seguridad/alcance: todo el taller queda detrás de `TALLER_ENABLED=1`
+  (solo el PC de desarrollo; en docker/público queda apagado y la página lo
+  explica); el receptor netlog tolera `EADDRINUSE` (si `netlog-listen.sh`
+  está corriendo, el dashboard lo dice en vez de romperse); el widget de
+  topics sin `ROS2_TOPICS_CMD` dice "sin conexión", no inventa datos.
+  Pendiente dentro de la misma fase: capa remota del compilador (cuando la
+  web no corra en el PC) y el debug en hardware real (investigación
+  propia). `web/src/data/fases.ts` actualizado (`fase-web`: 6 hitos
+  `hecho` + 1 pendiente).

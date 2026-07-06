@@ -19,9 +19,19 @@ services:
     restart: unless-stopped
     ports:
       - "4321:4321"
+      - "9999:9999/udp"        # netlog de la Vita -> widget de logs del dashboard
     volumes:
       - ./data:/app/web/data   # SQLite (app.db) sobrevive a los redeploys
     environment:
       - PORT=4321
       - HOST=0.0.0.0
       - DB_PATH=/app/web/data/app.db
+      # Dashboard (opcionales):
+      # - NETLOG_DISABLED=1    # apagar el receptor UDP (despliegue público)
+      # - NETLOG_PORT=9999
+      # El puente de topics ejecuta un comando EN ESTE contenedor; dentro de
+      # docker no hay cliente ros2, así que queda sin configurar (el widget
+      # lo indica). Con la web fuera de docker en la laptop/PC:
+      # ROS2_TOPICS_CMD='docker exec robotnik_dev bash -lc "source /opt/ros/jazzy/setup.bash && ros2 topic list -t"'
+      # El taller (TALLER_ENABLED) NUNCA se activa en docker: necesita el
+      # toolchain local del PC (toolchains/) y ejecuta procesos reales.

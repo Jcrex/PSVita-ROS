@@ -70,10 +70,32 @@ import Base from '../layouts/Base.astro';
 
   <h2>Estado ahora mismo</h2>
   <p>
-    La <strong>Fase 1</strong> (la Vita publica y recibe topics) tiene todo el
-    código escrito y los módulos duales verificados con tests de paridad; el
-    siguiente paso es compilar para la consola en el PC de desarrollo y
-    responder la <em>incógnita dura</em>: ¿levanta la sesión XRCE sobre el
-    stack de red de Sony? Sigue el detalle en <a href="/progreso">Progreso</a>.
+    La <strong>Fase 1 está completa y confirmada en hardware real</strong>: la
+    Vita levanta su sesión XRCE sobre el stack de red de Sony, publica
+    <code>/vita_hello</code> (visible con <code>ros2 topic echo</code>) y
+    recibe <code>/pc_hello</code>, todo en vivo. Ahora corre la
+    <strong>fase de desarrollo web</strong>: esta misma web se está
+    convirtiendo en el panel de control del proyecto. Sigue el detalle en
+    <a href="/progreso">Progreso</a>.
   </p>
+
+  <h2>La web como herramienta</h2>
+  <div class="card-grid">
+    <a class="card" href="/comparador">
+      <h3>Comparador C ↔ Rust</h3>
+      <p>Los módulos duales lado a lado, con resaltado: el mismo problema resuelto en los dos lenguajes.</p>
+    </a>
+    <a class="card" href="/visor3d">
+      <h3>Visor 3D / URDF / SDF</h3>
+      <p>Modelos de robot en el navegador (three.js): preparación del futuro rviz2 en la consola.</p>
+    </a>
+    <a class="card" href="/dashboard">
+      <h3>Dashboard ROS2</h3>
+      <p>Logs UDP de la Vita en vivo, salud de la sesión XRCE y topics del grafo, con layout editable.</p>
+    </a>
+    <a class="card" href="/taller">
+      <h3>Taller</h3>
+      <p>Compilar el .vpk con el toolchain real y depurar los módulos con gdb, desde la web (en el PC).</p>
+    </a>
+  </div>
 </Base>

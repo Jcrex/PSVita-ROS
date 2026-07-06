@@ -46,6 +46,21 @@ export const fases: Fase[] = [
     ],
   },
   {
+    id: 'fase-web',
+    nombre: 'Fase de desarrollo — Panel de control web',
+    resumen:
+      'Prioridad activa desde 2026-07-06 (docs/08). Primer hito ALCANZADO el mismo día: los seis frentes no bloqueados están operativos en la web real (comparador, tutorial, dashboard con datos reales, visor 3D, debug en host y base del compilador). Corre en paralelo a los objetivos numerados.',
+    hitos: [
+      { texto: 'Comparador C++/Rust (split view de los 3 módulos duales, /comparador)', estado: 'hecho' },
+      { texto: 'Tutorial del SDK de VitaSDK (guía "de cero a .vpk" en /guias)', estado: 'hecho' },
+      { texto: 'Dashboard ROS2 editable (netlog UDP en vivo por SSE + salud XRCE + topics, layout en SQLite)', estado: 'hecho' },
+      { texto: 'Visor 3D/URDF/SDF standalone (three.js + modelo de prueba VitaBot, /visor3d)', estado: 'hecho' },
+      { texto: 'Debug de módulos duales en host (gdb batch sobre los parity tests, /taller/debug)', estado: 'hecho' },
+      { texto: 'Base del compilador web (toolchain local: .vpk real compilado y descargable, /taller/compilador)', estado: 'hecho' },
+      { texto: 'Capa remota del compilador (cuando la web no corra en el PC) y debug en la Vita real', estado: 'pendiente' },
+    ],
+  },
+  {
     id: 'fase-2',
     nombre: 'Objetivo 2 — Control de robot',
     resumen:

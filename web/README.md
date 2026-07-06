@@ -1,12 +1,15 @@
 # Web del proyecto — PSVita-ROS
 
-Sitio interactivo que presenta el proyecto a alguien nuevo, publica las
-guías de instalación de la Vita y muestra el progreso por fases. Tema
-oscuro/azul.
+Sitio interactivo que presenta el proyecto, publica las guías y la
+documentación, muestra el progreso por fases y — desde la fase de
+desarrollo web (`docs/08`) — funciona como **panel de control del
+proyecto**: dashboard ROS2 en vivo, comparador C↔Rust, visor 3D/URDF y el
+taller (compilador `.vpk` + debug en host). Tema oscuro/azul.
 
 **Stack:** Astro 5 (SSR, adaptador Node standalone) · pnpm (con bloqueo de
 build-scripts: solo `better-sqlite3`, `esbuild` y `sharp` aprobados en
-`pnpm-workspace.yaml`) · SQLite (better-sqlite3) · Docker.
+`pnpm-workspace.yaml`) · SQLite (better-sqlite3) · three.js (visor 3D) ·
+Docker.
 
 ## Mapa
 
@@ -14,10 +17,25 @@ build-scripts: solo `better-sqlite3`, `esbuild` y `sharp` aprobados en
 |---|---|
 | `/` | Presentación: la idea, el diagrama, la estrategia dual |
 | `/arquitectura` | La pila Fase 1 capa a capa, ADRs, la incógnita dura |
-| `/docs` + `/docs/<sección>/<slug>` | **Toda la documentación del repo**, por secciones: Fundación y estado (docs/00-06), ADRs, Aprendiendo Rust (docs/rust/) y Documentación del código (READMEs de módulos, app y MCP) |
-| `/guias` + `/guias/<slug>` | Las 7 guías (leídas de `docs/guias-vita/` — una sola fuente de verdad) con **checklist interactivo persistente** |
+| `/docs` + `/docs/<sección>/<slug>` | **Toda la documentación del repo**, por secciones: Fundación y estado (docs/00-08), ADRs, Aprendiendo Rust (docs/rust/) y Documentación del código (READMEs de módulos, app y MCP) |
+| `/guias` + `/guias/<slug>` | Las guías (leídas de `docs/guias-vita/` — una sola fuente de verdad, incluye el tutorial del SDK) con **checklist interactivo persistente** |
+| `/comparador` + `/comparador/<módulo>` | **Comparador C ↔ Rust**: los 3 módulos duales en split view con resaltado (lee `modules/*` del repo en build) |
+| `/visor3d` | **Visor 3D** URDF/SDF/STL/OBJ/DAE con three.js: sliders de joints, drag&drop, modelo de prueba VitaBot (`public/modelos/`) |
+| `/dashboard` | **Dashboard ROS2 editable**: logs netlog UDP de la Vita en vivo (SSE), salud de la sesión XRCE y topics del grafo; layout persistente por visitante |
+| `/taller` + `/taller/{compilador,debug}` | **Taller** (solo con `TALLER_ENABLED=1`): compilar el `.vpk` real, descargarlo, deploy FTP a la Vita y gdb batch sobre los parity tests |
 | `/progreso` | Fases e hitos con su estado (datos en `src/data/fases.ts`) |
 | `/api/checklist` | GET/POST del checklist (SQLite, validación estricta) |
+| `/api/dashboard/*` | `logs` (SSE), `estado`, `topics`, `layout` (SQLite) |
+| `/api/taller/*` | `estado`, `build`, `debug`, `deploy`, `job/<id>` (SSE), `vpk` |
+
+### Variables de entorno del servidor
+
+| Variable | Efecto |
+|---|---|
+| `NETLOG_PORT` (def. 9999) / `NETLOG_DISABLED=1` | Receptor UDP de logs de la Vita para el dashboard. Solo un receptor por puerto: si `tools/netlog-listen.sh` está corriendo, el widget lo indicará. |
+| `ROS2_TOPICS_CMD` | Comando que imprime `ros2 topic list -t` (p. ej. un `docker exec` al contenedor ROS2). Sin él, el widget de topics lo dice — no inventa datos. |
+| `TALLER_ENABLED=1` | Activa el taller (compilador/debug/deploy). **Solo en el PC de desarrollo**: ejecuta procesos locales (cmake, gdb, curl FTP). Nunca en despliegues públicos. |
+| `TALLER_REPO_ROOT` | Raíz del repo si el cwd del server no es `web/` (def. `..`). |
 
 **Regla del proyecto:** toda documentación nueva se publica en la web en su
 sección. Está automatizado: las colecciones (`src/content.config.ts`) leen
