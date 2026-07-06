@@ -1,0 +1,72 @@
+---
+// taller/index.astro — portada del taller (herramientas locales del PC).
+// SSR (no prerender): el aviso de activado/desactivado refleja el entorno
+// real del servidor que está sirviendo la página.
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+import { tallerActivo } from '../../lib/taller';
+
+const activo = tallerActivo();
+---
+
+<Base
+  title="Taller"
+  description="Las herramientas de desarrollo del proyecto ejecutadas desde la web: compilar el .vpk con el toolchain local y depurar los módulos duales en host."
+>
+  <h1>Taller</h1>
+  <p>
+    Herramientas que ejecutan <strong>procesos reales en el host que sirve
+    esta web</strong>: el compilador del <code>.vpk</code> (VitaSDK + cmake)
+    y el depurador de los módulos duales (gdb sobre los parity tests). Son
+    la «Opción 1» de <code>docs/07 §5</code>: invocación local del
+    toolchain — por eso solo funcionan cuando la web corre en el PC de
+    desarrollo.
+  </p>
+
+  {activo ? (
+    <p><span class="badge done">Taller activo</span> — este servidor tiene <code>TALLER_ENABLED=1</code>.</p>
+  ) : (
+    <div class="panel" style="border-color: rgba(251,191,36,.4)">
+      <strong style="color:var(--warn)">Taller desactivado en este despliegue.</strong>
+      <p style="margin:.4rem 0 0; color:var(--text-dim)">
+        Para activarlo, arranca la web en el PC de desarrollo con
+        <code>TALLER_ENABLED=1</code> (p. ej.
+        <code>TALLER_ENABLED=1 pnpm dev</code>). En despliegues públicos
+        queda apagado a propósito: estos endpoints ejecutan procesos.
+      </p>
+    </div>
+  )}
+
+  <div class="card-grid">
+    <a class="card" href="/taller/compilador">
+      <h3>Compilador → .vpk</h3>
+      <p>
+        Compila las variantes C y Rust de <code>vita-ros2-hello</code> con el
+        toolchain VitaSDK local, descarga el .vpk o envíalo por FTP a la
+        Vita. Con historial de builds.
+      </p>
+    </a>
+    <a class="card" href="/taller/debug">
+      <h3>Debug de módulos duales</h3>
+      <p>
+        Compila el parity test de un módulo (C o Rust, con símbolos) y corre
+        gdb en modo batch: breakpoints, backtrace, variables — sin tocar la
+        Vita.
+      </p>
+    </a>
+  </div>
+
+  <h2>Qué NO hace (todavía)</h2>
+  <ul>
+    <li>
+      <strong>Builds remotos:</strong> cuando la web se sirva desde la laptop
+      o un servidor, hará falta la capa remota (docs/07 §5, Opción 2). El
+      núcleo (estos endpoints) no cambiará.
+    </li>
+    <li>
+      <strong>Debug en la Vita real:</strong> requiere investigación propia
+      (docs/07 §6) — hoy la única depuración en hardware es el netlog del
+      <a href="/dashboard">dashboard</a>.
+    </li>
+  </ul>
+</Base>

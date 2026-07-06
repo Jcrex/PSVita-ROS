@@ -1,0 +1,127 @@
+---
+// taller/debug.astro — debug en host de los módulos duales (docs/07 §6,
+// parte host): gdb en modo batch sobre los binarios del parity test.
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+import { MODULOS, tallerActivo } from '../../lib/taller';
+
+const activo = tallerActivo();
+---
+
+<Base
+  title="Debug de módulos duales"
+  description="gdb desde la web sobre los parity tests de los módulos duales (C y Rust), compilados con símbolos en el host — sin tocar la Vita."
+>
+  <p><a href="/taller">← Taller</a></p>
+  <h1>Debug de módulos duales (host)</h1>
+  <p>
+    Compila el parity test del módulo elegido (con <code>-g</code>, vía
+    <code>tools/run-parity-tests.sh</code>) y ejecuta <strong>gdb en modo
+    batch</strong> con el guion de abajo. Sirve para inspeccionar la
+    implementación C o la Rust con el mismo test que verifica su paridad.
+  </p>
+
+  {!activo && (
+    <div class="panel" style="border-color: rgba(251,191,36,.4); margin-bottom:1rem">
+      <strong style="color:var(--warn)">Taller desactivado:</strong>
+      <span style="color:var(--text-dim)"> arranca el servidor con <code>TALLER_ENABLED=1</code> en el PC de desarrollo.</span>
+    </div>
+  )}
+
+  <div class="dos-cols">
+    <section class="panel">
+      <h2 style="margin-top:0">Sesión</h2>
+      <form id="form-debug">
+        <label class="campo">
+          <span>Módulo dual</span>
+          <select name="modulo">
+            {MODULOS.map((m) => <option value={m}>{m}</option>)}
+          </select>
+        </label>
+        <label class="campo">
+          <span>Implementación</span>
+          <select name="impl">
+            <option value="c">c</option>
+            <option value="rust">rust</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Guion de gdb (batch)</span>
+          <textarea name="gdbScript" rows="8" spellcheck="false">break main
+run
+bt
+info locals</textarea>
+        </label>
+        <button class="btn" type="submit" id="btn-debug">Compilar + depurar</button>
+      </form>
+
+      <h3>Recetas rápidas</h3>
+      <div class="recetas" id="recetas">
+        <button class="btn ghost" data-s={'break main\nrun\nbt\ninfo locals'}>main + locals</button>
+        <button class="btn ghost" data-s={'break mem_pool_alloc\nrun\nbt\ninfo args\nfinish'}>mem_pool_alloc</button>
+        <button class="btn ghost" data-s={'run\nbt full'}>solo correr (bt si revienta)</button>
+        <button class="btn ghost" data-s={'info functions parity\nbreak parity_test.c:1\ninfo sources'}>explorar símbolos</button>
+      </div>
+      <p class="nota">
+        En la variante Rust los símbolos llevan el nombre C del header
+        (<code>#[no_mangle]</code>): puedes poner breakpoints en las mismas
+        funciones en ambas implementaciones.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Salida</h2>
+      <pre class="consola" id="consola">— sin actividad —</pre>
+    </section>
+  </div>
+
+  <style>
+    .dos-cols { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 900px) { .dos-cols { grid-template-columns: 1fr; } }
+    .campo { display: block; margin-bottom: .8rem; }
+    .campo span { display: block; font-size: .8rem; color: var(--text-dim); margin-bottom: .25rem; }
+    .campo input, .campo select, .campo textarea {
+      width: 100%; background: var(--bg-soft); color: var(--text);
+      border: 1px solid var(--panel-border); border-radius: 8px; padding: .45rem .6rem;
+      font-family: var(--mono); font-size: .85rem;
+    }
+    .consola {
+      background: #05080f; border: 1px solid var(--panel-border); border-radius: 8px;
+      padding: .7rem .8rem; height: 480px; overflow: auto;
+      font-family: var(--mono); font-size: .74rem; line-height: 1.45;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .consola :global(.err) { color: var(--hw); }
+    .consola :global(.fin-ok) { color: var(--ok); font-weight: 700; }
+    .recetas { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .recetas .btn { font-size: .75rem; padding: .3rem .6rem; }
+    .nota { font-size: .78rem; color: var(--text-dim); }
+  </style>
+
+  <script>
+    import { lanzarJob } from '../../lib/taller-client';
+
+    const consola = document.getElementById('consola')!;
+    const btn = document.getElementById('btn-debug') as HTMLButtonElement;
+    const form = document.getElementById('form-debug') as HTMLFormElement;
+
+    document.getElementById('recetas')!.addEventListener('click', (ev) => {
+      const b = (ev.target as HTMLElement).closest('button[data-s]') as HTMLButtonElement | null;
+      if (!b) return;
+      ev.preventDefault();
+      (form.elements.namedItem('gdbScript') as HTMLTextAreaElement).value = b.dataset.s!;
+    });
+
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const f = new FormData(form);
+      btn.disabled = true;
+      lanzarJob(
+        '/api/taller/debug',
+        { modulo: f.get('modulo'), impl: f.get('impl'), gdbScript: f.get('gdbScript') },
+        consola,
+        () => (btn.disabled = false),
+      );
+    });
+  </script>
+</Base>

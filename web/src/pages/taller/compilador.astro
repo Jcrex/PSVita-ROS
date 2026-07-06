@@ -1,0 +1,167 @@
+---
+// taller/compilador.astro — la base del compilador web (docs/07 §5 Opción 1,
+// docs/08): compilar el .vpk con el toolchain local del PC, descargarlo o
+// mandarlo a la Vita por FTP, con la salida del build en vivo.
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+import { tallerActivo } from '../../lib/taller';
+
+const activo = tallerActivo();
+---
+
+<Base
+  title="Compilador → .vpk"
+  description="Compila vita-ros2-hello (variantes C y Rust) con el toolchain VitaSDK del PC desde la web, con salida en vivo, descarga del .vpk y deploy FTP a la Vita."
+>
+  <p><a href="/taller">← Taller</a></p>
+  <h1>Compilador → <code>.vpk</code></h1>
+
+  {!activo && (
+    <div class="panel" style="border-color: rgba(251,191,36,.4); margin-bottom:1rem">
+      <strong style="color:var(--warn)">Taller desactivado:</strong>
+      <span style="color:var(--text-dim)"> los botones devolverán 403. Arranca el servidor con <code>TALLER_ENABLED=1</code> en el PC de desarrollo.</span>
+    </div>
+  )}
+
+  <div class="dos-cols">
+    <section class="panel">
+      <h2 style="margin-top:0">Compilar</h2>
+      <form id="form-build">
+        <label class="campo">
+          <span>Variante de los módulos duales</span>
+          <select name="variante">
+            <option value="rust">rust (la que corre en la Vita ahora)</option>
+            <option value="c">c (fallback permanente)</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>AGENT_IP (opcional — baked-in; vacío = no cambiar)</span>
+          <input name="agentIp" placeholder="192.168.1.108" pattern="^(\d{1,3}\.){3}\d{1,3}$" />
+        </label>
+        <label class="campo">
+          <span>NETLOG_IP (opcional)</span>
+          <input name="netlogIp" placeholder="192.168.1.108" pattern="^(\d{1,3}\.){3}\d{1,3}$" />
+        </label>
+        <button class="btn" type="submit" id="btn-build">Compilar</button>
+      </form>
+
+      <h2>Artefactos</h2>
+      <div id="vpks" class="vpks"></div>
+
+      <h2>Enviar a la Vita (FTP)</h2>
+      <form id="form-deploy">
+        <label class="campo">
+          <span>IP de la Vita (VitaShell en modo FTP, puerto 1337)</span>
+          <input name="ip" placeholder="192.168.1.94" required pattern="^(\d{1,3}\.){3}\d{1,3}$" />
+        </label>
+        <label class="campo">
+          <span>Variante</span>
+          <select name="variante">
+            <option value="rust">rust</option>
+            <option value="c">c</option>
+          </select>
+        </label>
+        <button class="btn ghost" type="submit">Subir por FTP</button>
+        <p class="nota">Después: VitaShell → <code>ux0:/vita-ros2-hello.vpk</code> → instalar.</p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Salida</h2>
+      <pre class="consola" id="consola">— sin actividad —</pre>
+      <h2>Historial</h2>
+      <table class="historial" id="historial"><tbody></tbody></table>
+    </section>
+  </div>
+
+  <style>
+    .dos-cols { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 900px) { .dos-cols { grid-template-columns: 1fr; } }
+    .campo { display: block; margin-bottom: .8rem; }
+    .campo span { display: block; font-size: .8rem; color: var(--text-dim); margin-bottom: .25rem; }
+    .campo input, .campo select {
+      width: 100%; background: var(--bg-soft); color: var(--text);
+      border: 1px solid var(--panel-border); border-radius: 8px; padding: .45rem .6rem;
+      font-family: var(--mono); font-size: .85rem;
+    }
+    .consola {
+      background: #05080f; border: 1px solid var(--panel-border); border-radius: 8px;
+      padding: .7rem .8rem; height: 380px; overflow: auto;
+      font-family: var(--mono); font-size: .74rem; line-height: 1.45;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .consola :global(.err) { color: var(--hw); }
+    .consola :global(.fin-ok) { color: var(--ok); font-weight: 700; }
+    .vpks { display: flex; flex-direction: column; gap: .5rem; }
+    .vpks :global(.vpk) {
+      display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
+      background: var(--bg-soft); border-radius: 8px; padding: .5rem .7rem; font-size: .82rem;
+    }
+    .vpks :global(code) { color: var(--accent-soft); }
+    .historial { font-size: .78rem; }
+    .historial :global(td) { padding: .3rem .5rem; }
+    .nota { font-size: .78rem; color: var(--text-dim); }
+  </style>
+
+  <script>
+    import { lanzarJob } from '../../lib/taller-client';
+
+    const consola = document.getElementById('consola')!;
+    const btnBuild = document.getElementById('btn-build') as HTMLButtonElement;
+
+    const refrescar = async () => {
+      try {
+        const e = await (await fetch('/api/taller/estado')).json();
+        // Artefactos.
+        const vpks = document.getElementById('vpks')!;
+        vpks.innerHTML = '';
+        for (const v of e.vpks ?? []) {
+          const div = document.createElement('div');
+          div.className = 'vpk';
+          div.innerHTML = v.existe
+            ? `<code>build-${v.variante}</code> ${(v.bytes / 1024).toFixed(0)} KB ·
+               ${new Date(v.modificado).toLocaleString()} ·
+               <a href="/api/taller/vpk?variante=${v.variante}">descargar</a>`
+            : `<code>build-${v.variante}</code> <span style="color:var(--text-dim)">sin compilar</span>`;
+          vpks.appendChild(div);
+        }
+        if (!(e.vpks ?? []).length) vpks.innerHTML = '<span class="nota">Taller desactivado.</span>';
+        // Historial.
+        const tbody = document.querySelector('#historial tbody')!;
+        tbody.innerHTML = (e.historial ?? [])
+          .map(
+            (j: any) => `<tr>
+              <td>#${j.id}</td><td>${j.variante}</td>
+              <td>${j.estado === 'ok' ? '✅' : j.estado === 'corriendo' ? '⏳' : '❌'}</td>
+              <td>${j.inicio}</td></tr>`,
+          )
+          .join('');
+      } catch {
+        /* backend caído: se reintenta en el siguiente refresco */
+      }
+    };
+    refrescar();
+    setInterval(refrescar, 8000);
+
+    document.getElementById('form-build')!.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const f = new FormData(ev.target as HTMLFormElement);
+      btnBuild.disabled = true;
+      lanzarJob(
+        '/api/taller/build',
+        { variante: f.get('variante'), agentIp: f.get('agentIp'), netlogIp: f.get('netlogIp') },
+        consola,
+        () => {
+          btnBuild.disabled = false;
+          refrescar();
+        },
+      );
+    });
+
+    document.getElementById('form-deploy')!.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const f = new FormData(ev.target as HTMLFormElement);
+      lanzarJob('/api/taller/deploy', { variante: f.get('variante'), ip: f.get('ip') }, consola, refrescar);
+    });
+  </script>
+</Base>
