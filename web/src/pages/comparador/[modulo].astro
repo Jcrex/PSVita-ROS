@@ -1,0 +1,146 @@
+---
+// comparador/[modulo].astro — split view C ↔ Rust de un módulo dual.
+//
+// Prerenderizado: el código se lee del repo y se resalta con shiki en
+// build time (componente <Code> de Astro). El toggle de vista (lado a
+// lado / apilado) es CSS + un script mínimo.
+export const prerender = true;
+import { Code } from 'astro:components';
+import Base from '../../layouts/Base.astro';
+import { getModulos } from '../../lib/comparador';
+
+export function getStaticPaths() {
+  return getModulos().map((m) => ({ params: { modulo: m.id }, props: { mod: m } }));
+}
+
+const { mod } = Astro.props;
+const otros = getModulos().filter((m) => m.id !== mod.id);
+const THEME = 'github-dark-default';
+---
+
+<Base
+  title={`Comparador: ${mod.id}`}
+  description={`El módulo dual ${mod.id} en C y Rust lado a lado: ${mod.resumen}`}
+>
+  <p><a href="/comparador">← Todos los módulos</a></p>
+  <h1>{mod.nombre}</h1>
+  <p>{mod.resumen}</p>
+
+  <section class="panel">
+    <h2 style="margin-top:0">Qué mirar al comparar</h2>
+    <ul>
+      {mod.clavesEstudio.map((c) => <li set:html={c.replace(/`([^`]+)`/g, '<code>$1</code>')} />)}
+    </ul>
+  </section>
+
+  <details class="header-contrato">
+    <summary>
+      <strong>El contrato: <code>{mod.header.ruta}</code></strong>
+      <span class="dim">({mod.header.lineas} líneas — la única fuente de verdad, ambas columnas lo implementan)</span>
+    </summary>
+    <div class="codigo">
+      <Code code={mod.header.codigo} lang="c" theme={THEME} />
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <span class="dim">Vista:</span>
+    <button class="btn ghost" id="vista-lado" aria-pressed="true">Lado a lado</button>
+    <button class="btn ghost" id="vista-apilada" aria-pressed="false">Apilada</button>
+  </div>
+
+  <div class="split" id="split">
+    <section class="col">
+      <header class="col-head c-head">
+        <span class="lang-tag">C</span>
+        <code>{mod.c.ruta}</code>
+        <span class="dim">{mod.c.lineas} líneas</span>
+      </header>
+      <div class="codigo">
+        <Code code={mod.c.codigo} lang="c" theme={THEME} />
+      </div>
+    </section>
+
+    <section class="col">
+      <header class="col-head rust-head">
+        <span class="lang-tag rust">Rust</span>
+        <code>{mod.rust.ruta}</code>
+        <span class="dim">{mod.rust.lineas} líneas</span>
+      </header>
+      <div class="codigo">
+        <Code code={mod.rust.codigo} lang="rust" theme={THEME} />
+      </div>
+    </section>
+  </div>
+
+  <nav class="otros">
+    <span class="dim">Seguir comparando:</span>
+    {otros.map((m) => <a class="btn ghost" href={`/comparador/${m.id}`}>{m.id}</a>)}
+  </nav>
+
+  <style>
+    .dim { color: var(--text-dim); font-size: .85rem; }
+    .header-contrato {
+      margin: 1.5rem 0;
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    .header-contrato summary { padding: .8rem 1.1rem; cursor: pointer; }
+    .header-contrato .codigo { padding: 0 1.1rem 1rem; }
+
+    .toolbar { display: flex; gap: .6rem; align-items: center; margin: 1.2rem 0 .8rem; }
+    .toolbar .btn { padding: .3rem .8rem; font-size: .85rem; }
+    .toolbar .btn[aria-pressed='true'] { background: var(--accent); color: #fff; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+    .split.apilada { grid-template-columns: 1fr; }
+    /* En pantallas estrechas siempre apilada (el toggle no aplica). */
+    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+    .col { min-width: 0; }
+    .col-head {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      position: sticky; top: 3.6rem; z-index: 5;
+      background: var(--bg-soft);
+      border: 1px solid var(--panel-border);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: .5rem .9rem;
+    }
+    .lang-tag {
+      font-family: var(--mono); font-weight: 700; font-size: .8rem;
+      padding: .1rem .55rem; border-radius: 999px;
+      background: rgba(251, 191, 36, .15); color: var(--warn);
+    }
+    .lang-tag.rust { background: rgba(244, 114, 182, .15); color: var(--hw); }
+
+    /* El <pre> lo genera shiki con estilos inline; ajustamos el marco. */
+    .codigo :global(pre) {
+      margin: 0;
+      border: 1px solid var(--panel-border);
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      font-size: .82rem;
+      line-height: 1.5;
+    }
+    .header-contrato .codigo :global(pre) { border-radius: var(--radius); }
+
+    .otros { display: flex; gap: .6rem; align-items: center; margin-top: 1.6rem; flex-wrap: wrap; }
+  </style>
+
+  <script>
+    // Toggle lado a lado / apilada (útil para leer funciones largas).
+    const split = document.getElementById('split')!;
+    const lado = document.getElementById('vista-lado')!;
+    const apilada = document.getElementById('vista-apilada')!;
+    const setVista = (esApilada: boolean) => {
+      split.classList.toggle('apilada', esApilada);
+      lado.setAttribute('aria-pressed', String(!esApilada));
+      apilada.setAttribute('aria-pressed', String(esApilada));
+    };
+    lado.addEventListener('click', () => setVista(false));
+    apilada.addEventListener('click', () => setVista(true));
+  </script>
+</Base>

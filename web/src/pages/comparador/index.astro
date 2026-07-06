@@ -1,0 +1,73 @@
+---
+// comparador/index.astro — índice del comparador C ↔ Rust.
+// Lee los módulos duales reales del repo (prerender: build time).
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+import { getModulos } from '../../lib/comparador';
+
+const modulos = getModulos();
+---
+
+<Base
+  title="Comparador C ↔ Rust"
+  description="Los módulos duales del proyecto lado a lado: la misma API implementada en C y en Rust, para estudiar ambos lenguajes con código real."
+>
+  <h1>Comparador C ↔ Rust</h1>
+  <p>
+    Cada módulo de bajo nivel del proyecto tiene <strong>dos implementaciones
+    equivalentes</strong> detrás del mismo header C (la única fuente de
+    verdad), y ambas pasan la misma batería de tests de paridad. Eso las
+    convierte en material de estudio perfecto: el mismo problema, resuelto
+    dos veces, con el mismo comportamiento observable.
+  </p>
+  <p>
+    Complemento recomendado: la serie
+    <a href="/docs">«Aprendiendo Rust»</a> de la documentación explica los
+    constructos de Rust que vas a ver aquí (FFI, <code>no_std</code>,
+    <code>unsafe</code>, <code>#[cfg]</code>…) con este mismo código.
+  </p>
+
+  <div class="card-grid">
+    {modulos.map((m) => (
+      <a class="card" href={`/comparador/${m.id}`}>
+        <h3>{m.nombre}</h3>
+        <p>{m.resumen}</p>
+        <p class="metricas">
+          <span class="lang-c">C: {m.c.lineas} líneas</span> ·
+          <span class="lang-rust">Rust: {m.rust.lineas} líneas</span> ·
+          <span>header: {m.header.lineas} líneas</span>
+        </p>
+      </a>
+    ))}
+  </div>
+
+  <section class="panel">
+    <h2 style="margin-top:0">Cómo leer la comparación</h2>
+    <ul>
+      <li>
+        <strong>El header manda:</strong> las dos columnas implementan
+        exactamente las funciones declaradas en <code>include/*.h</code>.
+        Si algo difiere en comportamiento, es un bug (y lo cazaría
+        <code>tools/run-parity-tests.sh</code>).
+      </li>
+      <li>
+        <strong>Mismo diseño, distinta expresión:</strong> las estructuras de
+        datos y los algoritmos son los mismos a propósito; lo que cambia es
+        cómo cada lenguaje expresa propiedad de memoria, errores y
+        plataforma (<code>#ifdef __vita__</code> vs.
+        <code>#[cfg(target_os = "vita")]</code>).
+      </li>
+      <li>
+        <strong>El Rust está comentado para principiantes:</strong> regla del
+        proyecto — todo constructo nuevo se explica en comentarios o en la
+        serie de aprendizaje.
+      </li>
+    </ul>
+  </section>
+
+  <style>
+    .metricas { margin-top: .6rem !important; font-family: var(--mono); font-size: .78rem !important; }
+    .lang-c { color: var(--warn); }
+    .lang-rust { color: var(--hw); }
+  </style>
+</Base>
