@@ -47,4 +47,14 @@ export const checklists: Record<string, ChecklistStep[]> = {
     { id: 'instalar', text: 'Subir por FTP e instalar con VitaShell' },
     { id: 'asistente', text: 'Completar el asistente del primer arranque (base 6.61)' },
   ],
+  // Tutorial del SDK (práctica guiada de la sección 7 de la guía).
+  'vitasdk-toolchain': [
+    { id: 'entorno', text: 'Activar el entorno con source tools/env-devpc.fish' },
+    { id: 'toolchain', text: 'Verificar arm-vita-eabi-gcc --version y $VITASDK' },
+    { id: 'xrce', text: 'Cross-compilar las dependencias (build-xrce-client-vita.sh)' },
+    { id: 'cmake', text: 'Configurar con el toolchain file y -DVITA_IMPL' },
+    { id: 'build', text: 'Compilar y obtener el .vpk (cmake --build)' },
+    { id: 'inspeccionar', text: 'Inspeccionar el .vpk con unzip -l (eboot.bin + param.sfo)' },
+    { id: 'deploy', text: 'Enviar a la Vita por FTP e instalar con VitaShell' },
+  ],
 };
