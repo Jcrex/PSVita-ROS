@@ -1,0 +1,338 @@
+---
+// dashboard.astro — dashboard ROS2 editable (docs/07 §1, docs/08).
+//
+// Widgets con datos REALES:
+//  - logs:   netlog UDP de la Vita en vivo (SSE desde el backend)
+//  - estado: salud de la sesión XRCE derivada del propio netlog
+//  - topics: grafo ROS2 vía el puente configurable (ROS2_TOPICS_CMD)
+// El layout (qué widgets y en qué orden) se edita aquí y persiste en
+// SQLite por visitante, igual que el checklist de las guías.
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Dashboard ROS2"
+  description="Panel en vivo del proyecto: logs UDP de la Vita, salud de la sesión XRCE y topics del grafo ROS2, con layout editable."
+>
+  <h1>Dashboard ROS2</h1>
+  <p>
+    Observabilidad en vivo del sistema Vita ↔ agente ↔ ROS2. Los datos son
+    reales (netlog UDP de la consola y grafo ROS2); si una fuente no está
+    disponible, el widget lo dice — aquí no hay datos de mentira.
+  </p>
+
+  <div class="barra">
+    <label for="add-widget" class="dim">Añadir widget:</label>
+    <select id="add-widget">
+      <option value="">— elegir —</option>
+      <option value="estado">Salud sesión XRCE</option>
+      <option value="logs">Logs de la Vita (netlog)</option>
+      <option value="topics">Topics ROS2</option>
+    </select>
+    <button class="btn ghost" id="btn-reset-layout">Layout por defecto</button>
+    <span class="dim" id="guardado"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <style is:global>
+    .barra { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; margin: 1.2rem 0; }
+    .barra select {
+      background: var(--panel); color: var(--text);
+      border: 1px solid var(--panel-border); border-radius: 8px; padding: .4rem .6rem;
+    }
+    .dim { color: var(--text-dim); font-size: .85rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .widget {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      display: flex; flex-direction: column;
+      min-height: 200px;
+    }
+    .widget.ancho { grid-column: 1 / -1; }
+    .widget-head {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .55rem .9rem;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .widget-head h3 { margin: 0; font-size: .92rem; flex: 1; }
+    .widget-head button {
+      background: none; border: 1px solid var(--panel-border); color: var(--text-dim);
+      border-radius: 6px; cursor: pointer; padding: .1rem .45rem; font-size: .8rem;
+    }
+    .widget-head button:hover { color: #fff; border-color: var(--accent); }
+    .widget-body { padding: .8rem .9rem; flex: 1; overflow: auto; font-size: .86rem; }
+
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; }
+    .kv dt { color: var(--text-dim); }
+    .kv dd { margin: 0; font-family: var(--mono); font-size: .82rem; }
+    .pill { display: inline-block; padding: .05rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .pill.ok { background: rgba(52,211,153,.15); color: var(--ok); }
+    .pill.mal { background: rgba(244,114,182,.15); color: var(--hw); }
+    .pill.neutro { background: rgba(143,161,196,.15); color: var(--text-dim); }
+
+    .log-linea { font-family: var(--mono); font-size: .78rem; white-space: pre-wrap; word-break: break-all; }
+    .log-linea .t { color: var(--text-dim); }
+    .log-linea.hito { color: var(--ok); }
+    .log-toolbar { display: flex; gap: .5rem; margin-bottom: .5rem; flex-wrap: wrap; }
+    .log-toolbar input {
+      flex: 1; min-width: 120px;
+      background: var(--bg-soft); color: var(--text);
+      border: 1px solid var(--panel-border); border-radius: 6px; padding: .25rem .5rem;
+      font-family: var(--mono); font-size: .8rem;
+    }
+    .log-caja { height: 260px; overflow-y: auto; background: var(--bg-soft); border-radius: 8px; padding: .5rem .6rem; }
+
+    .topics-tabla { width: 100%; font-size: .8rem; }
+    .topics-tabla td, .topics-tabla th { padding: .3rem .5rem; }
+    .topics-tabla td:first-child { font-family: var(--mono); color: var(--accent-soft); }
+    .topics-tabla td:last-child { font-family: var(--mono); color: var(--text-dim); }
+    .aviso-config {
+      background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.35);
+      border-radius: 8px; padding: .6rem .8rem; color: var(--warn); font-size: .8rem;
+    }
+    .aviso-config code { font-size: .75rem; }
+  </style>
+
+  <script>
+    // ---------------- infraestructura del layout ----------------
+    const LAYOUT_DEFECTO = ['estado', 'logs', 'topics'];
+    const grid = document.getElementById('grid')!;
+    const guardadoEl = document.getElementById('guardado')!;
+
+    let clientId = localStorage.getItem('psvita-ros-client');
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+      localStorage.setItem('psvita-ros-client', clientId);
+    }
+
+    interface Widget { tipo: string; el: HTMLElement; destruir: () => void }
+    let widgets: Widget[] = [];
+
+    const guardarLayout = async () => {
+      try {
+        await fetch('/api/dashboard/layout', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-client-id': clientId! },
+          body: JSON.stringify({ layout: widgets.map((w) => w.tipo) }),
+        });
+        guardadoEl.textContent = 'Layout guardado ✓';
+        setTimeout(() => (guardadoEl.textContent = ''), 1500);
+      } catch {
+        guardadoEl.textContent = 'No se pudo guardar';
+      }
+    };
+
+    const render = () => {
+      grid.innerHTML = '';
+      for (const w of widgets) grid.appendChild(w.el);
+    };
+
+    const quitar = (w: Widget) => {
+      w.destruir();
+      widgets = widgets.filter((x) => x !== w);
+      render();
+      guardarLayout();
+    };
+
+    const mover = (w: Widget, delta: number) => {
+      const i = widgets.indexOf(w);
+      const j = i + delta;
+      if (j < 0 || j >= widgets.length) return;
+      [widgets[i], widgets[j]] = [widgets[j], widgets[i]];
+      render();
+      guardarLayout();
+    };
+
+    const marco = (titulo: string, ancho = false) => {
+      const el = document.createElement('section');
+      el.className = 'widget' + (ancho ? ' ancho' : '');
+      const head = document.createElement('div');
+      head.className = 'widget-head';
+      const h = document.createElement('h3');
+      h.textContent = titulo;
+      const arriba = document.createElement('button');
+      arriba.textContent = '↑';
+      arriba.title = 'Subir';
+      const abajo = document.createElement('button');
+      abajo.textContent = '↓';
+      abajo.title = 'Bajar';
+      const cerrar = document.createElement('button');
+      cerrar.textContent = '✕';
+      cerrar.title = 'Quitar widget';
+      head.append(h, arriba, abajo, cerrar);
+      const body = document.createElement('div');
+      body.className = 'widget-body';
+      el.append(head, body);
+      return { el, body, arriba, abajo, cerrar };
+    };
+
+    // ---------------- widget: salud sesión XRCE ----------------
+    const crearEstado = (): Widget => {
+      const { el, body, arriba, abajo, cerrar } = marco('Salud de la sesión XRCE');
+      let timer: ReturnType<typeof setInterval>;
+      const pinta = (e: any) => {
+        const hace = (iso: string | null) =>
+          iso ? `hace ${Math.max(0, Math.round((Date.parse(e.ahora) - Date.parse(iso)) / 1000))} s` : '—';
+        const pill = (ok: boolean, si: string, no: string) =>
+          `<span class="pill ${ok ? 'ok' : 'mal'}">${ok ? si : no}</span>`;
+        const fresca = e.ultimoPaquete && Date.parse(e.ahora) - Date.parse(e.ultimoPaquete) < 10_000;
+        body.innerHTML = `
+          <dl class="kv">
+            <dt>Receptor netlog</dt><dd>${pill(e.activo, `escuchando :${e.puerto}`, 'inactivo')}${
+              e.error ? ` <span class="dim">${e.error}</span>` : ''
+            }</dd>
+            <dt>Vita</dt><dd>${e.vitaIp ?? '—'} ${e.vitaIp ? pill(!!fresca, 'emitiendo', 'sin señal') : ''}</dd>
+            <dt>Último paquete</dt><dd>${hace(e.ultimoPaquete)} (${e.totalPaquetes} paquetes)</dd>
+            <dt>Sesión XRCE</dt><dd>${
+              e.xrce.sesionEstablecida
+                ? `${pill(true, 'establecida', '')} <span class="dim">${hace(e.xrce.sesionEstablecida)}</span>`
+                : '<span class="pill neutro">sin confirmar en esta sesión</span>'
+            }</dd>
+            <dt>/pc_hello</dt><dd>${
+              e.xrce.pcHelloRecibido
+                ? `${pill(true, 'recibido', '')} <span class="dim">${hace(e.xrce.pcHelloRecibido)}</span>`
+                : '<span class="pill neutro">no visto aún</span>'
+            }</dd>
+          </dl>`;
+      };
+      const tick = () =>
+        fetch('/api/dashboard/estado')
+          .then((r) => r.json())
+          .then(pinta)
+          .catch(() => (body.innerHTML = '<span class="dim">Backend no disponible.</span>'));
+      tick();
+      timer = setInterval(tick, 3000);
+      const w: Widget = { tipo: 'estado', el, destruir: () => clearInterval(timer) };
+      arriba.onclick = () => mover(w, -1);
+      abajo.onclick = () => mover(w, 1);
+      cerrar.onclick = () => quitar(w);
+      return w;
+    };
+
+    // ---------------- widget: logs netlog en vivo ----------------
+    const crearLogs = (): Widget => {
+      const { el, body, arriba, abajo, cerrar } = marco('Logs de la Vita (netlog UDP)', true);
+      body.innerHTML = `
+        <div class="log-toolbar">
+          <input type="text" placeholder="filtrar…" />
+          <button class="btn ghost" data-a="pausa">Pausar</button>
+          <button class="btn ghost" data-a="limpiar">Limpiar</button>
+        </div>
+        <div class="log-caja"></div>`;
+      const caja = body.querySelector<HTMLElement>('.log-caja')!;
+      const filtro = body.querySelector<HTMLInputElement>('input')!;
+      const btnPausa = body.querySelector<HTMLButtonElement>('[data-a="pausa"]')!;
+      let pausado = false;
+      btnPausa.onclick = () => {
+        pausado = !pausado;
+        btnPausa.textContent = pausado ? 'Reanudar' : 'Pausar';
+      };
+      body.querySelector<HTMLButtonElement>('[data-a="limpiar"]')!.onclick = () => (caja.innerHTML = '');
+
+      const es = new EventSource('/api/dashboard/logs');
+      es.addEventListener('estado', (ev) => {
+        const e = JSON.parse((ev as MessageEvent).data);
+        if (!e.activo) {
+          const d = document.createElement('div');
+          d.className = 'log-linea';
+          d.innerHTML = `<span class="t">[web]</span> receptor inactivo: ${e.error ?? ''}`;
+          caja.appendChild(d);
+        }
+      });
+      es.addEventListener('log', (ev) => {
+        if (pausado) return;
+        const e = JSON.parse((ev as MessageEvent).data);
+        const f = filtro.value.trim().toLowerCase();
+        if (f && !e.texto.toLowerCase().includes(f)) return;
+        const d = document.createElement('div');
+        d.className = 'log-linea' + (/SESION XRCE|CUMPLIDO|recibido/.test(e.texto) ? ' hito' : '');
+        d.innerHTML = `<span class="t">${new Date(e.ts).toLocaleTimeString()}</span> ${e.texto
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')}`;
+        caja.appendChild(d);
+        while (caja.childElementCount > 600) caja.firstElementChild!.remove();
+        caja.scrollTop = caja.scrollHeight;
+      });
+
+      const w: Widget = { tipo: 'logs', el, destruir: () => es.close() };
+      arriba.onclick = () => mover(w, -1);
+      abajo.onclick = () => mover(w, 1);
+      cerrar.onclick = () => quitar(w);
+      return w;
+    };
+
+    // ---------------- widget: topics ROS2 ----------------
+    const crearTopics = (): Widget => {
+      const { el, body, arriba, abajo, cerrar } = marco('Topics ROS2');
+      let timer: ReturnType<typeof setInterval>;
+      const tick = async () => {
+        try {
+          const r = await fetch('/api/dashboard/topics');
+          const d = await r.json();
+          if (!d.configurado) {
+            body.innerHTML = `<div class="aviso-config">${d.error}<br/>
+              Ejemplo: <code>ROS2_TOPICS_CMD='docker exec rmf_unified bash -lc "source /opt/ros/jazzy/setup.bash &amp;&amp; ros2 topic list -t"'</code></div>`;
+            return;
+          }
+          if (!d.ok) {
+            body.innerHTML = `<div class="aviso-config">El comando de topics falló: <code>${d.error}</code></div>`;
+            return;
+          }
+          body.innerHTML = d.topics.length
+            ? `<table class="topics-tabla">${d.topics
+                .map((t: any) => `<tr><td>${t.nombre}</td><td>${t.tipo}</td></tr>`)
+                .join('')}</table>
+               <p class="dim">${d.topics.length} topic(s) · ${new Date(d.obtenidoEn).toLocaleTimeString()}</p>`
+            : '<span class="dim">Grafo vacío.</span>';
+        } catch {
+          body.innerHTML = '<span class="dim">Backend no disponible.</span>';
+        }
+      };
+      tick();
+      timer = setInterval(tick, 10_000);
+      const w: Widget = { tipo: 'topics', el, destruir: () => clearInterval(timer) };
+      arriba.onclick = () => mover(w, -1);
+      abajo.onclick = () => mover(w, 1);
+      cerrar.onclick = () => quitar(w);
+      return w;
+    };
+
+    const FABRICAS: Record<string, () => Widget> = {
+      estado: crearEstado,
+      logs: crearLogs,
+      topics: crearTopics,
+    };
+
+    const montarLayout = (tipos: string[]) => {
+      for (const w of widgets) w.destruir();
+      widgets = tipos.filter((t) => FABRICAS[t]).map((t) => FABRICAS[t]());
+      render();
+    };
+
+    // Añadir / reset.
+    const selector = document.getElementById('add-widget') as HTMLSelectElement;
+    selector.addEventListener('change', () => {
+      if (!selector.value) return;
+      widgets.push(FABRICAS[selector.value]());
+      selector.value = '';
+      render();
+      guardarLayout();
+    });
+    document.getElementById('btn-reset-layout')!.addEventListener('click', () => {
+      montarLayout(LAYOUT_DEFECTO);
+      guardarLayout();
+    });
+
+    // Cargar layout persistido (o el de defecto).
+    fetch('/api/dashboard/layout', { headers: { 'x-client-id': clientId } })
+      .then((r) => (r.ok ? r.json() : { layout: null }))
+      .then((d) => montarLayout(d.layout?.length ? d.layout : LAYOUT_DEFECTO))
+      .catch(() => montarLayout(LAYOUT_DEFECTO));
+  </script>
+</Base>
