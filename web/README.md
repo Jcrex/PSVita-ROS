@@ -24,6 +24,8 @@ Docker.
 | `/dashboard` | **Dashboard ROS2 editable**: logs netlog UDP de la Vita en vivo (SSE), salud de la sesión XRCE y topics del grafo; layout persistente por visitante |
 | `/taller` + `/taller/{compilador,debug}` | **Taller** (solo con `TALLER_ENABLED=1`): compilar el `.vpk` real, descargarlo, deploy FTP a la Vita y gdb batch sobre los parity tests |
 | `/progreso` | Fases e hitos con su estado (datos en `src/data/fases.ts`) |
+| `/monitor` | Dashboard en vivo del netlog de la Vita, por sesión |
+| `/api/monitor/*` | Sesiones, líneas y stream SSE (ver `docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`) |
 | `/api/checklist` | GET/POST del checklist (SQLite, validación estricta) |
 | `/api/dashboard/*` | `logs` (SSE), `estado`, `topics`, `layout` (SQLite) |
 | `/api/taller/*` | `estado`, `build`, `debug`, `deploy`, `job/<id>` (SSE), `vpk` |
@@ -49,6 +51,31 @@ módulo) y reconstruir el sitio. Sin frontmatter, el título sale del primer
 Cada navegador genera un UUID anónimo (localStorage) y el progreso se
 guarda en `data/app.db` (tabla `checklist_progress`). Sin cuentas ni datos
 personales.
+
+### Cómo funciona el monitor de logs (`/monitor`)
+
+Reemplaza la lectura manual de `tools/netlog-listen.sh` por una vista web
+en vivo. Un proceso Node separado (`scripts/netlog-ingester.mjs`) escucha
+el UDP :9999, limpia y clasifica cada línea (normal/hito/fatal) y la
+guarda en `data/app.db` (tablas `vita_sessions`/`vita_log_lines`); Astro
+expone esos datos por HTTP y por Server-Sent Events. Solo un proceso puede
+escuchar el puerto 9999 a la vez, así que `tools/netlog-listen.sh` y este
+dashboard son alternativas, no complementos simultáneos.
+
+En Docker, `scripts/docker-entrypoint.sh` arranca ambos procesos: si el
+ingestor muere (p. ej. el puerto 9999 falla al abrir), un bucle lo
+reinicia solo cada 2s — no hace falta reiniciar el contenedor entero para
+recuperar el dashboard.
+
+En desarrollo, arrancar los dos procesos en terminales separadas:
+```bash
+cd web
+pnpm dev          # terminal 1
+pnpm ingester     # terminal 2
+```
+
+Diseño completo en
+`docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
 
 ## Desarrollo (laptop)
 

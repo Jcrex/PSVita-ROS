@@ -1,11 +1,14 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-06 (PC: **primer hito de la fase web
+**Última actualización:** 2026-07-07 (fusión de dos frentes en paralelo tras
+divergencia de `main`: laptop, 2026-07-02, **dashboard web de logs en vivo
+(`/monitor`) implementado, revisado y mergeado**, pendiente de confirmar
+con la Vita real encendida; PC, 2026-07-06, **primer hito de la fase web
 ALCANZADO** — los seis frentes de `docs/08-fase-desarrollo-web.md` están
 operativos en la web real: comparador C↔Rust, tutorial del SDK, dashboard
 con datos reales, visor 3D/URDF, debug en host y base del compilador
-`.vpk`; el Objetivo 2 sigue pendiente sin diseño detallado; la Fase 1
-sigue **COMPLETA** y confirmada en hardware real)
+`.vpk`. La Fase 1 sigue **COMPLETA** y confirmada en hardware real; el
+Objetivo 2 sigue pendiente sin diseño detallado)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -152,8 +155,51 @@ todo el código escrito y verificado hasta donde la laptop permite**:
 **Fase 1 (objetivo 1: topics ROS2) COMPLETA y confirmada en hardware
 real**: incógnita dura resuelta + criterio 1 (`/vita_hello` visible) +
 criterio 2 (`/pc_hello` recibido), los tres verificados en la misma
-sesión en vivo. Solo quedan tareas de cierre de documentación (ver
-"Próximos pasos") antes de empezar el Objetivo 2 (control de robot).
+sesión en vivo.
+
+- **(2026-07-02, en la laptop) Dashboard web de logs en vivo (`/monitor`)
+  — implementado, revisado y mergeado a `main`.** Motivación: usar 4
+  terminales a mano (agente, `netlog-listen.sh`, `ros2 topic echo/pub`)
+  para verificar la Fase 1 no escala; se decidió reemplazar solo la
+  lectura de logs de la Vita por una vista web (los topics de ROS2 se
+  quedan en terminal, es una decisión explícita — ver spec). Brainstorm →
+  spec → plan → implementación con `subagent-driven-development` (7
+  tareas, revisión por tarea + revisión final de toda la rama):
+  - Spec: `docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
+  - Plan: `docs/superpowers/plans/2026-07-01-dashboard-logs-vita.md`.
+  - Arquitectura: `web/scripts/netlog-ingester.mjs` (proceso Node nuevo,
+    UDP :9999 → SQLite, mismo `web/data/app.db`) + 4 endpoints Astro
+    (`/api/monitor/sessions`, `/session/[id]`, `/status`, `/stream` SSE)
+    + la página `/monitor` (historial por sesión + vista en vivo
+    colorada como `netlog-listen.sh`, autoscroll, indicador 🟢/⚪).
+    `tools/netlog-listen.sh` se mantiene como alternativa de terminal
+    (solo uno de los dos puede tener el puerto 9999 a la vez).
+  - Docker: `web/scripts/docker-entrypoint.sh` arranca los dos procesos
+    (Astro + ingestor) en el mismo contenedor; el ingestor se reinicia
+    solo si muere. Puerto UDP 9999 publicado en `docker-compose.yml`
+    junto al 4321 ya existente.
+  - La Task 6 (la página en sí) pasó por **4 rondas de revisión** que
+    encontraron y corrigieron bugs reales antes de llegar a producción:
+    un bucle infinito de recarga (mala interpretación del evento SSE
+    `session-changed`), líneas de log duplicadas (el SSE reenvía todo el
+    historial en cada reconexión, sin un "watermark" de dedup), un caso
+    borde de arranque sin sesiones todavía, y falta de color/autoscroll
+    en el primer render servidor. La Task 7 (Docker) encontró y corrigió
+    un bug real del propio plan: un `set -e` en el script de arranque
+    mataba el bucle de reinicio del ingestor en su primer fallo.
+  - Revisión final de toda la rama (10 commits): **aprobada para
+    mergear**, sin hallazgos críticos ni importantes. Se aplicaron dos
+    pulidos menores que señaló: ordenar sesiones por `id` en vez de
+    `started_at` (coherencia con el ingestor), y actualizar el spec para
+    reflejar los 4 endpoints reales y el `docker-entrypoint.sh`.
+  - **Verificado solo con paquetes UDP simulados** (Node one-liners +
+    `sqlite3` CLI + `docker compose up` real) — funciona de punta a
+    punta en ese sentido, pero **nunca se probó con la Vita real
+    mandando su netlog de verdad**. Eso es lo único que falta (ver
+    "Próximos pasos").
+
+Solo quedan tareas de cierre (ver "Próximos pasos") antes de empezar el
+Objetivo 2 (control de robot).
 
 ---
 
@@ -204,12 +250,15 @@ registrarlo en el Claude Code del PC (`README.md` del MCP).
 
 Astro 5 SSR + better-sqlite3 + Docker. Páginas: portada, arquitectura,
 guías (lee `docs/guias-vita/*.md` directamente — sin duplicar contenido)
-con checklist interactivo persistente en SQLite, y progreso por fases
-(`src/data/fases.ts` ← **actualizar al cerrar hitos**). DB y volúmenes en
-`web/data/` dentro del repo. `cd web && docker compose up -d --build` →
-`localhost:4321`. Preparada para `psvita-ros.jcrex999.com` (ver
-`web/README.md`). Emulación en navegador: evaluada y descartada (Vita3K no
-tiene port WASM); decisión documentada.
+con checklist interactivo persistente en SQLite, progreso por fases
+(`src/data/fases.ts` ← **actualizar al cerrar hitos**), y **`/monitor`**
+(dashboard en vivo del netlog de la Vita — ver bloque de arriba,
+2026-07-02). DB y volúmenes en `web/data/` dentro del repo.
+`cd web && docker compose up -d --build` → `localhost:4321`. En
+desarrollo, el ingestor del monitor va aparte: `pnpm dev` (terminal 1) +
+`pnpm ingester` (terminal 2). Preparada para `psvita-ros.jcrex999.com`
+(ver `web/README.md`). Emulación en navegador: evaluada y descartada
+(Vita3K no tiene port WASM); decisión documentada.
 
 ### `docs/`
 
@@ -219,7 +268,8 @@ tiene port WASM); decisión documentada.
 - `rust/00-02`: serie de aprendizaje de Rust ligada al código del repo
   (herramientas, lenguaje, FFI/no_std/unsafe + glosario C↔Rust).
 - `guias-vita/`: 7 guías homebrew con frontmatter (las consume la web).
-- `superpowers/`: spec y plan de la Fase 0.
+- `superpowers/`: specs y planes de brainstorming (Fase 0; dashboard
+  `/monitor` 2026-07-02).
 
 ### `tools/` y `skills/`
 
@@ -353,6 +403,30 @@ cd web && pnpm build                      # o: docker compose up -d --build
     (2026-07-01):** hito "Criterios: /vita_hello visible + /pc_hello
     recibido" marcado `hecho`. **Fase 1 (objetivo 1) cerrada por
     completo.**
+
+### Dashboard `/monitor` — siguiente paso exacto, con la Vita encendida
+
+12. **PENDIENTE:** confirmar con la Vita real (no solo con paquetes UDP
+    simulados):
+    ```bash
+    cd web
+    docker compose up -d --build      # o: pnpm dev + pnpm ingester en dos terminales
+    ```
+    Lanzar `vita-ros2-hello` desde la LiveArea y abrir
+    `http://localhost:4321/monitor` en el navegador:
+    - Debe aparecer una sesión nueva con las mismas líneas que antes se
+      leían en `tools/netlog-listen.sh` (`red inicializada`, `SESION XRCE
+      ESTABLECIDA`, `entidades creadas`), en vivo y coloreadas (verde los
+      hitos, rojo si hay `FATAL`).
+    - Publicar desde ROS2 en `/pc_hello` y confirmar que el netlog
+      `/pc_hello recibido` + `criterio 2 CUMPLIDO` aparecen en la web sin
+      recargar la página.
+    - Si algo no llega o se ve raro, es la primera vez que este código
+      toca la Vita real — revisar `docker compose logs` (busca
+      `[netlog-ingester]`) antes de sospechar del hardware.
+13. Si todo va bien, marcar este punto como confirmado aquí y cerrar el
+    tema del dashboard. Si aparece un muro nuevo, documentarlo igual que
+    los de la Fase 1 (síntoma exacto + causa raíz + fix).
 
 ### Siguiente hito: Objetivo 2 — control de robot (sin bloqueo, cuando se quiera)
 

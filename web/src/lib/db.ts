@@ -7,6 +7,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import vitaMonitorSchema from '../../scripts/vita-monitor-schema.sql?raw';
 
 const DB_PATH = process.env.DB_PATH ?? resolve('data/app.db');
 
@@ -45,6 +46,11 @@ db.exec(`
     resumen TEXT
   );
 `);
+
+// vita_sessions / vita_log_lines — dashboard /monitor (netlog en vivo).
+// Esquema compartido con web/scripts/netlog-ingester.mjs: ver
+// web/scripts/vita-monitor-schema.sql (un solo archivo, no una copia).
+db.exec(vitaMonitorSchema);
 
 const upsertStmt = db.prepare(`
   INSERT INTO checklist_progress (client_id, guide_slug, step_id, done, updated_at)
@@ -140,4 +146,64 @@ export function cerrarBuildJob(
 
 export function listarBuildJobs(limite = 20): BuildJob[] {
   return jobList.all(limite) as BuildJob[];
+}
+
+// ---- monitor: sesiones y líneas del netlog en vivo ----
+
+export interface VitaSession {
+  id: number;
+  started_at: string;
+  ended_at: string | null;
+  source_ip: string | null;
+  status: 'en-curso' | 'establecida' | 'fatal' | 'cerrada';
+}
+
+export interface VitaLogLine {
+  id: number;
+  session_id: number;
+  received_at: string;
+  raw_text: string;
+  kind: 'normal' | 'hito' | 'fatal';
+}
+
+const listSessionsStmt = db.prepare(
+  `SELECT * FROM vita_sessions ORDER BY id DESC LIMIT 50`,
+);
+const getSessionStmt = db.prepare(`SELECT * FROM vita_sessions WHERE id = ?`);
+const getSessionLinesStmt = db.prepare(
+  `SELECT * FROM vita_log_lines WHERE session_id = ? ORDER BY id ASC`,
+);
+const getLatestSessionStmt = db.prepare(
+  `SELECT * FROM vita_sessions ORDER BY id DESC LIMIT 1`,
+);
+const getLinesAfterStmt = db.prepare(
+  `SELECT * FROM vita_log_lines WHERE session_id = ? AND id > ? ORDER BY id ASC`,
+);
+const getLastReceivedAtStmt = db.prepare(
+  `SELECT MAX(received_at) AS last FROM vita_log_lines`,
+);
+
+export function listSessions(): VitaSession[] {
+  return listSessionsStmt.all() as VitaSession[];
+}
+
+export function getSession(id: number): VitaSession | undefined {
+  return getSessionStmt.get(id) as VitaSession | undefined;
+}
+
+export function getSessionLines(id: number): VitaLogLine[] {
+  return getSessionLinesStmt.all(id) as VitaLogLine[];
+}
+
+export function getLatestSession(): VitaSession | undefined {
+  return getLatestSessionStmt.get() as VitaSession | undefined;
+}
+
+export function getLinesAfter(sessionId: number, afterId: number): VitaLogLine[] {
+  return getLinesAfterStmt.all(sessionId, afterId) as VitaLogLine[];
+}
+
+export function getLastReceivedAt(): string | null {
+  const row = getLastReceivedAtStmt.get() as { last: string | null };
+  return row.last;
 }
