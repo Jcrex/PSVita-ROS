@@ -261,8 +261,13 @@ int main(void)
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG); /* Objetivo 2: sticks */
     teleop_estado teleop;
     teleop_init(&teleop);
-    LOG("[vita-ros2] teleop /cmd_vel activo: vel=%.1f lateral=%.1f "
-        "(mapeo en docs/09)\n", teleop.vel_lineal, teleop.vel_lateral);
+    /* Ojo: los floats se preformatean con snprintf (newlib) porque
+     * sceClibPrintf no soporta %f. */
+    char linea_log[96];
+    snprintf(linea_log, sizeof linea_log,
+             "[vita-ros2] teleop /cmd_vel activo: vel=%.1f lateral=%.1f "
+             "(mapeo en docs/09)", teleop.vel_lineal, teleop.vel_lateral);
+    LOG("%s\n", linea_log);
 
     uint32_t count = 0;
     uint32_t count_cmd = 0;
@@ -299,10 +304,12 @@ int main(void)
         teleop_update(&teleop, &mandos, dt_s, &tw);
         if (teleop.vel_lineal != vel_antes) {
             /* Solo cambia en flancos de triangulo/X: no inunda el netlog. */
-            LOG("[vita-ros2] vel_lineal %s a %.1f%s\n",
-                teleop.vel_lineal > vel_antes ? "sube" : "baja",
-                teleop.vel_lineal,
-                teleop.vel_lineal == 0.0 ? " (STOP)" : "");
+            snprintf(linea_log, sizeof linea_log,
+                     "[vita-ros2] vel_lineal %s a %.1f%s",
+                     teleop.vel_lineal > vel_antes ? "sube" : "baja",
+                     teleop.vel_lineal,
+                     teleop.vel_lineal == 0.0 ? " (STOP)" : "");
+            LOG("%s\n", linea_log);
         }
 
         /* geometry_msgs/Twist en CDR: 6 doubles seguidos (linear.xyz +
