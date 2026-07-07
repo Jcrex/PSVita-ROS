@@ -1,5 +1,5 @@
-// /api/dashboard/topics — lista de topics del grafo ROS2 vía el puente
-// configurable (ROS2_TOPICS_CMD). Ver src/lib/ros2bridge.ts.
+// /api/dashboard/topics — lista de topics del grafo ROS2 vía el bridge
+// Zenoh (ZENOH_REST_URL). Ver src/lib/ros2bridge.ts.
 import type { APIRoute } from 'astro';
 import { listarTopics } from '../../../lib/ros2bridge';
 

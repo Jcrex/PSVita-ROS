@@ -4,7 +4,7 @@
 // Widgets con datos REALES:
 //  - logs:   netlog UDP de la Vita en vivo (SSE desde el backend)
 //  - estado: salud de la sesión XRCE derivada del propio netlog
-//  - topics: grafo ROS2 vía el puente configurable (ROS2_TOPICS_CMD)
+//  - topics: grafo ROS2 vía zenoh-bridge-ros2dds (API REST, ZENOH_REST_URL)
 // El layout (qué widgets y en qué orden) se edita aquí y persiste en
 // SQLite por visitante, igual que el checklist de las guías.
 export const prerender = true;
@@ -277,11 +277,12 @@ import Base from '../layouts/Base.astro';
           const d = await r.json();
           if (!d.configurado) {
             body.innerHTML = `<div class="aviso-config">${d.error}<br/>
-              Ejemplo: <code>ROS2_TOPICS_CMD='docker exec rmf_unified bash -lc "source /opt/ros/jazzy/setup.bash &amp;&amp; ros2 topic list -t"'</code></div>`;
+              Ejemplo: <code>tools/vita-stack.sh bridge up</code> y luego
+              <code>ZENOH_REST_URL=http://192.168.1.108:8000</code></div>`;
             return;
           }
           if (!d.ok) {
-            body.innerHTML = `<div class="aviso-config">El comando de topics falló: <code>${d.error}</code></div>`;
+            body.innerHTML = `<div class="aviso-config">La consulta al bridge Zenoh falló: <code>${d.error}</code></div>`;
             return;
           }
           body.innerHTML = d.topics.length

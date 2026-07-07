@@ -26,12 +26,15 @@ services:
       - PORT=4321
       - HOST=0.0.0.0
       - DB_PATH=/app/web/data/app.db
+      - TALLER_ENABLED=1
       # Dashboard (opcionales):
       # - NETLOG_DISABLED=1    # apagar el receptor UDP (despliegue público)
       # - NETLOG_PORT=9999
-      # El puente de topics ejecuta un comando EN ESTE contenedor; dentro de
-      # docker no hay cliente ros2, así que queda sin configurar (el widget
-      # lo indica). Con la web fuera de docker en la laptop/PC:
-      # ROS2_TOPICS_CMD='docker exec robotnik_dev bash -lc "source /opt/ros/jazzy/setup.bash && ros2 topic list -t"'
+      # El puente de topics ya no ejecuta comandos docker (no funcionaba
+      # dentro de este propio contenedor: sin cliente ros2 ni socket de
+      # docker). Ahora es un fetch() a la API REST de zenoh-bridge-ros2dds
+      # (arrancado con tools/vita-stack.sh bridge up, ver ese script y
+      # web/src/lib/ros2bridge.ts). Sin ZENOH_REST_URL el widget lo indica.
+      - ZENOH_REST_URL=http://192.168.1.108:8000
       # El taller (TALLER_ENABLED) NUNCA se activa en docker: necesita el
       # toolchain local del PC (toolchains/) y ejecuta procesos reales.

@@ -33,7 +33,7 @@ Docker.
 | Variable | Efecto |
 |---|---|
 | `NETLOG_PORT` (def. 9999) / `NETLOG_DISABLED=1` | Receptor UDP de logs de la Vita para el dashboard. Solo un receptor por puerto: si `tools/netlog-listen.sh` está corriendo, el widget lo indicará. |
-| `ROS2_TOPICS_CMD` | Comando que imprime `ros2 topic list -t` (p. ej. un `docker exec` al contenedor ROS2). Sin él, el widget de topics lo dice — no inventa datos. |
+| `ZENOH_REST_URL` | URL base de la API REST de `zenoh-bridge-ros2dds` (p. ej. `http://192.168.1.108:8000`, arrancado con `tools/vita-stack.sh bridge up` o `all`). Sin él, el widget de topics lo dice — no inventa datos. |
 | `TALLER_ENABLED=1` | Activa el taller (compilador/debug/deploy). **Solo en el PC de desarrollo**: ejecuta procesos locales (cmake, gdb, curl FTP). Nunca en despliegues públicos. |
 | `TALLER_REPO_ROOT` | Raíz del repo si el cwd del server no es `web/` (def. `..`). |
 
