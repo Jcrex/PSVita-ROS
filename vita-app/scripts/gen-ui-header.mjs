@@ -33,6 +33,10 @@ const BINDINGS = {
   contador_publicados: 'UI_B_CONTADOR_PUBLICADOS',
   ultimo_pc_hello: 'UI_B_ULTIMO_PC_HELLO',
   agente: 'UI_B_AGENTE',
+  vel_lineal: 'UI_B_VEL_LINEAL',
+  vel_lateral: 'UI_B_VEL_LATERAL',
+  cmd_vel: 'UI_B_CMD_VEL',
+  contador_cmd: 'UI_B_CONTADOR_CMD',
 };
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 // Solo ASCII imprimible: el texto acaba en un literal C y en la fuente PGF.

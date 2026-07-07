@@ -1,8 +1,11 @@
-# vita-app — "Vita ROS2 Hello" (Fase 1)
+# vita-app — "Vita ROS2 Teleop" (Fase 1 + Objetivo 2)
 
-La app homebrew que valida la Fase 1: la Vita se une al grafo ROS2 Jazzy
-como nodo, **publica `/vita_hello`** (visible con `ros2 topic echo` en el
-PC/laptop) y **recibe `/pc_hello`** publicado desde fuera.
+La app homebrew del proyecto: la Vita se une al grafo ROS2 Jazzy como
+nodo, **publica `/vita_hello`** (Fase 1, visible con `ros2 topic echo`),
+**recibe `/pc_hello`** (Fase 1) y, desde el Objetivo 2, es un **mando de
+teleoperación**: publica `geometry_msgs/Twist` en **`/cmd_vel`** a ~20 Hz
+desde los sticks y botones (mapeo completo en
+`docs/09-objetivo2-control-robot.md`; resumen en pantalla, en la propia UI).
 
 ```
 main.c ──> uxr_glue ──> microros-transport ──> net-udp ──> WiFi/UDP
@@ -16,7 +19,9 @@ main.c ──> uxr_glue ──> microros-transport ──> net-udp ──> WiFi/
 
 | Archivo | Qué hace |
 |---|---|
-| `src/main.c` | Ciclo de vida completo: red → transporte → **sesión XRCE (incógnita dura)** → entidades DDS por XML → bucle pub 1 Hz + recepción. Sale con START. |
+| `src/main.c` | Ciclo de vida completo: red → transporte → **sesión XRCE (incógnita dura)** → entidades DDS por XML → bucle: `/vita_hello` 1 Hz + `/cmd_vel` ~20 Hz + recepción. Sale con START. |
+| `src/teleop.{h,c}` | **Objetivo 2:** mapeo mandos → Twist, lógica PURA sin headers de la Vita (zona muerta, flancos △/✕, rampa lateral, clamps). Se testea en host. |
+| `tests/teleop_test.c` | Batería del mapeo (39 checks) — corre con `scripts/check-teleop.sh` en laptop o PC, sin VitaSDK. |
 | `src/uxr_glue.{h,c}` | Adapta los 4 callbacks del módulo dual a `uxrCustomTransport`. Único archivo que incluye headers de micro-ROS. |
 | `src/netlog.{h,c}` | Log por UDP a la laptop usando nuestro `net-udp` (en la Vita no hay consola). Escuchar con `nc -u -l -p 9999`. |
 | `ui/layout.json` | **La UI de la app, declarativa** (paneles, textos, valores en vivo). Editable a mano o desde la web (`/taller/ui`). |
@@ -69,11 +74,12 @@ scripts/check-ui-layout.sh          # lo mismo + check de compilación en host
 
 Widgets v1: `panel` (rect + borde), `label` (texto fijo) y `valor` (dato en
 vivo: `estado_conexion`, `contador_publicados`, `ultimo_pc_hello`,
-`agente`). Límites en el codegen (≤32 widgets, pantalla 960×544, texto ASCII
-≤63). **VALIDAR EN EL PC:** el enlace usa libvita2d del VitaSDK (si falta:
-`vdpm vita2d`; si el enlazador pide más libs según versión, ver el
-comentario en `CMakeLists.txt`). El dibujado real solo se valida en
-hardware.
+`agente` y, desde el Objetivo 2, `vel_lineal`, `vel_lateral`, `cmd_vel`,
+`contador_cmd`). Límites en el codegen (≤32 widgets, pantalla 960×544,
+texto ASCII ≤63). El enlace usa libvita2d del VitaSDK (si falta:
+`vdpm libvita2d` — el paquete NO se llama `vita2d`; con el nombre malo
+vdpm reporta éxito aunque el tar falle). El dibujado real solo se valida
+en hardware.
 
 **Topología de red de la Fase 1:** el PC está por ethernet y la Vita solo
 tiene WiFi, así que **el agente corre en la laptop** (192.168.1.108), que sí
@@ -110,9 +116,13 @@ criterio 2 de la Fase 1 hasta diagnosticarlo el 2026-07-01 (ver
 - [x] Build del .vpk en sus dos variantes (PC).
 - [x] Sesión XRCE real + criterios 1 y 2 (hardware Vita) — **Fase 1 cerrada**, ver `docs/06`.
 - [x] UI declarativa: codegen + check en host verdes; editor web `/taller/ui` operativo (laptop).
-- [ ] UI declarativa: build con vita2d enlazado (PC) y dibujado verificado en hardware.
+- [x] UI declarativa: build con vita2d enlazado en el PC (libvita2d vía
+      `vdpm libvita2d` — ojo, el paquete NO se llama `vita2d`). Dibujado
+      real pendiente de hardware.
+- [x] Objetivo 2: teleop `/cmd_vel` implementado (39 checks host verdes,
+      `.vpk` C y Rust compilados en el PC).
+- [ ] Objetivo 2 en hardware: `ros2 topic echo /cmd_vel` + turtlesim
+      obedeciendo a la Vita (ver docs/09, "Cómo probarlo").
 
-Detalles que pueden necesitar ajuste al compilar en el PC (anotados en el
-código): stubs/libs exactos que pida libvita2d al enlazar (comentario en
-`CMakeLists.txt`) y el alto de la fuente PGF por defecto (la preview web
-asume ~20 px a escala 1, igual que `ui.c`).
+Detalle pendiente de hardware: el alto de la fuente PGF por defecto (la
+preview web asume ~20 px a escala 1, igual que `ui.c`).

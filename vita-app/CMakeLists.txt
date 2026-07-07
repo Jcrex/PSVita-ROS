@@ -24,9 +24,9 @@ project(vita-ros2-hello C)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_IMPL "c" CACHE STRING "Implementación de los módulos duales: c | rust")
-set(VITA_APP_NAME "Vita ROS2 Hello")
+set(VITA_APP_NAME "Vita ROS2 Teleop")
 set(VITA_TITLEID "VROS00001")   # 9 caracteres exactos, único por app
-set(VITA_VERSION "01.00")
+set(VITA_VERSION "02.00")       # 02 = Objetivo 2 (teleop /cmd_vel)
 
 # IPs por defecto de la Fase 1 (agente y netlog en la laptop, red WiFi).
 set(AGENT_IP "192.168.1.108" CACHE STRING "IP del micro-ROS Agent")
@@ -45,6 +45,7 @@ add_executable(${PROJECT_NAME}
     src/uxr_glue.c
     src/netlog.c
     src/ui.c
+    src/teleop.c
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -94,10 +95,9 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${XRCE_PREFIX}/lib/libmicroxrcedds_client.a
     ${XRCE_PREFIX}/lib/libmicrocdr.a
-    # UI declarativa (ui.c, ADR 0005). VALIDAR EN EL PC: libvita2d viene con
-    # el VitaSDK (si falta: vdpm vita2d). Si el enlazador pidiera más
-    # dependencias según la versión de libvita2d, añadir: freetype png jpeg z
-    # SceLibKernel_stub ya está abajo.
+    # UI declarativa (ui.c, ADR 0005). Validado en el PC (2026-07-07): se
+    # instala con `vdpm libvita2d` (el paquete NO se llama vita2d) y enlaza
+    # sin dependencias extra con estos stubs.
     vita2d
     SceDisplay_stub
     SceGxm_stub

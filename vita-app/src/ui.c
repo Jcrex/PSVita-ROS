@@ -47,6 +47,19 @@ static const char *texto_widget(const ui_widget *w, const ui_state *st,
         return st->ultimo_pc_hello[0] ? st->ultimo_pc_hello : "(nada todavia)";
     case UI_B_AGENTE:
         return st->agente;
+    case UI_B_VEL_LINEAL:
+        snprintf(buf, cap, "%.1f m/s", (double)st->vel_lineal);
+        return buf;
+    case UI_B_VEL_LATERAL:
+        snprintf(buf, cap, "%.1f m/s", (double)st->vel_lateral);
+        return buf;
+    case UI_B_CMD_VEL:
+        snprintf(buf, cap, "x%+.2f y%+.2f rz%+.2f", (double)st->lin_x,
+                 (double)st->lin_y, (double)st->ang_z);
+        return buf;
+    case UI_B_CONTADOR_CMD:
+        snprintf(buf, cap, "%lu", (unsigned long)st->contador_cmd);
+        return buf;
     case UI_B_NONE:
     default:
         return w->texto;
@@ -73,7 +86,8 @@ static void dibujar_texto(const ui_widget *w, const char *texto)
 void ui_draw(const ui_state *st)
 {
     if (!g_font) return;
-    char buf[16];
+    char buf[40]; /* respaldo de los bindings que formatean (cmd_vel es el
+                   * más largo: "x+0.00 y+0.00 rz+0.00" = 21 chars) */
 
     vita2d_start_drawing();
     vita2d_clear_screen();

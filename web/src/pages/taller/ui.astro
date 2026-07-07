@@ -72,6 +72,10 @@ const activo = tallerActivo();
               <option value="contador_publicados">contador_publicados</option>
               <option value="ultimo_pc_hello">ultimo_pc_hello</option>
               <option value="agente">agente</option>
+              <option value="vel_lineal">vel_lineal</option>
+              <option value="vel_lateral">vel_lateral</option>
+              <option value="cmd_vel">cmd_vel</option>
+              <option value="contador_cmd">contador_cmd</option>
             </select>
           </label>
           <button class="btn ghost" id="p-eliminar" type="button">Eliminar widget</button>
@@ -165,6 +169,10 @@ const activo = tallerActivo();
       contador_publicados: '1234',
       ultimo_pc_hello: 'hola desde el PC',
       agente: '192.168.1.108:8888',
+      vel_lineal: '0.5 m/s',
+      vel_lateral: '0.5 m/s',
+      cmd_vel: 'x+0.50 y+0.00 rz-0.50',
+      contador_cmd: '2048',
     };
 
     // ---------- preview (aproximación 2D del dibujado de ui.c) ----------

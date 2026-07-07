@@ -1,17 +1,17 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-07 (laptop: **tres bugs reales de la web
-corregidos tras el primer uso multi-máquina** — dashboard en blanco fuera
-de localhost por `crypto.randomUUID`, ruido binario en `/monitor` que
-resultó ser un enchufe TP-Link Kasa emitiendo al mismo puerto UDP 9999, y
-la carrera ingestor↔dashboard por ese puerto, resuelta con
-`NETLOG_MODE=sqlite`. Estado previo: laptop, 2026-07-02, **dashboard web
-de logs en vivo (`/monitor`) implementado, revisado y mergeado**,
-pendiente de confirmar con la Vita real encendida; PC, 2026-07-06,
-**primer hito de la fase web ALCANZADO** — los seis frentes de
-`docs/08-fase-desarrollo-web.md` están operativos en la web real. La Fase
-1 sigue **COMPLETA** y confirmada en hardware real; el Objetivo 2 sigue
-pendiente sin diseño detallado)
+**Última actualización:** 2026-07-07 (PC: **Objetivo 2 implementado y
+compilado** — la app es ahora un mando de teleoperación ROS2 que publica
+`geometry_msgs/Twist` en `/cmd_vel` a ~20 Hz desde sticks y botones
+(diseño y mapeo en `docs/09-objetivo2-control-robot.md`); la lógica del
+mapeo (`teleop.c`) es pura y pasa 39 checks en host; libvita2d quedó
+instalada vía vdpm y **ambas variantes del `.vpk` compilan con la UI
+vita2d enlazada** (pendiente del hito anterior, resuelto). Falta el
+deploy (la Vita estaba apagada/sin FTP durante la sesión) y la
+verificación en vivo con `ros2 topic echo /cmd_vel` + turtlesim. Estado
+previo: laptop, 2026-07-07, tres bugs reales de la web corregidos tras el
+primer uso multi-máquina; la Fase 1 sigue **COMPLETA** y confirmada en
+hardware real)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -431,11 +431,21 @@ cd web && pnpm build                      # o: docker compose up -d --build
     tema del dashboard. Si aparece un muro nuevo, documentarlo igual que
     los de la Fase 1 (síntoma exacto + causa raíz + fix).
 
-### Siguiente hito: Objetivo 2 — control de robot (sin bloqueo, cuando se quiera)
+### Objetivo 2 — control de robot: **siguiente paso exacto (con la Vita)**
 
-- Diseño detallado del Objetivo 2 (sticks/botones/táctil → `geometry_msgs/Twist`)
-  — no se había diseñado en detalle hasta validar la Fase 1 (regla
-  secuencial de `docs/00-vision-y-objetivos.md`), que ya está validada.
+- ~~Diseño detallado del Objetivo 2~~ **HECHO (2026-07-07):** `docs/09` +
+  implementación completa + `.vpk` compilados — ver el bloque de arriba.
+- **PENDIENTE (hardware):**
+  1. Encender la Vita, VitaShell → SELECT (modo FTP) y subir el `.vpk`:
+     `curl -T vita-app/build-rust/vita-ros2-hello.vpk ftp://192.168.1.94:1337/ux0:/`
+     → instalar desde VitaShell (sobrescribe "Vita ROS2 Hello").
+  2. En la laptop: agente (`docker run -it --rm --net=host --ipc=host
+     microros/micro-ros-agent:jazzy udp4 --port 8888 -v6`) + netlog.
+  3. Verificar: `ros2 topic echo /cmd_vel` siguiendo los mandos según la
+     tabla de docs/09, y la prueba reina con turtlesim
+     (`--ros-args -r /turtle1/cmd_vel:=/cmd_vel`).
+  4. Marcar los dos hitos `bloqueado-hw` de `fase-2` en
+     `web/src/data/fases.ts` y cerrar el Objetivo 2 aquí.
 - Levantar la web con docker y dejarla corriendo.
 - Más entradas en `docs/rust/` a medida que aparezcan construcciones nuevas.
 - Cuando llegue el dominio: DNS + reverse proxy (receta en `web/README.md`).
@@ -589,9 +599,51 @@ cd web && pnpm build                      # o: docker compose up -d --build
      layout / GET+POST borrador (con rechazo de layouts inválidos) / POST
      aplicar probados contra el dev server real — el job regeneró
      `ui_layout.h` y pasó el check con salida SSE completa.
-  **Pendiente (PC/hardware):** compilar ambas variantes con libvita2d
-  enlazada (`vdpm vita2d` si falta; stubs exactos anotados en
-  `CMakeLists.txt`), deploy y ver la UI dibujada con datos en vivo.
+  **Pendiente (PC/hardware):** ~~compilar ambas variantes con libvita2d
+  enlazada~~ **HECHO (2026-07-07, en el PC — ver bloque siguiente)**;
+  falta el deploy y ver la UI dibujada con datos en vivo en la consola.
   Siguiente dentro de este frente (aún sin empezar): editar
-  "funcionalidades" (topics/comportamiento), que sigue dependiendo del
-  diseño del Objetivo 2.
+  "funcionalidades" (topics/comportamiento) — el diseño del Objetivo 2
+  del que dependía ya existe (docs/09).
+
+- **(2026-07-07, en el PC) Objetivo 2 IMPLEMENTADO y compilado — la app
+  pasa de "hello" a mando de teleoperación ROS2** (diseño + código + tests
+  host + `.vpk`, en la misma sesión):
+  1. **Diseño:** `docs/09-objetivo2-control-robot.md` — topic `/cmd_vel`
+     (`rt/cmd_vel`, `geometry_msgs::msg::dds_::Twist_`, 6 doubles = 48
+     bytes CDR) a ~20 Hz; mapeo pedido por el usuario: stick izq =
+     `linear.x` + `angular.z` proporcionales; stick der horizontal =
+     `linear.y` (lateral) y vertical = rampa de `vel_lateral` (±0.5/s);
+     cruceta = x/y digitales con prioridad; L/R = `angular.z` ±0.5 fijo;
+     △ = `vel_lineal` +0.5 (tope 2.0); ✕ = −0.5 (suelo 0.0 = STOP);
+     START = salir. Ejes según REP 103 (y+ = izquierda, rz+ = antihorario).
+  2. **`vita-app/src/teleop.{h,c}`:** el mapeo completo como lógica PURA
+     (sin headers de la Vita) — zona muerta ±30 reescalada sin salto,
+     flancos de △/✕, rampa por `dt`, clamps. Batería en host:
+     `vita-app/tests/teleop_test.c` + `scripts/check-teleop.sh` (gcc del
+     host), **39/39 checks verdes en el PC**. `main.c` solo traduce
+     `SceCtrlData` → `teleop_entrada` (modo `SCE_CTRL_MODE_ANALOG`).
+  3. **`main.c`:** tercer topic + datawriter (`rt/cmd_vel`) en la misma
+     sesión/participante (8 requests verificados con
+     `uxr_run_session_until_all_status`); publica el Twist una vez por
+     vuelta del bucle (~20 Hz, serializado con 6 `ucdr_serialize_double`)
+     y conserva TODO lo de la Fase 1 (`/vita_hello` 1 Hz + `/pc_hello`)
+     como heartbeat/regresión. Los cambios de escala se loguean al netlog
+     solo en los flancos (no inunda).
+  4. **UI declarativa:** 4 bindings nuevos (`vel_lineal`, `vel_lateral`,
+     `cmd_vel`, `contador_cmd`) en `ui_types.h` + codegen + `ui.c` +
+     espejo web (`web/src/lib/ui-layout.ts`, editor `/taller/ui` con sus
+     ejemplos de preview); `ui/layout.json` rediseñado como pantalla de
+     teleop (velocidades grandes, Twist en vivo, chuleta de controles).
+     `check-ui-layout.sh` verde (22 widgets). La app se llama ahora
+     "Vita ROS2 Teleop" (mismo TITLEID `VROS00001`, versión 02.00 — al
+     instalar sobrescribe la anterior).
+  5. **Builds en el PC:** se instaló **libvita2d** en el VitaSDK local
+     (ojo: el paquete de vdpm se llama `libvita2d`, no `vita2d` — con el
+     nombre malo vdpm dice "Successfully installed" aunque el tar falle).
+     Las dos variantes compilan y empaquetan limpias: `build-c/` (~106 KB)
+     y `build-rust/` (~165 KB), primera vez con vita2d + teleop dentro.
+  6. **Deploy NO completado:** la Vita (192.168.1.94) no respondía ni a
+     ping ni al FTP :1337 durante la sesión (apagada o sin VitaShell en
+     modo FTP). El `.vpk` Rust quedó listo en
+     `vita-app/build-rust/vita-ros2-hello.vpk`.

@@ -58,7 +58,8 @@ export const fases: Fase[] = [
       { texto: 'Debug de módulos duales en host (gdb batch sobre los parity tests, /taller/debug)', estado: 'hecho' },
       { texto: 'Base del compilador web (toolchain local: .vpk real compilado y descargable, /taller/compilador)', estado: 'hecho' },
       { texto: 'Editor visual de la UI de la app (layout declarativo + codegen + aplicar/compilar, /taller/ui — ADR 0005)', estado: 'hecho' },
-      { texto: 'UI de la app dibujada en la Vita real (build con vita2d en el PC + hardware)', estado: 'bloqueado-pc' },
+      { texto: 'Build con vita2d en el PC (libvita2d instalada vía vdpm; ambas variantes enlazan)', estado: 'hecho' },
+      { texto: 'UI de la app dibujada en la Vita real (hardware)', estado: 'bloqueado-hw' },
       { texto: 'Capa remota del compilador (cuando la web no corra en el PC) y debug en la Vita real', estado: 'pendiente' },
     ],
   },
@@ -66,8 +67,15 @@ export const fases: Fase[] = [
     id: 'fase-2',
     nombre: 'Objetivo 2 — Control de robot',
     resumen:
-      'Sticks, botones y táctiles publicando geometry_msgs/Twist. La Fase 1 ya está validada, así que el diseño detallado puede arrancar.',
-    hitos: [{ texto: 'Diseño detallado', estado: 'pendiente' }],
+      'La Vita como mando de teleoperación ROS2: sticks y botones publicando geometry_msgs/Twist en /cmd_vel a ~20 Hz (diseño y mapeo en docs/09).',
+    hitos: [
+      { texto: 'Diseño detallado: mapeo mandos→Twist, REP 103, arquitectura (docs/09)', estado: 'hecho' },
+      { texto: 'teleop.c puro (sin headers Vita) + batería en host (39 checks, check-teleop.sh)', estado: 'hecho' },
+      { texto: 'App publica /cmd_vel (Twist CDR) a ~20 Hz + UI teleop (velocidades y Twist en vivo)', estado: 'hecho' },
+      { texto: '.vpk C y Rust del teleop compilados en el PC', estado: 'hecho' },
+      { texto: 'Verificación en vivo: ros2 topic echo /cmd_vel siguiendo los mandos', estado: 'bloqueado-hw' },
+      { texto: 'Un robot (turtlesim como mínimo) obedeciendo a la Vita', estado: 'bloqueado-hw' },
+    ],
   },
   {
     id: 'fase-3-6',

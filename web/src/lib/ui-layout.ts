@@ -25,6 +25,10 @@ export const UI_BINDINGS = [
   'contador_publicados',
   'ultimo_pc_hello',
   'agente',
+  'vel_lineal',
+  'vel_lateral',
+  'cmd_vel',
+  'contador_cmd',
 ] as const;
 export type UiBinding = (typeof UI_BINDINGS)[number];
 

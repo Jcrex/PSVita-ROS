@@ -1,10 +1,16 @@
 /**
- * main.c — App homebrew de la Fase 1: "Vita ROS2 Hello".
+ * main.c — App homebrew: Fase 1 ("Vita ROS2 Hello") + Objetivo 2 (teleop).
  *
- * Objetivo (criterio de validación de docs/02-arquitectura-fase1-microros.md):
+ * Fase 1 (criterios de docs/02-arquitectura-fase1-microros.md, CERRADA):
  *  1. La Vita PUBLICA en /vita_hello (std_msgs/String), visible en el PC con
  *     `ros2 topic echo /vita_hello`.
  *  2. La Vita RECIBE /pc_hello publicado desde el PC y lo confirma por log.
+ *
+ * Objetivo 2 (docs/09-objetivo2-control-robot.md): la Vita es un mando de
+ * teleoperación ROS2 — publica geometry_msgs/Twist en /cmd_vel (~20 Hz)
+ * desde sticks y botones. El mapeo mandos->Twist vive en teleop.c (lógica
+ * pura, testeada en host con scripts/check-teleop.sh); aquí solo se hace
+ * el puente SceCtrlData -> teleop_entrada y la serialización CDR.
  *
  * Cadena: esta app -> uxr_glue -> microros-transport -> net-udp -> WiFi/UDP
  *         -> micro-ROS Agent (Docker) -> grafo ROS2 Jazzy.
@@ -33,6 +39,7 @@
 
 #include "net_udp.h"
 #include "netlog.h"
+#include "teleop.h"
 #include "ui.h"
 #include "uxr_glue.h"
 
@@ -88,11 +95,24 @@ static void on_topic(uxrSession *session, uxrObjectId object_id,
     snprintf(g_ui.ultimo_pc_hello, sizeof g_ui.ultimo_pc_hello, "%s", data);
 }
 
-static bool exit_requested(void)
+/* Puente SceCtrlData -> teleop_entrada (la lógica del mapeo vive en
+ * teleop.c; aquí solo se traducen los campos crudos de sceCtrl). */
+static teleop_entrada leer_mandos(const SceCtrlData *ctrl)
 {
-    SceCtrlData ctrl;
-    sceCtrlPeekBufferPositive(0, &ctrl, 1);
-    return (ctrl.buttons & SCE_CTRL_START) != 0;
+    teleop_entrada in;
+    in.lx = ctrl->lx;
+    in.ly = ctrl->ly;
+    in.rx = ctrl->rx;
+    in.ry = ctrl->ry;
+    in.arriba = (ctrl->buttons & SCE_CTRL_UP) != 0;
+    in.abajo = (ctrl->buttons & SCE_CTRL_DOWN) != 0;
+    in.izquierda = (ctrl->buttons & SCE_CTRL_LEFT) != 0;
+    in.derecha = (ctrl->buttons & SCE_CTRL_RIGHT) != 0;
+    in.l = (ctrl->buttons & SCE_CTRL_LTRIGGER) != 0;
+    in.r = (ctrl->buttons & SCE_CTRL_RTRIGGER) != 0;
+    in.cruz = (ctrl->buttons & SCE_CTRL_CROSS) != 0;
+    in.triangulo = (ctrl->buttons & SCE_CTRL_TRIANGLE) != 0;
+    return in;
 }
 
 int main(void)
@@ -151,7 +171,7 @@ int main(void)
     const char *participant_xml =
         "<dds><participant><rtps><name>vita_node</name></rtps>"
         "</participant></dds>";
-    uint16_t req[6];
+    uint16_t req[8];
     req[0] = uxr_buffer_create_participant_xml(&session, out, participant_id,
                                                0, participant_xml, UXR_REPLACE);
 
@@ -161,6 +181,16 @@ int main(void)
         "<dataType>std_msgs::msg::dds_::String_</dataType></topic></dds>";
     req[1] = uxr_buffer_create_topic_xml(&session, out, pub_topic_id,
                                          participant_id, pub_topic_xml,
+                                         UXR_REPLACE);
+
+    /* Objetivo 2: /cmd_vel (rt/cmd_vel, geometry_msgs::msg::dds_::Twist_).
+     * Mismo participante y mismo publisher; topic y datawriter propios. */
+    uxrObjectId cmdvel_topic_id = uxr_object_id(0x03, UXR_TOPIC_ID);
+    const char *cmdvel_topic_xml =
+        "<dds><topic><name>rt/cmd_vel</name>"
+        "<dataType>geometry_msgs::msg::dds_::Twist_</dataType></topic></dds>";
+    req[6] = uxr_buffer_create_topic_xml(&session, out, cmdvel_topic_id,
+                                         participant_id, cmdvel_topic_xml,
                                          UXR_REPLACE);
 
     uxrObjectId publisher_id = uxr_object_id(0x01, UXR_PUBLISHER_ID);
@@ -175,6 +205,16 @@ int main(void)
         "</data_writer></dds>";
     req[3] = uxr_buffer_create_datawriter_xml(&session, out, datawriter_id,
                                               publisher_id, datawriter_xml,
+                                              UXR_REPLACE);
+
+    uxrObjectId cmdvel_dw_id = uxr_object_id(0x02, UXR_DATAWRITER_ID);
+    const char *cmdvel_dw_xml =
+        "<dds><data_writer><topic><kind>NO_KEY</kind>"
+        "<name>rt/cmd_vel</name>"
+        "<dataType>geometry_msgs::msg::dds_::Twist_</dataType></topic>"
+        "</data_writer></dds>";
+    req[7] = uxr_buffer_create_datawriter_xml(&session, out, cmdvel_dw_id,
+                                              publisher_id, cmdvel_dw_xml,
                                               UXR_REPLACE);
 
     uxrObjectId sub_topic_id = uxr_object_id(0x02, UXR_TOPIC_ID);
@@ -198,29 +238,39 @@ int main(void)
                                               subscriber_id, datareader_xml,
                                               UXR_REPLACE);
 
-    uint8_t status[6];
-    if (!uxr_run_session_until_all_status(&session, 3000, req, status, 6)) {
+    uint8_t status[8];
+    if (!uxr_run_session_until_all_status(&session, 3000, req, status, 8)) {
         LOG("[vita-ros2] FATAL: el agente rechazo entidades DDS "
-            "(status: %d %d %d %d %d %d)\n", status[0], status[1], status[2],
-            status[3], status[4], status[5]);
+            "(status: %d %d %d %d %d %d %d %d)\n", status[0], status[1],
+            status[2], status[3], status[4], status[5], status[6], status[7]);
         ui_draw_fatal("El agente rechazo las entidades DDS", 5);
         goto fatal;
     }
-    LOG("[vita-ros2] entidades creadas: pub /vita_hello, sub /pc_hello\n");
+    LOG("[vita-ros2] entidades creadas: pub /vita_hello + /cmd_vel, "
+        "sub /pc_hello\n");
 
     /* Pedir al agente que nos reenvíe datos del datareader sin límite. */
     uxrDeliveryControl delivery = {0};
     delivery.max_samples = UXR_MAX_SAMPLES_UNLIMITED;
     uxr_buffer_request_data(&session, out, datareader_id, in, &delivery);
 
-    /* --- Bucle principal: publicar a 1 Hz por timestamp, atender la sesión
-     * en tramos de 50 ms y redibujar la UI en cada vuelta (~20 fps máx;
-     * antes el bucle bloqueaba 1 s entero en run_session y una UI sería
-     * imposible de refrescar). Salir con START. */
-    sceCtrlSetSamplingMode(SCE_CTRL_MODE_DIGITAL);
+    /* --- Bucle principal: /vita_hello a 1 Hz por timestamp, /cmd_vel una
+     * vez por vuelta (run_session tarda 50 ms => ~20 Hz, lo que espera un
+     * robot real), la sesión atendida en tramos de 50 ms y la UI
+     * redibujada en cada vuelta. Salir con START. --- */
+    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG); /* Objetivo 2: sticks */
+    teleop_estado teleop;
+    teleop_init(&teleop);
+    LOG("[vita-ros2] teleop /cmd_vel activo: vel=%.1f lateral=%.1f "
+        "(mapeo en docs/09)\n", teleop.vel_lineal, teleop.vel_lateral);
+
     uint32_t count = 0;
+    uint32_t count_cmd = 0;
     uint64_t proxima_pub = sceKernelGetProcessTimeWide(); /* microsegundos */
-    while (!exit_requested()) {
+    uint64_t t_prev = sceKernelGetProcessTimeWide();
+    SceCtrlData ctrl;
+    while (sceCtrlPeekBufferPositive(0, &ctrl, 1),
+           (ctrl.buttons & SCE_CTRL_START) == 0) {
         if (sceKernelGetProcessTimeWide() >= proxima_pub) {
             proxima_pub += 1000000; /* 1 Hz */
             char msg[96];
@@ -238,6 +288,37 @@ int main(void)
             }
         }
 
+        /* --- Objetivo 2: mandos -> Twist -> /cmd_vel --- */
+        uint64_t ahora = sceKernelGetProcessTimeWide();
+        double dt_s = (double)(ahora - t_prev) / 1e6;
+        t_prev = ahora;
+
+        teleop_entrada mandos = leer_mandos(&ctrl);
+        double vel_antes = teleop.vel_lineal;
+        teleop_twist tw;
+        teleop_update(&teleop, &mandos, dt_s, &tw);
+        if (teleop.vel_lineal != vel_antes) {
+            /* Solo cambia en flancos de triangulo/X: no inunda el netlog. */
+            LOG("[vita-ros2] vel_lineal %s a %.1f%s\n",
+                teleop.vel_lineal > vel_antes ? "sube" : "baja",
+                teleop.vel_lineal,
+                teleop.vel_lineal == 0.0 ? " (STOP)" : "");
+        }
+
+        /* geometry_msgs/Twist en CDR: 6 doubles seguidos (linear.xyz +
+         * angular.xyz), todos alineados a 8 desde el offset 0 => 48 bytes. */
+        ucdrBuffer ub_tw;
+        if (uxr_prepare_output_stream(&session, out, cmdvel_dw_id, &ub_tw,
+                                      6 * 8)) {
+            ucdr_serialize_double(&ub_tw, tw.lin_x);
+            ucdr_serialize_double(&ub_tw, tw.lin_y);
+            ucdr_serialize_double(&ub_tw, tw.lin_z);
+            ucdr_serialize_double(&ub_tw, tw.ang_x);
+            ucdr_serialize_double(&ub_tw, tw.ang_y);
+            ucdr_serialize_double(&ub_tw, tw.ang_z);
+            count_cmd++;
+        }
+
         /* run_session atiende heartbeats, ACKs y datos entrantes. */
         uxr_run_session_time(&session, 50 /* ms */);
 
@@ -247,11 +328,17 @@ int main(void)
         }
 
         g_ui.contador = count;
+        g_ui.contador_cmd = count_cmd;
+        g_ui.vel_lineal = (float)teleop.vel_lineal;
+        g_ui.vel_lateral = (float)teleop.vel_lateral;
+        g_ui.lin_x = (float)tw.lin_x;
+        g_ui.lin_y = (float)tw.lin_y;
+        g_ui.ang_z = (float)tw.ang_z;
         ui_draw(&g_ui);
     }
 
-    LOG("[vita-ros2] saliendo (START pulsado tras %lu mensajes)\n",
-        (unsigned long)count);
+    LOG("[vita-ros2] saliendo (START pulsado tras %lu hellos y %lu "
+        "cmd_vel)\n", (unsigned long)count, (unsigned long)count_cmd);
     uxr_delete_session(&session);
     uxr_close_custom_transport(&transport);
     ui_shutdown();

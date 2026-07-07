@@ -40,6 +40,10 @@ typedef enum {
     UI_B_CONTADOR_PUBLICADOS = 2, /* mensajes enviados a /vita_hello */
     UI_B_ULTIMO_PC_HELLO = 3,     /* último string recibido del PC   */
     UI_B_AGENTE = 4,              /* "ip:puerto" del micro-ROS Agent */
+    UI_B_VEL_LINEAL = 5,          /* escala teleop lineal "0.5 m/s"  */
+    UI_B_VEL_LATERAL = 6,         /* escala teleop lateral           */
+    UI_B_CMD_VEL = 7,             /* Twist en vivo "x+.. y+.. rz+.." */
+    UI_B_CONTADOR_CMD = 8,        /* mensajes enviados a /cmd_vel    */
 } ui_binding;
 
 /* Colores en el empaquetado de vita2d RGBA8(r,g,b,a): r | g<<8 | b<<16 | a<<24
@@ -61,6 +65,12 @@ typedef struct {
     uint32_t contador;
     char ultimo_pc_hello[96];
     char agente[32];
+    /* Objetivo 2 (teleop /cmd_vel; ver docs/09 y teleop.h): */
+    float vel_lineal;   /* escala de stick izq + cruceta   */
+    float vel_lateral;  /* escala del stick derecho        */
+    float lin_x, lin_y; /* Twist publicado ahora mismo     */
+    float ang_z;
+    uint32_t contador_cmd; /* mensajes enviados a /cmd_vel */
 } ui_state;
 
 #ifdef __cplusplus
