@@ -17,9 +17,16 @@ services:
     image: psvita-ros-web:latest
     container_name: psvita-ros-web
     restart: unless-stopped
-    ports:
-      - "4321:4321"
-      - "9999:9999/udp"        # netlog de la Vita -> dashboard/monitor
+    # Red del HOST, como el agente micro-ROS (--net=host): en esta laptop
+    # ufw tiene DEFAULT_FORWARD_POLICY=DROP, así que los puertos publicados
+    # por el bridge de docker (DNAT/docker-proxy) pierden los datagramas
+    # UDP que la Vita manda por la WiFi (depurado el 2026-07-07: socat en
+    # el host los recibía; el mismo puerto publicado en docker, no). En
+    # INPUT sí hay un allow para 192.168.1.0/24, de modo que escuchando
+    # directo en el host todo llega — y además el netlog/monitor ve la IP
+    # real de la Vita en vez de la del proxy (172.20.0.1). Expone 4321/tcp
+    # (web) y 9999/udp (netlog) directamente en el host.
+    network_mode: host
     volumes:
       - ./data:/app/web/data   # SQLite (app.db) sobrevive a los redeploys
     environment:

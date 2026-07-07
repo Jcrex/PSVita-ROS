@@ -73,18 +73,30 @@ export const fases: Fase[] = [
       { texto: 'teleop.c puro (sin headers Vita) + batería en host (39 checks, check-teleop.sh)', estado: 'hecho' },
       { texto: 'App publica /cmd_vel (Twist CDR) a ~20 Hz + UI teleop (velocidades y Twist en vivo)', estado: 'hecho' },
       { texto: '.vpk C y Rust del teleop compilados en el PC', estado: 'hecho' },
-      { texto: 'Verificación en vivo: ros2 topic echo /cmd_vel siguiendo los mandos', estado: 'bloqueado-hw' },
-      { texto: 'Un robot (turtlesim como mínimo) obedeciendo a la Vita', estado: 'bloqueado-hw' },
+      { texto: 'Verificación en vivo: ros2 topic echo /cmd_vel siguiendo los mandos', estado: 'hecho' },
+      { texto: 'Un robot (turtlesim como mínimo) obedeciendo a la Vita', estado: 'hecho' },
     ],
   },
   {
-    id: 'fase-3-6',
-    nombre: 'Objetivos 3-6 — rviz2, sensores, toolkit',
+    id: 'fase-3-4',
+    nombre: 'Objetivos 3 y 4 — rviz2 / mini-rviz en la Vita',
     resumen:
-      'Portar rviz2 (o mini-rviz con vitaGL), cámara/giroscopio como sensores ROS2, y publicar el toolkit completo.',
+      'Compilar rviz2 (o construir el mini-rviz con vitaGL) y visualizar robots, TF, mapas y marcadores en la consola en tiempo real. Plan completo de desarrollo en docs/10.',
     hitos: [
-      { texto: 'Investigación de portabilidad rviz2 (método fijado en docs/04)', estado: 'pendiente' },
+      { texto: 'Etapa A — Auditoría del árbol rviz2 (rclcpp/Qt/OGRE vs newlib) + ADR de decisión (docs/04)', estado: 'pendiente' },
+      { texto: 'Etapa B — vitaGL en la app: escena 3D mínima + convivencia con la UI vita2d', estado: 'pendiente' },
+      { texto: 'Etapa C — UI declarativa v2: imágenes y formas + editor web ampliado', estado: 'pendiente' },
+      { texto: 'Etapa D — Módulos duales de visualización: deserializadores CDR + árbol TF + math 3D', estado: 'pendiente' },
+      { texto: 'Etapa E — mini-rviz MVP: modelo del robot animado por /tf y /joint_states + marcadores + mapa', estado: 'pendiente' },
+      { texto: 'Etapa F — Verificación en hardware con robot simulado en tiempo real y cierre', estado: 'pendiente' },
     ],
+  },
+  {
+    id: 'fase-5-6',
+    nombre: 'Objetivos 5-6 — sensores nativos y toolkit',
+    resumen:
+      'Cámara/giroscopio/táctil trasero como sensores ROS2, y publicar el toolkit completo para la comunidad.',
+    hitos: [{ texto: 'Sin diseñar (regla secuencial: esperan al cierre de 3-4)', estado: 'pendiente' }],
   },
 ];
 

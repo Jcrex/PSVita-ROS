@@ -1,17 +1,13 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-07 (PC: **Objetivo 2 implementado y
-compilado** — la app es ahora un mando de teleoperación ROS2 que publica
-`geometry_msgs/Twist` en `/cmd_vel` a ~20 Hz desde sticks y botones
-(diseño y mapeo en `docs/09-objetivo2-control-robot.md`); la lógica del
-mapeo (`teleop.c`) es pura y pasa 39 checks en host; libvita2d quedó
-instalada vía vdpm y **ambas variantes del `.vpk` compilan con la UI
-vita2d enlazada** (pendiente del hito anterior, resuelto). Falta el
-deploy (la Vita estaba apagada/sin FTP durante la sesión) y la
-verificación en vivo con `ros2 topic echo /cmd_vel` + turtlesim. Estado
-previo: laptop, 2026-07-07, tres bugs reales de la web corregidos tras el
-primer uso multi-máquina; la Fase 1 sigue **COMPLETA** y confirmada en
-hardware real)
+**Última actualización:** 2026-07-07 (PC: **OBJETIVO 2 CERRADO —
+confirmado por el usuario en hardware real**: la app teleop instalada en
+la Vita publica `/cmd_vel` y controla robots según el mapeo de
+`docs/09-objetivo2-control-robot.md`. En la misma sesión: `.vpk` subido
+por FTP y verificado, y **arranca la planificación de los Objetivos 3 y
+4** — guía completa de desarrollo por etapas en
+`docs/10-plan-objetivos-3-4.md`. La Fase 1 sigue COMPLETA; la fase web
+sigue con su primer hito alcanzado)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -435,17 +431,17 @@ cd web && pnpm build                      # o: docker compose up -d --build
 
 - ~~Diseño detallado del Objetivo 2~~ **HECHO (2026-07-07):** `docs/09` +
   implementación completa + `.vpk` compilados — ver el bloque de arriba.
-- **PENDIENTE (hardware):**
-  1. ~~Subir el `.vpk` por FTP~~ **HECHO (2026-07-07):** está en `ux0:/`
-     (165267 bytes, verificado). Falta: **instalar desde VitaShell**
-     (sobrescribe "Vita ROS2 Hello").
-  2. En la laptop: agente (`docker run -it --rm --net=host --ipc=host
-     microros/micro-ros-agent:jazzy udp4 --port 8888 -v6`) + netlog.
-  3. Verificar: `ros2 topic echo /cmd_vel` siguiendo los mandos según la
-     tabla de docs/09, y la prueba reina con turtlesim
-     (`--ros-args -r /turtle1/cmd_vel:=/cmd_vel`).
-  4. Marcar los dos hitos `bloqueado-hw` de `fase-2` en
-     `web/src/data/fases.ts` y cerrar el Objetivo 2 aquí.
+- ~~PENDIENTE (hardware)~~ **HECHO (2026-07-07): OBJETIVO 2 CERRADO.**
+  El `.vpk` se instaló en la Vita y **el usuario confirmó el control de
+  robots en vivo** — la app publica `/cmd_vel` obedeciendo el mapeo de
+  docs/09. Los hitos de `fase-2` en `web/src/data/fases.ts` quedaron
+  todos en `hecho`.
+- **Siguiente hito: Objetivos 3 y 4** — plan completo de desarrollo por
+  etapas (auditoría rviz2 → vitaGL → UI v2 con imágenes/formas → módulos
+  duales de visualización → mini-rviz MVP con robot animado en tiempo
+  real) en **`docs/10-plan-objetivos-3-4.md`**. Ese documento es la guía
+  operativa: cada tarea dice qué leer antes, qué archivos crear/modificar
+  y cómo verificar.
 - Levantar la web con docker y dejarla corriendo.
 - Más entradas en `docs/rust/` a medida que aparezcan construcciones nuevas.
 - Cuando llegue el dominio: DNS + reverse proxy (receta en `web/README.md`).
