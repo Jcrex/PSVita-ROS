@@ -46,6 +46,9 @@ COPY --from=build /app/web/dist ./dist
 COPY --from=build /app/web/node_modules ./node_modules
 COPY --from=build /app/web/package.json ./package.json
 COPY --from=build /app/web/scripts ./scripts
+# El layout de UI de la app se lee EN RUNTIME (GET /api/taller/ui/layout
+# funciona también con el taller apagado: muestra la UI commiteada).
+COPY --from=build /app/vita-app/ui /app/vita-app/ui
 
 # La DB vive en un volumen montado aquí (ver docker-compose.yml).
 RUN mkdir -p /app/web/data && chown -R node:node /app/web

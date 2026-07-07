@@ -57,6 +57,8 @@ export const fases: Fase[] = [
       { texto: 'Visor 3D/URDF/SDF standalone (three.js + modelo de prueba VitaBot, /visor3d)', estado: 'hecho' },
       { texto: 'Debug de módulos duales en host (gdb batch sobre los parity tests, /taller/debug)', estado: 'hecho' },
       { texto: 'Base del compilador web (toolchain local: .vpk real compilado y descargable, /taller/compilador)', estado: 'hecho' },
+      { texto: 'Editor visual de la UI de la app (layout declarativo + codegen + aplicar/compilar, /taller/ui — ADR 0005)', estado: 'hecho' },
+      { texto: 'UI de la app dibujada en la Vita real (build con vita2d en el PC + hardware)', estado: 'bloqueado-pc' },
       { texto: 'Capa remota del compilador (cuando la web no corra en el PC) y debug en la Vita real', estado: 'pendiente' },
     ],
   },

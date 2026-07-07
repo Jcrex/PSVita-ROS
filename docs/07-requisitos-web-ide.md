@@ -118,10 +118,19 @@ sticks/botones/táctil) en adelante — hoy la app de la Vita
 conectividad sin gráficos (pantalla negra esperada, ver
 `docs/06-bitacora-estado.md`). Diseñar un editor de UI antes de tener una
 UI que editar es diseño prematuro según la regla secuencial del proyecto.
-**Pregunta abierta:** ¿"editar el frontend" significa un editor de código
-(con syntax highlighting, tipo Monaco) sobre los `.c`/`.rs` de
-`vita-app/src/`, o un editor visual de más alto nivel (arrastrar
-botones/paneles)? Son proyectos de tamaño muy distinto.
+
+**Actualización 2026-07-07 — desbloqueado y en marcha.** Por decisión del
+usuario se resolvió en dos pasos dentro del mismo hito: primero darle a la
+app la *capacidad* de dibujar UI, y sobre eso el editor. La pregunta abierta
+("¿editor de código o editor visual?") se respondió: **editor visual de alto
+nivel**, no Monaco. La app dibuja con vita2d una UI **declarativa**
+(`vita-app/ui/layout.json` → codegen `ui_layout.h` → intérprete `ui.c`; ver
+ADR 0005 para la excepción a la regla dual) y la web la edita en
+`/taller/ui`: lienzo 960×544 con preview 2D aproximada, borrador en SQLite,
+«Aplicar al proyecto» (escribe el JSON + regenera el header + check de
+compilación en host) y compilar/deploy con los endpoints del §5 que ya
+existían. La parte de "editar las funcionalidades" (topics, comportamiento)
+sigue pendiente y sí depende del Objetivo 2.
 
 ---
 
@@ -316,7 +325,7 @@ el patrón de `docs/rust/00-02`) sin bloquear con nada.
 | 7 | Tutorial del SDK de Vita | Ninguno | **Sí** |
 | 1 | Dashboard ROS2 editable | Ninguno (crece con Obj. 2/4) | Sí, con trabajo de backend nuevo |
 | 6 (parte host) | Debug de módulos duales en host | Ninguno | Sí, con trabajo de backend nuevo |
-| 2 | Editor de diseño/UI de la app | Objetivo 2 | No — no hay UI que editar todavía |
+| 2 | Editor de diseño/UI de la app | ~~Objetivo 2~~ desbloqueado (ADR 0005) | **Hecho** (editor visual `/taller/ui`; la parte "funcionalidades" sigue tras el Obj. 2) |
 | 5 | Compilador web → `.vpk` → Vita | Objetivo 6 | **Sí (Opción 1)** — el propio host de trabajo ya tiene VitaSDK |
 | 3 | Visor URDF/SDF/3D standalone | Objetivo 3/4 (rviz2), preparación adelantada por decisión explícita | **Sí** — sin tocar la Vita |
 | 3 (integración en la Vita) | Cargar assets URDF/SDF/3D en la app real | Objetivo 3/4 (rviz2) | No — depende de la incógnita de `docs/04` |

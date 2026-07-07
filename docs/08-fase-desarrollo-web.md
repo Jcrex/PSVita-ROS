@@ -51,10 +51,13 @@ se pueden construir ya:
 | Base del compilador web | `docs/07` §5, Opción 1 | Backend que invoque el toolchain local (`source tools/env-devpc.fish` + `cmake --build`) desde un endpoint, en el propio PC |
 
 Explícitamente **fuera de alcance** de esta fase (siguen bloqueados según
-`docs/07`): el editor de diseño/UI de la app (necesita el Objetivo 2), la
-integración de assets 3D/URDF/SDF *dentro* de la app de la Vita (necesita
-el Objetivo 3/4), y el debug en hardware real (necesita investigación
-propia).
+`docs/07`): la integración de assets 3D/URDF/SDF *dentro* de la app de la
+Vita (necesita el Objetivo 3/4) y el debug en hardware real (necesita
+investigación propia).
+
+> Actualización 2026-07-07: el editor de diseño/UI de la app, que estaba en
+> esta lista, se desbloqueó dándole primero UI a la app (declarativa, vita2d
+> — ADR 0005) y entró en la fase como `/taller/ui` (docs/07 §2).
 
 ---
 

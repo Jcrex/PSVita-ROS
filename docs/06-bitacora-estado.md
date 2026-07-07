@@ -558,3 +558,40 @@ cd web && pnpm build                      # o: docker compose up -d --build
   ingestor → SQLite → SSE del dashboard con la línea limpia; 1 minuto con
   ≥2 sondeos Kasa sin ingestar nada; bundle de `/dashboard` con el
   fallback del client-id incluido.
+
+- **(2026-07-07, en la laptop) La app gana UI (declarativa, vita2d) y la
+  web gana su editor visual (`/taller/ui`)** — se desbloquea el requisito
+  docs/07 §2 en el orden que pidió el usuario: primero capacidad de UI en
+  la app, después editarla desde la web.
+  1. **Decisión de renderizado (ADR 0005):** vita2d (GPU, solo C, solo
+     Vita), elegida por el usuario frente al módulo dual por software.
+     Excepción consciente a la regla dual: `ui.c` es código de app sin rama
+     host ni paridad Rust; lo que SÍ se verifica en laptop es el dato.
+  2. **UI declarativa:** `vita-app/ui/layout.json` (panel/label/valor, con
+     bindings `estado_conexion`, `contador_publicados`, `ultimo_pc_hello`,
+     `agente`) → codegen `scripts/gen-ui-header.mjs` → `src/ui_layout.h`
+     (generado, con banner) → intérprete `src/ui.c` (vita2d, fuente PGF).
+     `scripts/check-ui-layout.sh` regenera y compila el header en host
+     (gcc `-fsyntax-only`, verde en la laptop). `main.c` reestructurado:
+     publica a 1 Hz por timestamp, atiende la sesión en tramos de 50 ms y
+     redibuja cada vuelta (~20 fps); errores fatales también en pantalla.
+  3. **Editor web `/taller/ui`:** lienzo 960×544 con preview 2D aproximada
+     (asumida como aproximación — la emulación se descartó en
+     `web/README.md`), paleta panel/label/valor, arrastre con snap de 8 px,
+     panel de propiedades, borrador autosave en SQLite por client-id
+     (tabla `ui_drafts`), «Cargar el del repo», «Aplicar al proyecto»
+     (escribe `layout.json` validado + regenera header + check en host,
+     como job del taller con salida en vivo) y compilar/deploy reutilizando
+     los endpoints existentes. Validación compartida en
+     `web/src/lib/ui-layout.ts` (espejo consciente del codegen). Aplicar
+     exige `TALLER_ENABLED=1`; leer/borrador no.
+  4. **Verificado en la laptop:** check-ui-layout verde; endpoints GET
+     layout / GET+POST borrador (con rechazo de layouts inválidos) / POST
+     aplicar probados contra el dev server real — el job regeneró
+     `ui_layout.h` y pasó el check con salida SSE completa.
+  **Pendiente (PC/hardware):** compilar ambas variantes con libvita2d
+  enlazada (`vdpm vita2d` si falta; stubs exactos anotados en
+  `CMakeLists.txt`), deploy y ver la UI dibujada con datos en vivo.
+  Siguiente dentro de este frente (aún sin empezar): editar
+  "funcionalidades" (topics/comportamiento), que sigue dependiendo del
+  diseño del Objetivo 2.

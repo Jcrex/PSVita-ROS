@@ -33,6 +33,7 @@
 
 #include "net_udp.h"
 #include "netlog.h"
+#include "ui.h"
 #include "uxr_glue.h"
 
 /* ---------------------------------------------------------------- */
@@ -66,6 +67,10 @@ static uint8_t g_input_stream[STREAM_BUFFER_SIZE * STREAM_HISTORY];
 
 static bool g_pc_hello_received = false;
 
+/* Estado que la UI declarativa muestra vía bindings (ui_types.h). La app
+ * lo actualiza en el bucle principal y ui_draw() lo pinta cada frame. */
+static ui_state g_ui;
+
 /* Callback de suscripción: el agente nos entrega un topic serializado CDR.
  * std_msgs/String es solo un campo `data: string`; en CDR un string es
  * uint32 longitud (incluye el NUL) + bytes. ucdr lo deserializa directo. */
@@ -80,6 +85,7 @@ static void on_topic(uxrSession *session, uxrObjectId object_id,
     ucdr_deserialize_string(ub, data, sizeof data);
     LOG("[vita-ros2] /pc_hello recibido: \"%s\"\n", data);
     g_pc_hello_received = true;
+    snprintf(g_ui.ultimo_pc_hello, sizeof g_ui.ultimo_pc_hello, "%s", data);
 }
 
 static bool exit_requested(void)
@@ -104,11 +110,20 @@ int main(void)
     }
     LOG("[vita-ros2] red inicializada; agente=%s:%d\n", AGENT_IP, AGENT_PORT);
 
+    /* --- UI declarativa (vita2d + ui_layout.h generado; ADR 0005) ---
+     * Si la fuente PGF no carga seguimos sin UI (headless como la Fase 1):
+     * la conectividad ROS2 no depende de la pantalla. */
+    if (!ui_init()) {
+        LOG("[vita-ros2] WARN: ui_init fallo; sigo sin UI en pantalla\n");
+    }
+    snprintf(g_ui.agente, sizeof g_ui.agente, "%s:%d", AGENT_IP, AGENT_PORT);
+
     /* --- Transporte XRCE: módulo dual microros-transport vía glue --- */
     uxrCustomTransport transport;
     vita_transport_args targs = {AGENT_IP, AGENT_PORT};
     if (!vita_uxr_transport_init(&transport, &targs)) {
         LOG("[vita-ros2] FATAL: transporte no abre (¿agente accesible?)\n");
+        ui_draw_fatal("El transporte UDP no abre (agente accesible?)", 5);
         goto fatal;
     }
 
@@ -119,9 +134,11 @@ int main(void)
     if (!uxr_create_session(&session)) {
         LOG("[vita-ros2] FATAL: uxr_create_session fallo — la sesion XRCE "
             "NO levanta sobre sceNet. Documentar el muro (docs/02).\n");
+        ui_draw_fatal("uxr_create_session fallo (sesion XRCE no levanta)", 5);
         goto fatal;
     }
     LOG("[vita-ros2] *** SESION XRCE ESTABLECIDA: incognita dura OK ***\n");
+    g_ui.conectado = true; /* v1: refleja el arranque, no la salud continua */
 
     /* Streams confiables (XRCE reenvía lo perdido sobre UDP). */
     uxrStreamId out = uxr_create_output_reliable_stream(
@@ -186,6 +203,7 @@ int main(void)
         LOG("[vita-ros2] FATAL: el agente rechazo entidades DDS "
             "(status: %d %d %d %d %d %d)\n", status[0], status[1], status[2],
             status[3], status[4], status[5]);
+        ui_draw_fatal("El agente rechazo las entidades DDS", 5);
         goto fatal;
     }
     LOG("[vita-ros2] entidades creadas: pub /vita_hello, sub /pc_hello\n");
@@ -195,43 +213,55 @@ int main(void)
     delivery.max_samples = UXR_MAX_SAMPLES_UNLIMITED;
     uxr_buffer_request_data(&session, out, datareader_id, in, &delivery);
 
-    /* --- Bucle principal: publicar 1 Hz, atender la sesión, salir con START */
+    /* --- Bucle principal: publicar a 1 Hz por timestamp, atender la sesión
+     * en tramos de 50 ms y redibujar la UI en cada vuelta (~20 fps máx;
+     * antes el bucle bloqueaba 1 s entero en run_session y una UI sería
+     * imposible de refrescar). Salir con START. */
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_DIGITAL);
     uint32_t count = 0;
+    uint64_t proxima_pub = sceKernelGetProcessTimeWide(); /* microsegundos */
     while (!exit_requested()) {
-        char msg[96];
-        snprintf(msg, sizeof msg, "hola desde la vita #%lu",
-                 (unsigned long)count);
+        if (sceKernelGetProcessTimeWide() >= proxima_pub) {
+            proxima_pub += 1000000; /* 1 Hz */
+            char msg[96];
+            snprintf(msg, sizeof msg, "hola desde la vita #%lu",
+                     (unsigned long)count);
 
-        /* Serializar std_msgs/String a CDR: uint32 len + bytes + NUL. */
-        ucdrBuffer ub;
-        uint32_t topic_size = ucdr_alignment(0, 4) + 4 +
-                              (uint32_t)strlen(msg) + 1;
-        if (uxr_prepare_output_stream(&session, out, datawriter_id, &ub,
-                                      topic_size)) {
-            ucdr_serialize_string(&ub, msg);
-            count++;
+            /* Serializar std_msgs/String a CDR: uint32 len + bytes + NUL. */
+            ucdrBuffer ub;
+            uint32_t topic_size = ucdr_alignment(0, 4) + 4 +
+                                  (uint32_t)strlen(msg) + 1;
+            if (uxr_prepare_output_stream(&session, out, datawriter_id, &ub,
+                                          topic_size)) {
+                ucdr_serialize_string(&ub, msg);
+                count++;
+            }
         }
 
         /* run_session atiende heartbeats, ACKs y datos entrantes. */
-        uxr_run_session_time(&session, 1000 /* ms */);
+        uxr_run_session_time(&session, 50 /* ms */);
 
         if (g_pc_hello_received) {
             g_pc_hello_received = false;
             LOG("[vita-ros2] criterio 2 de la Fase 1 CUMPLIDO (rx desde PC)\n");
         }
+
+        g_ui.contador = count;
+        ui_draw(&g_ui);
     }
 
     LOG("[vita-ros2] saliendo (START pulsado tras %lu mensajes)\n",
         (unsigned long)count);
     uxr_delete_session(&session);
     uxr_close_custom_transport(&transport);
+    ui_shutdown();
     netlog_shutdown();
     net_udp_shutdown();
     sceKernelExitProcess(0);
     return 0;
 
 fatal:
+    ui_shutdown();
     netlog_shutdown();
     net_udp_shutdown();
     sceKernelDelayThread(5 * 1000 * 1000); /* 5 s para leer el log */

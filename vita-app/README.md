@@ -19,6 +19,12 @@ main.c ──> uxr_glue ──> microros-transport ──> net-udp ──> WiFi/
 | `src/main.c` | Ciclo de vida completo: red → transporte → **sesión XRCE (incógnita dura)** → entidades DDS por XML → bucle pub 1 Hz + recepción. Sale con START. |
 | `src/uxr_glue.{h,c}` | Adapta los 4 callbacks del módulo dual a `uxrCustomTransport`. Único archivo que incluye headers de micro-ROS. |
 | `src/netlog.{h,c}` | Log por UDP a la laptop usando nuestro `net-udp` (en la Vita no hay consola). Escuchar con `nc -u -l -p 9999`. |
+| `ui/layout.json` | **La UI de la app, declarativa** (paneles, textos, valores en vivo). Editable a mano o desde la web (`/taller/ui`). |
+| `src/ui_types.h` | Tipos del layout (`ui_widget`, `ui_state`), sin dependencias de la Vita: compilan en host. |
+| `src/ui_layout.h` | GENERADO desde `ui/layout.json` por `scripts/gen-ui-header.mjs` — no editar a mano. |
+| `src/ui.{h,c}` | Intérprete del layout con **vita2d** (GPU + fuente PGF). Solo Vita, solo C — ADR 0005. |
+| `scripts/gen-ui-header.mjs` | Codegen `layout.json` → `ui_layout.h` (node, sin dependencias). |
+| `scripts/check-ui-layout.sh` | Verificación EN HOST: regenera el header y comprueba que compila (gcc `-fsyntax-only`). |
 | `rust-modules/` | Crate paraguas: un solo `libvita_modules_rust.a` con los 3 módulos duales (evita staticlibs Rust duplicadas). |
 | `scripts/build-xrce-client-vita.sh` | Cross-compila `microxrcedds_client`+`microcdr` para armv7 Vita (perfil custom transport, sin POSIX). |
 | `CMakeLists.txt` | Build con VitaSDK, selección `-DVITA_IMPL=c\|rust`, empaquetado `.vpk`. |
@@ -46,6 +52,28 @@ hardware real.
 cmake ... -DAGENT_IP=192.168.1.108 -DAGENT_PORT=8888 \
       -DNETLOG_IP=192.168.1.108 -DNETLOG_PORT=9999 -B build
 ```
+
+### UI declarativa (vita2d + layout.json)
+
+Desde 2026-07-07 la app dibuja una UI en pantalla (antes: negra a propósito).
+La pantalla NO se programa: se describe en `ui/layout.json` y `ui.c` la
+interpreta con vita2d (ADR 0005 — excepción consciente a la regla dual: es
+código de app, sin rama host ni paridad Rust).
+
+```bash
+# tras editar ui/layout.json (o desde la web en /taller/ui):
+node scripts/gen-ui-header.mjs      # regenera src/ui_layout.h
+scripts/check-ui-layout.sh          # lo mismo + check de compilación en host
+# después, recompilar el .vpk como siempre
+```
+
+Widgets v1: `panel` (rect + borde), `label` (texto fijo) y `valor` (dato en
+vivo: `estado_conexion`, `contador_publicados`, `ultimo_pc_hello`,
+`agente`). Límites en el codegen (≤32 widgets, pantalla 960×544, texto ASCII
+≤63). **VALIDAR EN EL PC:** el enlace usa libvita2d del VitaSDK (si falta:
+`vdpm vita2d`; si el enlazador pide más libs según versión, ver el
+comentario en `CMakeLists.txt`). El dibujado real solo se valida en
+hardware.
 
 **Topología de red de la Fase 1:** el PC está por ethernet y la Vita solo
 tiene WiFi, así que **el agente corre en la laptop** (192.168.1.108), que sí
@@ -78,11 +106,13 @@ criterio 2 de la Fase 1 hasta diagnosticarlo el 2026-07-01 (ver
 
 - [x] Código completo y revisado (laptop).
 - [x] Crate paraguas Rust compila y exporta los símbolos C-ABI (verificado en host x86_64).
-- [ ] Cross-compilación de microxrcedds_client (PC).
-- [ ] Build del .vpk en sus dos variantes (PC).
-- [ ] Sesión XRCE real + criterios 1 y 2 (hardware Vita).
+- [x] Cross-compilación de microxrcedds_client (PC).
+- [x] Build del .vpk en sus dos variantes (PC).
+- [x] Sesión XRCE real + criterios 1 y 2 (hardware Vita) — **Fase 1 cerrada**, ver `docs/06`.
+- [x] UI declarativa: codegen + check en host verdes; editor web `/taller/ui` operativo (laptop).
+- [ ] UI declarativa: build con vita2d enlazado (PC) y dibujado verificado en hardware.
 
 Detalles que pueden necesitar ajuste al compilar en el PC (anotados en el
-código): firmas exactas de `uxrCustomTransport` según la versión del
-cliente, nombres DDS (`rt/`, `std_msgs::msg::dds_::String_`) según la
-versión del agente, y stubs sce* adicionales en el enlace.
+código): stubs/libs exactos que pida libvita2d al enlazar (comentario en
+`CMakeLists.txt`) y el alto de la fuente PGF por defecto (la preview web
+asume ~20 px a escala 1, igual que `ui.c`).

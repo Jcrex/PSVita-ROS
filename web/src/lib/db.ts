@@ -34,6 +34,15 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  -- Borrador del editor de UI de la app Vita (/taller/ui) por visitante.
+  -- Guarda el layout.json completo tal cual (validado antes de insertar);
+  -- "Aplicar al proyecto" es lo que lo escribe al repo, no esto.
+  CREATE TABLE IF NOT EXISTS ui_drafts (
+    client_id TEXT PRIMARY KEY,
+    json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   -- Historial de builds lanzados desde /taller/compilador (solo cuando la
   -- web corre en el PC de desarrollo con TALLER_ENABLED=1).
   CREATE TABLE IF NOT EXISTS build_jobs (
@@ -111,6 +120,26 @@ export function getDashboardLayout(clientId: string): string[] | null {
   } catch {
     return null;
   }
+}
+
+// ---- taller/ui: borrador del layout de la app Vita por visitante ----
+// El JSON se guarda como texto ya validado (ui-layout.ts); se devuelve como
+// string y el llamador lo parsea (evita doble parse/stringify aquí).
+
+const uiDraftUpsert = db.prepare(`
+  INSERT INTO ui_drafts (client_id, json, updated_at)
+  VALUES (?, ?, datetime('now'))
+  ON CONFLICT(client_id) DO UPDATE SET json = excluded.json, updated_at = datetime('now')
+`);
+const uiDraftSelect = db.prepare(`SELECT json FROM ui_drafts WHERE client_id = ?`);
+
+export function setUiDraft(clientId: string, json: string): void {
+  uiDraftUpsert.run(clientId, json);
+}
+
+export function getUiDraft(clientId: string): string | null {
+  const row = uiDraftSelect.get(clientId) as { json: string } | undefined;
+  return row?.json ?? null;
 }
 
 // ---- taller: historial de builds del compilador web ----

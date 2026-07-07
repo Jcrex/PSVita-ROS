@@ -44,6 +44,7 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/uxr_glue.c
     src/netlog.c
+    src/ui.c
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -93,6 +94,17 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${XRCE_PREFIX}/lib/libmicroxrcedds_client.a
     ${XRCE_PREFIX}/lib/libmicrocdr.a
+    # UI declarativa (ui.c, ADR 0005). VALIDAR EN EL PC: libvita2d viene con
+    # el VitaSDK (si falta: vdpm vita2d). Si el enlazador pidiera más
+    # dependencias según la versión de libvita2d, añadir: freetype png jpeg z
+    # SceLibKernel_stub ya está abajo.
+    vita2d
+    SceDisplay_stub
+    SceGxm_stub
+    SceCommonDialog_stub
+    ScePgf_stub
+    SceAppMgr_stub
+    m
     SceNet_stub
     SceNetCtl_stub
     SceSysmodule_stub
