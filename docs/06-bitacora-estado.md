@@ -1,14 +1,17 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-07 (fusión de dos frentes en paralelo tras
-divergencia de `main`: laptop, 2026-07-02, **dashboard web de logs en vivo
-(`/monitor`) implementado, revisado y mergeado**, pendiente de confirmar
-con la Vita real encendida; PC, 2026-07-06, **primer hito de la fase web
-ALCANZADO** — los seis frentes de `docs/08-fase-desarrollo-web.md` están
-operativos en la web real: comparador C↔Rust, tutorial del SDK, dashboard
-con datos reales, visor 3D/URDF, debug en host y base del compilador
-`.vpk`. La Fase 1 sigue **COMPLETA** y confirmada en hardware real; el
-Objetivo 2 sigue pendiente sin diseño detallado)
+**Última actualización:** 2026-07-07 (laptop: **tres bugs reales de la web
+corregidos tras el primer uso multi-máquina** — dashboard en blanco fuera
+de localhost por `crypto.randomUUID`, ruido binario en `/monitor` que
+resultó ser un enchufe TP-Link Kasa emitiendo al mismo puerto UDP 9999, y
+la carrera ingestor↔dashboard por ese puerto, resuelta con
+`NETLOG_MODE=sqlite`. Estado previo: laptop, 2026-07-02, **dashboard web
+de logs en vivo (`/monitor`) implementado, revisado y mergeado**,
+pendiente de confirmar con la Vita real encendida; PC, 2026-07-06,
+**primer hito de la fase web ALCANZADO** — los seis frentes de
+`docs/08-fase-desarrollo-web.md` están operativos en la web real. La Fase
+1 sigue **COMPLETA** y confirmada en hardware real; el Objetivo 2 sigue
+pendiente sin diseño detallado)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -521,3 +524,37 @@ cd web && pnpm build                      # o: docker compose up -d --build
   web no corra en el PC) y el debug en hardware real (investigación
   propia). `web/src/data/fases.ts` actualizado (`fase-web`: 6 hitos
   `hecho` + 1 pendiente).
+
+- **(2026-07-07, en la laptop) Tres bugs reales de la web corregidos tras
+  el primer uso multi-máquina** (dashboard en blanco desde otra máquina,
+  "logs indescriptibles" en `/monitor` y dashboard sin logs en docker):
+  1. **Ruido binario cada 25 s en `/monitor` — causa raíz sorpresa:** un
+     dispositivo **TP-Link Kasa** de la casa sondea sus enchufes por
+     broadcast UDP **al mismo puerto 9999** que usa el netlog. Se capturó
+     el paquete real (58 bytes desde `192.168.1.51`) y se descifró (XOR
+     "autokey" del protocolo Kasa):
+     `{"system":{"get_sysinfo":{}},"emeter":{"get_realtime":{}}}`.
+     Fix: `cleanLine()` (`web/scripts/netlog-parser.mjs`, compartido por
+     ingestor y dashboard) ahora descarta líneas con <70 % de ASCII
+     imprimible; la basura ya no crea sesiones fantasma ni mantiene vivas
+     las inactivas (tests nuevos con el payload real). La DB se limpió
+     (101 líneas basura, 1 sesión fantasma).
+  2. **Dashboard en blanco al entrar por `http://<ip>:4321`:**
+     `crypto.randomUUID()` solo existe en contextos seguros (https o
+     localhost); desde otra máquina el TypeError tumbaba el script entero
+     de `/dashboard` (y el checklist de las guías). Fix:
+     `web/src/lib/client-id.ts` compartido con fallback `Math.random()`.
+  3. **Carrera por el puerto 9999 dentro del contenedor:** el ingestor de
+     `/monitor` y el `netlog.ts` del dashboard competían por el socket; el
+     que perdía dejaba widgets muertos con "reinicia la web". Fix: fuente
+     dual en `netlog.ts` — modo `sqlite` (sigue las líneas que el ingestor
+     escribe en la DB compartida; fijado con `NETLOG_MODE=sqlite` en
+     `docker-compose.yml`, el ingestor es el único dueño del puerto) y, en
+     el caso `EADDRINUSE` fuera de docker (p. ej. `netlog-listen.sh`),
+     degradación automática a SQLite + reintento del bind cada 15 s (ya no
+     hace falta reiniciar la web). El widget de salud muestra la fuente
+     ("vía ingestor (SQLite)" vs "escuchando :9999").
+  Verificado end-to-end en el contenedor real: datagrama UDP simulado →
+  ingestor → SQLite → SSE del dashboard con la línea limpia; 1 minuto con
+  ≥2 sondeos Kasa sin ingestar nada; bundle de `/dashboard` con el
+  fallback del client-id incluido.

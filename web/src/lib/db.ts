@@ -207,3 +207,30 @@ export function getLastReceivedAt(): string | null {
   const row = getLastReceivedAtStmt.get() as { last: string | null };
   return row.last;
 }
+
+// ---- dashboard: cola global de líneas para el modo SQLite del netlog ----
+//
+// Cuando el receptor UDP del dashboard (src/lib/netlog.ts) no puede abrir
+// el puerto 9999 (lo tiene el ingestor u otro proceso), en vez de quedarse
+// ciego sigue las líneas que el ingestor escribe en esta misma base. Estas
+// consultas son globales (todas las sesiones), con la IP de origen de la
+// sesión para poder mostrarla en el widget de salud.
+
+export type VitaLogLineConIp = VitaLogLine & { source_ip: string | null };
+
+const getLinesAfterGlobalStmt = db.prepare(`
+  SELECT l.*, s.source_ip
+  FROM vita_log_lines l LEFT JOIN vita_sessions s ON s.id = l.session_id
+  WHERE l.id > ? ORDER BY l.id ASC LIMIT 500
+`);
+const getMaxLineIdStmt = db.prepare(
+  `SELECT COALESCE(MAX(id), 0) AS max_id FROM vita_log_lines`,
+);
+
+export function getLinesAfterGlobal(afterId: number): VitaLogLineConIp[] {
+  return getLinesAfterGlobalStmt.all(afterId) as VitaLogLineConIp[];
+}
+
+export function getMaxLineId(): number {
+  return (getMaxLineIdStmt.get() as { max_id: number }).max_id;
+}

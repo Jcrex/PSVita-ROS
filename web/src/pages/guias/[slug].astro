@@ -48,16 +48,15 @@ const steps = checklists[entry.data.slug] ?? [];
   </p>
 
   <script>
+    import { obtenerClientId } from '../../lib/client-id';
+
     // Checklist interactivo: estado en SQLite vía /api/checklist.
-    // El visitante se identifica con un UUID anónimo en localStorage.
+    // El visitante se identifica con un UUID anónimo en localStorage
+    // (con fallback para contextos no seguros: ver client-id.ts).
     const panel = document.getElementById('checklist-panel');
     if (panel) {
       const slug = panel.dataset.slug!;
-      let clientId = localStorage.getItem('psvita-ros-client');
-      if (!clientId) {
-        clientId = crypto.randomUUID();
-        localStorage.setItem('psvita-ros-client', clientId);
-      }
+      const clientId = obtenerClientId();
 
       const boxes = panel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
       const fill = document.getElementById('progress-fill')!;

@@ -69,9 +69,12 @@ socket.on('error', (err) => {
 });
 
 socket.on('message', (msg, rinfo) => {
-  lastPacketAt = Date.now();
   const text = cleanLine(msg);
+  // Solo los paquetes con texto real cuentan como actividad: la basura
+  // binaria de otros dispositivos (ver cleanLine) no debe abrir sesiones
+  // ni mantener viva una sesión inactiva de la Vita.
   if (text === '') return;
+  lastPacketAt = Date.now();
 
   const sourceIp = `${rinfo.address}:${rinfo.port}`;
   if (isSessionStart(text) || currentSessionId === null) {

@@ -27,6 +27,12 @@ services:
       - HOST=0.0.0.0
       - DB_PATH=/app/web/data/app.db
       - TALLER_ENABLED=1
+      # En este contenedor corren dos consumidores del netlog (el ingestor
+      # del monitor y el backend del dashboard) pero solo puede haber UN
+      # socket en el 9999: el dueño es el ingestor, y el dashboard lee las
+      # líneas de la SQLite compartida (ver src/lib/netlog.ts). Sin esto
+      # ambos competían por el puerto y el dashboard quedaba "inactivo".
+      - NETLOG_MODE=sqlite
       # Dashboard (opcionales):
       # - NETLOG_DISABLED=1    # apagar el receptor UDP (despliegue público)
       # - NETLOG_PORT=9999

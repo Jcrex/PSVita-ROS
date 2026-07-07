@@ -100,16 +100,15 @@ import Base from '../layouts/Base.astro';
   </style>
 
   <script>
+    import { obtenerClientId } from '../lib/client-id';
+
     // ---------------- infraestructura del layout ----------------
     const LAYOUT_DEFECTO = ['estado', 'logs', 'topics'];
     const grid = document.getElementById('grid')!;
     const guardadoEl = document.getElementById('guardado')!;
 
-    let clientId = localStorage.getItem('psvita-ros-client');
-    if (!clientId) {
-      clientId = crypto.randomUUID();
-      localStorage.setItem('psvita-ros-client', clientId);
-    }
+    // Con fallback para contextos no seguros (http://<ip>): ver client-id.ts.
+    const clientId = obtenerClientId();
 
     interface Widget { tipo: string; el: HTMLElement; destruir: () => void }
     let widgets: Widget[] = [];
@@ -182,9 +181,11 @@ import Base from '../layouts/Base.astro';
         const pill = (ok: boolean, si: string, no: string) =>
           `<span class="pill ${ok ? 'ok' : 'mal'}">${ok ? si : no}</span>`;
         const fresca = e.ultimoPaquete && Date.parse(e.ahora) - Date.parse(e.ultimoPaquete) < 10_000;
+        const etiquetaFuente =
+          e.fuente === 'sqlite' ? 'vía ingestor (SQLite)' : `escuchando :${e.puerto}`;
         body.innerHTML = `
           <dl class="kv">
-            <dt>Receptor netlog</dt><dd>${pill(e.activo, `escuchando :${e.puerto}`, 'inactivo')}${
+            <dt>Receptor netlog</dt><dd>${pill(e.activo, etiquetaFuente, 'inactivo')}${
               e.error ? ` <span class="dim">${e.error}</span>` : ''
             }</dd>
             <dt>Vita</dt><dd>${e.vitaIp ?? '—'} ${e.vitaIp ? pill(!!fresca, 'emitiendo', 'sin señal') : ''}</dd>
