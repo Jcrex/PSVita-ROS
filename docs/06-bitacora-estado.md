@@ -436,9 +436,9 @@ cd web && pnpm build                      # o: docker compose up -d --build
 - ~~Diseño detallado del Objetivo 2~~ **HECHO (2026-07-07):** `docs/09` +
   implementación completa + `.vpk` compilados — ver el bloque de arriba.
 - **PENDIENTE (hardware):**
-  1. Encender la Vita, VitaShell → SELECT (modo FTP) y subir el `.vpk`:
-     `curl -T vita-app/build-rust/vita-ros2-hello.vpk ftp://192.168.1.94:1337/ux0:/`
-     → instalar desde VitaShell (sobrescribe "Vita ROS2 Hello").
+  1. ~~Subir el `.vpk` por FTP~~ **HECHO (2026-07-07):** está en `ux0:/`
+     (165267 bytes, verificado). Falta: **instalar desde VitaShell**
+     (sobrescribe "Vita ROS2 Hello").
   2. En la laptop: agente (`docker run -it --rm --net=host --ipc=host
      microros/micro-ros-agent:jazzy udp4 --port 8888 -v6`) + netlog.
   3. Verificar: `ros2 topic echo /cmd_vel` siguiendo los mandos según la
@@ -643,7 +643,13 @@ cd web && pnpm build                      # o: docker compose up -d --build
      nombre malo vdpm dice "Successfully installed" aunque el tar falle).
      Las dos variantes compilan y empaquetan limpias: `build-c/` (~106 KB)
      y `build-rust/` (~165 KB), primera vez con vita2d + teleop dentro.
-  6. **Deploy NO completado:** la Vita (192.168.1.94) no respondía ni a
-     ping ni al FTP :1337 durante la sesión (apagada o sin VitaShell en
-     modo FTP). El `.vpk` Rust quedó listo en
-     `vita-app/build-rust/vita-ros2-hello.vpk`.
+  6. **Deploy por FTP HECHO (misma sesión, con la Vita ya encendida):**
+     `vita-app/build-rust/vita-ros2-hello.vpk` subido a `ux0:/` y
+     verificado por listado FTP (165267 bytes, tamaño exacto). Nota
+     operativa: si el modo FTP de VitaShell se habilita mientras un
+     cliente está reintentando conectar, su hilo FTP puede quedarse
+     colgado (acepta TCP pero no manda el saludo) — se destraba solo al
+     rato, o al instante cerrando (O) y reabriendo (SELECT) el modo FTP.
+     **Pendiente manual en la Vita:** instalar el `.vpk` desde VitaShell
+     (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
+     hacer la verificación en vivo del punto siguiente.
