@@ -830,3 +830,18 @@ cd web && pnpm build                      # o: docker compose up -d --build
   (editar IP, △, X, persistencia entre arranques) — con X directo debe
   conectar a la laptop como siempre. La verificación del PC de la
   sesión anterior sigue valiendo para el camino XRCE completo.
+
+- **(2026-07-10, cierre del día) ETAPA B CERRADA — CONFIRMADO POR EL
+  USUARIO EN HARDWARE: "ya pude controlar un robot móvil por medio de
+  /cmd_vel"** con la app v03.00 (pantalla de config de IP → laptop →
+  agente → robot real). Con eso quedan validados en hardware: el modo
+  VIZ 3D con vitaGL, la UI reescrita sobre vitaGL, la pantalla de
+  configuración de IP y la regresión completa del Objetivo 2 contra un
+  robot móvil real (no solo turtlesim). `fases.ts`: Etapa B → `hecho`;
+  se añadió como hito propio el "sistema de UI no fijo" pendiente.
+  **Siguiente paso exacto: ETAPA C** (docs/10 §6) — UI declarativa v2
+  (imagen/línea/círculo) + editor web ampliado, incorporando el diseño
+  del sistema de UI no fijo (layout adaptativo + tipografía mejor que
+  el font8x8). Nota técnica para C1: las imágenes se cargan con libpng
+  directo a textura GL (vita2d_load_PNG_file ya no existe en el
+  proyecto; libpng+zlib quedaron instaladas en B1).

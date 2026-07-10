@@ -257,17 +257,18 @@ Improbable. Si ocurre: parar, avisar al usuario, rediseñar B–E.
 
 ---
 
-## 5. ETAPA B — vitaGL en la app: el lienzo 3D — **CÓDIGO HECHO (2026-07-10) · validación en hardware PENDIENTE**
+## 5. ETAPA B — vitaGL en la app: el lienzo 3D — **HECHA Y VALIDADA EN HARDWARE (2026-07-10)**
 
-> B0 hecho (docs/11). B1 hecho (vitaGL+deps instalados y verificados;
-> OJO: el paquete es `libmathneon`, `mathneon` da 404). B2 resuelto SIN
-> PoC: la Opción 1 es imposible a nivel de API (ADR 0007 → Opción 2,
-> todo vitaGL; ui.c reescrito, vita2d/ScePgf fuera). B3: viz/camera +
-> viz/viz + modos TELEOP↔VIZ (SELECT) implementados; checks host verdes
-> (camera 16/16, ui-layout, teleop) y AMBAS variantes `.vpk` compilan en
-> el PC (C 474 KB / Rust 532 KB). **Falta solo:** deploy FTP + ver en la
-> consola grid/ejes/cubo + regresión `/cmd_vel` (la Vita estaba
-> inaccesible el 2026-07-10).
+> B0 hecho (docs/11). B1 hecho (vitaGL+deps; OJO: el paquete es
+> `libmathneon`, `mathneon` da 404). B2 resuelto SIN PoC: la Opción 1 es
+> imposible a nivel de API (ADR 0007 → todo vitaGL; ui.c reescrito).
+> B3 validado EN HARDWARE: escena 3D + cámara orbital + modos
+> TELEOP↔VIZ, y **el usuario controló un robot móvil real por /cmd_vel**
+> (regresión Objetivo 2 OK). Extras de la validación: fix del bug real
+> del gluLookAt de vitaGL (matriz de vista propia con regresión en
+> host), fuente 12 px, y pantalla de configuración de IP al arrancar
+> (defecto 192.168.1.108, persistida en ux0:). Pendiente arrastrado a
+> la Etapa C: sistema de UI no fijo (layout adaptativo + tipografía).
 
 Meta: una escena 3D mínima (grid + ejes + cubo) dibujada por vitaGL en la
 Vita, conviviendo con la UI vita2d existente, con cámara orbital movida
