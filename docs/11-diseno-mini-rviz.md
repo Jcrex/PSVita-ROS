@@ -36,10 +36,13 @@ La app conserva TODO el Objetivo 2. Se añade un modo:
 - **TELEOP (actual):** UI declarativa vita2d + publicación `/cmd_vel`.
 - **VIZ (nuevo):** escena 3D vitaGL. El teleop SIGUE publicando (el
   operador puede mover el robot mientras lo ve).
-- **Conmutación: SELECT.** El mecanismo exacto de convivencia
-  vita2d↔vitaGL lo decide el experimento B2 (ADR 0007): o init/shutdown
-  excluyentes al conmutar, o todo-vitaGL (reescribir el backend de
-  `ui.c`; el layout.json/codegen NO cambia).
+- **Conmutación: SELECT.** Decidido en ADR 0007 (2026-07-10): **todo
+  vitaGL** — vitaGL no puede soltar el GPU una vez inicializado
+  (`eglTerminate` es no-op; sin `sceGxmTerminate` en la lib), así que
+  vita2d sale del proyecto y `ui.c` se reescribe como backend vitaGL
+  (quads + fuente bitmap propia). El layout.json/codegen NO cambia.
+  Los modos son estados del bucle sobre el mismo contexto GL (2D
+  ortográfico vs 3D perspectiva).
 
 Bucle: el render 3D vive en el bucle actual (`uxr_run_session_time` de
 50 ms ⇒ ~20 fps). Si el modo VIZ necesita más fluidez, se baja el
