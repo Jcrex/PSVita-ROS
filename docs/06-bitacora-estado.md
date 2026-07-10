@@ -764,3 +764,39 @@ cd web && pnpm build                      # o: docker compose up -d --build
   por listado FTP. **Falta: reinstalar en VitaShell y re-verificar (el
   pitch alto ya no debe distorsionar) + la regresión `/cmd_vel` con el
   agente del PC.**
+
+- **(2026-07-10, misma sesión) Verificación en vivo con el agente EN EL
+  PC — sesión XRCE + netlog + `/cmd_vel` confirmados, con un MURO nuevo
+  resuelto:** el usuario reinstaló el `.vpk` corregido y reportó que "la
+  laptop no recibe nada" — **no era un bug**: ese `.vpk` está rehorneado
+  con `AGENT_IP`/`NETLOG_IP=192.168.1.65` (el PC), así que la laptop no
+  pinta nada en esta configuración. En el PC se verificó TODO el camino:
+  1. **Agente (`microros-agent`, ya corría con `net=host ipc=host`):**
+     sesión XRCE viva (`client_key 0xCAFE0001`), `/vita_hello`
+     publicando ("hola desde la vita #86"…) y writes de 48 bytes de
+     `/cmd_vel` a ~20 Hz.
+  2. **Netlog → web del PC:** el ingestor crea sesiones (9–11) y las
+     líneas llegan a `vita_sessions`/`vita_log_lines` — se vio el teleop
+     en vivo (`vel_lineal sube a 0.5…2.0`, STOP) en `/monitor`.
+  3. **MURO: los topics no aparecían en `rmf_unified`** (`ros2 topic
+     list` solo `/rosout` y `/parameter_events`, ni con el daemon
+     reiniciado). Causa raíz: el contenedor `rmf_unified` del PC exporta
+     **`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`** (mecanismo nuevo de
+     Jazzy): un participante LOCALHOST ignora los anuncios SPDP de
+     participantes que se anuncian con rango SUBNET (el agente, que no
+     define la variable). El sanity pub/sub interno funcionaba porque
+     ambos extremos eran LOCALHOST. **Fix sin tocar el contenedor de la
+     asignatura:** exportar `ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET` solo
+     en el comando (y `ros2 daemon stop` antes, que cachea el grafo con
+     el env viejo):
+     `docker exec rmf_unified bash -lc "source /opt/ros/jazzy/setup.bash
+     && export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET && ros2 topic echo
+     /cmd_vel"` → **`/cmd_vel`, `/vita_hello` y `/pc_hello` visibles y
+     el Twist llegando en vivo. Regresión del Objetivo 2 OK.**
+  Nota de topología: la regla "el agente SIEMPRE en la laptop" nació de
+  asumir que el PC (ethernet) no alcanzaba a la Vita (WiFi) — esta
+  sesión demuestra que SÍ se alcanzan (FTP + XRCE + netlog, vía el
+  router). Para desarrollar desde el PC vale el agente local; el `.vpk`
+  se rehornea con `-DAGENT_IP`/`-DNETLOG_IP` según dónde se trabaje.
+  **Pendiente para cerrar la Etapa B:** confirmación visual del usuario
+  de que el pitch alto ya no distorsiona (el fix ya está instalado).
