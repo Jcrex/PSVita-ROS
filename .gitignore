@@ -30,3 +30,4 @@ build-host/
 # Toolchains locales del PC de desarrollo (VitaSDK, rustup, cargo, cmake)
 toolchains/
 auditoria/
+Videos/
