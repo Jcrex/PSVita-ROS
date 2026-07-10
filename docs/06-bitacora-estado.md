@@ -683,7 +683,46 @@ cd web && pnpm build                      # o: docker compose up -d --build
   error textual), con sección de resultado y árbol de decisión recorrido.
   Los logs crudos (`log-rcutils-configure.txt`, `log-rcutils-manual.txt`,
   `log-ogre-configure.txt`) viven en `auditoria/` del PC (regenerables
-  con los comandos de la Etapa A). `fases.ts`: hito Etapa A → `hecho`,
-  Etapa B → `en-curso`. **Siguiente paso exacto: Etapa B** (B0 diseño
-  fino en docs/11 → B1 instalar vitaGL con vdpm verificando archivos →
-  B2 PoC convivencia vita2d↔vitaGL + ADR 0007 → B3 escena mínima).
+  con los comandos de la Etapa A). `fases.ts`: hito Etapa A → `hecho`.
+
+- **(2026-07-10, en el PC, misma sesión) ETAPA B implementada y compilada
+  — la app gana el modo VIZ 3D (vitaGL); falta SOLO hardware:**
+  1. **B0:** `docs/11-diseno-mini-rviz.md` (alcance MVP, modos, flujo de
+     datos, formato VBM v1 con topes, presupuesto de red/RAM).
+  2. **B1:** vitaGL y séquito instalados con vdpm y VERIFICADOS en el
+     sysroot: `vitaGL libpng zlib vitashark SceShaccCgExt taihen` OK a la
+     primera; **`mathneon` da 404 — el paquete real es `libmathneon`**
+     (misma trampa que libvita2d: vdpm dice "Successfully installed"
+     aunque el tar falle).
+  3. **B2 resuelto SIN PoC en hardware — la Opción 1 era imposible a
+     nivel de API:** vitaGL no tiene función de cierre (`eglTerminate` es
+     un no-op, `source/egl.c:345` del clon oficial) y `libvitaGL.a` no
+     referencia `sceGxmTerminate` (nm), mientras `libvita2d.a` sí tiene
+     init+terminate. Conmutar de vuelta VIZ→TELEOP con vita2d no puede
+     funcionar jamás. **ADR 0007 (aceptado): Opción 2, todo vitaGL.**
+  4. **B3:** `src/ui.c` REESCRITO sobre vitaGL (mismo contrato ui.h,
+     mismo layout.json/codegen; fuente bitmap font8x8 dominio público
+     vendorizada en `src/viz/font8x8_basic.h`, atlas 128×64, texto
+     monoespaciado 16 px a escala 1 — métrica distinta de la PGF, la
+     preview web sigue siendo aproximación). Nuevos `src/viz/camera.{h,c}`
+     (cámara orbital Z-up, lógica pura) y `src/viz/viz.{h,c}` (grid
+     10×10 m + ejes RGB + cubo, pipeline fijo GL de los samples).
+     `main.c`: modos TELEOP↔VIZ con SELECT (flanco); en VIZ el stick
+     derecho orbita y L/R zooman (neutralizados en la entrada del teleop),
+     el resto del teleop sigue publicando. CMakeLists: +viz/, vitaGL y
+     séquito EN VEZ de vita2d/ScePgf (libs exactas del Makefile del
+     sample), versión 03.00.
+  5. **Verificado en el PC:** `check-viz-host.sh` NUEVO (cámara 16/16),
+     `check-ui-layout.sh` (22 widgets) y `check-teleop.sh` verdes;
+     paridad de los 3 módulos verde; AMBAS variantes empaquetan
+     (`build-c/` 474 KB, `build-rust/` 532 KB — crecen por vitaGL).
+  6. **PENDIENTE (hardware, la Vita estaba inaccesible — "no route to
+     host" en 192.168.1.94:1337):** subir `build-rust/vita-ros2-hello.vpk`
+     por FTP, instalar en VitaShell (v03.00 sobrescribe), y verificar:
+     (a) la UI teleop se ve con la fuente nueva, (b) SELECT entra al modo
+     VIZ y se ven grid/ejes/cubo con la cámara orbitando, (c) regresión
+     `ros2 topic echo /cmd_vel`. Si el texto desborda paneles, ajustar
+     `UI_FONT_FACTOR` en ui.c.
+  `fases.ts`: Etapa B → `bloqueado-hw`. Siguiente tras validar: Etapa C
+  (UI v2: imagen/línea/círculo — con libpng directo a textura GL, ya que
+  vita2d_load_PNG_file se fue con vita2d; ADR 0007 lo documenta).

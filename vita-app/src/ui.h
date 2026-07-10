@@ -1,9 +1,11 @@
 /**
- * ui.h — Dibujado de la UI declarativa con vita2d (SOLO Vita, SOLO C).
+ * ui.h — Dibujado de la UI declarativa con vitaGL (SOLO Vita, SOLO C).
  *
  * ADR 0005: el renderizado es código de app, no módulo dual — no hay rama
  * host ni paridad Rust. Lo verificable en laptop es el layout generado
  * (scripts/check-ui-layout.sh); este archivo se valida en el PC/hardware.
+ * ADR 0007: el backend pasó de vita2d a vitaGL (un solo dueño del GPU
+ * para convivir con el modo VIZ 3D). ui_init() es el ÚNICO vglInit().
  */
 #ifndef VITA_UI_H
 #define VITA_UI_H
@@ -12,7 +14,7 @@
 
 #include "ui_types.h"
 
-/** Inicializa vita2d + fuente PGF del sistema. false si la fuente no carga. */
+/** Inicializa vitaGL (único init del GPU) + la fuente bitmap embebida. */
 bool ui_init(void);
 
 /** Dibuja un frame completo: fondo + UI_WIDGETS (ui_layout.h) con `st`. */

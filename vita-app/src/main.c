@@ -42,6 +42,8 @@
 #include "teleop.h"
 #include "ui.h"
 #include "uxr_glue.h"
+#include "viz/camera.h"
+#include "viz/viz.h"
 
 /* ---------------------------------------------------------------- */
 /* Configuración (se puede sobreescribir con -D en CMake)            */
@@ -77,6 +79,11 @@ static bool g_pc_hello_received = false;
 /* Estado que la UI declarativa muestra vía bindings (ui_types.h). La app
  * lo actualiza en el bucle principal y ui_draw() lo pinta cada frame. */
 static ui_state g_ui;
+
+/* Modos de la app (docs/11 §2, ADR 0007): SELECT conmuta. En VIZ el
+ * teleop SIGUE publicando (stick izq/cruceta/triángulo/X), pero el stick
+ * derecho y L/R pasan a la cámara — se neutralizan en la entrada. */
+typedef enum { MODO_TELEOP = 0, MODO_VIZ = 1 } app_modo;
 
 /* Callback de suscripción: el agente nos entrega un topic serializado CDR.
  * std_msgs/String es solo un campo `data: string`; en CDR un string es
@@ -269,6 +276,15 @@ int main(void)
              "(mapeo en docs/09)", teleop.vel_lineal, teleop.vel_lateral);
     LOG("%s\n", linea_log);
 
+    /* --- Modo VIZ (Etapa B3, docs/11): escena 3D + cámara orbital --- */
+    app_modo modo = MODO_TELEOP;
+    bool prev_select = false;
+    viz_camera cam;
+    viz_camera_init(&cam);
+    if (!viz_init()) {
+        LOG("[vita-ros2] WARN: viz_init fallo; modo VIZ deshabilitado\n");
+    }
+
     uint32_t count = 0;
     uint32_t count_cmd = 0;
     uint64_t proxima_pub = sceKernelGetProcessTimeWide(); /* microsegundos */
@@ -276,6 +292,15 @@ int main(void)
     SceCtrlData ctrl;
     while (sceCtrlPeekBufferPositive(0, &ctrl, 1),
            (ctrl.buttons & SCE_CTRL_START) == 0) {
+        /* SELECT conmuta TELEOP<->VIZ en flanco de subida (ADR 0007:
+         * mismo contexto GL, solo cambia qué se dibuja). */
+        const bool select_ahora = (ctrl.buttons & SCE_CTRL_SELECT) != 0;
+        if (select_ahora && !prev_select) {
+            modo = (modo == MODO_TELEOP) ? MODO_VIZ : MODO_TELEOP;
+            LOG("[vita-ros2] modo -> %s\n",
+                modo == MODO_VIZ ? "VIZ 3D" : "TELEOP");
+        }
+        prev_select = select_ahora;
         if (sceKernelGetProcessTimeWide() >= proxima_pub) {
             proxima_pub += 1000000; /* 1 Hz */
             char msg[96];
@@ -299,6 +324,22 @@ int main(void)
         t_prev = ahora;
 
         teleop_entrada mandos = leer_mandos(&ctrl);
+        if (modo == MODO_VIZ) {
+            /* En VIZ el stick derecho orbita la cámara y L/R hacen zoom:
+             * se neutralizan en la entrada del teleop para no mover el
+             * robot lateralmente/girarlo sin querer (docs/11 §2). */
+            const float drx = ((float)mandos.rx - TELEOP_STICK_CENTRO) / 128.0f;
+            const float dry = ((float)mandos.ry - TELEOP_STICK_CENTRO) / 128.0f;
+            const float dt_f = (float)dt_s;
+            if (drx > 0.15f || drx < -0.15f || dry > 0.15f || dry < -0.15f)
+                viz_camera_orbit(&cam, -drx * 2.0f * dt_f, -dry * 1.5f * dt_f);
+            if (mandos.l) viz_camera_zoom(&cam, 1.0f - 0.8f * dt_f);
+            if (mandos.r) viz_camera_zoom(&cam, 1.0f + 0.8f * dt_f);
+            mandos.rx = TELEOP_STICK_CENTRO;
+            mandos.ry = TELEOP_STICK_CENTRO;
+            mandos.l = false;
+            mandos.r = false;
+        }
         double vel_antes = teleop.vel_lineal;
         teleop_twist tw;
         teleop_update(&teleop, &mandos, dt_s, &tw);
@@ -341,7 +382,11 @@ int main(void)
         g_ui.lin_x = (float)tw.lin_x;
         g_ui.lin_y = (float)tw.lin_y;
         g_ui.ang_z = (float)tw.ang_z;
-        ui_draw(&g_ui);
+        if (modo == MODO_VIZ) {
+            viz_draw(&cam); /* frame 3D completo (clear+escena+swap) */
+        } else {
+            ui_draw(&g_ui); /* frame 2D completo (clear+widgets+swap) */
+        }
     }
 
     LOG("[vita-ros2] saliendo (START pulsado tras %lu hellos y %lu "

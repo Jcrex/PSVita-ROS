@@ -26,7 +26,7 @@ include("${VITASDK}/share/vita.cmake" REQUIRED)
 set(VITA_IMPL "c" CACHE STRING "Implementación de los módulos duales: c | rust")
 set(VITA_APP_NAME "Vita ROS2 Teleop")
 set(VITA_TITLEID "VROS00001")   # 9 caracteres exactos, único por app
-set(VITA_VERSION "02.00")       # 02 = Objetivo 2 (teleop /cmd_vel)
+set(VITA_VERSION "03.00")       # 03 = Objetivos 3/4 (modo VIZ 3D, ADR 0007)
 
 # IPs por defecto de la Fase 1 (agente y netlog en la laptop, red WiFi).
 set(AGENT_IP "192.168.1.108" CACHE STRING "IP del micro-ROS Agent")
@@ -46,6 +46,8 @@ add_executable(${PROJECT_NAME}
     src/netlog.c
     src/ui.c
     src/teleop.c
+    src/viz/camera.c
+    src/viz/viz.c
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -95,14 +97,24 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${XRCE_PREFIX}/lib/libmicroxrcedds_client.a
     ${XRCE_PREFIX}/lib/libmicrocdr.a
-    # UI declarativa (ui.c, ADR 0005). Validado en el PC (2026-07-07): se
-    # instala con `vdpm libvita2d` (el paquete NO se llama vita2d) y enlaza
-    # sin dependencias extra con estos stubs.
-    vita2d
+    # Gráficos: vitaGL y su séquito (ADR 0007 sustituyó a vita2d/ScePgf).
+    # El set exacto de libs viene del Makefile de los samples oficiales
+    # (auditoria/vitaGL/samples/rotating_cube) — no quitar ninguna:
+    # vitashark/SceShaccCgExt/taihen compilan los shaders en runtime y
+    # mathneon acelera la matemática. Se instalan con:
+    #   ./vdpm vitaGL libpng zlib vitashark SceShaccCgExt taihen libmathneon
+    # (¡el paquete es libmathneon, NO mathneon — verificar archivos!)
+    vitaGL
+    stdc++
+    mathneon
+    vitashark
+    SceShaccCgExt
+    taihen_stub
+    SceShaccCg_stub
+    SceKernelDmacMgr_stub
     SceDisplay_stub
     SceGxm_stub
     SceCommonDialog_stub
-    ScePgf_stub
     SceAppMgr_stub
     m
     SceNet_stub
