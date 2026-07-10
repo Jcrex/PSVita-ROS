@@ -63,7 +63,7 @@ alucinar**. Reglas de obligado cumplimiento:
 | `docs/06-bitacora-estado.md` | Estado real actual y muros ya resueltos (NO re-tropezar). |
 | `docs/00-vision-y-objetivos.md` | Qué son los Objetivos 3 y 4 y las restricciones transversales. |
 | `docs/04-investigacion-portabilidad-rviz2.md` | El método de auditoría y el árbol de decisión de la Etapa A. |
-| `docs/03-estrategia-dual-rust-c.md` | Cómo se construye un módulo dual (contrato header, paridad). |
+| `docs/03-estrategia-dual-rust-cpp.md` | Cómo se construye un módulo dual (contrato header, paridad). |
 | `docs/09-objetivo2-control-robot.md` | Cómo se diseñó/cerró el Objetivo 2 (plantilla de calidad). |
 | `vita-app/src/main.c` | El ciclo de vida completo de la app: sesión XRCE, entidades DDS, bucle. |
 | `vita-app/README.md` | Mapa de archivos de la app y topología de red (agente EN LA LAPTOP). |
@@ -432,7 +432,7 @@ módulo sigue la estructura, se testea solo. Lee también la skill
 ### D1 — `modules/viz-math/`: vec3, quat, mat4
 
 - **Leer antes:** `modules/mem-pool/include/mem_pool.h` (estilo de
-  contrato), `docs/03-estrategia-dual-rust-c.md`.
+  contrato), `docs/03-estrategia-dual-rust-cpp.md`.
 - **API mínima** (todo `float`, sin malloc, buffers del llamador):
   `vec3_add/sub/scale/cross/dot/norm`, `quat_from_axis_angle`,
   `quat_mul`, `quat_rotate_vec3`, `quat_to_mat4`,
