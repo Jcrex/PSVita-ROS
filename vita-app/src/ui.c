@@ -261,3 +261,36 @@ void ui_shutdown(void)
     }
     g_listo = false;
 }
+
+/* --- Primitivas públicas para pantallas fuera del layout (ui.h) --- */
+
+void ui_frame_begin(void)
+{
+    if (!g_listo) return;
+    glClearColor((float)(UI_FONDO & 0xff) / 255.0f,
+                 (float)((UI_FONDO >> 8) & 0xff) / 255.0f,
+                 (float)((UI_FONDO >> 16) & 0xff) / 255.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    modo_2d();
+}
+
+void ui_frame_end(void)
+{
+    if (!g_listo) return;
+    vglSwapBuffers(GL_FALSE);
+}
+
+void ui_rect(float x, float y, float w, float h, uint32_t color)
+{
+    if (!g_listo) return;
+    glDisable(GL_TEXTURE_2D);
+    color_gl(color);
+    quad(x, y, w, h);
+}
+
+void ui_texto(float x, float y, uint32_t color, float escala,
+              const char *txt)
+{
+    if (!g_listo) return;
+    dibujar_texto_xy(x, y, color, escala, txt);
+}

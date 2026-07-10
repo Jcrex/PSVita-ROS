@@ -26,6 +26,7 @@
  * respeta, el agente crea las entidades pero ros2 no las ve como propias.
  */
 #include <psp2/ctrl.h>
+#include <psp2/io/stat.h>
 #include <psp2/kernel/clib.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/threadmgr.h>
@@ -37,6 +38,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+#include "config_ui.h"
 #include "net_udp.h"
 #include "netlog.h"
 #include "teleop.h"
@@ -124,30 +127,55 @@ static teleop_entrada leer_mandos(const SceCtrlData *ctrl)
 
 int main(void)
 {
-    /* --- Red: módulo dual net-udp (sceNet por debajo) --- */
-    if (net_udp_init() != NET_UDP_OK) {
-        sceClibPrintf("[vita-ros2] FATAL: net_udp_init fallo\n");
+    /* --- UI primero (vitaGL + ui_layout.h; ADR 0005/0007): la pantalla
+     * de configuración necesita dibujar y no necesita red. Si falla
+     * seguimos headless: la conectividad ROS2 no depende de la pantalla. */
+    const bool ui_ok = ui_init();
+    if (!ui_ok) {
+        sceClibPrintf("[vita-ros2] WARN: ui_init fallo; sigo sin UI\n");
+    }
+
+    /* --- IP del agente/netlog (misma máquina, la laptop por defecto):
+     * horneada como AGENT_IP -> tapada por la guardada en ux0: ->
+     * editable en pantalla con los mandos (petición del usuario,
+     * 2026-07-10). Sin UI no hay edición: vale la cargada/por defecto. */
+    config_ip ip_defecto;
+    if (!config_ip_parse(AGENT_IP, &ip_defecto)) {
+        /* AGENT_IP la fija CMake: si no parsea es un error de build. */
+        sceClibPrintf("[vita-ros2] FATAL: AGENT_IP horneada invalida\n");
         sceKernelExitProcess(1);
         return 1;
     }
-    if (!netlog_init(NETLOG_IP, NETLOG_PORT)) {
+    config_ip ip_cfg = ip_defecto;
+    config_ip_load(CONFIG_RUTA_IP, &ip_cfg); /* si falla, queda el defecto */
+    if (ui_ok) {
+        config_ui_run(&ip_cfg, &ip_defecto);
+        sceIoMkdir("ux0:/data", 0777);   /* idempotentes: fallan si */
+        sceIoMkdir(CONFIG_DIR, 0777);    /* existen y no pasa nada   */
+        config_ip_save(CONFIG_RUTA_IP, &ip_cfg);
+    }
+    char agente_ip[16];
+    config_ip_format(&ip_cfg, agente_ip, sizeof agente_ip);
+
+    /* --- Red: módulo dual net-udp (sceNet por debajo) --- */
+    if (net_udp_init() != NET_UDP_OK) {
+        sceClibPrintf("[vita-ros2] FATAL: net_udp_init fallo\n");
+        ui_draw_fatal("net_udp_init fallo", 5);
+        sceKernelExitProcess(1);
+        return 1;
+    }
+    if (!netlog_init(agente_ip, NETLOG_PORT)) {
         sceClibPrintf("[vita-ros2] WARN: netlog_init fallo (ip=%s:%d); "
                        "sin logs UDP, solo sceClibPrintf\n",
-                       NETLOG_IP, NETLOG_PORT);
+                       agente_ip, NETLOG_PORT);
     }
-    LOG("[vita-ros2] red inicializada; agente=%s:%d\n", AGENT_IP, AGENT_PORT);
-
-    /* --- UI declarativa (vita2d + ui_layout.h generado; ADR 0005) ---
-     * Si la fuente PGF no carga seguimos sin UI (headless como la Fase 1):
-     * la conectividad ROS2 no depende de la pantalla. */
-    if (!ui_init()) {
-        LOG("[vita-ros2] WARN: ui_init fallo; sigo sin UI en pantalla\n");
-    }
-    snprintf(g_ui.agente, sizeof g_ui.agente, "%s:%d", AGENT_IP, AGENT_PORT);
+    LOG("[vita-ros2] red inicializada; agente=%s:%d (defecto %s)\n",
+        agente_ip, AGENT_PORT, AGENT_IP);
+    snprintf(g_ui.agente, sizeof g_ui.agente, "%s:%d", agente_ip, AGENT_PORT);
 
     /* --- Transporte XRCE: módulo dual microros-transport vía glue --- */
     uxrCustomTransport transport;
-    vita_transport_args targs = {AGENT_IP, AGENT_PORT};
+    vita_transport_args targs = {agente_ip, AGENT_PORT};
     if (!vita_uxr_transport_init(&transport, &targs)) {
         LOG("[vita-ros2] FATAL: transporte no abre (¿agente accesible?)\n");
         ui_draw_fatal("El transporte UDP no abre (agente accesible?)", 5);

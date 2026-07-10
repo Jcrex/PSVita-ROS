@@ -29,4 +29,23 @@ void ui_draw_fatal(const char *msg, int segundos);
 
 void ui_shutdown(void);
 
+/* --- Primitivas para pantallas fuera del layout declarativo (p. ej.
+ * la pantalla de configuración de IP, config_ui.c). Un frame se
+ * compone como: ui_frame_begin() + rects/textos + ui_frame_end(). --- */
+
+#include <stdint.h>
+
+/** Limpia la pantalla (fondo del layout) y deja la proyección 2D. */
+void ui_frame_begin(void);
+
+/** Presenta el frame (swap). */
+void ui_frame_end(void);
+
+/** Rectángulo relleno; color RGBA8 empaquetado (r|g<<8|b<<16|a<<24). */
+void ui_rect(float x, float y, float w, float h, uint32_t color);
+
+/** Texto con la fuente bitmap; (x,y) = esquina superior izquierda. */
+void ui_texto(float x, float y, uint32_t color, float escala,
+              const char *txt);
+
 #endif /* VITA_UI_H */

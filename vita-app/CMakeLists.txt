@@ -46,6 +46,8 @@ add_executable(${PROJECT_NAME}
     src/netlog.c
     src/ui.c
     src/teleop.c
+    src/config.c
+    src/config_ui.c
     src/viz/camera.c
     src/viz/viz.c
 )

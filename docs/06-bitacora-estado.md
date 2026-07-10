@@ -800,3 +800,33 @@ cd web && pnpm build                      # o: docker compose up -d --build
   se rehornea con `-DAGENT_IP`/`-DNETLOG_IP` según dónde se trabaje.
   **Pendiente para cerrar la Etapa B:** confirmación visual del usuario
   de que el pitch alto ya no distorsiona (el fix ya está instalado).
+
+- **(2026-07-10, misma sesión) IP DEL AGENTE CONFIGURABLE DESDE LA
+  CONSOLA (petición del usuario):** el PC no tiene WiFi y el flujo del
+  usuario es con la laptop (192.168.1.108) recibiendo agente+netlog+
+  topics, así que hornear la IP en el `.vpk` obligaba a recompilar por
+  máquina. Ahora la app pregunta al arrancar:
+  1. **`src/config.{h,c}`** (lógica pura, testeable en host): parse
+     ESTRICTO de IPv4 decimal punteado, format, y load/save en
+     `ux0:/data/vitaros/agent_ip.txt` (archivo corrupto/inexistente →
+     se queda el defecto). Batería nueva `scripts/check-config.sh`
+     (tests/config_test.c): **20/20 en el PC**.
+  2. **`src/config_ui.{h,c}`** (solo Vita): pantalla al arrancar con los
+     4 octetos en cajas — ←/→ elige octeto, ↑/↓ cambia el valor (con
+     auto-repetición al mantener: 350 ms de espera, cadencia 90 ms),
+     △ restaura el defecto horneado, **X confirma y conecta**. Dibuja
+     con primitivas nuevas exportadas por ui.h (`ui_frame_begin/end`,
+     `ui_rect`, `ui_texto` — reutilizables para futuras pantallas).
+  3. **`main.c` reordenado:** ui_init PRIMERO (la pantalla no necesita
+     red) → cargar IP guardada (o defecto AGENT_IP) → pantalla →
+     sceIoMkdir de `ux0:/data/vitaros` + guardar → red/netlog/transporte
+     usan la IP elegida (netlog y agente comparten IP: son la misma
+     máquina). El binding `agente` de la UI muestra la IP elegida.
+  4. **El defecto vuelve a ser la laptop:** ambas variantes recompiladas
+     con `-DAGENT_IP=192.168.1.108 -DNETLOG_IP=192.168.1.108` y la Rust
+     (533631 bytes) subida por FTP y verificada. Los 4 checks host
+     verdes (config 20/20, cámara 26/26, teleop, ui-layout).
+  **Pendiente (hardware):** instalar y verificar la pantalla de config
+  (editar IP, △, X, persistencia entre arranques) — con X directo debe
+  conectar a la laptop como siempre. La verificación del PC de la
+  sesión anterior sigue valiendo para el camino XRCE completo.
