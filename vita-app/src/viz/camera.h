@@ -41,6 +41,17 @@ void viz_camera_zoom(viz_camera *c, float factor);
 /** Posición del ojo en el mundo según la fórmula del encabezado. */
 void viz_camera_eye(const viz_camera *c, float eye[3]);
 
+/**
+ * Matriz de VISTA completa (look-at con up=+Z), column-major como la
+ * espera glLoadMatrixf. Sustituye al gluLookAt de vitaGL, que tiene un
+ * bug real: mete el vector lateral s=f×up en la matriz SIN normalizar
+ * (vitaGL source/matrices.c:1073-1080, normaliza después y tarde), así
+ * que con pitch alto |s|→sin(ángulo)→0 y la imagen se distorsiona por
+ * escala anisótropa. Visto en hardware el 2026-07-10. Aquí s y u se
+ * normalizan ANTES de escribir la matriz (base ortonormal siempre).
+ */
+void viz_camera_view_matrix(const viz_camera *c, float m[16]);
+
 #ifdef __cplusplus
 }
 #endif

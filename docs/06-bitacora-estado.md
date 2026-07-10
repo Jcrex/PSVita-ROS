@@ -726,3 +726,41 @@ cd web && pnpm build                      # o: docker compose up -d --build
   `fases.ts`: Etapa B → `bloqueado-hw`. Siguiente tras validar: Etapa C
   (UI v2: imagen/línea/círculo — con libpng directo a textura GL, ya que
   vita2d_load_PNG_file se fue con vita2d; ADR 0007 lo documenta).
+
+- **(2026-07-10, en el PC, tercera sesión del día) PRIMERA PRUEBA EN
+  HARDWARE DEL MODO VIZ — funciona, con dos hallazgos del usuario, uno
+  ya corregido:** el `.vpk` v03.00 se subió por FTP (rehorneado con
+  `AGENT_IP`/`NETLOG_IP=192.168.1.65`: el agente y la web YA corrían en
+  el PC — contenedores `microros-agent` con `net=host ipc=host` y
+  `psvita-ros-web` con el ingestor en el 9999 — y el PC alcanza a la
+  Vita, así que no hizo falta la laptop), el usuario lo instaló y
+  **confirmó que la escena 3D se ve y la cámara orbita**.
+  1. **MURO (resuelto): distorsión al mirar hacia arriba.** Síntoma: con
+     pitch alto la imagen se deforma "como si se multiplicara el
+     determinante de una matriz" (descripción exacta del usuario — y
+     clavada). Causa raíz: **bug del `gluLookAt` de vitaGL**
+     (`source/matrices.c:1073-1080` del clon oficial): mete el vector
+     lateral `s = f×up` en la matriz ANTES de normalizarlo (lo normaliza
+     después, solo para calcular `u`). Con el pitch cerca del polo
+     |s| = sin(ángulo con la vertical) → ~0.04, así que la fila X de la
+     rotación queda escalada ~0.04 con la fila Y en 1: escala anisótropa
+     ⇒ el determinante del bloque de rotación ya no es 1. Fix:
+     `viz_camera_view_matrix()` en `src/viz/camera.c` — matriz de vista
+     PROPIA con s y u normalizados antes de escribirla, cargada con
+     `glLoadMatrixf` (adiós `gluLookAt`). Testeada en host: base
+     ortonormal con pitch extremo + posición del target — batería de la
+     cámara ahora 26/26 (`check-viz-host.sh`).
+  2. **Feedback de UI (apaño aplicado, solución de fondo PENDIENTE):**
+     la fuente monoespaciada de 16 px desbordaba los paneles (pensados
+     para la PGF proporcional) y los textos se solapaban; además el look
+     pixelart no convence. Apaño: `UI_FONT_FACTOR` 2.0→1.5 (12 px) y
+     filtrado LINEAR con atlas de celdas 10×10 (margen de 1 px contra el
+     sangrado). **PENDIENTE ACORDADO CON EL USUARIO: "sistema de UI no
+     fijo"** — layout adaptativo (los widgets no truncan/solapan cuando
+     el texto crece) + tipografía mejor (p. ej. atlas horneado de una
+     TTF desde la web/PC). Encaja como parte de la Etapa C (UI v2) o
+     como pieza propia antes de E5; diseñarlo al abrir la Etapa C.
+  El `.vpk` corregido (531747 bytes) quedó subido a `ux0:/` y verificado
+  por listado FTP. **Falta: reinstalar en VitaShell y re-verificar (el
+  pitch alto ya no debe distorsionar) + la regresión `/cmd_vel` con el
+  agente del PC.**

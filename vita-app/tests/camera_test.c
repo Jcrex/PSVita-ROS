@@ -92,6 +92,56 @@ int main(void)
     check("orbit: yaw acotado tras 100 pasos",
           c.yaw <= (float)M_PI * 2.0f && c.yaw >= -(float)M_PI * 2.0f);
 
+    /* --- viz_camera_view_matrix --- */
+
+    /* Caso trivial: ojo en (5,0,0) mirando al origen => el origen del
+     * mundo queda 5 unidades DELANTE de la cámara: (0,0,-5) en vista. */
+    c.yaw = 0.0f; c.pitch = 0.0f; c.dist = 5.0f;
+    c.target[0] = c.target[1] = c.target[2] = 0.0f;
+    float m[16];
+    viz_camera_view_matrix(&c, m);
+    /* transformar el origen = columna de traslación */
+    check_f("vista: origen.x", m[12], 0.0f);
+    check_f("vista: origen.y", m[13], 0.0f);
+    check_f("vista: origen.z", m[14], -5.0f);
+
+    /* REGRESIÓN del bug de gluLookAt de vitaGL (distorsión mirando
+     * arriba, visto en hardware 2026-07-10): con pitch extremo la base
+     * de rotación DEBE seguir siendo ortonormal (filas unitarias y
+     * perpendiculares). vitaGL metía s=f×up sin normalizar y aquí
+     * |s| caía a ~0.04 => imagen aplastada. */
+    c.pitch = VIZ_CAM_PITCH_MAX;
+    viz_camera_view_matrix(&c, m);
+    const float *fx = &m[0]; /* filas en column-major: (m[0],m[4],m[8]) */
+    float fila_s[3] = {m[0], m[4], m[8]};
+    float fila_u[3] = {m[1], m[5], m[9]};
+    float fila_f[3] = {m[2], m[6], m[10]};
+    (void)fx;
+    check_f("vista pitch max: |s|",
+            sqrtf(fila_s[0] * fila_s[0] + fila_s[1] * fila_s[1] +
+                  fila_s[2] * fila_s[2]), 1.0f);
+    check_f("vista pitch max: |u|",
+            sqrtf(fila_u[0] * fila_u[0] + fila_u[1] * fila_u[1] +
+                  fila_u[2] * fila_u[2]), 1.0f);
+    check_f("vista pitch max: |f|",
+            sqrtf(fila_f[0] * fila_f[0] + fila_f[1] * fila_f[1] +
+                  fila_f[2] * fila_f[2]), 1.0f);
+    check_f("vista pitch max: s.u",
+            fila_s[0] * fila_u[0] + fila_s[1] * fila_u[1] +
+            fila_s[2] * fila_u[2], 0.0f);
+    check_f("vista pitch max: s.f",
+            fila_s[0] * fila_f[0] + fila_s[1] * fila_f[1] +
+            fila_s[2] * fila_f[2], 0.0f);
+    check_f("vista pitch max: u.f",
+            fila_u[0] * fila_f[0] + fila_u[1] * fila_f[1] +
+            fila_u[2] * fila_f[2], 0.0f);
+
+    /* La distancia al target se conserva con cualquier pitch: el target
+     * transformado debe quedar en (0,0,-dist). */
+    check_f("vista pitch max: target delante",
+            m[2] * c.target[0] + m[6] * c.target[1] + m[10] * c.target[2] +
+                m[14], -c.dist);
+
     printf("%d/%d checks de camara OK\n", g_checks - g_fallos, g_checks);
     return g_fallos ? EXIT_FAILURE : EXIT_SUCCESS;
 }

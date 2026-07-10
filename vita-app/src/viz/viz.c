@@ -97,13 +97,13 @@ void viz_draw(const viz_camera *cam)
     gluPerspective(45.0f, 960.0f / 544.0f, 0.1f, 100.0f);
 
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    float eye[3];
-    viz_camera_eye(cam, eye);
-    /* up = +Z (REP 103); pitch clampeado en camera.c lejos del polo. */
-    gluLookAt(eye[0], eye[1], eye[2],
-              cam->target[0], cam->target[1], cam->target[2],
-              0.0f, 0.0f, 1.0f);
+    /* Matriz de vista PROPIA (camera.c, testeada en host) en vez del
+     * gluLookAt de vitaGL, que distorsiona con pitch alto porque no
+     * normaliza el vector lateral a tiempo — bug visto en hardware el
+     * 2026-07-10, detalle en camera.h. */
+    float vista[16];
+    viz_camera_view_matrix(cam, vista);
+    glLoadMatrixf(vista);
 
     dibujar_grid();
     dibujar_ejes();

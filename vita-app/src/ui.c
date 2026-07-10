@@ -32,17 +32,23 @@
 #include "viz/font8x8_basic.h"
 
 #define UI_BORDE_PX 2
-/* Escala base del texto: 8 px del glifo × 2 = 16 px por carácter a
- * escala 1 (la PGF rondaba 20 px; 16 mantiene los layouts legibles sin
- * desbordar tanto los paneles pensados para fuente proporcional). */
+/* Escala base del texto: 8 px del glifo × 1.5 = 12 px por carácter a
+ * escala 1. Feedback de hardware (2026-07-10): con ×2 (16 px) la fuente
+ * monoespaciada desbordaba los paneles pensados para la PGF proporcional
+ * y los textos se solapaban. 12 px es el apaño acordado HASTA que exista
+ * el sistema de UI no fijo (layout adaptativo + tipografía mejor) — ver
+ * bitácora 2026-07-10. */
 #define UI_FONT_PX 8
-#define UI_FONT_FACTOR 2.0f
+#define UI_FONT_FACTOR 1.5f
 
-/* Atlas de fuente: 16 columnas × 8 filas de glifos de 8×8 => 128×64. */
+/* Atlas de fuente: 16 columnas × 8 filas de CELDAS de 10×10 con el
+ * glifo 8×8 dentro (1 px de margen alrededor): el filtrado LINEAR
+ * puede muestrear fuera del glifo sin sangrar el vecino. */
+#define UI_CELDA_PX 10
 #define UI_ATLAS_COLS 16
 #define UI_ATLAS_ROWS 8
-#define UI_ATLAS_W (UI_ATLAS_COLS * UI_FONT_PX)
-#define UI_ATLAS_H (UI_ATLAS_ROWS * UI_FONT_PX)
+#define UI_ATLAS_W (UI_ATLAS_COLS * UI_CELDA_PX)
+#define UI_ATLAS_H (UI_ATLAS_ROWS * UI_CELDA_PX)
 
 static GLuint g_font_tex = 0;
 static bool g_listo = false;
@@ -62,13 +68,14 @@ bool ui_init(void)
     vglInit(0x800000);
     vglWaitVblankStart(GL_TRUE);
 
-    /* Hornear el atlas: bit x de font8x8_basic[c][y] = píxel (x,y).
-     * Blanco con alfa (el color real lo pone GL_MODULATE al dibujar). */
+    /* Hornear el atlas: bit x de font8x8_basic[c][y] = píxel (x,y),
+     * centrado en su celda de 10×10 (offset +1). Blanco con alfa (el
+     * color real lo pone GL_MODULATE al dibujar). */
     static uint8_t atlas[UI_ATLAS_W * UI_ATLAS_H * 4];
     memset(atlas, 0, sizeof atlas);
     for (int c = 0; c < 128; c++) {
-        const int gx = (c % UI_ATLAS_COLS) * UI_FONT_PX;
-        const int gy = (c / UI_ATLAS_COLS) * UI_FONT_PX;
+        const int gx = (c % UI_ATLAS_COLS) * UI_CELDA_PX + 1;
+        const int gy = (c / UI_ATLAS_COLS) * UI_CELDA_PX + 1;
         for (int y = 0; y < 8; y++) {
             const uint8_t fila = (uint8_t)font8x8_basic[c][y];
             for (int x = 0; x < 8; x++) {
@@ -84,9 +91,10 @@ bool ui_init(void)
     glBindTexture(GL_TEXTURE_2D, g_font_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, UI_ATLAS_W, UI_ATLAS_H, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, atlas);
-    /* NEAREST: fuente pixelada nítida, sin sangrado entre glifos. */
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    /* LINEAR: suaviza el look pixelart al escalar ×1.5 (feedback de
+     * hardware); el margen de 1 px de las celdas evita el sangrado. */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     g_listo = true;
     return true;
@@ -172,8 +180,9 @@ static void dibujar_texto_xy(float x, float y, uint32_t color, float escala,
                              const char *texto)
 {
     const float px = UI_FONT_PX * UI_FONT_FACTOR * escala; /* lado en pantalla */
-    const float du = 1.0f / UI_ATLAS_COLS; /* tamaño de un glifo en UV */
-    const float dv = 1.0f / UI_ATLAS_ROWS;
+    /* UV del glifo 8×8 DENTRO de su celda de 10×10 (margen de 1 px). */
+    const float du = (float)UI_FONT_PX / UI_ATLAS_W;
+    const float dv = (float)UI_FONT_PX / UI_ATLAS_H;
 
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, g_font_tex);
@@ -183,8 +192,10 @@ static void dibujar_texto_xy(float x, float y, uint32_t color, float escala,
     for (const char *p = texto; *p; p++) {
         const unsigned char c = (unsigned char)*p;
         if (c >= 128) { cx += px; continue; }
-        const float u = (float)(c % UI_ATLAS_COLS) * du;
-        const float v = (float)(c / UI_ATLAS_COLS) * dv;
+        const float u =
+            (float)((c % UI_ATLAS_COLS) * UI_CELDA_PX + 1) / UI_ATLAS_W;
+        const float v =
+            (float)((c / UI_ATLAS_COLS) * UI_CELDA_PX + 1) / UI_ATLAS_H;
         glTexCoord2f(u, v);           glVertex2f(cx, y);
         glTexCoord2f(u + du, v);      glVertex2f(cx + px, y);
         glTexCoord2f(u + du, v + dv); glVertex2f(cx + px, y + px);
