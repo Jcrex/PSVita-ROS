@@ -166,7 +166,13 @@ PSVita-ROS/
 
 ---
 
-## 4. ETAPA A — Auditoría de portabilidad de rviz2 (Objetivo 3, la respuesta)
+## 4. ETAPA A — Auditoría de portabilidad de rviz2 (Objetivo 3, la respuesta) — **HECHA (2026-07-10, en el PC)**
+
+> **Resultado:** rviz2 nativo NO portable (ament/Python, sin dlopen en
+> newlib, símbolos glibc, Qt inexistente en vitasdk/packages, OGRE no
+> reconoce la plataforma). **ADR 0006 aceptado: Plan B mini-rviz.**
+> Evidencia en docs/04 (rellenado) y logs en `auditoria/` del PC.
+> A4 no aplicó (nada compiló).
 
 Meta: ejecutar el árbol de decisión de `docs/04` con evidencia real y
 registrar la decisión en un ADR. **Salida esperada: docs/04 sin ningún

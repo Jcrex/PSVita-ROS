@@ -83,8 +83,8 @@ export const fases: Fase[] = [
     resumen:
       'Compilar rviz2 (o construir el mini-rviz con vitaGL) y visualizar robots, TF, mapas y marcadores en la consola en tiempo real. Plan completo de desarrollo en docs/10.',
     hitos: [
-      { texto: 'Etapa A — Auditoría del árbol rviz2 (rclcpp/Qt/OGRE vs newlib) + ADR de decisión (docs/04)', estado: 'pendiente' },
-      { texto: 'Etapa B — vitaGL en la app: escena 3D mínima + convivencia con la UI vita2d', estado: 'pendiente' },
+      { texto: 'Etapa A — Auditoría del árbol rviz2 (rclcpp/Qt/OGRE vs newlib) + ADR de decisión (docs/04)', estado: 'hecho' },
+      { texto: 'Etapa B — vitaGL en la app: escena 3D mínima + convivencia con la UI vita2d', estado: 'en-curso' },
       { texto: 'Etapa C — UI declarativa v2: imágenes y formas + editor web ampliado', estado: 'pendiente' },
       { texto: 'Etapa D — Módulos duales de visualización: deserializadores CDR + árbol TF + math 3D', estado: 'pendiente' },
       { texto: 'Etapa E — mini-rviz MVP: modelo del robot animado por /tf y /joint_states + marcadores + mapa', estado: 'pendiente' },

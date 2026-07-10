@@ -1,6 +1,10 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-07 (PC: **OBJETIVO 2 CERRADO —
+**Última actualización:** 2026-07-10 (PC: **ETAPA A del plan de los
+Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
+compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
+mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
+2026-07-10. Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
 confirmado por el usuario en hardware real**: la app teleop instalada en
 la Vita publica `/cmd_vel` y controla robots según el mapeo de
 `docs/09-objetivo2-control-robot.md`. En la misma sesión: `.vpk` subido
@@ -649,3 +653,37 @@ cd web && pnpm build                      # o: docker compose up -d --build
      **Pendiente manual en la Vita:** instalar el `.vpk` desde VitaShell
      (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
      hacer la verificación en vivo del punto siguiente.
+
+- **(2026-07-10, en el PC) ETAPA A del plan de Objetivos 3/4 EJECUTADA —
+  la respuesta al Objetivo 3, con evidencia real:** siguiendo
+  `docs/10-plan-objetivos-3-4.md` §4 (antes se verificó que TODAS las
+  rutas que el plan referencia existen; se corrigió la única rota:
+  docs/03 es `-cpp`, no `-c`, commit f89dbc5). Auditoría en `auditoria/`
+  (nueva, gitignored) con VitaSDK v2.540/gcc 15.2.0/cmake 4.3.3:
+  1. **rcutils (jazzy) contra el toolchain de la Vita:** el configure
+     muere en `find_package(ament_cmake_python)` — todo ROS2 exige el
+     build system ament (Python) instalado PARA EL TARGET; no existe para
+     newlib. Aislando el build system (compilación a mano con
+     `arm-vita-eabi-gcc`): `shared_library.c` → falta `dlfcn.h` (newlib
+     no tiene dlopen → el sistema de plugins de rviz2 es imposible);
+     `process.c` → `program_invocation_name` (glibc); `time_unix.c` →
+     `logging_macros.h` no existe en el repo, se genera con Python/empy.
+     En cambio `filesystem.c`/`error_handling.c`/`allocator.c` compilan:
+     el muro es el SO asumido + build system, no "el C".
+  2. **Qt:** no hay port — `qt5.tar.xz` da HTTP 404 en vitasdk/packages
+     y ni `qt` ni `ogre` aparecen en el listado real del repo (API).
+  3. **OGRE v1.12.13** (la de rviz_rendering en Jazzy): el configure no
+     completa ni con `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` (cmake 4.x):
+     plataforma no reconocida (`OGRE_MEDIA_PATH does not exist`,
+     `install FILES given no DESTINATION!`) y 0 dependencias del target
+     encontradas (`Could NOT find OpenGL ...GLX...`, ni ZLIB/Freetype).
+  4. **A4 (integración real) no aplicó:** nada compiló.
+  **Decisión: ADR 0006 (aceptado) — Plan B mini-rviz con vitaGL.**
+  docs/04 quedó sin ningún `[abierto]` (cada capa con su veredicto y el
+  error textual), con sección de resultado y árbol de decisión recorrido.
+  Los logs crudos (`log-rcutils-configure.txt`, `log-rcutils-manual.txt`,
+  `log-ogre-configure.txt`) viven en `auditoria/` del PC (regenerables
+  con los comandos de la Etapa A). `fases.ts`: hito Etapa A → `hecho`,
+  Etapa B → `en-curso`. **Siguiente paso exacto: Etapa B** (B0 diseño
+  fino en docs/11 → B1 instalar vitaGL con vdpm verificando archivos →
+  B2 PoC convivencia vita2d↔vitaGL + ADR 0007 → B3 escena mínima).
