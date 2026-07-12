@@ -1,17 +1,20 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-10 (PC: **ETAPA A del plan de los
-Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
-compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
-mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
+**Última actualización:** 2026-07-13 (laptop, branch `godot-migration`:
+**G1 (esqueleto Godot) COMPLETO** — fork Godot 3.5-rc5 con plataforma Vita
+probado; app teleop replicada en Godot sin reescribir C/Rust; el módulo custom
+`godot/modules/microros/` linkea los 3 módulos duales + transporte XRCE vía
+singleton GDScript. Escena teleop stub corre en editor laptop simulada; docs/12
+y 13 publicados; siguiente: PC build-vita-template → PC export .vpk → hardware.
+Antes, 2026-07-10: **ETAPA A del plan de los Objetivos 3/4 EJECUTADA** —
+auditoría de portabilidad de rviz2 con compilaciones reales: rviz2 nativo NO
+portable, ADR 0006 activa el Plan B mini-rviz con vitaGL; docs/04 rellenado con
+la evidencia. Etapa B también completa y confirmada en hardware. Ver bloques
 2026-07-10. Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
 confirmado por el usuario en hardware real**: la app teleop instalada en
 la Vita publica `/cmd_vel` y controla robots según el mapeo de
-`docs/09-objetivo2-control-robot.md`. En la misma sesión: `.vpk` subido
-por FTP y verificado, y **arranca la planificación de los Objetivos 3 y
-4** — guía completa de desarrollo por etapas en
-`docs/10-plan-objetivos-3-4.md`. La Fase 1 sigue COMPLETA; la fase web
-sigue con su primer hito alcanzado)
+`docs/09-objetivo2-control-robot.md`. Fase 1 COMPLETA; fase web con primer hito
+alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
@@ -653,6 +656,24 @@ cd web && pnpm build                      # o: docker compose up -d --build
      **Pendiente manual en la Vita:** instalar el `.vpk` desde VitaShell
      (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
      hacer la verificación en vivo del punto siguiente.
+
+- **(2026-07-13, en la laptop) Branch `godot-migration` — G1 (esqueleto
+  Godot) COMPLETO:** existe un fork de Godot 3.5-rc5 con plataforma Vita
+  nativa ya probado por el usuario en su consola (editor x11 +
+  `vita_template_3.5.rc5.tpz`), y se decidió replicar la app teleop en
+  Godot **sin reescribir nada de C/Rust** (diseño: docs/12; plan:
+  docs/13). Clave técnica: en la Vita no hay GDNative
+  (`platform/vita/detect.py` del fork lo deshabilita), así que el código
+  nativo entra como **módulo custom del engine** vía `custom_modules=`
+  — `godot/modules/microros/` linkea los módulos duales + XRCE v2.4.3 +
+  el glue de `vita-app/src/` y expone el singleton `MicroROS` a
+  GDScript. En la branch quedaron: el proyecto Godot versionado, el
+  módulo completo (validar en el PC), la escena teleop con stub (corre
+  en el editor de la laptop en modo SIMULADO), el script
+  `godot/scripts/build-vita-template.sh` (PC) y el README publicado en
+  la web. **Siguiente paso exacto:** en el PC, `git pull`, correr
+  `godot/scripts/build-vita-template.sh` (Tarea 7 de docs/13), exportar
+  el `.vpk` y verificar en hardware (Tarea 8).
 
 - **(2026-07-10, en el PC) ETAPA A del plan de Objetivos 3/4 EJECUTADA —
   la respuesta al Objetivo 3, con evidencia real:** siguiendo
