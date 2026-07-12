@@ -28,6 +28,7 @@ COPY docs/ /app/docs/
 COPY modules/ /app/modules/
 COPY vita-app/ /app/vita-app/
 COPY mcp/ /app/mcp/
+COPY godot/README.md /app/godot/README.md
 RUN pnpm build
 
 # Quitar devDependencies del node_modules que viajará a runtime.
