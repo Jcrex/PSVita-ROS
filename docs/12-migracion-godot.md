@@ -85,13 +85,19 @@ y por debajo **linkea el código ya existente**:
 API GDScript (espejo de lo que hoy hace `main.c`):
 
 ```gdscript
-MicroROS.setup(agent_ip: String, netlog_ip: String)
+MicroROS.setup(agent_ip: String, netlog_ip: String) -> bool
 MicroROS.connect_agent() -> bool      # crea la sesión XRCE
 MicroROS.is_session_active() -> bool
-MicroROS.publish_cmd_vel(linear: float, angular: float)
-MicroROS.spin()                       # bombea la sesión; llamar en _process()
+MicroROS.teleop_step(input: Dictionary, dt: float) -> Dictionary
+MicroROS.spin(ms: int)                # bombea la sesión; llamar en _process()
 MicroROS.netlog(msg: String)
+MicroROS.shutdown()
 ```
+
+`teleop_step()` recibe el dict de mandos crudo (sticks [-1,1] + botones) y
+por dentro llama a `teleop_update()` de `teleop.c` — así el mapeo NO se
+reimplementa en GDScript — publica el Twist resultante y devuelve
+`{lin_x, lin_y, ang_z, vel_lineal, vel_lateral, published}` para pintarlo.
 
 El módulo es glue de ~200-300 líneas C++, sin lógica propia. Solo compila
 para el target Vita (guardas `#ifdef __vita__` / `platform=vita` en
