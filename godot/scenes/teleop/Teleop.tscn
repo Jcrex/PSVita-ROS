@@ -1,0 +1,53 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://scenes/teleop/teleop.gd" type="Script" id=1]
+
+[node name="Teleop" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 1 )
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 16.0
+margin_top = 16.0
+margin_right = -16.0
+margin_bottom = -16.0
+custom_constants/separation = 8
+
+[node name="Titulo" type="Label" parent="VBox"]
+text = "PSVita-ROS — Teleop (Godot)"
+
+[node name="FilaIP" type="HBoxContainer" parent="VBox"]
+custom_constants/separation = 8
+
+[node name="LblAgente" type="Label" parent="VBox/FilaIP"]
+text = "Agente:"
+
+[node name="IpAgente" type="LineEdit" parent="VBox/FilaIP"]
+rect_min_size = Vector2( 200, 0 )
+text = "192.168.1.108"
+
+[node name="LblNetlog" type="Label" parent="VBox/FilaIP"]
+text = "Netlog:"
+
+[node name="IpNetlog" type="LineEdit" parent="VBox/FilaIP"]
+rect_min_size = Vector2( 200, 0 )
+text = "192.168.1.108"
+
+[node name="BtnConectar" type="Button" parent="VBox/FilaIP"]
+text = "Conectar"
+
+[node name="Estado" type="Label" parent="VBox"]
+text = "SIN SESION - pulsa Conectar"
+
+[node name="Twist" type="Label" parent="VBox"]
+text = "cmd_vel  lin.x +0.00  lin.y +0.00  ang.z +0.00"
+
+[node name="Escalas" type="Label" parent="VBox"]
+text = "vel_lineal 0.5   vel_lateral 0.5"
+
+[node name="Consola" type="RichTextLabel" parent="VBox"]
+size_flags_vertical = 3
+scroll_following = true

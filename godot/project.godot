@@ -11,7 +11,7 @@ config_version=4
 [application]
 
 config/name="PSVita-ROS"
-run/main_scene="res://Primera-scena-silvia/escena-principal.tscn"
+run/main_scene="res://scenes/teleop/Teleop.tscn"
 config/icon="res://icon.png"
 
 [display]
