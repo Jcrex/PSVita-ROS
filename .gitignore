@@ -16,6 +16,10 @@ build/
 *.velf
 *.self
 
+# Objetos que scons (custom_modules) deja junto a las fuentes C
+*.o
+*.os
+
 # Editor/OS
 .DS_Store
 *.swp
