@@ -51,7 +51,7 @@ export function docSlug(entry: { id: string }): string {
 
 /** Definición de las secciones de /docs (orden de presentación). */
 export const seccionesDocs: {
-  key: 'fundacion' | 'adrs' | 'rust' | 'codigo';
+  key: 'fundacion' | 'adrs' | 'rust' | 'tutorial' | 'codigo';
   titulo: string;
   descripcion: string;
 }[] = [
@@ -72,6 +72,12 @@ export const seccionesDocs: {
     titulo: 'Aprendiendo Rust',
     descripcion:
       'Serie para principiantes ligada al código real del repo: herramientas, lenguaje, FFI y embebido.',
+  },
+  {
+    key: 'tutorial',
+    titulo: 'Tutorial práctico C/Rust',
+    descripcion:
+      'Recorrido guiado del código real del repo con retos: aprende a leer, modificar y compilar el C y el Rust del proyecto por tu cuenta.',
   },
   {
     key: 'codigo',

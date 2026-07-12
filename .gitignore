@@ -27,6 +27,9 @@ target/
 # Tests de paridad en host
 build-host/
 
+# Sandbox de práctica del tutorial (código propio de los retos)
+practica/
+
 # Toolchains locales del PC de desarrollo (VitaSDK, rustup, cargo, cmake)
 toolchains/
 auditoria/

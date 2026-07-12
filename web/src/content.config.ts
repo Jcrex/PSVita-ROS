@@ -41,6 +41,11 @@ const rust = defineCollection({
   loader: glob({ pattern: '*.md', base: '../docs/rust' }),
 });
 
+// docs/tutorial/*.md — el tutorial práctico C/Rust sobre el código real
+const tutorial = defineCollection({
+  loader: glob({ pattern: '*.md', base: '../docs/tutorial' }),
+});
+
 // READMEs técnicos del código (módulos, app, MCP)
 const codigo = defineCollection({
   loader: glob({
@@ -53,4 +58,4 @@ const codigo = defineCollection({
   }),
 });
 
-export const collections = { guias, fundacion, adrs, rust, codigo };
+export const collections = { guias, fundacion, adrs, rust, tutorial, codigo };
