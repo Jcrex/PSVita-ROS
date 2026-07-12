@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+# SCsub — módulo puente MicroROS (docs/12). Se compila DENTRO del engine
+# godot-vita con:  scons platform=vita custom_modules=<repo>/godot/modules
+#
+# Selección de implementación de los módulos duales (espejo de VITA_IMPL
+# del CMakeLists de vita-app):
+#   microros_impl=c     (defecto) impl-c de los módulos duales
+#   microros_impl=rust  staticlib paraguas de vita-app/rust-modules
+import os
+
+Import("env")
+Import("env_modules")
+
+module_dir = Dir(".").srcnode().abspath
+repo_root = os.path.normpath(os.path.join(module_dir, "..", "..", ".."))
+xrce_prefix = os.path.join(repo_root, "vita-app", "third_party", "xrce-vita")
+
+env_microros = env_modules.Clone()
+env_microros.Append(CPPPATH=[
+    os.path.join(repo_root, "modules", "mem-pool", "include"),
+    os.path.join(repo_root, "modules", "net-udp", "include"),
+    os.path.join(repo_root, "modules", "microros-transport", "include"),
+    os.path.join(repo_root, "vita-app", "src"),
+    os.path.join(xrce_prefix, "include"),
+])
+
+# Fuentes C++ del módulo
+env_microros.add_source_files(env.modules_sources, "*.cpp")
+
+# Código C reutilizado TAL CUAL (docs/12: cero reescritura). Los .o se
+# generan junto a las fuentes; el .gitignore de la raíz los excluye.
+reutilizadas = [
+    os.path.join(repo_root, "vita-app", "src", "uxr_glue.c"),
+    os.path.join(repo_root, "vita-app", "src", "netlog.c"),
+    os.path.join(repo_root, "vita-app", "src", "teleop.c"),
+    os.path.join(repo_root, "vita-app", "src", "config.c"),
+]
+
+impl = ARGUMENTS.get("microros_impl", "c")
+if impl == "rust":
+    rust_lib = os.path.join(repo_root, "vita-app", "rust-modules", "target",
+                            "armv7-sony-vita-newlibeabihf", "release",
+                            "libvita_modules_rust.a")
+    env.Append(LIBS=[File(rust_lib)])
+else:
+    reutilizadas += [
+        os.path.join(repo_root, "modules", "mem-pool", "impl-c",
+                     "mem_pool.c"),
+        os.path.join(repo_root, "modules", "net-udp", "impl-c",
+                     "net_udp.c"),
+        os.path.join(repo_root, "modules", "microros-transport", "impl-c",
+                     "microros_transport.c"),
+    ]
+
+env_microros.add_source_files(env.modules_sources, reutilizadas)
+
+# Libs XRCE cross-compiladas por vita-app/scripts/build-xrce-client-vita.sh
+# y stubs de red: el engine va con -DNO_NETWORK (detect.py) y no los linkea.
+env.Append(LIBS=[
+    File(os.path.join(xrce_prefix, "lib", "libmicroxrcedds_client.a")),
+    File(os.path.join(xrce_prefix, "lib", "libmicrocdr.a")),
+    "SceNet_stub",
+    "SceNetCtl_stub",
+])
