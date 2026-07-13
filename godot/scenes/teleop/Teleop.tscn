@@ -17,37 +17,70 @@ margin_bottom = -16.0
 custom_constants/separation = 8
 
 [node name="Titulo" type="Label" parent="VBox"]
+margin_right = 908.0
+margin_bottom = 14.0
 text = "PSVita-ROS — Teleop (Godot)"
 
 [node name="FilaIP" type="HBoxContainer" parent="VBox"]
+margin_top = 22.0
+margin_right = 908.0
+margin_bottom = 46.0
 custom_constants/separation = 8
 
 [node name="LblAgente" type="Label" parent="VBox/FilaIP"]
+margin_top = 5.0
+margin_right = 49.0
+margin_bottom = 19.0
 text = "Agente:"
 
 [node name="IpAgente" type="LineEdit" parent="VBox/FilaIP"]
+margin_left = 57.0
+margin_right = 257.0
+margin_bottom = 24.0
 rect_min_size = Vector2( 200, 0 )
 text = "192.168.1.108"
 
 [node name="LblNetlog" type="Label" parent="VBox/FilaIP"]
+margin_left = 265.0
+margin_top = 5.0
+margin_right = 311.0
+margin_bottom = 19.0
 text = "Netlog:"
 
 [node name="IpNetlog" type="LineEdit" parent="VBox/FilaIP"]
+margin_left = 319.0
+margin_right = 519.0
+margin_bottom = 24.0
 rect_min_size = Vector2( 200, 0 )
 text = "192.168.1.108"
 
 [node name="BtnConectar" type="Button" parent="VBox/FilaIP"]
+margin_left = 527.0
+margin_right = 595.0
+margin_bottom = 24.0
 text = "Conectar"
 
 [node name="Estado" type="Label" parent="VBox"]
+margin_top = 54.0
+margin_right = 908.0
+margin_bottom = 68.0
 text = "SIN SESION - pulsa Conectar"
 
 [node name="Twist" type="Label" parent="VBox"]
+margin_top = 76.0
+margin_right = 908.0
+margin_bottom = 90.0
 text = "cmd_vel  lin.x +0.00  lin.y +0.00  ang.z +0.00"
 
 [node name="Escalas" type="Label" parent="VBox"]
+margin_top = 98.0
+margin_right = 908.0
+margin_bottom = 112.0
 text = "vel_lineal 0.5   vel_lateral 0.5"
 
 [node name="Consola" type="RichTextLabel" parent="VBox"]
+margin_top = 120.0
+margin_right = 908.0
+margin_bottom = 512.0
 size_flags_vertical = 3
 scroll_following = true

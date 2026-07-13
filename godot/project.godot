@@ -22,6 +22,8 @@ window/size/height=544
 [global]
 
 glss=false
+export=false
+gles=false
 
 [gui]
 
