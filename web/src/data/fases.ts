@@ -78,6 +78,18 @@ export const fases: Fase[] = [
     ],
   },
   {
+    id: 'fase-godot',
+    nombre: 'Migración a Godot — teleop sobre el engine',
+    resumen:
+      'Replicar la app teleop dentro del fork godot-vita 3.5 mediante un módulo custom del engine (custom_modules) que reutiliza el código C/Rust existente, sin reescribir nada. Diseño en docs/12, plan en docs/13.',
+    hitos: [
+      { texto: 'G1 — Esqueleto: módulo microros (puente C++→singleton GDScript), escena teleop con stub en el editor, build script y docs', estado: 'hecho' },
+      { texto: 'G2 — Template custom compila en el PC: engine godot-vita + microros → vita_release.zip instalado. Prerreq. del VitaSDK resueltos: PVR_PSP2 v3.9, códecs vdpm, patch bullet-vita-no-clew y stub dlfcn.h (docs/12 §Prerrequisitos); uninstall-godot.sh', estado: 'hecho' },
+      { texto: 'G3 — Teleop Godot en hardware: el singleton MicroROS aparece en GDScript y la sesión XRCE controla el robot real (export .vpk desde el editor)', estado: 'bloqueado-hw' },
+      { texto: 'G4 — Variante Rust del template (staticlib paraguas en lugar de las libs C)', estado: 'pendiente' },
+    ],
+  },
+  {
     id: 'fase-3-4',
     nombre: 'Objetivos 3 y 4 — rviz2 / mini-rviz en la Vita',
     resumen:

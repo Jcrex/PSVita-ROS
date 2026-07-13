@@ -1,6 +1,6 @@
 # 12 — Diseño: migración del teleop al entorno Godot
 
-**Fecha:** 2026-07-13 · **Estado:** diseño aprobado, implementación pendiente
+**Fecha:** 2026-07-13 · **Estado:** G1 y G2 hechos (template compila en el PC); G3 pendiente (hardware)
 **Branch de trabajo:** `godot-migration`
 **Prerrequisitos cumplidos:** Objetivo 2 cerrado (la app teleop nativa
 controla el robot real vía `/cmd_vel`, ver `docs/09-objetivo2-control-robot.md`).
@@ -140,6 +140,47 @@ para el target Vita (guardas `#ifdef __vita__` / `platform=vita` en
 El template solo se recompila cuando cambia código C/C++/Rust; los cambios
 de GDScript/escenas solo requieren re-exportar el `.vpk` (segundos).
 
+## Prerrequisitos del VitaSDK para compilar el template (G2)
+
+Compilar el engine godot-vita completo (con el módulo `microros`) exige, en
+el PC, más que el VitaSDK base. Todo esto quedó resuelto y automatizado al
+cerrar G2; se documenta porque un VitaSDK limpio lo necesita:
+
+1. **Entorno cargado:** `source tools/env-devpc.fish` (exporta `VITASDK`,
+   `RUSTUP_HOME`, `CARGO_HOME` y mete en el PATH VitaSDK, cargo, cmake, y las
+   utilidades `vdpm`/`vita-makepkg`). Sin esto el script muere en
+   `VITASDK no exportado`. Falta además `scons` y `zip` del sistema
+   (`sudo pacman -S scons zip`).
+2. **Driver PowerVR (PVR_PSP2 v3.9):** el fork renderiza con el driver
+   propietario de la Vita, no con vitaGL. Aporta `EGL/`, `GLES2/`,
+   `gpu_es4/psp2_pvr_hint.h` y las stubs `libIMGEGL/libGLESv2/libgpu_es4_ext`.
+   Se instala con el paquete de
+   [`vita-packages-extra`](https://github.com/SonicMastr/vita-packages-extra):
+   `cd .../vita-packages-extra/pvr_psp2 && vita-makepkg && vdpm pvr_psp2-*-arm.tar.xz`.
+   Los `.suprx` runtime del driver ya viajan dentro del template.
+3. **Códecs y freetype (vdpm):** el engine enlaza ogg/vorbis/theora/opus,
+   jpeg y freetype:
+   `vdpm libjpeg-turbo freetype libogg libvorbis libtheora opus`.
+4. **Patch `bullet-vita-no-clew`** (`godot/patches/`, lo aplica el build
+   script solo): Bullet incluye `clew/clew.c` (loader OpenCL) que usa
+   `dlopen`; la newlib de la Vita no tiene carga dinámica. Godot nunca usa
+   clew (solo `Bullet3OpenCL/*`, que no se compila), así que se excluye.
+   **No afecta a la física:** Bullet corre entero en CPU; la aceleración por
+   GPU/OpenCL es imposible en el PowerVR SGX543 de todos modos.
+5. **Stub `dlfcn.h`** (`godot/vitasdk-stubs/`, lo copia el build script solo):
+   código stock de Godot (`drivers/gles2/rasterizer_storage_gles2.cpp`) hace
+   `#include <dlfcn.h>` en cualquier target GLES2, pero las llamadas reales a
+   `dlopen`/`dlsym` quedan en bloques `#ifdef ANDROID/IPHONE` — código muerto
+   en la Vita. Basta un header-stub de declaraciones (sin enlazar nada).
+
+Los pasos 1-3 tocan el VitaSDK vendorizado (gitignorado); los pasos 4-5 viven
+en el repo y el `build-vita-template.sh` los aplica de forma **idempotente**.
+
+**Desinstalación limpia:** `godot/scripts/uninstall-godot.sh` revierte todo lo
+anterior (parches con `patch -R`, stubs, paquetes vdpm con `vdpm -u` —que
+respeta ficheros compartidos—, template y `godot/build/`), dejando el VitaSDK
+en su estado pre-Godot. No toca el toolchain base compartido con `vita-app`.
+
 **Variante Rust (segundo hito):** mismo template pero linkeando la
 staticlib paraguas `vita-app/rust-modules/` en lugar de las libs C, igual
 que hace hoy el `.vpk` Rust (`cargo rustc --crate-type staticlib`, una
@@ -172,8 +213,12 @@ Lecciones ya pagadas que se conservan:
 1. **G1 — Esqueleto en la branch (laptop):** módulo C++ completo, escena
    teleop con stub funcionando en el editor, build script, docs. Es el
    único hito verificable íntegramente en la laptop.
-2. **G2 — Template custom compila (PC):** el fork compila con
-   `custom_modules`, el singleton aparece en GDScript en la Vita.
+2. **G2 — Template custom compila (PC):** ✅ **hecho (2026-07-13).** El fork
+   compila entero con `custom_modules` en el PC (7,5 min); el `microros` queda
+   registrado en el engine (`register_microros_types()`) y el
+   `vita_release.zip` (19 MB, con `eboot.bin` + `.suprx` PowerVR) se instala
+   como template. Falta validar en hardware que el singleton aparece en
+   GDScript (parte de G3). Ver los prerrequisitos del VitaSDK arriba.
 3. **G3 — Teleop Godot en hardware:** sesión XRCE activa, `/cmd_vel`
    controla el robot real. Cierra la migración (variante C).
 4. **G4 — Variante Rust del template.**

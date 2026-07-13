@@ -42,6 +42,34 @@ if [ "$IMPL" = "rust" ]; then
         --target armv7-sony-vita-newlibeabihf)
 fi
 
+# 2.4) Stubs de cabeceras que el VitaSDK no trae pero código stock de Godot
+#      incluye (ver cada .h para el porqué). Se copian al include del SDK si
+#      no están ya.
+STUB_INC="$VITASDK/arm-vita-eabi/include"
+for stub in "$REPO"/godot/vitasdk-stubs/*.h; do
+    [ -e "$stub" ] || continue
+    dst="$STUB_INC/$(basename "$stub")"
+    if [ ! -f "$dst" ]; then
+        cp "$stub" "$dst"
+        echo "== stub $(basename "$stub"): instalado en el VitaSDK =="
+    fi
+done
+
+# 2.5) Parches al fork (se aplican sobre el árbol de godot-vita, que va sin
+#      git). Idempotente: si ya está aplicado (patch --dry-run --reverse OK)
+#      se salta. Ver godot/patches/*.patch para el porqué de cada uno.
+for patch in "$REPO"/godot/patches/*.patch; do
+    [ -e "$patch" ] || continue
+    name="$(basename "$patch")"
+    if patch -d "$FORK" -p1 --dry-run --reverse --force <"$patch" >/dev/null 2>&1; then
+        echo "== patch $name: ya aplicado, se salta =="
+    elif patch -d "$FORK" -p1 --forward <"$patch" >/dev/null 2>&1; then
+        echo "== patch $name: aplicado =="
+    else
+        echo "ERROR: no se pudo aplicar $name (¿fork con versión distinta?)"; exit 1
+    fi
+done
+
 # 3) Engine + módulo
 echo "== scons platform=vita (custom_modules, microros_impl=$IMPL) =="
 (cd "$FORK" && scons platform=vita target=release \

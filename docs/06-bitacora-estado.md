@@ -1,11 +1,15 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-13 (laptop, branch `godot-migration`:
-**G1 (esqueleto Godot) COMPLETO** — fork Godot 3.5-rc5 con plataforma Vita
+**Última actualización:** 2026-07-13 (PC, branch `godot-migration`:
+**G2 (template custom COMPILA en el PC) COMPLETO** — `build-vita-template.sh c`
+genera el engine godot-vita entero con el módulo `microros` dentro →
+`vita_release.zip` (19 MB) instalado como template. Resueltos los prerrequisitos
+del VitaSDK: PVR_PSP2 v3.9 (driver), códecs vdpm, patch `bullet-vita-no-clew`
+y stub `dlfcn.h` (docs/12 §Prerrequisitos); nuevo `uninstall-godot.sh`.
+Antes hoy, **G1 (esqueleto Godot) COMPLETO** — fork Godot 3.5-rc5 con Vita
 probado; app teleop replicada en Godot sin reescribir C/Rust; el módulo custom
 `godot/modules/microros/` linkea los 3 módulos duales + transporte XRCE vía
-singleton GDScript. Escena teleop stub corre en editor laptop simulada; docs/12
-y 13 publicados; siguiente: PC build-vita-template → PC export .vpk → hardware.
+singleton GDScript. Siguiente (G3): export `.vpk` desde el editor → hardware.
 Antes, 2026-07-10: **ETAPA A del plan de los Objetivos 3/4 EJECUTADA** —
 auditoría de portabilidad de rviz2 con compilaciones reales: rviz2 nativo NO
 portable, ADR 0006 activa el Plan B mini-rviz con vitaGL; docs/04 rellenado con
@@ -656,6 +660,30 @@ cd web && pnpm build                      # o: docker compose up -d --build
      **Pendiente manual en la Vita:** instalar el `.vpk` desde VitaShell
      (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
      hacer la verificación en vivo del punto siguiente.
+
+- **(2026-07-13, en el PC) `godot-migration` — G2 (el template custom
+  COMPILA en el PC):** `build-vita-template.sh c` produce el engine godot-vita
+  entero con el módulo `microros` dentro (7,5 min) → `vita_release.zip` (19 MB,
+  `eboot.bin` + `.suprx` PowerVR + `microros` registrado vía
+  `register_microros_types()`), instalado como template en
+  `~/.local/share/godot/templates/3.5.rc5/`. Cadena de obstáculos resuelta,
+  todos con la MISMA raíz de siempre (la Vita es newlib, no Linux, y sin
+  carga dinámica): (1) entorno — hay que `source tools/env-devpc.fish` (VitaSDK
+  y toolchains vendorizados en `toolchains/`, no en el sistema) + `pacman -S
+  scons zip`; (2) `EGL/egl.h` → falta el driver **PVR_PSP2 v3.9**, instalado
+  con `vita-makepkg`+`vdpm` desde `../Godot/vita-packages-extra/pvr_psp2`; (3)
+  Bullet `clew.c` usa `dlopen` → **patch versionado** `godot/patches/bullet-vita-no-clew.patch`
+  que lo excluye (Godot no usa clew; la física corre entera en CPU, la GPU/OpenCL
+  es imposible en el PowerVR de todos modos); (4) `ogg/ogg.h` y códecs →
+  `vdpm libjpeg-turbo freetype libogg libvorbis libtheora opus`; (5) el driver
+  GLES2 stock de Godot hace `#include <dlfcn.h>` (llamadas muertas, solo
+  Android/iOS) → **stub versionado** `godot/vitasdk-stubs/dlfcn.h`. Los pasos
+  4-5 los aplica el build script solo, idempotente. Nuevo: `uninstall-godot.sh`
+  para revertirlo todo limpio (`patch -R`, `vdpm -u` —respeta ficheros
+  compartidos—, template, build). **Siguiente paso exacto (G3):** exportar el
+  `.vpk` desde el editor (Proyecto → Exportar → PlayStation Vita) y validar en
+  hardware que el singleton `MicroROS` aparece en GDScript y que la sesión XRCE
+  controla el robot real. Ver docs/12 §"Prerrequisitos del VitaSDK".
 
 - **(2026-07-13, en la laptop) Branch `godot-migration` — G1 (esqueleto
   Godot) COMPLETO:** existe un fork de Godot 3.5-rc5 con plataforma Vita
