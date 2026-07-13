@@ -27,6 +27,55 @@ alcanzado, dashboard `/monitor` mergeado a main)
 
 ---
 
+## Próxima sesión — pasos exactos (preparado 2026-07-13, fin de jornada)
+
+Estamos en la rama **`godot-migration`**. G1-G3 hechos (el teleop en Godot
+publica `/cmd_vel` en hardware). **4 commits en local SIN pushear**
+(`690099d` G2, `124c9c3` fix input stream, `74edbcb` export .vpk, `4600ad3`
+escena+limpieza). Orden sugerido al retomar:
+
+1. **Decidir el push.** `git push origin godot-migration` (rama, no main).
+   Antes: revisar el commit `4600ad3` — borró contenido demo/personal
+   (`Primera-scena-silvia/`, `UI/UIIcons_2/`, `imagenes/`: fotos de Silvia,
+   `luffy.jpeg`, `zelink3.jpeg`, `fondo2.jpeg`, `rover-iberus.jpeg`). Si algún
+   borrado fue sin querer: `git checkout 690099d -- godot/<ruta>`.
+
+2. **G4 — variante Rust del template (EN EL PC).** `source tools/env-devpc.fish`
+   y luego `./godot/scripts/build-vita-template.sh rust` (el script ya compila
+   la staticlib paraguas `vita-app/rust-modules/` con `cargo +nightly rustc
+   --crate-type staticlib -Zbuild-std` y pasa `microros_impl=rust` a scons).
+   - VERIFICAR PRIMERO que el `SCsub` de `godot/modules/microros/` enlaza la
+     staticlib Rust cuando `microros_impl=rust` (igual que el CMake de
+     vita-app hace con `-DVITA_IMPL=rust`). Si no, ajustarlo.
+   - Reconstruye el template → re-exporta el `.vpk` desde el editor →
+     instala y valida en hardware que publica `/cmd_vel` igual que la C.
+     Cierra la migración a Godot del todo.
+
+3. **Exportar el `.vpk` (recordatorio de cómo, por las rarezas del editor de
+   2022 — detalle en docs/12 §"Requisitos del .vpk de Godot"):**
+   - Editor: `~/Proyectos/Godot/godot_v3.5-rc5-vita.x11.64 --path godot -e`
+     (o headless: `--export "PlayStation Vita pruebas" cualquier.vpk`; el
+     editor ignora esa ruta y escribe `<Title>.vpk` en `godot/`).
+   - El **Title** ES el TITLE_ID (9 chars MAYÚS, sin símbolos): `PSVITAROS`.
+     El campo "Title Id" NO se usa. Imágenes en `godot/vita_*.png` (8-bit).
+   - Probar SIEMPRE con el netlog en la laptop: `tools/netlog-listen.sh 9999`
+     → esperar `*** SESION XRCE ESTABLECIDA ***`.
+
+4. **Opcional / pulido (sin prisa):**
+   - Sustituir los placeholders `godot/vita_{icon128,bg,startup}.png` por arte
+     real (mantener tamaño + PNG 8-bit colormap).
+   - Si se quiere nombre de bubble bonito ≠ TITLE_ID: compilar el editor de
+     escritorio desde el fuente del fork (`scons platform=x11 tools=yes`), que
+     sí separa Title de Title Id (el binario de 2022 no).
+   - Grabar un vídeo del teleop-Godot en hardware para `media/` y el README.
+   - Cuando G4 esté validado: valorar merge de `godot-migration` a `main`.
+
+5. **Pista pendiente de antes (Objetivos 3/4, otra rama/línea):** Etapa C del
+   mini-rviz (UI v2 + sistema de UI no fijo), ver más abajo. La migración a
+   Godot es paralela; decidir con el usuario qué frente priorizar.
+
+---
+
 ## Dónde nos quedamos (resumen de 1 minuto)
 
 La **Fase 0 (fundación)** está completa y la **Fase 1 (topics ROS2) tiene

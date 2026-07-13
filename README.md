@@ -7,7 +7,9 @@ header C. Proyecto experimental de largo plazo con vocación de publicarse.
 
 **Estado:** Objetivo 1 (topics) y **Objetivo 2 (teleoperación) CERRADOS y
 validados en hardware real** · Objetivos 3/4 (mini-rviz 3D) **en ejecución**
-con las dos primeras etapas hechas · web del proyecto operativa (taller,
+con las dos primeras etapas hechas · **migración a Godot (rama
+`godot-migration`) — variante C COMPLETA: el teleop corre sobre el engine
+Godot y publica `/cmd_vel` en hardware** · web del proyecto operativa (taller,
 monitor, visor 3D). Detalle vivo en
 [`docs/06-bitacora-estado.md`](docs/06-bitacora-estado.md).
 
@@ -38,6 +40,7 @@ velocidad y el Twist publicado:
 | 2026-07-07 | **Objetivo 2 cerrado**: teleop `/cmd_vel` con sticks/botones (39 checks host del mapeo) |
 | 2026-07-10 | **Objetivo 3 respondido con evidencia** (rviz2 no portable → ADR 0006: mini-rviz propio) |
 | 2026-07-10 | **Modo VIZ 3D en la consola** (vitaGL, ADR 0007) + IP del agente editable desde la Vita + **robot móvil real controlado** (vídeo de arriba) |
+| 2026-07-13 | **Migración a Godot (rama `godot-migration`):** módulo `microros` como módulo custom del engine, template `.vpk` compilado en el PC, y **teleop en Godot publicando `/cmd_vel` en hardware** (variante C completa, G1-G3) |
 
 ---
 
@@ -60,7 +63,7 @@ compilación para la Vita ocurre en el PC.
 
 ```
 PSVita-ROS/
-├── docs/                  # 00-11 + adr/ (7 ADRs) + rust/ + guias-vita/ + superpowers/
+├── docs/                  # 00-13 + adr/ (7 ADRs) + rust/ + guias-vita/ + superpowers/
 ├── modules/               # los 3 módulos duales (paridad C/Rust en host)
 │   ├── mem-pool/          #   asignador de bloques fijos sin malloc
 │   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
@@ -70,6 +73,12 @@ PSVita-ROS/
 │   ├── src/viz/           #   mini-rviz: cámara orbital + escena 3D (Objetivos 3/4)
 │   ├── ui/layout.json     #   la pantalla, editable desde la web (/taller/ui)
 │   └── scripts/           #   checks host + cross-compilación del cliente XRCE
+├── godot/                 # migración a Godot (rama godot-migration)
+│   ├── modules/microros/  #   módulo custom del engine: singleton MicroROS a GDScript
+│   ├── scenes/teleop/     #   escena teleop (stub en editor, real en la Vita)
+│   ├── patches/           #   parches al fork godot-vita (excluir clew de Bullet)
+│   ├── vitasdk-stubs/     #   stubs de cabecera para el VitaSDK (dlfcn.h)
+│   └── scripts/           #   build-vita-template.sh + uninstall-godot.sh (solo PC)
 ├── mcp/ros2-introspection/# servidor MCP: el grafo ROS2 visible para Claude
 ├── media/                 # fotos y vídeos de los hitos
 ├── skills/                # skills de Claude Code para el PC
@@ -122,6 +131,8 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/09-objetivo2-control-robot.md` | Diseño del teleop `/cmd_vel` (mapeo de mandos) |
 | `docs/10-plan-objetivos-3-4.md` | **Guía operativa de los Objetivos 3/4** (etapas A-F) |
 | `docs/11-diseno-mini-rviz.md` | Diseño del mini-rviz y formato VBM |
+| `docs/12-migracion-godot.md` | **Migración a Godot**: diseño, prerrequisitos del VitaSDK y requisitos del `.vpk` |
+| `docs/13-plan-implementacion-godot.md` | Plan de tareas de la migración a Godot |
 | `docs/adr/0001-0007` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL) |
 | `docs/rust/` | Aprendizaje de Rust ligado al código del repo |
 | `docs/guias-vita/` | Instalar el homebrew de la consola (también en la web) |
