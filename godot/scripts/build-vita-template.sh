@@ -71,6 +71,11 @@ for patch in "$REPO"/godot/patches/*.patch; do
 done
 
 # 3) Engine + módulo
+# El paso Copy("bin/vita_template", ...) de platform/vita/SCsub falla en
+# rebuilds si el directorio ya existe ("File exists"). Se limpia el empaquetado
+# previo (no los .o, para que el rebuild siga siendo incremental).
+rm -rf "$FORK/bin/vita_template" "$FORK/bin/eboot.bin" \
+    "$FORK/bin/vita_release_stripped" "$FORK/bin/vita_release.velf"
 echo "== scons platform=vita (custom_modules, microros_impl=$IMPL) =="
 (cd "$FORK" && scons platform=vita target=release \
     custom_modules="$REPO/godot/modules" microros_impl="$IMPL" -j"$(nproc)")

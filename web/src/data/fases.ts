@@ -85,7 +85,7 @@ export const fases: Fase[] = [
     hitos: [
       { texto: 'G1 — Esqueleto: módulo microros (puente C++→singleton GDScript), escena teleop con stub en el editor, build script y docs', estado: 'hecho' },
       { texto: 'G2 — Template custom compila en el PC: engine godot-vita + microros → vita_release.zip instalado. Prerreq. del VitaSDK resueltos: PVR_PSP2 v3.9, códecs vdpm, patch bullet-vita-no-clew y stub dlfcn.h (docs/12 §Prerrequisitos); uninstall-godot.sh', estado: 'hecho' },
-      { texto: 'G3 — Teleop Godot en hardware: el singleton MicroROS aparece en GDScript y la sesión XRCE controla el robot real (export .vpk desde el editor)', estado: 'bloqueado-hw' },
+      { texto: 'G3 — Teleop Godot en hardware: el .vpk instala, el singleton MicroROS corre y la sesión XRCE publica /cmd_vel (confirmado en hardware). Lecciones del .vpk: TITLE_ID 9 chars, imágenes sce_sys 8-bit, y el bug del input reliable stream corregido', estado: 'hecho' },
       { texto: 'G4 — Variante Rust del template (staticlib paraguas en lugar de las libs C)', estado: 'pendiente' },
     ],
   },

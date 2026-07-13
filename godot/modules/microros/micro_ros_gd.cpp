@@ -96,6 +96,11 @@ bool MicroROS::connect_agent() {
 	stream_out = uxr_create_output_reliable_stream(&session,
 			output_stream_buf, sizeof output_stream_buf,
 			MICROROS_STREAM_HISTORY);
+	/* Gemelo de entrada (main.c:201): imprescindible para procesar los
+	 * ACK/heartbeat que el agente devuelve sobre el stream reliable. Su id
+	 * no se reusa luego (como en main.c), pero el stream debe existir. */
+	uxr_create_input_reliable_stream(&session, input_stream_buf,
+			sizeof input_stream_buf, MICROROS_STREAM_HISTORY);
 
 	/* Entidades DDS de /cmd_vel: mismos XML que main.c (prefijo rt/ y
 	 * tipo dds_ o ros2 no ve el topic como propio). */

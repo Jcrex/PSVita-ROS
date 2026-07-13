@@ -1,6 +1,6 @@
 # 12 — Diseño: migración del teleop al entorno Godot
 
-**Fecha:** 2026-07-13 · **Estado:** G1 y G2 hechos (template compila en el PC); G3 pendiente (hardware)
+**Fecha:** 2026-07-13 · **Estado:** G1, G2 y G3 HECHOS — migración C completa: el teleop en Godot publica `/cmd_vel` en hardware. Falta G4 (variante Rust).
 **Branch de trabajo:** `godot-migration`
 **Prerrequisitos cumplidos:** Objetivo 2 cerrado (la app teleop nativa
 controla el robot real vía `/cmd_vel`, ver `docs/09-objetivo2-control-robot.md`).
@@ -181,6 +181,40 @@ anterior (parches con `patch -R`, stubs, paquetes vdpm con `vdpm -u` —que
 respeta ficheros compartidos—, template y `godot/build/`), dejando el VitaSDK
 en su estado pre-Godot. No toca el toolchain base compartido con `vita-app`.
 
+## Requisitos del `.vpk` de Godot (G3)
+
+Al exportar e instalar el `.vpk` en hardware se pagaron tres lecciones. El
+editor de escritorio es el binario **precompilado de 2022** del release de
+SonicMastr (`~/Proyectos/Godot/godot_v3.5-rc5-vita.x11.64`), que tiene rarezas:
+
+1. **TITLE_ID (`0xF0030000` si es inválido):** debe ser **9 chars, MAYÚSCULAS,
+   alfanumérico, sin símbolos** (p.ej. `PSVITAROS`; `PSVita-ROS` falla por
+   guion/minúsculas/10 chars). **Ese editor usa el campo `Title` como
+   TITLE_ID e IGNORA el campo `Title Id`** — hay que poner un id válido en
+   `Title`. (El código fuente del fork sí los separa; el binario de 2022 es
+   anterior a eso.)
+2. **Imágenes `sce_sys` (`0x8010113D` si están mal):** deben ser **PNG 8-bit
+   colormap**. `icon0.png` = **128×128** (no 64×64). Si el `template.xml`
+   de livearea referencia `bg.png` (840×500) y `startup.png` (280×158), esas
+   imágenes **deben existir** en el vpk o el instalador falla. El
+   `template.xml` viene embebido en el editor, no se puede quitar, así que
+   hay que **rellenar los assets de livearea** en el preset. Los placeholders
+   están en `godot/vita_{icon128,bg,startup}.png` (generados con imagemagick,
+   8-bit; sustituibles por arte real manteniendo tamaño+formato).
+3. **El editor ignora el "export path":** escribe siempre `<Title>.vpk` en la
+   raíz del proyecto (`create_vpk(sfo->title + ".vpk", …)`), no en la ruta que
+   se le indica.
+
+**Bug del port corregido (crash `C2-…` al conectar):** el módulo creaba solo el
+stream reliable de **salida**; faltaba el de **entrada** (`uxr_create_input_
+reliable_stream`, como en `main.c:201`). Sin él, al responder el agente el
+cliente XRCE deref-a un input stream inexistente → crash **solo con el agente
+arriba**. Añadido `input_stream_buf` + su creación en `connect_agent()`.
+
+**Nota de build:** `build-vita-template.sh` limpia `bin/vita_template` y demás
+artefactos de empaquetado antes de `scons`, porque el paso
+`Copy("bin/vita_template", …)` del fork falla en rebuilds con "File exists".
+
 **Variante Rust (segundo hito):** mismo template pero linkeando la
 staticlib paraguas `vita-app/rust-modules/` en lugar de las libs C, igual
 que hace hoy el `.vpk` Rust (`cargo rustc --crate-type staticlib`, una
@@ -219,8 +253,13 @@ Lecciones ya pagadas que se conservan:
    `vita_release.zip` (19 MB, con `eboot.bin` + `.suprx` PowerVR) se instala
    como template. Falta validar en hardware que el singleton aparece en
    GDScript (parte de G3). Ver los prerrequisitos del VitaSDK arriba.
-3. **G3 — Teleop Godot en hardware:** sesión XRCE activa, `/cmd_vel`
-   controla el robot real. Cierra la migración (variante C).
+3. **G3 — Teleop Godot en hardware:** ✅ **hecho (2026-07-13).** El `.vpk`
+   exportado desde el editor instala y corre; la escena teleop responde a
+   mandos; la sesión XRCE se establece y **publica `/cmd_vel`** (confirmado
+   por el usuario). Cierra la migración (variante C). Se pagaron tres
+   lecciones al exportar/instalar (ver "Requisitos del .vpk de Godot" abajo):
+   TITLE_ID válido, imágenes `sce_sys` en 8-bit, y un bug del port (faltaba
+   el **input reliable stream**, que crasheaba la sesión con el agente arriba).
 4. **G4 — Variante Rust del template.**
 
 ## Fuera de alcance de esta branch

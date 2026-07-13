@@ -1,15 +1,17 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-13 (PC, branch `godot-migration`:
-**G2 (template custom COMPILA en el PC) COMPLETO** — `build-vita-template.sh c`
-genera el engine godot-vita entero con el módulo `microros` dentro →
-`vita_release.zip` (19 MB) instalado como template. Resueltos los prerrequisitos
-del VitaSDK: PVR_PSP2 v3.9 (driver), códecs vdpm, patch `bullet-vita-no-clew`
-y stub `dlfcn.h` (docs/12 §Prerrequisitos); nuevo `uninstall-godot.sh`.
-Antes hoy, **G1 (esqueleto Godot) COMPLETO** — fork Godot 3.5-rc5 con Vita
-probado; app teleop replicada en Godot sin reescribir C/Rust; el módulo custom
-`godot/modules/microros/` linkea los 3 módulos duales + transporte XRCE vía
-singleton GDScript. Siguiente (G3): export `.vpk` desde el editor → hardware.
+**Última actualización:** 2026-07-13 (PC+hardware, branch `godot-migration`:
+**G3 COMPLETO — MIGRACIÓN A GODOT (variante C) TERMINADA:** el teleop en Godot
+instala, corre y **publica `/cmd_vel` en hardware** (confirmado por el usuario).
+Al exportar/instalar se pagaron 3 lecciones (docs/12 §"Requisitos del .vpk de
+Godot"): TITLE_ID válido de 9 chars = campo `Title` (el editor 2022 ignora
+`Title Id`); imágenes `sce_sys` 8-bit (icon0 128×128 + bg/startup, placeholders
+en `godot/vita_*.png`); y un bug del port ya corregido — faltaba el **input
+reliable stream**, que crasheaba la sesión con el agente arriba. Antes, G2:
+`build-vita-template.sh c` genera el engine con `microros` → template instalado
+(prerreq. VitaSDK: PVR_PSP2 v3.9, códecs vdpm, patch clew, stub dlfcn;
+`uninstall-godot.sh`). G1: esqueleto (módulo + escena teleop). Siguiente (G4):
+variante Rust del template.
 Antes, 2026-07-10: **ETAPA A del plan de los Objetivos 3/4 EJECUTADA** —
 auditoría de portabilidad de rviz2 con compilaciones reales: rviz2 nativo NO
 portable, ADR 0006 activa el Plan B mini-rviz con vitaGL; docs/04 rellenado con
@@ -660,6 +662,29 @@ cd web && pnpm build                      # o: docker compose up -d --build
      **Pendiente manual en la Vita:** instalar el `.vpk` desde VitaShell
      (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
      hacer la verificación en vivo del punto siguiente.
+
+- **(2026-07-13, en el PC + hardware) `godot-migration` — G3: EL TELEOP EN
+  GODOT FUNCIONA EN HARDWARE, publica `/cmd_vel` (migración C COMPLETA,
+  confirmado por el usuario).** Camino de export→instalar→conectar, con tres
+  lecciones pagadas (todas documentadas en docs/12 §"Requisitos del .vpk de
+  Godot"): (1) instalar daba `0xF0030000` por TITLE_ID inválido — el editor
+  precompilado de 2022 usa el campo `Title` como TITLE_ID e IGNORA `Title Id`;
+  debe ser 9 chars MAYÚS alfanumérico sin símbolos (se usó `PSVITAROS`, que no
+  choca con el `VROS00001` nativo). (2) Luego `0x8010113D` por imágenes
+  `sce_sys` mal: `icon0.png` tiene que ser 128×128 8-bit colormap (era 64×64
+  RGBA) y el `template.xml` de livearea (embebido en el editor) reclamaba
+  `bg.png`/`startup.png` ausentes → se generaron placeholders 8-bit
+  (`godot/vita_{icon128,bg,startup}.png`, imagemagick) y se conectaron en el
+  preset. (3) Ya instalada y con la escena teleop respondiendo a mandos, al
+  Conectar crasheaba (`C2-…`, core dump) SOLO con el agente arriba: **bug del
+  port** — el módulo creaba el stream reliable de salida pero NO el de entrada
+  (`main.c:201` sí lo crea); sin él, al responder el agente el cliente XRCE
+  deref-a un input stream inexistente. Arreglado con `input_stream_buf` +
+  `uxr_create_input_reliable_stream` en `connect_agent()`. Además el
+  `build-vita-template.sh` ahora limpia `bin/vita_template` antes de `scons`
+  (el `Copy` del fork falla en rebuilds con "File exists"). Detalle del
+  exportador: ignora el export path y escribe `<Title>.vpk` en la raíz.
+  **SIGUIENTE (G4):** variante Rust del template (staticlib paraguas).
 
 - **(2026-07-13, en el PC) `godot-migration` — G2 (el template custom
   COMPILA en el PC):** `build-vita-template.sh c` produce el engine godot-vita

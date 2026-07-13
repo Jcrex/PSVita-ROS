@@ -48,6 +48,12 @@ class MicroROS : public Object {
 	uxrObjectId cmdvel_dw_id;
 	uint8_t output_stream_buf[MICROROS_STREAM_BUFFER_SIZE *
 			MICROROS_STREAM_HISTORY];
+	/* El stream reliable de SALIDA necesita su gemelo de ENTRADA para
+	 * recibir los ACK/heartbeat del agente (igual que main.c:201). Sin él,
+	 * al llegar la respuesta del agente el cliente deref-a un input stream
+	 * inexistente -> crash (solo con el agente arriba). */
+	uint8_t input_stream_buf[MICROROS_STREAM_BUFFER_SIZE *
+			MICROROS_STREAM_HISTORY];
 
 	/* Estado del teleop (la lógica vive en teleop.c). */
 	teleop_estado teleop;
