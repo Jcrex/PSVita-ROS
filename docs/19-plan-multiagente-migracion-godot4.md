@@ -4,7 +4,7 @@
 > Claude (subagentes o sesiones en paralelo) completen la migración a Godot 4 (`godot4-vita`) con
 > ROS2 nativo vía micro-ROS, incluidos los forks y ports necesarios. Contiene: el **mapa jerárquico**
 > de todo lo que hay que migrar o actualizar (§3), las **ramas de ataque** estudiadas (§2), el
-> **reparto por agentes** con propiedad de ficheros (§4–§5), las **oleadas** y dependencias (§6), el
+> **reparto por agentes** (15 agentes A —A0–A13 y A7b— + 6 de la escuadra K de rclgd/skills) con propiedad de ficheros (§4–§5), las **oleadas** y dependencias (§6), el
 > **protocolo** de coordinación (§7) y los **briefs** listos para copiar como prompt (§9).
 >
 > Base: `docs/18` (estudio de migración), ADR 0008 (Aceptado), `godot/ros2_vita/API_PARITY.md`.
@@ -211,7 +211,34 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 ├─ T10.2 godot4-vita: commits nuevos, salida a 4.8 estable, ruta GL ............. A1 · L · — · 🔭
 ├─ T10.3 micro-XRCE-DDS / micro-ROS agent Jazzy ................................. A1 · L · — · 🔭
 └─ T10.4 PRs nuestros a upstream (loader, panel trasero, textura) ............... A2 · P · — · ⏳
+
+11. SKILLS DE IA (conocimiento reutilizable por una IA limpia) — escuadra K
+├─ 11.1 Skill `rclgd` (skills/rclgd/)
+│  ├─ T11.1.1 SKILL.md: reglas, esqueleto, mapa de API, cómo documentarse ........ K5 · L · E1 · ✅
+│  ├─ T11.1.2 references/api/* generadas de doc_classes (17 clases) ............. K1 · L · E1 · ✅
+│  ├─ T11.1.3 conceptos / tooling / mensajes-y-tipos / versiones / errores ....... K2,K3 · L · E1 · ✅
+│  ├─ T11.1.4 scripts: rclgd-docs.sh (probado), xml_to_md.py (probado), dump_api.gd K1 · L/P · E1 · 🟡 (dump_api sin ejecutar)
+│  ├─ T11.1.5 Repasar TODOS los tests de rclgd y extraer recetas por método ........ K3 · L · E1 · ⏳
+│  └─ T11.1.6 Rama native-msg-classes: actualizar la skill cuando se fusione ...... K1 · L · E1 · 🔭
+├─ 11.2 Skill `godot4-ros-scripting` (skills/godot4-ros-scripting/)
+│  ├─ T11.2.1 SKILL.md + godot4-esencial + patrones-roomba ......................... K4 · L · E1 · ✅
+│  ├─ T11.2.2 templates/*.gd (robot, sensor, HMI, runner) ......................... K4 · L · E2 · 🟡 (sin ejecutar)
+│  ├─ T11.2.3 Ejecutar las plantillas en el editor 4.7.1 de rclgd (headless) ........ K6 · P · E2 · ⏳
+│  └─ T11.2.4 Recetas de sensores restantes (lidar, cámara, GPS) desde rclgd-sensors K4 · L · E1 · ⏳
+├─ 11.3 Skill `ros2-vita-godot` (skills/ros2-vita-godot/)
+│  ├─ T11.3.1 SKILL.md: diferencias, límites, flujo, reglas ....................... K5 · L · E1 · ✅
+│  └─ T11.3.2 Mantenerla al día con cada puerta G*/H1 ............................. A12 · L · — · continuo
+├─ 11.4 Verificación con IA limpia
+│  ├─ T11.4.1 Batería skills/rclgd/evals/preguntas.md (15 casos) .................. K6 · L · E1 · ✅ (escrita)
+│  ├─ T11.4.2 Pasarla con un subagente sin contexto y corregir huecos ............... K6 · L · E1 · ⏳
+│  └─ T11.4.3 Re-pasarla tras cada versión de rclgd ................................. K6 · L · E1 · continuo
+└─ 11.5 Distribución
+   ├─ T11.5.1 Publicar en la web (sección «Skills de IA») ........................... A12 · L · — · ✅
+   └─ T11.5.2 Instalar en el PC: copiar a ~/.claude/skills/ (docs/05) ............... A0 · P · — · ⏳
 ```
+
+Puertas de skills: **E1** = la IA limpia responde bien la batería citando la skill; **E2** = las
+plantillas `.gd` corren sin errores en el editor 4.7.1 de rclgd.
 
 Puerta nueva **H1** (laptop/PC, sin Vita): el núcleo `xrce_core.c` compilado para host se conecta al
 `micro-ros-agent:jazzy` en docker y un `ros2 topic echo` en `robotnik_dev` ve sus mensajes (y al revés).
@@ -238,6 +265,16 @@ Puerta nueva **H1** (laptop/PC, sin Vita): el núcleo `xrce_core.c` compilado pa
 | **A11** QA y medidas | godot/test, H1, CI, paridad, rendimiento en Vita | L/P/V | `godot/test/**`, `tools/run-*`, `.github/workflows/` | todo |
 | **A12** Documentación y web | docs, guías, serie Rust, web | L | `docs/**` (salvo dueños anteriores), `web/**` (salvo fases.ts) | todo |
 | **A13** Rust | Umbrella PIC, verify_runtime con Rust, cargo-vita, ¿xrce_core dual? | P | `vita-app/rust-modules/`, `modules/*/impl-rust/` (coordinado con A5/A7) | docs/15 |
+
+### Escuadra K — especialistas en rclgd y autores de skills
+| Agente | Rol | Máquina | Posee (escribe) | Lee |
+|---|---|---|---|---|
+| **K1** Referencia de API | Clases, firmas, señales, constantes; regenera `references/api`; vigila ramas de rclgd | L | `skills/rclgd/references/api/`, `skills/rclgd/scripts/`, `references/versiones.md` | `rclgd/doc_classes/*.xml`, CHANGELOG |
+| **K2** Conceptos | Hilos, ciclo de vida, tiempo, QoS, TF, parámetros, tipos | L | `skills/rclgd/references/{conceptos,mensajes-y-tipos}.md` | `docs/concepts/*`, `docs/tutorials/custom_messages.rst`, `ros_msg.cpp` |
+| **K3** Tooling y ejemplos | apt/fuente/docker, CLI, colcon, tests headless; recetas extraídas de los tests | L | `skills/rclgd/references/{tooling,errores-comunes}.md`, `references/recetas.md` (nuevo) | `docs/getting_started/*`, `rclgd/test/`, `rclgd_cli/` |
+| **K4** Godot (nodos, escenas, scripts) | Patrones de roomba_ws, esencial de Godot 4, plantillas | L | `skills/godot4-ros-scripting/**` | `roomba_ws`, `turtlesim_rclgd`, doc del motor (`--doctool`) |
+| **K5** Autor/editor de skills | Coherencia, frontmatter válido, progresión (SKILL.md breve → referencias), puente con la Vita | L | `skills/*/SKILL.md`, `skills/ros2-vita-godot/**` | todo lo anterior + docs/18, API_PARITY |
+| **K6** Verificador «IA limpia» | Pasa la batería con un subagente sin contexto; ejecuta plantillas (E2) | L/P | `skills/rclgd/evals/` | solo las skills (a propósito) |
 
 **Regla de propiedad:** un fichero tiene **un** dueño; los demás proponen cambios por su rama y el
 dueño los integra. Conflictos previstos: `ros_runtime.*` (A6 solo toca la clase `XrceTransport`);
@@ -271,6 +308,8 @@ T2.4.1 ─► T5.3.2 ─► T3.2.4 (R-N)        T3.1.3 (R-G) ─► decisión go
 | **O4 — consolidación** | todas | A2 (PRs upstream, rebase), A1, A12 (guía final) | fork mínimo o cero; docs cerradas |
 
 En el portátil caben **7 agentes** en paralelo en O0 porque sus ficheros no se solapan (§4).
+La **escuadra K** corre en O0 en paralelo con ellos (solo toca `skills/`): K1–K4 en paralelo, después
+K5 (coherencia) y al final K6 (verificación E1); K6 repite E2 en O1 con el PC.
 
 ---
 
@@ -307,6 +346,8 @@ En el portátil caben **7 agentes** en paralelo en O0 porque sus ficheros no se 
 |---|---|---|---|
 | G0 | **verde** | 2026-10-27 | paridad 8 módulos; parche aplica en `d1a5f29` y `v0.1` |
 | H1 | pendiente | — | — |
+| E1 | batería escrita; pendiente de pasar con IA limpia | 2026-10-27 | `skills/rclgd/evals/preguntas.md` |
+| E2 | pendiente (PC) | — | plantillas sin ejecutar |
 | G1 / G1' | pendiente | — | intento bloqueado en la sesión cloud (política del entorno) |
 | G2–G7 | pendiente | — | — |
 
@@ -384,6 +425,36 @@ checklists de medidas en Vita (latencia, FPS, RAM, coste por mensaje) y `hwprobe
 Rust dentro; app `cargo-vita` independiente reutilizando los módulos; valorar versión dual de `xrce_core`.
 
 ---
+
+### Briefs de la escuadra K (rclgd → skills)
+Prefijo común extra: *«Primero `skills/rclgd/scripts/rclgd-docs.sh sync jazzy` (o la rama indicada) y
+`version`; trabaja solo sobre fuentes oficiales (docs/*.rst, doc_classes, tests, plantilla) y cita de
+dónde sale cada afirmación. Si readthedocs no es accesible, el clon tiene el mismo contenido.»*
+
+**K1 — Referencia de API.** Regenera `references/api` con `rclgd-docs.sh api`; compara con la versión
+anterior (`git diff`); documenta cambios en `versiones.md`. Si hay Godot+rclgd, ejecuta `dump_api.gd` y
+anota diferencias entre XML y ClassDB real. Vigila `feature/native-msg-classes`.
+
+**K2 — Conceptos.** Lee `docs/concepts/*` y los tutoriales; verifica cada regla contra el código
+(`rclgd/src/rclgd/*.cpp`) cuando la doc sea ambigua (p. ej. copia de arrays, alias de submensajes).
+Mantén `conceptos.md` y `mensajes-y-tipos.md` cortos y con ejemplos mínimos.
+
+**K3 — Tooling y recetas.** Recorre `rclgd/test/project/tests/*.gd` y escribe `references/recetas.md`:
+una receta por operación (pub/sub, QoS, timer, servicio cliente/servidor, acción cliente/servidor, TF,
+parámetros, logging) con el fragmento real del test y su fichero:línea. Añade síntomas nuevos a
+`errores-comunes.md`. Documenta la instalación en CachyOS vía el contenedor `robotnik_dev`.
+
+**K4 — Godot.** Completa `godot4-ros-scripting`: recetas de cada sensor de `rclgd-sensors` (lidar,
+cámara, GPS, fisheye; compositores y lecturas de GPU), patrón de gizmos/`@tool`, y la HMI. Revisa las
+plantillas contra la API real.
+
+**K5 — Autor de skills.** Frontmatter YAML válido (descripción entre comillas), `SKILL.md` < ~150 líneas
+con enlaces a referencias, nada duplicado entre skills, puente correcto con `ros2-vita-godot` y
+API_PARITY. Publicación en la web (sección «Skills de IA»).
+
+**K6 — Verificador.** Lanza un subagente **sin contexto del repo** con acceso solo a `skills/`; pásale
+`skills/rclgd/evals/preguntas.md` sin las respuestas; puntúa; abre tareas para cada fallo. En el PC,
+ejecuta las plantillas en un proyecto de `ros2 rclgd create` (E2).
 
 ## 10. Decisiones pendientes del usuario (las acumula A0)
 1. Rama de integración y nombre de las ramas `mig/*` (propuesta en §7).

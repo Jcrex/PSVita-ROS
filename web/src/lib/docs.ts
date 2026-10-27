@@ -51,7 +51,7 @@ export function docSlug(entry: { id: string }): string {
 
 /** Definición de las secciones de /docs (orden de presentación). */
 export const seccionesDocs: {
-  key: 'fundacion' | 'adrs' | 'rust' | 'codigo';
+  key: 'fundacion' | 'adrs' | 'rust' | 'codigo' | 'skills';
   titulo: string;
   descripcion: string;
 }[] = [
@@ -78,6 +78,12 @@ export const seccionesDocs: {
     titulo: 'Documentación del código',
     descripcion:
       'Los READMEs técnicos de cada módulo dual, de la app de la Vita y del servidor MCP: API, diseño interno y estado.',
+  },
+  {
+    key: 'skills',
+    titulo: 'Skills de IA',
+    descripcion:
+      'Instrucciones para agentes de IA: rclgd (API y documentación), escenas y scripts Godot 4 con ROS 2, la variante ros2_vita para la Vita y las skills del flujo de la Vita.',
   },
 ];
 

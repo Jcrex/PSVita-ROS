@@ -1,6 +1,6 @@
 ---
 name: vita-dual-module
-description: Use when creating a new low-level Vita module that touches hardware, memory, or system — scaffolds the dual Rust + C/C++ structure behind a shared C-ABI header with a parity test.
+description: "Use when creating a new low-level Vita module that touches hardware, memory, or system — scaffolds the dual Rust + C/C++ structure behind a shared C-ABI header with a parity test."
 ---
 
 ## Cuándo usar esta skill

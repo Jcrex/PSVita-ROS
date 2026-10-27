@@ -1,6 +1,6 @@
 ---
 name: vita-build-package
-description: Use when building a Vita homebrew and producing an installable .vpk — drives CMake+VitaSDK (C/C++) or cargo-vita (Rust), selects the implementation, and runs the packaging chain.
+description: "Use when building a Vita homebrew and producing an installable .vpk — drives CMake+VitaSDK (C/C++) or cargo-vita (Rust), selects the implementation, and runs the packaging chain."
 ---
 
 ## Cuándo usar esta skill

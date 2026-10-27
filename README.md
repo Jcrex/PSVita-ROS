@@ -73,7 +73,7 @@ PSVita-ROS/
 │   └── scripts/           #   checks host + cross-compilación del cliente XRCE
 ├── mcp/ros2-introspection/# servidor MCP: el grafo ROS2 visible para Claude
 ├── media/                 # fotos y vídeos de los hitos
-├── skills/                # skills de Claude Code para el PC
+├── skills/                # skills de IA: flujo Vita + rclgd + Godot 4/ROS 2 + ros2_vita
 ├── tools/                 # run-parity-tests.sh, netlog-listen.sh, vita-doctor.sh, check-vita-imports.py, build-*.sh
 └── web/                   # Astro+SQLite+Docker: guías, progreso, monitor,
                            # dashboard, comparador C↔Rust, visor 3D URDF,
