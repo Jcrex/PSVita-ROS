@@ -977,3 +977,12 @@ cd web && pnpm build                      # o: docker compose up -d --build
     **trae su propio Godot 4.7.1** (verificado en su `CMakeLists.txt`), que no sirve para exportar a Vita
     (el exportador exige 4.8-dev7) ⇒ nueva tarea M18: editor 4.8-dev7 Linux para exportar. La elección
     de red **A vs B** queda abierta con la comparación detallada en docs/18 §4.3.
+  - **Red: opción A elegida** por el usuario tras la explicación. **Plan multiagente** en
+    `docs/19-plan-multiagente-migracion-godot4.md`: mapa jerárquico (11 ramas 0–10, 95 tareas con dueño,
+    máquina, puerta y estado), ramas de ataque (upstream y técnicas), 14 agentes con propiedad de
+    ficheros, oleadas O0–O4, protocolo y briefs listos para usar. Hallazgos de ramas: rclgd
+    `feature/native-msg-classes` (clases tipadas nativas, *breaking*), `jazzy` = nuestra rama;
+    godot4-vita `release/v0.1` = `main` en código; posible rama R-G (GDExtension estática vía
+    `load_extension_from_function`) como spike. Nueva puerta **H1** (XRCE en host contra el agente, sin Vita).
+  - **Siguiente paso exacto:** lanzar la oleada **O0** en el portátil (A1, A5, A6, A7, A8, A11, A12);
+    en el PC, la O1 empezando por A2 (G1) y A3 (editor 4.8-dev7).
