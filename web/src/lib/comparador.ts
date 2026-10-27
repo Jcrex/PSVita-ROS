@@ -145,6 +145,20 @@ const DEFS: DefModulo[] = [
     c: 'modules/tf-tree/impl-c/tf_tree.c',
     rust: 'modules/tf-tree/impl-rust/src/lib.rs',
   },
+  {
+    id: 'msg-schema',
+    nombre: 'msg-schema — codec CDR genérico guiado por esquema',
+    resumen:
+      'El sustituto en la Vita de ros_babel_fish: decodifica y codifica cualquier mensaje ROS2 recorriendo un esquema generado en el PC, con visitor y source de callbacks.',
+    clavesEstudio: [
+      'Structs de punteros a función: `msg_visitor` en C frente a `Option<unsafe extern "C" fn>` en Rust.',
+      'Recursión sobre tipos anidados con `TRY` (C) frente a `Result` y `?` (Rust).',
+      'Verificación contra un volcado canónico calculado sobre el objeto Python de rosbags.',
+    ],
+    header: 'modules/msg-schema/include/msg_schema.h',
+    c: 'modules/msg-schema/impl-c/msg_schema.c',
+    rust: 'modules/msg-schema/impl-rust/src/lib.rs',
+  },
 ];
 
 export function getModulos(): ModuloDual[] {

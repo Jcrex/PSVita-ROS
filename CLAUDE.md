@@ -44,7 +44,7 @@ cd web && docker compose up -d --build  # production site, localhost:4321
 
 ## Layout
 
-- `modules/{mem-pool,net-udp,microros-transport,msg-ring,viz-math,msg-cdr,tf-tree}/` — dual modules (each has
+- `modules/{mem-pool,net-udp,microros-transport,msg-ring,viz-math,msg-cdr,tf-tree,msg-schema}/` — dual modules (each has
   its own README with API/design/status). Platform split is *inside* each
   impl: `#ifdef __vita__` / `#[cfg(target_os = "vita")]`; the host branch
   exists so parity tests run on the laptop.

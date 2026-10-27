@@ -1,0 +1,5 @@
+header.stamp.sec=1
+header.stamp.nanosec=2
+header.frame_id="joy"
+axes=[4]#ac92b146fa90162b
+buttons=[5]#8b595a1bc1cd1df4
