@@ -28,6 +28,7 @@ COPY docs/ /app/docs/
 COPY modules/ /app/modules/
 COPY vita-app/ /app/vita-app/
 COPY godot/ /app/godot/
+COPY tools/hwprobe/README.md /app/tools/hwprobe/README.md
 COPY mcp/ /app/mcp/
 RUN pnpm build
 

@@ -30,7 +30,7 @@ void RosNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_queued"), &RosNode::get_queued);
 	ADD_SIGNAL(MethodInfo("message_received",
 			PropertyInfo(Variant::INT, "topic_id"),
-			PropertyInfo(Variant::POOL_BYTE_ARRAY, "cdr")));
+			PropertyInfo(ROS_VARIANT_BYTES, "cdr")));
 }
 
 void RosNode::_notification(int p_what) {
@@ -51,11 +51,13 @@ void RosNode::_notification(int p_what) {
 					continue; // mensaje corrupto: sin topic_id
 				}
 				int topic_id = buf[0] | (buf[1] << 8);
-				PoolByteArray payload;
+				RosBytes payload;
 				payload.resize(n - 2);
 				if (n > 2) {
-					PoolByteArray::Write w = payload.write();
-					memcpy(w.ptr(), buf + 2, n - 2);
+#if VERSION_MAJOR < 4
+					ROS_BYTES_WRITE_BEGIN(payload)
+#endif
+					memcpy(ROS_BYTES_PTRW(payload), buf + 2, n - 2);
 				}
 				emit_signal("message_received", topic_id, payload);
 			}

@@ -6,6 +6,7 @@
 #ifndef ROS2_VITA_ROS_NODE_H
 #define ROS2_VITA_ROS_NODE_H
 
+#include "godot_compat.h"
 #include "scene/main/node.h"
 
 extern "C" {
