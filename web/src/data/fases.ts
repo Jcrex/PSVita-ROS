@@ -93,6 +93,22 @@ export const fases: Fase[] = [
     ],
   },
   {
+    id: 'fase-godot',
+    nombre: 'Infraestructura de desarrollo — Godot, Rust nativo y optimización',
+    resumen:
+      'Investigación web de Godot en la Vita y de la pila micro-ROS (docs/12, docs/13, ADR 0008) más la infraestructura que no necesita hardware. Lo que requiere el PC o la Vita está listado como pendiente.',
+    hitos: [
+      { texto: 'Investigación Godot+ROS2 en la Vita con fuentes y marcas de confianza (docs/12)', estado: 'hecho' },
+      { texto: 'ADR 0008: Godot vía módulo C++ estático sobre la capa ROS dual (propuesto)', estado: 'hecho' },
+      { texto: 'Módulo dual msg-ring (cola SPSC red→render/Godot): paridad C/Rust + estrés 2 hilos + TSan en host', estado: 'hecho' },
+      { texto: 'tools/vita-doctor.sh (diagnóstico de entorno) y serie Rust 03 (atómicos)', estado: 'hecho' },
+      { texto: 'Esqueleto godot/ros2_vita + tools/build-godot-template.sh (sin compilar)', estado: 'hecho' },
+      { texto: 'Compilar la plantilla godot-vita 3.5 con el módulo y fijar commit (P2/P4)', estado: 'bloqueado-pc' },
+      { texto: 'Experimentos de latencia XRCE (MTU, heartbeat, streams) y estrés ARM de msg-ring', estado: 'bloqueado-hw' },
+      { texto: '"Hola mundo" Godot en la Vita: RAM, FPS, ATTRIBUTE2=12 (P5/P6)', estado: 'bloqueado-hw' },
+    ],
+  },
+  {
     id: 'fase-5-6',
     nombre: 'Objetivos 5-6 — sensores nativos y toolkit',
     resumen:

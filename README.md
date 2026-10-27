@@ -60,8 +60,9 @@ compilación para la Vita ocurre en el PC.
 
 ```
 PSVita-ROS/
-├── docs/                  # 00-11 + adr/ (7 ADRs) + rust/ + guias-vita/ + superpowers/
-├── modules/               # los 3 módulos duales (paridad C/Rust en host)
+├── docs/                  # 00-13 + adr/ (8 ADRs) + rust/ + guias-vita/ + superpowers/
+├── modules/               # 4 módulos duales (paridad C/Rust en host)
+├── godot/                 # esqueleto del módulo Godot ros2_vita (sin verificar)
 │   ├── mem-pool/          #   asignador de bloques fijos sin malloc
 │   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
 │   └── microros-transport/#   los 4 callbacks XRCE (la ex-incógnita dura)
@@ -122,7 +123,9 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/09-objetivo2-control-robot.md` | Diseño del teleop `/cmd_vel` (mapeo de mandos) |
 | `docs/10-plan-objetivos-3-4.md` | **Guía operativa de los Objetivos 3/4** (etapas A-F) |
 | `docs/11-diseno-mini-rviz.md` | Diseño del mini-rviz y formato VBM |
-| `docs/adr/0001-0007` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL) |
+| `docs/12-investigacion-godot-ros2-vita.md` | Investigación web: Godot en la Vita, micro-ROS, Rust nativo (con fuentes) |
+| `docs/13-infraestructura-desarrollo-vita.md` | Mapa del entorno completo, librerías de optimización y pendientes por dependencia |
+| `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
 | `docs/rust/` | Aprendizaje de Rust ligado al código del repo |
 | `docs/guias-vita/` | Instalar el homebrew de la consola (también en la web) |
 
