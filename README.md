@@ -129,6 +129,7 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/15-rust-nativo-y-optimizacion-vita.md` | Rust nativo: modos de uso, target, perfil y optimización |
 | `docs/17-rclgd-estado-del-arte-godot-ros2.md` | Estudio del código de `rclgd` y `roomba_ws` (ROSCon) y qué aprovechar en la Vita |
 | `docs/16-paginas-pendientes-de-leer.md` | Páginas que no se pudieron abrir (para leer en el PC) |
+| `docs/19-plan-multiagente-migracion-godot4.md` | **Plan multiagente** de la migración: mapa jerárquico, ramas, agentes y oleadas |
 | `docs/18-migracion-a-godot4.md` | **Migración a Godot 4** (godot4-vita): qué cambia, enlace de Rust, red, riesgos y backlog |
 | `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
 | `docs/rust/` | Aprendizaje de Rust ligado al código del repo |

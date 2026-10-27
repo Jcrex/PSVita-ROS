@@ -175,7 +175,7 @@ a `default_dynlib.c`. **`git apply --check` pasa sobre el commit `d1a5f29`** **[
 Si `sincosf` o `bcmp` no estuvieran en la newlib del SDK, alternativas: compilar `viz_math.c` con
 `-fno-builtin-sincos` y evitar `==` sobre slices en Rust (usar un bucle) **[?]**.
 
-### 4.3 Red: dos caminos (decisión pendiente, prueba en Vita)
+### 4.3 Red: dos caminos — **ELEGIDA la opción A (usuario, 2026-10-27)**
 Godot (`drivers/unix`) usa sockets POSIX de newlib, que en VitaSDK delegan en `sceNet`, pero **requieren
 `sceSysmoduleLoadModule(SCE_SYSMODULE_NET)` + `sceNetInit(pool)` + `sceNetCtlInit()` previos**, y el motor no lo hace.
 - **A. Backend sceNet en `net-udp` (lo que usa hoy la app C):** necesita las 11 entradas del parche y que alguien
@@ -195,7 +195,7 @@ Godot (`drivers/unix`) usa sockets POSIX de newlib, que en VitaSDK delegan en `s
 | Qué más funciona en Godot | Nada nuevo (ENet, `UDPServer`, `StreamPeerTCP` siguen sin red) | También ENet/UDP/TCP de Godot (multijugador, etc.) |
 | Coste si el juego no usa ROS | Cero (red apagada) | Pool de red reservado siempre |
 | Rebase sobre upstream | Mínimo (líneas añadidas a una tabla) | Mayor (toca el arranque) |
-| Riesgo | Poco: mismo camino que `vita-app` (aún **sin validar** en hardware) | Doble init si `net_udp_init` también llama; `sceNetInit` repetido **[?]** |
+| Riesgo | Poco: mismo camino que `vita-app`, **probado en hardware** en el cierre de la Fase 1 (2026-07-01, ELF estático); falta probarlo dentro de `libgodot.so` | Doble init si `net_udp_init` también llama; `sceNetInit` repetido **[?]** |
 | Compatibilidad con la meta de fork mínimo | Alta | Media (candidato a PR a upstream) |
 
 Se pueden **combinar más tarde**: A primero; si algún día el motor inicializa la red (B, idealmente
@@ -353,7 +353,24 @@ PC (CachyOS, Linux)                   Vita
 3. **Editor:** rclgd ya trae su propio Godot 4.7.1 (ver §7) ⇒ no se instala otro para desarrollar; se
    usa ese. Solo el export necesita el 4.8-dev7.
 
-**Abierta:** red en el motor, **opción A o B** (explicación detallada abajo en §4.3).
+4. **Red: opción A** (respondida tras la explicación de §4.3). B queda descartada en este proyecto;
+   solo se reconsideraría como PR a upstream si se quisiera la red propia de Godot (ENet).
+
+**Plan de ejecución:** el reparto completo por agentes, el mapa jerárquico y las oleadas están en
+`docs/19-plan-multiagente-migracion-godot4.md`.
+
+## 11b. Hallazgos de la ronda de ramas (2026-10-27, detalle en docs/19 §2)
+- **rclgd `feature/native-msg-classes`** (2026-10-26): clases tipadas nativas desde `package.xml`; elimina
+  las clases sombra y `gen_editor_support` (*breaking*). Encaja con `msg-schema`: la Vita puede registrar
+  las mismas clases desde el `.rsch` (rama R-N). **[V]** CHANGELOG/código de la rama.
+- **rclgd `jazzy`** = nuestra distro; misma `GODOT_VERSION 4.7.1`. **[V]**
+- **godot4-vita:** `release/v0.1` = mismo código que `main` (solo README); etiqueta `v0.1` (`cd85955`) es
+  anterior; el parche del loader aplica en ambas. **[V]**
+- **Rama R-G:** el core de godot4-vita trae `GDExtensionManager::load_extension_from_function()` y
+  `ClassDB::register_extension_class()`; `dlopen` es un stub nulo ⇒ una GDExtension **enlazada estáticamente**
+  es posible en principio **[I]** → spike A7b (probar el mismo código en el editor 4.7.1 de rclgd).
+- Riesgos nuevos: **R10** rclgd cambia la API de tipos (mitigación: A1 vigila, soportar ambas);
+  **R11** godot-cpp en un `.so` `-nostdlib` añade imports de libstdc++ (mitigación: el spike mide antes de decidir).
 
 ## 12. Fuentes
 - godot4-vita: [README](https://github.com/WolffsRoom/godot4-vita), `platform/vita/{README,BUILDING,ROADMAP,UPDATES_2026_10}.md`,

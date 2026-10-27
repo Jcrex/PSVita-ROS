@@ -48,6 +48,14 @@
 | clases `RosGeometryMsgsTwist`... con `ROS_TYPE_NAME` | ✅ | idénticas (GDScript puro) |
 | semántica "los arrays se copian: asignar el array entero" | ✅ | mantener igual |
 
+### Próximo cambio de rclgd: clases tipadas nativas (rama `feature/native-msg-classes`, 2026-10-26)
+| rclgd (próximo) | Vita | Nota |
+|---|---|---|
+| Clases `RosXxx` nativas registradas al arrancar desde `res://package.xml` | ⏳ (T3.2.4) | registrar desde `schema.rsch` con `ClassDB::register_extension_class` **[I]**; esquema cargado antes de analizar scripts |
+| Se eliminan `addons/rclgd/gen`, el plugin y `RosMsg.gen_editor_support` | ⏳ | mientras no se fusione, mantener ambas vías |
+| `create_publisher(topic, RosGeometryMsgsTwist)` acepta clase o instancia | ⏳ | — |
+| `package.xml` en el filtro de no-recursos al exportar | ⏳ (T5.2.3) | igual en la Vita: `package.xml` + `*.rsch` |
+
 ## Otras clases
 | rclgd | Vita | Nota |
 |---|---|---|
