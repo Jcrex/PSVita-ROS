@@ -27,6 +27,7 @@ COPY web/ ./
 COPY docs/ /app/docs/
 COPY modules/ /app/modules/
 COPY vita-app/ /app/vita-app/
+COPY godot/ /app/godot/
 COPY mcp/ /app/mcp/
 RUN pnpm build
 

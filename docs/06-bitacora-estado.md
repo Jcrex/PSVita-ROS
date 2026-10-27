@@ -1,10 +1,10 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-27 (laptop: **investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware** — `docs/12`, `docs/13`, ADR 0008, módulo dual `msg-ring`; ver bloque 2026-10-27 al final. Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
-2026-07-10. Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
+2026-07-10). Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
 confirmado por el usuario en hardware real**: la app teleop instalada en
 la Vita publica `/cmd_vel` y controla robots según el mapeo de
 `docs/09-objetivo2-control-robot.md`. En la misma sesión: `.vpk` subido
@@ -845,3 +845,39 @@ cd web && pnpm build                      # o: docker compose up -d --build
   el font8x8). Nota técnica para C1: las imágenes se cargan con libpng
   directo a textura GL (vita2d_load_PNG_file ya no existe en el
   proyecto; libpng+zlib quedaron instaladas en B1).
+
+- **(2026-10-27, en la laptop, sin Vita) Investigación web + infraestructura
+  de desarrollo (Godot, Rust nativo, optimización micro-ROS).** El usuario
+  pidió investigar en la web el funcionamiento interno de la pila y cómo
+  desarrollar apps nativas con Godot que usen ROS2, y dejar preparada la
+  infraestructura que no necesite hardware. Resultado:
+  - `docs/12-investigacion-godot-ros2-vita.md`: estado del arte con fuentes y
+    marcas [V]/[I]/[?]. Hallazgos: existen dos ports de Godot (3.5
+    `godot-vita`, GLES2/PVR_PSP2; 4.x `godot4-vita`, GXM nativo, editor solo
+    Windows); **ninguno soporta GDExtension** y Rust no tiene enlace
+    dinámico en la Vita → la integración debe ser un **módulo C++ estático**.
+    La plantilla oficial 3.5 viene sin sockets, pero ROS usa `sceNet` vía
+    `net-udp`, así que no le afecta. Godot y vitaGL no pueden compartir el
+    GPU (ADR 0007) → dos apps separadas con capa ROS compartida.
+  - `docs/adr/0008-godot-via-modulo-estatico.md` (Propuesto).
+  - `docs/13-infraestructura-desarrollo-vita.md`: mapa maestro, plan de
+    medición XRCE (experimento E1), catálogo de librerías, diseño del
+    Objetivo 5 con las APIs reales de `camera.h`/`motion.h`, y la lista
+    de pendientes por dependencia (PC / Vita / decisión del usuario).
+  - **Módulo dual nuevo `modules/msg-ring/`** (cola SPSC red→render/Godot):
+    paridad C/Rust verde, estrés de 2 hilos (2 M de mensajes) y
+    ThreadSanitizer sin avisos. **Falta validar en la Cortex-A9** (el orden
+    de memoria ARM no se prueba en x86). Serie Rust: `docs/rust/03`.
+  - `godot/` (esqueleto del módulo `ros2_vita` + `tools/build-godot-template.sh`)
+    — **sin compilar**; `tools/vita-doctor.sh` (probado en la laptop).
+  - Web: `msg-ring` en /comparador, `godot/README.md` en la sección de
+    código, `COPY godot/` en el Dockerfile, fase nueva en `fases.ts`.
+  - **Muros encontrados:** desde esta sesión no se pudo leer
+    forum.godotengine.org, doc.rust-lang.org, micro.ros.org,
+    docs.vitasdk.org, rclgd.readthedocs.io ni wololo.net (DNS bloqueado);
+    se usaron GitHub y el resumen del buscador. Los datos afectados
+    quedaron como [?] y entran en la lista de pendientes (docs/12 §8).
+  - **Siguiente paso exacto (PC):** `tools/vita-doctor.sh`; leer rclgd (P1) y
+    fijar commit de `godot-vita` (P2); implementar Etapa D (`viz-math`,
+    `msg-cdr` con fixtures de `robotnik_dev`, `tf-tree`) y cross-compilar
+    `msg-ring`. **Con la Vita:** experimento E1 y estrés ARM de `msg-ring`.
