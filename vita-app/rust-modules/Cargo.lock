@@ -22,6 +22,10 @@ name = "msg_ring_rust"
 version = "0.1.0"
 
 [[package]]
+name = "msg_schema_rust"
+version = "0.1.0"
+
+[[package]]
 name = "net_udp_rust"
 version = "0.1.0"
 
@@ -41,6 +45,7 @@ dependencies = [
  "microros_transport_rust",
  "msg_cdr_rust",
  "msg_ring_rust",
+ "msg_schema_rust",
  "net_udp_rust",
  "tf_tree_rust",
  "viz_math_rust",

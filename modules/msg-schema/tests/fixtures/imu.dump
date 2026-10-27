@@ -1,0 +1,16 @@
+header.stamp.sec=100
+header.stamp.nanosec=200
+header.frame_id="imu_link"
+orientation.x=0
+orientation.y=0
+orientation.z=0
+orientation.w=1
+orientation_covariance=[9]#a5ff5d9c6e753ae0
+angular_velocity.x=0.01
+angular_velocity.y=0.02
+angular_velocity.z=0.029999999999999999
+angular_velocity_covariance=[9]#2865c8a4e6c21d70
+linear_acceleration.x=0
+linear_acceleration.y=0
+linear_acceleration.z=9.8100000000000005
+linear_acceleration_covariance=[9]#7312ca02033ee1ab

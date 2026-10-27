@@ -1,0 +1,10 @@
+header.stamp.sec=7
+header.stamp.nanosec=8
+header.frame_id=""
+name=[3]
+name[0]="wheel_left"
+name[1]="wheel_right"
+name[2]="arm_joint_1"
+position=[3]#8d8535e5480886a9
+velocity=[0]#cbf29ce484222325
+effort=[3]#025e67c32d204b30

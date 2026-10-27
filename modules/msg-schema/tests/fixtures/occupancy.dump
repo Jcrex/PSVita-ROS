@@ -1,0 +1,16 @@
+header.stamp.sec=100
+header.stamp.nanosec=0
+header.frame_id="map"
+info.map_load_time.sec=50
+info.map_load_time.nanosec=60
+info.resolution=0.5
+info.width=4
+info.height=4
+info.origin.position.x=-1
+info.origin.position.y=-2
+info.origin.position.z=0
+info.origin.orientation.x=0
+info.origin.orientation.y=0
+info.origin.orientation.z=0
+info.origin.orientation.w=1
+data=[16]#5574a32f43e9972a

@@ -28,6 +28,7 @@ msg_ring_rust = { path = "../../modules/msg-ring/impl-rust", default-features = 
 viz_math_rust = { path = "../../modules/viz-math/impl-rust", default-features = false }
 msg_cdr_rust = { path = "../../modules/msg-cdr/impl-rust", default-features = false }
 tf_tree_rust = { path = "../../modules/tf-tree/impl-rust", default-features = false }
+msg_schema_rust = { path = "../../modules/msg-schema/impl-rust", default-features = false }
 
 [profile.release]
 panic = "abort"

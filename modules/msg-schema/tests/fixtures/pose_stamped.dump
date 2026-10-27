@@ -1,0 +1,10 @@
+header.stamp.sec=10
+header.stamp.nanosec=20
+header.frame_id="map"
+pose.position.x=1
+pose.position.y=2
+pose.position.z=3
+pose.orientation.x=0
+pose.orientation.y=0
+pose.orientation.z=0.5
+pose.orientation.w=0.5

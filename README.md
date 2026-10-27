@@ -60,8 +60,8 @@ compilación para la Vita ocurre en el PC.
 
 ```
 PSVita-ROS/
-├── docs/                  # 00-16 + adr/ (8 ADRs) + rust/ + guias-vita/ + superpowers/
-├── modules/               # 7 módulos duales (paridad C/Rust en host)
+├── docs/                  # 00-17 + adr/ (8 ADRs) + rust/ + guias-vita/ + superpowers/
+├── modules/               # 8 módulos duales (paridad C/Rust en host)
 ├── godot/                 # esqueleto del módulo Godot ros2_vita (sin verificar)
 │   ├── mem-pool/          #   asignador de bloques fijos sin malloc
 │   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
@@ -127,6 +127,7 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/13-infraestructura-desarrollo-vita.md` | Mapa del entorno completo, librerías de optimización y pendientes por dependencia |
 | `docs/14-hardware-vita-memoria-hilos-optimizacion.md` | Hardware de la Vita: memoria, hilos, CPU/GPU y experimentos |
 | `docs/15-rust-nativo-y-optimizacion-vita.md` | Rust nativo: modos de uso, target, perfil y optimización |
+| `docs/17-rclgd-estado-del-arte-godot-ros2.md` | Estudio del código de `rclgd` y `roomba_ws` (ROSCon) y qué aprovechar en la Vita |
 | `docs/16-paginas-pendientes-de-leer.md` | Páginas que no se pudieron abrir (para leer en el PC) |
 | `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
 | `docs/rust/` | Aprendizaje de Rust ligado al código del repo |

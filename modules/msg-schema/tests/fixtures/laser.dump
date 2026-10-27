@@ -1,0 +1,12 @@
+header.stamp.sec=5
+header.stamp.nanosec=6
+header.frame_id="laser"
+angle_min=-1.5
+angle_max=1.5
+angle_increment=0.5
+time_increment=0.0010000000474974513
+scan_time=0.10000000149011612
+range_min=0.15000000596046448
+range_max=12
+ranges=[7]#dcb0e63a26037578
+intensities=[0]#cbf29ce484222325

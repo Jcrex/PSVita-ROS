@@ -83,6 +83,7 @@ Cada una sigue `skills/vita-dual-module/` y es verificable en host.
 | `viz-math` (D1) | vec3/quat/mat4 para TF, cámara y robot | Planificado (`docs/10` §7) | Alta (testeable en host) |
 | `msg-cdr` (D2) | Deserializar `TFMessage`, `JointState`, `Marker`, `OccupancyGrid` sin copias | Planificado; **requiere fixtures reales de ROS2** (contenedor `robotnik_dev`) | Alta |
 | `tf-tree` (D3) | Último valor por frame + cadenas padre→hijo | Planificado | Alta |
+| `msg-schema` | `ros_babel_fish` de la Vita: codec CDR genérico guiado por esquemas generados en el PC (docs/17 §6.2) | **Hecho en host** (2026-10-27) | — |
 | `ros-facade` (nuevo) | API pequeña `publish/subscribe(topic,type)` sobre XRCE para apps C **y** Godot; oculta `uxr_*` | Idea; define el contrato único que usará `RosNode` | Media (tras medir E1) |
 | `cdr-fast` (nuevo) | Serializadores de los mensajes de salida (`Twist`, `Joy`, `Imu`) sin `ucdr` genérico | Idea; solo si el perfil lo justifica | Baja |
 

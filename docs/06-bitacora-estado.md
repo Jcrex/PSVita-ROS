@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-27, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -916,3 +916,29 @@ cd web && pnpm build                      # o: docker compose up -d --build
     `robotnik_dev`; (5) D4: suscripciones `/tf` y `/joint_states` en `main.c`.
     **Con la Vita:** correr `hwprobe` (con y sin `EXTENDED_MEMORY`) y pegar la salida
     en docs/14 §9.
+
+- **(2026-10-27, 3.ª sesión, ROSCon, laptop) Estudio a fondo de `rclgd` y
+  `roomba_ws` + módulo `msg-schema`.** El usuario asistió a la presentación de
+  Godot con ROS2 nativo en ROSCon. Se clonaron (solo lectura) y leyeron los dos
+  repositorios completos (rclgd `4d0a8b3`, roomba_ws `8332acb`).
+  - **`docs/17-rclgd-estado-del-arte-godot-ros2.md`**: arquitectura (GDExtension
+    sobre `rclcpp` + `ros_babel_fish`; executor en hilo propio; callbacks al hilo
+    principal salvo servicios), `RosMsg` dinámico con clases sombra GDScript,
+    TF y ejes, QoS, tooling (`build_type rclgd`, colcon, CLI, autoload), los
+    patrones del taller (robot, sensores, HMI) y la matriz de reutilización para
+    la Vita.
+  - **Hallazgos que corrigen documentos previos:** rclgd **sí está mantenido**
+    (v3.0.0, 4 distros con CI); exige **Godot 4.7** y su API usa `Callable`/`await`
+    ⇒ no corre en Godot 3.5. **ADR 0008 revisado:** recomienda Godot 4
+    (`godot4-vita`) primero para apps 2D/HMI; decisión final pendiente del usuario.
+    P1 (API de rclgd) cerrado → `godot/ros2_vita/API_PARITY.md`.
+  - **`modules/msg-schema/`** (8.º módulo dual): codec CDR genérico guiado por
+    esquema = el sustituto de babel_fish en la Vita. Esquemas generados en el PC
+    (`tools/gen_msg_schema.py`, rosbags/Jazzy). Verificado en host: 24 tipos
+    reales, decode idéntico al volcado canónico del objeto Python, encode bit a
+    bit, recortes, esquemas inválidos y fuzz de payloads y esquemas con hash
+    idéntico C/Rust; ASan/UBSan limpios. Serie Rust `05`.
+  - **Pendiente (PC/Vita):** cross-compilar, medir el coste por mensaje, integrar
+    `msg-schema` en el módulo Godot y probar `godot4-vita` con un `.pck` mínimo.
+  - **Preguntas al usuario (docs/17 §10):** ¿Godot 4 primero?, ¿hay Windows para
+    el editor de `godot4-vita`?, ¿HMI de teleop con cámara como piloto?

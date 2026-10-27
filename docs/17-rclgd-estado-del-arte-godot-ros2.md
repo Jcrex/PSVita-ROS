@@ -250,7 +250,7 @@ eso existe. Dos caminos:
 - Verificación **solo en host**: contra volcados canónicos generados por
   `rosbags` para muchos tipos (Twist, Imu, LaserScan, Image, Odometry, Marker...).
 - `msg-cdr` (a mano) queda como camino rápido para los 4 tipos del mini-rviz.
-- Estado: ver `modules/msg-schema/` (§8).
+- Estado: implementado y verificado en host (`modules/msg-schema/README.md`).
 
 ### 6.3 Contrato `ros2_vita` ≈ `rclgd`
 El módulo de Godot debe exponer **los mismos nombres y firmas** (tabla de paridad
@@ -289,7 +289,7 @@ Coste de CPU en la Vita **[?]** → medir con `hwprobe`/FPS.
 | Este documento | hecho |
 | `docs/12`, ADR 0008, `docs/16` corregidos con los hechos reales | hecho |
 | `godot/ros2_vita/API_PARITY.md` (tabla rclgd ↔ Vita) | hecho |
-| `modules/msg-schema` (codec genérico dual) | ver README del módulo |
+| `modules/msg-schema` (codec genérico dual) | **hecho en host**: 24 tipos reales, decode == volcado de rosbags, encode bit a bit, fuzz C=Rust; falta cross-compilar y medir |
 | Migración del esqueleto de `godot/` a Godot 4 | **pendiente** (decisión §6.1 y PC) |
 | Probar `godot4-vita` con un `.pck` mínimo | **pendiente** (PC / Vita) |
 
