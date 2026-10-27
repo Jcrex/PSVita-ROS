@@ -114,6 +114,8 @@ export const fases: Fase[] = [
       { texto: 'Investigación de migración a Godot 4 (docs/18): internals del loader, clausura de imports, reglas de enlace Rust PIC, riesgos y backlog', estado: 'hecho' },
       { texto: 'Módulo ros2_vita reescrito para Godot 4 en árbol (RosMsg, RosNode, pub/sub/timer, singleton rclgd, transporte loopback) + pruebas GDScript — sin compilar', estado: 'hecho' },
       { texto: 'Parche del loader (11 sce* de red, sincosf, bcmp) + tools/check-vita-imports.py y build-rust-pic.sh', estado: 'hecho' },
+      { texto: 'Conseguir/compilar el editor 4.8-dev7 para Linux y exportar un VPK de prueba desde CachyOS (el Godot de rclgd es 4.7.1 y no exporta a Vita)', estado: 'bloqueado-pc' },
+      { texto: 'Fork de godot4-vita solo si hace falta (parches mínimos, proponibles a upstream; compatible con el entorno estándar)', estado: 'pendiente' },
       { texto: 'G1: compilar la plantilla godot4-vita con el módulo y pasar verify_runtime.py', estado: 'bloqueado-pc' },
       { texto: 'Red en el motor (opción A: backend sceNet en net-udp) e implementar XrceTransport', estado: 'bloqueado-pc' },
       { texto: 'Cruzar fixtures de msg-cdr con ROS2 real (robotnik_dev) y cross-compilar los módulos nuevos', estado: 'bloqueado-pc' },

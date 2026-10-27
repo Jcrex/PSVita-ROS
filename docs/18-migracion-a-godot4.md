@@ -185,6 +185,22 @@ Godot (`drivers/unix`) usa sockets POSIX de newlib, que en VitaSDK delegan en `s
   Requiere un parche al motor (propio, pequeño) y mantenerlo al rebasar.
 - Ambos exigen decidir el pool de `sceNetInit` (1 MiB hoy en `net-udp`) frente al presupuesto de 365 MiB.
 
+**Comparación detallada (para decidir):**
+
+| Aspecto | A — `net-udp` inicializa y usa `sceNet` | B — el motor inicializa la red |
+|---|---|---|
+| Quién llama a `sceNetInit`/`sceNetCtlInit` | `net_udp_init()` (al hacer `rclgd.init`) | `VitaNet::init()` en el arranque del motor |
+| Qué sockets usa XRCE | `sceNetSocket/Send/Recv` directos (como `vita-app`) | POSIX de newlib (o seguir con `sceNet`) |
+| Cambios en el motor | **Ninguno** (solo la tabla del loader, ya parcheada) | Parche en `os_vita.cpp`/arranque **además** de la tabla |
+| Qué más funciona en Godot | Nada nuevo (ENet, `UDPServer`, `StreamPeerTCP` siguen sin red) | También ENet/UDP/TCP de Godot (multijugador, etc.) |
+| Coste si el juego no usa ROS | Cero (red apagada) | Pool de red reservado siempre |
+| Rebase sobre upstream | Mínimo (líneas añadidas a una tabla) | Mayor (toca el arranque) |
+| Riesgo | Poco: mismo camino que `vita-app` (aún **sin validar** en hardware) | Doble init si `net_udp_init` también llama; `sceNetInit` repetido **[?]** |
+| Compatibilidad con la meta de fork mínimo | Alta | Media (candidato a PR a upstream) |
+
+Se pueden **combinar más tarde**: A primero; si algún día el motor inicializa la red (B, idealmente
+aceptado por upstream), `net_udp_init` solo debe detectar «ya inicializada» y seguir.
+
 ### 4.4 Herramientas entregadas
 `tools/check-vita-imports.py` (esta comprobación, con `--nm arm-vita-eabi-nm` en el PC),
 `tools/build-rust-pic.sh`, `tools/build-godot-template.sh` (aplica el parche, compila, ejecuta `verify_runtime.py`).
@@ -228,11 +244,28 @@ Archivos: `config.py`, `SCsub`, `register_types.*`, `ros_msg.*`, `ros_runtime.*`
 ## 7. Flujo de trabajo y versiones
 
 ```
-PC (CachyOS)                          Vita
- Godot 4.7.1 + rclgd (apt/colcon)  ─┐   .pck + loader + libgodot.so(+ros2_vita)
-   desarrollo contra ROS2 real      ├─► Godot 4.8-dev7 + addon psvita  ──► VPK + ux0:data/<juego>
- mismos .gd/.tscn                  ─┘   (plantilla propia vita_release.zip)
+PC (CachyOS, Linux)                   Vita
+ Editor 4.7.1 que DESCARGA rclgd   ─┐   .pck + loader + libgodot.so(+ros2_vita)
+   (`ros2 rclgd editor`)            ├─► 2.º editor 4.8-dev7 (Linux) + addon psvita ──► VPK + ux0:data/<juego>
+   desarrollo contra ROS2 real      │   (plantilla propia vita_release.zip)
+ mismos .gd/.tscn                  ─┘
 ```
+- **Confirmado en el código de rclgd [V]** (respuesta del usuario: «rclgd trae Godot»):
+  `rclgd/CMakeLists.txt` fija `GODOT_VERSION "4.7.1"`, descarga en la compilación el archivo
+  `Godot_v4.7.1-stable_<arch>.zip` de las *releases* oficiales, lo instala en `share/rclgd/` y lo
+  lanza `ros2 rclgd editor` (`cmake/godot-launcher.sh`). **No hay que instalar Godot aparte para
+  desarrollar en el PC.**
+- **Consecuencia para la Vita:** ese editor es el **estable 4.7.1** y el exportador `psvita` exige
+  **exactamente 4.8-dev7** (`platform.gd:103`). **No sirve para exportar**: hace falta un **segundo
+  editor 4.8-dev7 para Linux**, usado solo al exportar. Origen posible: instantáneas *dev* oficiales
+  **[?]** o compilarlo desde la etiqueta `4.8-dev7` del repositorio de Godot (SCons, `platform=linuxbsd`)
+  — validar en el PC (M18). rclgd no puede apuntar a una *dev*: `GODOT_VERSION` solo baja *stable* y
+  debe coincidir con el submódulo `godot-cpp`.
+- **Regla práctica** (propuesta, validar en M15): editar **siempre con el 4.7.1 de rclgd**; el 4.8-dev7
+  solo exporta, preferiblemente en modo `--headless` sobre una **copia** del proyecto (un editor más
+  nuevo reescribe `project.godot`/escenas y `.godot/imported`, y no se puede volver atrás).
+- **Convergencia:** cuando salga 4.8 *stable*, `godot4-vita` pasa a rebasar sobre él y rclgd sube
+  su `GODOT_VERSION`: un solo editor para todo. Hasta entonces, vigilar ambos (M17).
 - **Sesgo de versión:** rclgd 4.7.1 / runtime 4.8-dev7. Los proyectos se abren en 4.8 y se "convierten"; los
   scripts GDScript usados (lambdas, `await`, tipos) existen en ambos. Riesgo: formato de escena entre 4.7 y
   4.8-dev **[?]** → prueba M15. rclgd (GDExtension `compatibility_minimum=4.7`) podría cargarse en el
@@ -272,7 +305,7 @@ PC (CachyOS)                          Vita
 | R5 | Sesgo 4.7.1 (rclgd) ↔ 4.8-dev7 (runtime) | Media | Medio | M15; si falla, construir rclgd contra 4.8 o desarrollar en el editor 4.8 |
 | R6 | Rendimiento: GDScript a 333–444 MHz, textura recreada por fotograma, CDR de mensajes grandes | Alta | Medio | Medir con `hwprobe`/FPS; imágenes JPEG pequeñas; preferir arrays empaquetados |
 | R7 | Sin red hasta M5 (sceNet) | Cierta | Alto | Parche del loader + init de red (opciones A/B) |
-| R8 | El editor 4.8-dev7 oficial no se descarga fácilmente / solo Windows | Media | Medio | Preguntar al usuario (Windows disponible) |
+| R8 | El editor 4.8-dev7 para Linux no existe como descarga oficial / hay que compilarlo | Media | Medio | Usuario: solo Linux (no Windows). Plan: instantánea dev oficial o compilar desde la etiqueta `4.8-dev7` (M18); el editor de rclgd (4.7.1) **no** sirve para exportar |
 | R9 | `class_name` global y `ProjectSettings.get_global_class_list()` en export | Media | Bajo | No dependemos de ello: `RosMsg` acepta tipo por texto |
 
 ---
@@ -298,15 +331,29 @@ PC (CachyOS)                          Vita
 | M15 | Prueba de sesgo 4.7.1↔4.8-dev7 (escena, extensión rclgd) | PC | — | pendiente |
 | M16 | Medidas: coste por mensaje, textura por fotograma, FPS de la HMI | Vita | M9 | pendiente |
 | M17 | Vigilar upstream (`godot4-vita` y `rclgd`) y rebasar | continuo | — | continuo |
+| M18 | Conseguir/compilar el **editor 4.8-dev7 para Linux** + addon `psvita` y exportar un `.vpk` de prueba desde CachyOS (sin Windows) | PC | — | pendiente |
+| M19 | **Fork de godot4-vita para nuestro caso**, solo si hace falta: parches mínimos y proponibles a upstream, sin romper addon/VPK/`verify_runtime.py` (política en §11) | PC | M6 | pendiente (anotado) |
 
 ---
 
-## 11. Preguntas abiertas para el usuario
-1. ¿Hay **Windows** (PC o VM) para el editor `Godot4Vita.exe`, o se prefiere el **addon** con el editor 4.8-dev7 oficial en Linux?
-2. ¿Red por **opción A** (backend sceNet, sin tocar el motor) o **B** (init de red en el motor + Godot ENet)? Recomiendo A primero.
-3. ¿Aceptas mantener un **fork/parche** de godot4-vita para (a) el parche del loader, (b) el panel trasero? Alternativa: parches en este repo (`godot/loader-patches/`), que es lo que se hace ahora.
+## 11. Decisiones del usuario y preguntas abiertas
 
----
+**Respondidas (2026-10-27):**
+1. **Sistema:** Linux en el portátil y **CachyOS** en el PC de desarrollo; **no hay Windows** ⇒ se descarta
+   `Godot4Vita.exe`; ruta = **addon `psvita` + editor 4.8-dev7 Linux** (M18).
+2. **Fork de `godot4-vita`:** anotado como tarea (M19) «para nuestro caso», **pero priorizando al máximo
+   lo compatible con el entorno de desarrollo existente**. Política derivada:
+   - El módulo `ros2_vita` vive **fuera del árbol del motor** (`custom_modules=<repo>/godot`): el fork
+     no necesita contenerlo.
+   - Los cambios al motor se mantienen como **serie de parches mínimos y aislados** (`godot/loader-patches/`),
+     aplicables sobre el commit fijado; el fork solo se crea cuando un parche no pueda vivir así
+     (p. ej. panel trasero, opción B de red).
+   - Todo parche se escribe **para poder proponerse a upstream** (beneficia a otros juegos de Vita).
+   - No romper: formato del `.vpk`, addon `psvita`, `verify_runtime.py`, ni la plantilla estándar.
+3. **Editor:** rclgd ya trae su propio Godot 4.7.1 (ver §7) ⇒ no se instala otro para desarrollar; se
+   usa ese. Solo el export necesita el 4.8-dev7.
+
+**Abierta:** red en el motor, **opción A o B** (explicación detallada abajo en §4.3).
 
 ## 12. Fuentes
 - godot4-vita: [README](https://github.com/WolffsRoom/godot4-vita), `platform/vita/{README,BUILDING,ROADMAP,UPDATES_2026_10}.md`,

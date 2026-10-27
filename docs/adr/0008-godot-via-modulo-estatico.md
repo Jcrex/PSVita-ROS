@@ -53,6 +53,10 @@ Se quiere poder desarrollar aplicaciones de Vita con Godot que usen ROS2
 8. **Sondas antes que supuestos**: `tools/hwprobe/` mide RAM, núcleos y ancho de
    banda (docs/14 §9) antes de fijar presupuestos de la app Godot.
 
+8b. **Entorno del usuario y fork (2026-10-27):** solo Linux (CachyOS); no hay Windows. Desarrollo con el editor
+   4.7.1 que descarga rclgd; export con un segundo editor 4.8-dev7 (Linux) y el addon `psvita`. Se anota el
+   **fork de godot4-vita** como tarea (M19) pero se prioriza lo máximo posible el entorno estándar: módulo
+   fuera del árbol, parches mínimos y proponibles a upstream (docs/18 §11).
 9. **Esquemas en lugar de introspección:** la Vita no tiene `ros_babel_fish`
    (introspección de type support de `rclcpp`). Se sustituye por esquemas
    generados en el PC y un codec CDR genérico (`modules/msg-schema`, docs/17 §6.2).

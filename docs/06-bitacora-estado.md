@@ -972,3 +972,8 @@ cd web && pnpm build                      # o: docker compose up -d --build
     `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
   - **Preguntas abiertas:** ¿Windows/addon para el editor 4.8-dev7?; ¿red por A o B?;
     ¿política de fork/parches hacia godot4-vita?
+  - **Respuestas del usuario (misma sesión):** solo Linux (CachyOS); **fork de godot4-vita anotado como
+    tarea (M19) pero priorizando el entorno compatible** (parches mínimos, proponibles a upstream); rclgd
+    **trae su propio Godot 4.7.1** (verificado en su `CMakeLists.txt`), que no sirve para exportar a Vita
+    (el exportador exige 4.8-dev7) ⇒ nueva tarea M18: editor 4.8-dev7 Linux para exportar. La elección
+    de red **A vs B** queda abierta con la comparación detallada en docs/18 §4.3.
