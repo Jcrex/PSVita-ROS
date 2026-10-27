@@ -1,5 +1,13 @@
 # 12 — Investigación: Godot + ROS2 en la PS Vita
 
+> **ACTUALIZACIÓN 2026-10-27 (ROSCon):** se estudió el código fuente completo de
+> `rclgd` y `roomba_ws` → **`docs/17-rclgd-estado-del-arte-godot-ros2.md`**.
+> Correcciones a esta página: `rclgd` está **mantenido** (v3.0.0, 4 distros con
+> CI, última actividad 2026-10-22), exige **Godot 4.7** y su API usa `Callable`/
+> `await` (no ejecutable en Godot 3.5); P1 (nombres de la API) queda **cerrado**
+> → `godot/ros2_vita/API_PARITY.md`. El límite de 5 argumentos de `bind_method`
+> citado en §3 es de Godot 3, no de 4.
+
 **Fecha:** 2026-10-27 · **Estado:** investigación (web) completada; todo lo que
 requiere hardware o el PC queda en la lista de pendientes (§8).
 **Método:** búsqueda web + lectura de READMEs/issues en GitHub. Cada
@@ -269,7 +277,7 @@ cargo-vita y godot4-vita lo usan para ampliar la memoria de usuario
 
 | # | Pendiente | Dónde | Bloquea |
 |---|---|---|---|
-| P1 | Leer la API real de rclgd (nombres de clases/señales) y fijar el contrato GDScript | PC (red abierta) | ADR 0008 §API |
+| P1 | ~~Leer la API real de rclgd~~ **CERRADO 2026-10-27** (docs/17, API_PARITY.md) | — | — |
 | P2 | Compilar `godot-vita` 3.5 desde fuente (`scons p=vita target=release tools=no`) con sockets habilitados y confirmar versión exacta/commit a fijar | PC | vía B y C |
 | P3 | Probar `godot4-vita` (editor Windows) — ¿hay Windows? Si no, evaluar build Linux de la plantilla | PC | vía C 4.x |
 | P4 | Módulo `ros2_vita` mínimo: `RosNode.publish_string()` hacia `/vita_hello` | PC + Vita | vía C |
