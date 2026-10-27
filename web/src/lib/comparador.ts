@@ -44,7 +44,7 @@ interface DefModulo {
   rust: string;
 }
 
-// Los 3 módulos duales de la Fase 1. Si aparece un módulo nuevo, añadirlo
+// Los módulos duales (3 de la Fase 1 + msg-ring). Si aparece un módulo nuevo, añadirlo
 // aquí (y ya sale en /comparador; el resto de la página es genérico).
 const DEFS: DefModulo[] = [
   {
@@ -88,6 +88,20 @@ const DEFS: DefModulo[] = [
     header: 'modules/microros-transport/include/microros_transport.h',
     c: 'modules/microros-transport/impl-c/microros_transport.c',
     rust: 'modules/microros-transport/impl-rust/src/lib.rs',
+  },
+  {
+    id: 'msg-ring',
+    nombre: 'msg-ring — cola SPSC sin bloqueos',
+    resumen:
+      'Cola circular de un productor y un consumidor para pasar mensajes ROS2 del hilo de red al de dibujo (o al de Godot) sin mutex ni malloc. Política de cola llena: descartar y contar.',
+    clavesEstudio: [
+      '`_Atomic uint32_t` + `memory_order_acquire/release` en C vs. `AtomicU32` + `Ordering` en Rust (docs/rust/03).',
+      'Contadores u32 que desbordan a propósito: aritmética normal en C vs. `wrapping_add/sub` en Rust.',
+      'Una prueba de estrés con 2 hilos reales compartida por ambas implementaciones.',
+    ],
+    header: 'modules/msg-ring/include/msg_ring.h',
+    c: 'modules/msg-ring/impl-c/msg_ring.c',
+    rust: 'modules/msg-ring/impl-rust/src/lib.rs',
   },
 ];
 
