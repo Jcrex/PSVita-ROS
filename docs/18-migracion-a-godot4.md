@@ -252,8 +252,10 @@ PC (CachyOS, Linux)                   Vita
 ```
 - **Confirmado en el código de rclgd [V]** (respuesta del usuario: «rclgd trae Godot»):
   `rclgd/CMakeLists.txt` fija `GODOT_VERSION "4.7.1"`, descarga en la compilación el archivo
-  `Godot_v4.7.1-stable_<arch>.zip` de las *releases* oficiales, lo instala en `share/rclgd/` y lo
-  lanza `ros2 rclgd editor` (`cmake/godot-launcher.sh`). **No hay que instalar Godot aparte para
+  `Godot_v4.7.1-stable_<arch>.zip` de las *releases* oficiales (SHA-512 fijado), lo instala como
+  `lib/rclgd/godot-bin` (versión en `share/rclgd/godot_version`) y lo lanza `ros2 rclgd editor`
+  (`cmake/godot-launcher.sh`). También existe por apt: `ros-jazzy-rclgd` (en Ubuntu; en CachyOS, dentro
+  del contenedor `robotnik_dev`). **No hay que instalar Godot aparte para
   desarrollar en el PC.**
 - **Consecuencia para la Vita:** ese editor es el **estable 4.7.1** y el exportador `psvita` exige
   **exactamente 4.8-dev7** (`platform.gd:103`). **No sirve para exportar**: hace falta un **segundo

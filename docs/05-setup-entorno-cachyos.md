@@ -193,6 +193,19 @@ cp -r skills/vita-build-package ~/.claude/skills/
 cp -r skills/vita-deploy-logs   ~/.claude/skills/
 ```
 
+**Skills de Godot + ROS 2 (2026-10-27):** `rclgd` (API y documentación de rclgd, con scripts para
+documentarse sin la web), `godot4-ros-scripting` (escenas, nodos y scripts Godot 4 con ROS 2) y
+`ros2-vita-godot` (el módulo `ros2_vita` de la Vita). Mejor con **enlaces simbólicos**, para que un
+`git pull` las actualice:
+
+```bash
+mkdir -p ~/.claude/skills
+for s in rclgd godot4-ros-scripting ros2-vita-godot; do
+    ln -sfn "$PWD/skills/$s" ~/.claude/skills/$s
+done
+skills/rclgd/scripts/rclgd-docs.sh sync jazzy   # clon de las docs oficiales en ~/.cache/rclgd-src
+```
+
 Reiniciar Claude Code para que detecte las nuevas skills.
 
 ---

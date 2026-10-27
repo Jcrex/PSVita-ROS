@@ -1,6 +1,6 @@
 ---
 name: vita-deploy-logs
-description: Use when deploying a built .vpk to a real PS Vita over FTP and capturing its runtime logs — drives the upload/install/launch loop and network log capture.
+description: "Use when deploying a built .vpk to a real PS Vita over FTP and capturing its runtime logs — drives the upload/install/launch loop and network log capture."
 ---
 
 ## Cuándo usar esta skill

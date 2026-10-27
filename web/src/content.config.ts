@@ -55,4 +55,13 @@ const codigo = defineCollection({
   }),
 });
 
-export const collections = { guias, fundacion, adrs, rust, codigo };
+// skills/*/ — skills de IA (Claude Code) del proyecto: SKILL.md + referencias.
+// El frontmatter (name, description) es el de las skills; no se valida aquí.
+const skills = defineCollection({
+  loader: glob({
+    pattern: ['*/SKILL.md', '*/references/*.md', '*/references/api/*.md', '*/evals/*.md'],
+    base: '../skills',
+  }),
+});
+
+export const collections = { guias, fundacion, adrs, rust, codigo, skills };

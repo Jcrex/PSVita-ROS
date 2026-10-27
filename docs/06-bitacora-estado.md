@@ -979,10 +979,20 @@ cd web && pnpm build                      # o: docker compose up -d --build
     de red **A vs B** queda abierta con la comparación detallada en docs/18 §4.3.
   - **Red: opción A elegida** por el usuario tras la explicación. **Plan multiagente** en
     `docs/19-plan-multiagente-migracion-godot4.md`: mapa jerárquico (11 ramas 0–10, 95 tareas con dueño,
-    máquina, puerta y estado), ramas de ataque (upstream y técnicas), 14 agentes con propiedad de
+    máquina, puerta y estado), ramas de ataque (upstream y técnicas), 15 agentes (A0–A13 y A7b) con propiedad de
     ficheros, oleadas O0–O4, protocolo y briefs listos para usar. Hallazgos de ramas: rclgd
     `feature/native-msg-classes` (clases tipadas nativas, *breaking*), `jazzy` = nuestra rama;
     godot4-vita `release/v0.1` = `main` en código; posible rama R-G (GDExtension estática vía
     `load_extension_from_function`) como spike. Nueva puerta **H1** (XRCE en host contra el agente, sin Vita).
   - **Siguiente paso exacto:** lanzar la oleada **O0** en el portátil (A1, A5, A6, A7, A8, A11, A12);
     en el PC, la O1 empezando por A2 (G1) y A3 (editor 4.8-dev7).
+  - **Escuadra K y skills de IA (misma sesión):** a petición del usuario, 6 agentes especialistas en
+    rclgd (K1–K6) añadidos al plan (docs/19 §4, rama 11 del mapa, briefs, puertas E1/E2) y **tres skills
+    nuevas** en `skills/`: `rclgd` (reglas, API de las 17 clases generada de los XML oficiales con
+    `scripts/xml_to_md.py`, conceptos, tooling, tipos, versiones, errores, batería de 15 preguntas para
+    una IA limpia y `scripts/rclgd-docs.sh` — probado aquí: clona la rama `jazzy`, indexa, lee, busca y
+    regenera), `godot4-ros-scripting` (patrones de roomba_ws + esencial de Godot 4 + 4 plantillas `.gd`
+    sin ejecutar) y `ros2-vita-godot`. readthedocs no es accesible desde la sesión cloud: se usó la
+    fuente de GitHub (mismo contenido; docs idénticas en `jazzy`/`rolling`). Sección web «Skills de IA».
+  - **Pendiente:** pasar la batería E1 con un subagente sin contexto; E2 (plantillas en el editor de
+    rclgd) en el PC; `dump_api.gd` sin ejecutar.

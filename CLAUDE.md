@@ -59,6 +59,10 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   es una sonda de hardware (sin compilar; docs/14 §9).
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
   (complete; validated against a live Jazzy graph in `robotnik_dev`).
+- `skills/` — AI skills (versioned; install per docs/05): `vita-*` (Vita workflow), `rclgd` (rclgd
+  API + `scripts/rclgd-docs.sh` to fetch the official docs), `godot4-ros-scripting`,
+  `ros2-vita-godot`. Published on the web ("Skills de IA"). Regenerate `rclgd/references/api` when
+  rclgd changes (`references/versiones.md`).
 - `docs/rust/` — Rust learning series tied to real repo code. The user is a
   Rust beginner: **every new Rust construct must be explained in comments
   and/or this series**.
