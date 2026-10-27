@@ -62,7 +62,7 @@ compilación para la Vita ocurre en el PC.
 PSVita-ROS/
 ├── docs/                  # 00-17 + adr/ (8 ADRs) + rust/ + guias-vita/ + superpowers/
 ├── modules/               # 8 módulos duales (paridad C/Rust en host)
-├── godot/                 # esqueleto del módulo Godot ros2_vita (sin verificar)
+├── godot/                 # módulo Godot 4 ros2_vita + parche del loader + pruebas (sin compilar)
 │   ├── mem-pool/          #   asignador de bloques fijos sin malloc
 │   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
 │   └── microros-transport/#   los 4 callbacks XRCE (la ex-incógnita dura)
@@ -74,7 +74,7 @@ PSVita-ROS/
 ├── mcp/ros2-introspection/# servidor MCP: el grafo ROS2 visible para Claude
 ├── media/                 # fotos y vídeos de los hitos
 ├── skills/                # skills de Claude Code para el PC
-├── tools/                 # run-parity-tests.sh, netlog-listen.sh, env del PC
+├── tools/                 # run-parity-tests.sh, netlog-listen.sh, vita-doctor.sh, check-vita-imports.py, build-*.sh
 └── web/                   # Astro+SQLite+Docker: guías, progreso, monitor,
                            # dashboard, comparador C↔Rust, visor 3D URDF,
                            # taller (compilar .vpk, deploy FTP, editor de UI)
@@ -129,6 +129,7 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/15-rust-nativo-y-optimizacion-vita.md` | Rust nativo: modos de uso, target, perfil y optimización |
 | `docs/17-rclgd-estado-del-arte-godot-ros2.md` | Estudio del código de `rclgd` y `roomba_ws` (ROSCon) y qué aprovechar en la Vita |
 | `docs/16-paginas-pendientes-de-leer.md` | Páginas que no se pudieron abrir (para leer en el PC) |
+| `docs/18-migracion-a-godot4.md` | **Migración a Godot 4** (godot4-vita): qué cambia, enlace de Rust, red, riesgos y backlog |
 | `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
 | `docs/rust/` | Aprendizaje de Rust ligado al código del repo |
 | `docs/guias-vita/` | Instalar el homebrew de la consola (también en la web) |

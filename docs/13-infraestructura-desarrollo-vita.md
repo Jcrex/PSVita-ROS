@@ -135,16 +135,21 @@ Todo lo de esta sección es **diseño**; nada se ha ejecutado.
 
 ---
 
-## 6. Pipeline Godot (resumen; detalle en `docs/12` y ADR 0008)
+## 6. Pipeline Godot 4 (resumen; detalle en `docs/18`)
 
 ```
-tools/build-godot-template.sh   (PC; ≈1–2 h)   godot-vita 3.5 + godot/ros2_vita
-   → bin/vita_release.zip (plantilla)  ──►  export-pack game.pck  ──►  .vpk
+PC: Godot 4.7.1 + rclgd (desarrollo contra ROS2 real)
+        │ mismos .gd/.tscn
+        ▼
+PC: editor 4.8-dev7 + addon psvita ──► .pck + VPK     ◄── plantilla propia (vita_release.zip)
+                                                          tools/build-godot-template.sh
+                                                          (godot4-vita @ d1a5f29 + parche del loader
+                                                           + godot/ros2_vita + verify_runtime.py)
 ```
 
-- Vía A (rclgd en el PC), B (rosbridge `ws://`) y C (módulo estático) en `docs/12` §5.
-- Arranque recomendado: **primero** desarrollar la escena GDScript en el
-  PC con rclgd (sin Vita), **luego** compilar la plantilla con el módulo.
+- Se descartó Godot 3.5 y la vía de rosbridge (el port 4.x desactiva `websocket`/`mbedtls`).
+- Antes de compilar la plantilla: `tools/vita-doctor.sh` y `tools/check-vita-imports.py`.
+- Puertas G0–G7 y backlog M1–M17 en `docs/18` §8 y §10.
 
 ---
 

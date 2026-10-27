@@ -33,6 +33,7 @@ const ARRAY_NONE: u8 = 0;
 const ARRAY_FIXED: u8 = 1;
 const ARRAY_SEQ: u8 = 2;
 const PRIM_F64: u8 = 10;
+const NO_TYPE: u32 = 0xFFFF_FFFF;
 
 #[repr(C)]
 pub struct MsgSchema {
@@ -60,7 +61,7 @@ pub struct MsgFieldInfo {
 // Tipos de los callbacks del header. `Option<fn>` en un struct #[repr(C)] tiene
 // el mismo layout que un puntero a función de C que puede ser NULL (Rust
 // garantiza que `None` = puntero nulo para este caso).
-type FBeginStruct = Option<unsafe extern "C" fn(*mut c_void, *const c_char) -> i32>;
+type FBeginStruct = Option<unsafe extern "C" fn(*mut c_void, *const c_char, u32) -> i32>;
 type FEnd = Option<unsafe extern "C" fn(*mut c_void) -> i32>;
 
 #[repr(C)]
@@ -70,7 +71,7 @@ pub struct MsgVisitor {
     prim: Option<unsafe extern "C" fn(*mut c_void, *const c_char, i32, u64) -> i32>,
     string: Option<unsafe extern "C" fn(*mut c_void, *const c_char, *const u8, u32) -> i32>,
     prim_array: Option<unsafe extern "C" fn(*mut c_void, *const c_char, i32, *const u8, u32) -> i32>,
-    begin_array: Option<unsafe extern "C" fn(*mut c_void, *const c_char, u32) -> i32>,
+    begin_array: Option<unsafe extern "C" fn(*mut c_void, *const c_char, u32, u32) -> i32>,
     end_array: FEnd,
 }
 
@@ -390,7 +391,13 @@ impl<'a> Dec<'a> {
             self.pos += bytes;
             return Ok(());
         }
-        cb!(self.v.begin_array, self.ctx, f.name, count);
+        cb!(
+            self.v.begin_array,
+            self.ctx,
+            f.name,
+            count,
+            if f.kind == KIND_STRUCT { f.type_idx } else { NO_TYPE }
+        );
         for _ in 0..count {
             if f.kind == KIND_STRING {
                 self.string(ptr::null())?;
@@ -407,7 +414,7 @@ impl<'a> Dec<'a> {
             return Err(ERR_TOO_DEEP);
         }
         let nf = field_count_of(self.s, tidx)?;
-        cb!(self.v.begin_struct, self.ctx, name);
+        cb!(self.v.begin_struct, self.ctx, name, tidx);
         for i in 0..nf {
             let f = field_of(self.s, tidx, i)?;
             self.field(&f, depth)?;
@@ -527,7 +534,7 @@ impl<'a> Enc<'a> {
             if f.kind == KIND_STRING {
                 return self.string(f.name);
             }
-            cb!(src.begin_struct, self.ctx, f.name);
+            cb!(src.begin_struct, self.ctx, f.name, f.type_idx);
             self.strukt(f.type_idx, depth + 1)?;
             cb!(src.end_struct, self.ctx,);
             return Ok(());
@@ -575,7 +582,7 @@ impl<'a> Enc<'a> {
             if f.kind == KIND_STRING {
                 self.string(ptr::null())?;
             } else {
-                cb!(src.begin_struct, self.ctx, ptr::null());
+                cb!(src.begin_struct, self.ctx, ptr::null(), f.type_idx);
                 self.strukt(f.type_idx, depth + 1)?;
                 cb!(src.end_struct, self.ctx,);
             }
@@ -618,7 +625,7 @@ pub extern "C" fn msg_schema_encode(
         }
         let mut e = Enc { s, out: core::slice::from_raw_parts_mut(out, cap), pos: 0, src, ctx };
         let r = (|| -> R<()> {
-            cb!(src.begin_struct, ctx, ptr::null());
+            cb!(src.begin_struct, ctx, ptr::null(), type_idx);
             e.strukt(type_idx, 0)?;
             cb!(src.end_struct, ctx,);
             Ok(())

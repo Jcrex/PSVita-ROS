@@ -281,7 +281,8 @@ static int dec_field(dec *d, const msg_field_info *f, int depth)
         return MSG_SCHEMA_OK;
     }
     if (v->begin_array != NULL) {
-        CB(v->begin_array(d->ctx, f->name, count));
+        CB(v->begin_array(d->ctx, f->name, count,
+                          f->kind == MSG_KIND_STRUCT ? f->type_idx : MSG_SCHEMA_NO_TYPE));
     }
     for (uint32_t i = 0; i < count; i++) {
         if (f->kind == MSG_KIND_STRING) {
@@ -304,7 +305,7 @@ static int dec_struct(dec *d, uint32_t tidx, const char *name, int depth)
     uint32_t nf;
     TRY(msg_schema_field_count(d->s, tidx, &nf));
     if (d->v->begin_struct != NULL) {
-        CB(d->v->begin_struct(d->ctx, name));
+        CB(d->v->begin_struct(d->ctx, name, tidx));
     }
     for (uint32_t i = 0; i < nf; i++) {
         msg_field_info f;
@@ -414,7 +415,7 @@ static int enc_field(enc *e, const msg_field_info *f, int depth)
             return enc_string(e, f->name);
         }
         if (src->begin_struct != NULL) {
-            CB(src->begin_struct(e->ctx, f->name));
+            CB(src->begin_struct(e->ctx, f->name, f->type_idx));
         }
         TRY(enc_struct(e, f->type_idx, depth + 1));
         if (src->end_struct != NULL) {
@@ -464,7 +465,7 @@ static int enc_field(enc *e, const msg_field_info *f, int depth)
             TRY(enc_string(e, NULL));
         } else {
             if (src->begin_struct != NULL) {
-                CB(src->begin_struct(e->ctx, NULL));
+                CB(src->begin_struct(e->ctx, NULL, f->type_idx));
             }
             TRY(enc_struct(e, f->type_idx, depth + 1));
             if (src->end_struct != NULL) {
@@ -498,7 +499,7 @@ int msg_schema_encode(const msg_schema *s, uint32_t type_idx, const msg_source *
     }
     enc e = { s, out, cap, 0, src, ctx };
     if (src->begin_struct != NULL) {
-        CB(src->begin_struct(ctx, NULL));
+        CB(src->begin_struct(ctx, NULL, type_idx));
     }
     TRY(enc_struct(&e, type_idx, 0));
     if (src->end_struct != NULL) {

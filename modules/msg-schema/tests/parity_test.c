@@ -142,9 +142,10 @@ static int fmt_prim(char *out, size_t cap, int prim, uint64_t raw)
     }
 }
 
-static int d_begin_struct(void *c, const char *name)
+static int d_begin_struct(void *c, const char *name, uint32_t type_idx)
 {
     dump *d = c;
+    (void)type_idx;
     d->top++;
     d->restore[d->top] = d->plen;
     d->is_array[d->top] = 0;
@@ -208,9 +209,10 @@ static int d_prim_array(void *c, const char *name, int prim, const uint8_t *data
     return 0;
 }
 
-static int d_begin_array(void *c, const char *name, uint32_t count)
+static int d_begin_array(void *c, const char *name, uint32_t count, uint32_t elem_type)
 {
     dump *d = c;
+    (void)elem_type;
     d->top++;
     d->restore[d->top] = d->plen;
     d->is_array[d->top] = 1;
@@ -257,12 +259,12 @@ static int rec(ev_type t, int prim, uint64_t raw, const uint8_t *data, uint32_t 
     events[n_events++] = (event){ t, prim, raw, data, count };
     return 0;
 }
-static int r_bs(void *c, const char *n) { (void)c; (void)n; return rec(EV_BEGIN_STRUCT, 0, 0, NULL, 0); }
+static int r_bs(void *c, const char *n, uint32_t t) { (void)c; (void)n; (void)t; return rec(EV_BEGIN_STRUCT, 0, 0, NULL, 0); }
 static int r_es(void *c) { (void)c; return rec(EV_END_STRUCT, 0, 0, NULL, 0); }
 static int r_p(void *c, const char *n, int p, uint64_t raw) { (void)c; (void)n; return rec(EV_PRIM, p, raw, NULL, 0); }
 static int r_s(void *c, const char *n, const uint8_t *s, uint32_t l) { (void)c; (void)n; return rec(EV_STRING, 0, 0, s, l); }
 static int r_pa(void *c, const char *n, int p, const uint8_t *d, uint32_t k) { (void)c; (void)n; return rec(EV_PRIM_ARRAY, p, 0, d, k); }
-static int r_ba(void *c, const char *n, uint32_t k) { (void)c; (void)n; return rec(EV_BEGIN_ARRAY, 0, 0, NULL, k); }
+static int r_ba(void *c, const char *n, uint32_t k, uint32_t t) { (void)c; (void)n; (void)t; return rec(EV_BEGIN_ARRAY, 0, 0, NULL, k); }
 static int r_ea(void *c) { (void)c; return rec(EV_END_ARRAY, 0, 0, NULL, 0); }
 static const msg_visitor REC_VIS = { r_bs, r_es, r_p, r_s, r_pa, r_ba, r_ea };
 
@@ -278,7 +280,7 @@ static int next_ev(ev_type want, const event **out)
     *out = &events[cursor++];
     return 0;
 }
-static int s_bs(void *c, const char *n) { (void)c; (void)n; const event *e; return next_ev(EV_BEGIN_STRUCT, &e); }
+static int s_bs(void *c, const char *n, uint32_t t) { (void)c; (void)n; (void)t; const event *e; return next_ev(EV_BEGIN_STRUCT, &e); }
 static int s_es(void *c) { (void)c; const event *e; return next_ev(EV_END_STRUCT, &e); }
 static int s_p(void *c, const char *n, int p, uint64_t *raw)
 {
@@ -312,7 +314,7 @@ static int s_al(void *c, const char *n, uint32_t fixed, uint32_t *k)
 static const msg_source REPLAY_SRC = { s_bs, s_es, s_p, s_s, s_pa, s_al };
 
 /* ---------------------------------------------------------- hash visitor */
-static int h_bs(void *c, const char *n) { uint64_t *h = c; *h = fnv_u64(*h, 1 + (n ? strlen(n) : 0)); return 0; }
+static int h_bs(void *c, const char *n, uint32_t t) { uint64_t *h = c; (void)t; *h = fnv_u64(*h, 1 + (n ? strlen(n) : 0)); return 0; }
 static int h_es(void *c) { uint64_t *h = c; *h = fnv_u64(*h, 2); return 0; }
 static int h_p(void *c, const char *n, int p, uint64_t raw)
 {
@@ -327,7 +329,7 @@ static int h_pa(void *c, const char *n, int p, const uint8_t *d, uint32_t k)
     uint64_t *h = c; (void)n;
     *h = fnv_bytes(fnv_u64(fnv_u64(*h, 5), k), d, (size_t)k * msg_prim_size((msg_prim)p)); return 0;
 }
-static int h_ba(void *c, const char *n, uint32_t k) { uint64_t *h = c; (void)n; *h = fnv_u64(fnv_u64(*h, 6), k); return 0; }
+static int h_ba(void *c, const char *n, uint32_t k, uint32_t t) { uint64_t *h = c; (void)n; (void)t; *h = fnv_u64(fnv_u64(*h, 6), k); return 0; }
 static int h_ea(void *c) { uint64_t *h = c; *h = fnv_u64(*h, 7); return 0; }
 static const msg_visitor HASH_VIS = { h_bs, h_es, h_p, h_s, h_pa, h_ba, h_ea };
 
@@ -397,6 +399,52 @@ static void test_schema_api(void)
     CHECK(msg_schema_field(&schema, t, 2, &f) == MSG_SCHEMA_OK);
     CHECK(strcmp(f.name, "orientation_covariance") == 0 && f.array == MSG_ARRAY_FIXED && f.array_len == 9);
     CHECK(msg_prim_size(MSG_PRIM_I16) == 2 && msg_prim_size(MSG_PRIM_F64) == 8 && msg_prim_size((msg_prim)99) == 0);
+}
+
+/* begin_struct / begin_array informan del tipo (lo usa el binding de Godot) */
+typedef struct { const msg_schema *s; char seq[512]; } tyctx;
+static int ty_bs(void *c, const char *n, uint32_t t)
+{
+    tyctx *x = c; const char *name = "?";
+    (void)n;
+    msg_schema_type_name(x->s, t, &name);
+    strcat(x->seq, name); strcat(x->seq, ";");
+    return 0;
+}
+static int ty_ba(void *c, const char *n, uint32_t k, uint32_t t)
+{
+    tyctx *x = c; const char *name = "string";
+    (void)n; (void)k;
+    if (t != MSG_SCHEMA_NO_TYPE) msg_schema_type_name(x->s, t, &name);
+    strcat(x->seq, "array<"); strcat(x->seq, name); strcat(x->seq, ">;");
+    return 0;
+}
+
+static void test_type_idx_events(void)
+{
+    uint32_t t;
+    tyctx x = { &schema, "" };
+    msg_visitor v = { ty_bs, NULL, NULL, NULL, NULL, ty_ba, NULL };
+    uint8_t twist[48] = { 0 };
+    CHECK(msg_schema_find_type(&schema, "geometry_msgs/msg/Twist", &t) == MSG_SCHEMA_OK);
+    CHECK(msg_schema_decode(&schema, t, twist, sizeof twist, &v, &x, NULL) == MSG_SCHEMA_OK);
+    CHECK(strcmp(x.seq, "geometry_msgs/msg/Twist;geometry_msgs/msg/Vector3;geometry_msgs/msg/Vector3;") == 0);
+    /* JointState: name[] es array de strings; header es struct */
+    for (int i = 0; i < n_cases; i++) {
+        if (strcmp(cases[i].name, "joint_state") != 0 || !cases[i].file) continue;
+        x.seq[0] = 0;
+        CHECK(msg_schema_find_type(&schema, cases[i].type, &t) == MSG_SCHEMA_OK);
+        CHECK(msg_schema_decode(&schema, t, cases[i].file + 4, cases[i].flen - 4, &v, &x, NULL) == MSG_SCHEMA_OK);
+        CHECK(strstr(x.seq, "array<string>;") != NULL && strstr(x.seq, "std_msgs/msg/Header;") != NULL);
+    }
+    /* tf: array de TransformStamped */
+    for (int i = 0; i < n_cases; i++) {
+        if (strcmp(cases[i].name, "tf") != 0 || !cases[i].file) continue;
+        x.seq[0] = 0;
+        CHECK(msg_schema_find_type(&schema, cases[i].type, &t) == MSG_SCHEMA_OK);
+        CHECK(msg_schema_decode(&schema, t, cases[i].file + 4, cases[i].flen - 4, &v, &x, NULL) == MSG_SCHEMA_OK);
+        CHECK(strstr(x.seq, "array<geometry_msgs/msg/TransformStamped>;geometry_msgs/msg/TransformStamped;") != NULL);
+    }
 }
 
 static void test_bad_schemas(void)
@@ -586,6 +634,7 @@ int main(void)
     load_cases();
     CHECK(n_cases >= 24);
     test_schema_api();
+    test_type_idx_events();
     test_bad_schemas();
     test_cases();
     test_errors();

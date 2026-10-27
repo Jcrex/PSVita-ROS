@@ -48,9 +48,15 @@ echo "== Artefactos del repo =="
     || miss "cliente XRCE (ARM)" "vita-app/scripts/build-xrce-client-vita.sh (PC)"
 ls "$REPO_ROOT"/vita-app/build*/*.vpk >/dev/null 2>&1 && ok ".vpk" "" || miss ".vpk" "PC: vita-build-package"
 
-echo "== Godot (docs/12) =="
-[[ -d "$REPO_ROOT/toolchains/godot-vita" ]] && ok "godot-vita clonado" "" \
-    || miss "godot-vita clonado" "tools/build-godot-template.sh (PC)"
+echo "== Godot 4 / godot4-vita (docs/18) =="
+[[ -d "$REPO_ROOT/toolchains/godot4-vita/engine" ]] && ok "godot4-vita clonado" "" \
+    || miss "godot4-vita clonado" "tools/build-godot-template.sh (PC)"
+python3 -m SCons --version >/dev/null 2>&1 && ok "SCons (python3 -m SCons)" "" || miss "SCons" "python3 -m pip install scons"
+python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3,12) else 1)' 2>/dev/null \
+    && ok "Python >= 3.12" "" || miss "Python >= 3.12" "lo pide el port (BUILDING.md)"
+[[ -n "${VITAGL_ROOT:-}" && -f "${VITAGL_ROOT:-}/libvitaGL.a" ]] && ok "VITAGL_ROOT (VitaGL parcheado)" "$VITAGL_ROOT" \
+    || miss "VITAGL_ROOT" "VitaGL parcheado del port (platform/vita/vitagl/README.md)"
+have x86_64-w64-mingw32-gcc && ok "MinGW-w64 (editor Windows, opcional)" "" || miss "MinGW-w64" "solo para el editor de Windows"
 
 echo
 if [[ $bad -eq 0 ]]; then echo "Entorno mínimo del taller: OK"; else echo "Faltan $bad herramientas necesarias"; fi

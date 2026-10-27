@@ -87,3 +87,17 @@ Swisha33), "tres de los cuatro núcleos para juegos" (GameFAQs, **no fiable**),
 En el PC: abrir cada URL de prioridad A, copiar lo pedido a
 `docs/12`/`13`/`14`/`15` quitando el marcador **[?]**, y marcar la fila aquí
 con la fecha. Si una URL ya no existe, buscar el equivalente y anotarlo.
+
+## Añadido 2026-10-27 (migración a Godot 4, docs/18)
+
+Todo lo de `godot4-vita`, `rclgd`, `roomba_ws`, Micro-XRCE-DDS y Micro-CDR se leyó desde **clones de GitHub**
+(accesible). Siguen siendo útiles en el PC, con navegador:
+
+| Pri | URL | Qué extraer | Cierra |
+|---|---|---|---|
+| A | https://godotengine.org/download/archive/ (dev snapshots 4.8-dev7) | **si existe el editor oficial 4.8-dev7 para Linux** (el exportador exige esa versión exacta) | docs/18 §11 pregunta 1, R8 |
+| A | https://docs.godotengine.org/en/latest/contributing/development/core_and_modules/custom_modules_in_cpp.html † | API de módulos de Godot 4 (señales, hilos, enlazar libs estáticas) | M5, G1 |
+| B | https://docs.godotengine.org/en/latest/tutorials/performance/using_servers.html † | uso de servidores y seguridad de hilos | M7 |
+| B | https://github.com/WolffsRoom/godot4-vita/issues (abiertos) | problemas conocidos del port y estado actual de la ruta VitaGL | R1 |
+| B | https://github.com/WolffsRoom/godot4-psvita/releases | binarios del editor Windows y plantillas publicadas | M9 |
+| C | Foro/Discord de Godot Vita | canal de contacto con el mantenedor para proponer los parches (loader, red, panel trasero) | R4 |

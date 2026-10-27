@@ -1,11 +1,11 @@
-# config.py — ¡ESQUELETO SIN VERIFICAR! (validar en el PC con godot-vita 3.5)
-# Godot llama a estas funciones al descubrir el módulo (API de Godot 3.x).
+# config.py — módulo estático de Godot 4 (godot4-vita 4.8-dev7).
+# ¡SIN COMPILAR! Ver godot/README.md (puerta G1: compilar en el host del PC).
 
 
 def can_build(env, platform):
-    # Solo tiene sentido en la Vita: depende de sceNet y de las staticlibs
-    # cross-compiladas del repo.
-    return platform == "vita"
+    # "vita": la plataforma del port (platform/vita de godot4-vita).
+    # "linuxbsd": solo para las pruebas de host (transporte loopback, sin Vita).
+    return platform in ("vita", "linuxbsd")
 
 
 def configure(env):
