@@ -22,9 +22,9 @@ la precisión · **C** contexto.
 | B | https://docs.godotengine.org/pt-br/4.x/engine_details/engine_api/custom_platform_ports.html | requisitos de un port de plataforma (solo para entender los ports existentes) | docs/12 §3 |
 | B | https://docs.godotengine.org/en/stable/engine_details/architecture/index.html † | arquitectura interna del motor 4.x (servidores, renderer, módulos) | capa 4.x |
 | B | https://wololo.net/2022/07/15/release-godot-game-engine-3-5-ported-to-ps-vita/ | anuncio del port 3.5: funciones, límites declarados | docs/12 §2 |
-| A | https://rclgd.readthedocs.io/en/latest/concepts/architecture.html y `/classes/class_rclgd.html` | **nombres exactos de la API GDScript** (clases, métodos, señales, tipos de mensajes) | P1, ADR 0008 §API |
-| B | https://rclgd.readthedocs.io/en/stable/tutorials/make_rclgd_pkg.html y `/tutorials/turtlesim_rclgd.html` | ejemplo completo para copiar la forma de uso | P1 |
-| B | https://index.ros.org/p/rclgd/ | estado/versiones/mantenedores (el índice dice "UNMAINTAINED") | docs/12 §5 |
+| ~~A~~ | ~~https://rclgd.readthedocs.io/en/latest/concepts/architecture.html y `/classes/class_rclgd.html`~~ | **YA LEÍDO desde el repositorio clonado (2026-10-27)**; ver docs/17 | P1 cerrado |
+| ~~B~~ | ~~rclgd.readthedocs.io tutorials~~ | leídos en `docs/tutorials/` del repo | cerrado |
+| ~~B~~ | ~~https://index.ros.org/p/rclgd/~~ | el índice estaba desfasado: el repo está activo (docs/17 §1) | cerrado |
 | C | https://github.com/godotengine/godot-docs (rama 3.5) → `development/cpp/` | alternativa en GitHub a los docs bloqueados (sí se puede abrir desde la nube con la ruta correcta; la probada dio 404) | P10 |
 
 GitHub accesible pero **no leído por falta de ruta**: `SonicMastr/godot-vita`
