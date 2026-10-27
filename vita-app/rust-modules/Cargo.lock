@@ -14,8 +14,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "msg_cdr_rust"
+version = "0.1.0"
+
+[[package]]
+name = "msg_ring_rust"
+version = "0.1.0"
+
+[[package]]
 name = "net_udp_rust"
 version = "0.1.0"
+
+[[package]]
+name = "tf_tree_rust"
+version = "0.1.0"
+dependencies = [
+ "msg_cdr_rust",
+ "viz_math_rust",
+]
 
 [[package]]
 name = "vita_modules_rust"
@@ -23,5 +39,13 @@ version = "0.1.0"
 dependencies = [
  "mem_pool_rust",
  "microros_transport_rust",
+ "msg_cdr_rust",
+ "msg_ring_rust",
  "net_udp_rust",
+ "tf_tree_rust",
+ "viz_math_rust",
 ]
+
+[[package]]
+name = "viz_math_rust"
+version = "0.1.0"

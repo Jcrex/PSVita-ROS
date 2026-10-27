@@ -1,0 +1,26 @@
+# Cargo.toml — crate Rust del módulo `tf-tree`.
+#
+# Depende de DOS crates nuestros por ruta (como microros-transport depende de
+# net-udp): viz_math_rust (matemática) y msg_cdr_rust (tipos de TFMessage).
+# `default-features = false` en ambos: solo ESTE crate aporta el panic_handler.
+[package]
+name = "tf_tree_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+viz_math_rust = { path = "../../viz-math/impl-rust", default-features = false }
+msg_cdr_rust = { path = "../../msg-cdr/impl-rust", default-features = false }
+
+[features]
+default = ["standalone"]
+standalone = []
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

@@ -446,7 +446,7 @@ etapa MÁS testeable — nada de esto necesita la Vita.
 módulo sigue la estructura, se testea solo. Lee también la skill
 `skills/vita-dual-module/` que automatiza el scaffold.
 
-### D1 — `modules/viz-math/`: vec3, quat, mat4
+### D1 — `modules/viz-math/`: vec3, quat, mat4 — **HECHO (2026-10-27, laptop; paridad verde)**
 
 - **Leer antes:** `modules/mem-pool/include/mem_pool.h` (estilo de
   contrato), `docs/03-estrategia-dual-rust-cpp.md`.
@@ -464,7 +464,7 @@ módulo sigue la estructura, se testea solo. Lee también la skill
 - **Verificación:** `tools/run-parity-tests.sh viz-math` verde.
 - **Commit:** `feat(viz-math): modulo dual de matematicas 3D con paridad`.
 
-### D2 — `modules/msg-cdr/`: deserializadores CDR de los mensajes de viz
+### D2 — `modules/msg-cdr/`: deserializadores CDR de los mensajes de viz — **HECHO (2026-10-27) con fixtures de `rosbags`/Jazzy; PENDIENTE cruzarlas con ROS2 real en el PC**
 
 - **Leer antes:** `vita-app/src/main.c` `on_topic()` (cómo llega un
   `ucdrBuffer`), y **las definiciones REALES de los mensajes** — nunca de
@@ -507,7 +507,7 @@ módulo sigue la estructura, se testea solo. Lee también la skill
 - **Verificación:** `tools/run-parity-tests.sh msg-cdr` verde.
 - **Commit:** `feat(msg-cdr): deserializadores CDR duales con fixtures ROS2 reales`.
 
-### D3 — `modules/tf-tree/`: buffer y resolución de transformadas
+### D3 — `modules/tf-tree/`: buffer y resolución de transformadas — **HECHO (2026-10-27, laptop; paridad verde)**
 
 - **Leer antes:** los structs de D2 y `viz-math` de D1.
 - **API:** `tf_tree_init/update(transform)/lookup(frame, base, mat4_out)`
