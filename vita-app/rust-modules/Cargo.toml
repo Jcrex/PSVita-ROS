@@ -22,6 +22,12 @@ crate-type = ["rlib"]
 mem_pool_rust = { path = "../../modules/mem-pool/impl-rust", default-features = false }
 net_udp_rust = { path = "../../modules/net-udp/impl-rust", default-features = false }
 microros_transport_rust = { path = "../../modules/microros-transport/impl-rust", default-features = false }
+# Módulos de visualización / hilos (2026-10-27). Aún no los llama main.c: se
+# enlazan para validar en el PC que el staticlib único compila para la Vita.
+msg_ring_rust = { path = "../../modules/msg-ring/impl-rust", default-features = false }
+viz_math_rust = { path = "../../modules/viz-math/impl-rust", default-features = false }
+msg_cdr_rust = { path = "../../modules/msg-cdr/impl-rust", default-features = false }
+tf_tree_rust = { path = "../../modules/tf-tree/impl-rust", default-features = false }
 
 [profile.release]
 panic = "abort"

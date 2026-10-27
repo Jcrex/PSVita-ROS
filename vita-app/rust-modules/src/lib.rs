@@ -12,7 +12,11 @@
 
 pub use mem_pool_rust;
 pub use microros_transport_rust;
+pub use msg_cdr_rust;
+pub use msg_ring_rust;
 pub use net_udp_rust;
+pub use tf_tree_rust;
+pub use viz_math_rust;
 
 // El ÚNICO panic_handler del lado Rust de la app (ver Cargo.toml).
 #[panic_handler]
