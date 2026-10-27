@@ -1,6 +1,6 @@
 # ADR 0008: Godot en la Vita — módulo C++ estático sobre la capa ROS dual, app separada
 
-- **Estado:** Propuesto — **revisado 2026-10-27** tras estudiar `rclgd`/`roomba_ws` (docs/17): la decisión 5 (versión de Godot) queda **abierta** y recomienda Godot 4 (ver abajo). Pendiente de validar en PC y hardware (docs/12 §8)
+- **Estado:** Aceptado el 2026-10-27 (usuario: priorizar Godot 4) — **la ejecución sigue sin validar** en PC y hardware (puertas G1–G7, docs/18 §8). Historia: propuesto con 3.5; revisado tras estudiar `rclgd`/`roomba_ws` (docs/17).
 - **Fecha:** 2026-10-27
 
 ## Contexto
@@ -28,30 +28,28 @@ Se quiere poder desarrollar aplicaciones de Vita con Godot que usen ROS2
    No se intenta incrustar vitaGL/mini-rviz dentro de Godot.
 3. **Hilos:** la sesión XRCE (`uxr_run_session_*`) corre en un hilo propio;
    los mensajes entrantes pasan al hilo principal de Godot por una **cola
-   SPSC sin bloqueos** (módulo dual `msg-ring`, ya implementado y con
-   paridad en host) y se emiten como señales de Godot. Se evita el perfil
-   `UCLIENT_PROFILE_MULTITHREAD` salvo que la medición lo exija.
+   acotada** (descarta el más antiguo y cuenta `get_dropped()`) y se entregan
+   por `Callable` en `process_frame`. El esqueleto usa `Mutex` + `List`; el
+   anillo SPSC sin bloqueos `msg-ring` (paridad en host) queda reservado para
+   el camino caliente del hilo XRCE si la medición lo exige. Se evita
+   `UCLIENT_PROFILE_MULTITHREAD` salvo que haga falta.
 4. **API GDScript objetivo = la de rclgd** (P1 cerrado, `godot/ros2_vita/API_PARITY.md`):
    `RosNode.new().init(name, ns)`, `create_publisher(topic, type, qos)`,
    `create_subscription(topic, type, callable, qos)`, `RosMsg` con propiedades,
    `create_timer`, `now()`, TF. Callbacks al hilo principal. Tipos soportados al inicio:
    `std_msgs/String`, `geometry_msgs/Twist`, `sensor_msgs/Joy`
    (los de Objetivo 2).
-5. **Versión de Godot — REVISADA (2026-10-27):** `rclgd` (el estado del arte,
-   docs/17) es **solo Godot 4.7** y su API usa `Callable`, lambdas y `await`:
-   no corre en 3.5. Para que *el mismo script* funcione en el PC (rclgd) y en la
-   Vita hay que apuntar a **`godot4-vita`**. Recomendación: **Godot 4 primero
-   para apps 2D/HMI** (lo que mejor soporta el port); 3.5 queda como camino
-   alternativo con una API distinta si 4.x no llega a ser viable (P3/P5). Los
-   módulos siguen detrás de `godot_compat.h`. **Decisión final del usuario
-   pendiente** (docs/17 §10).
-6. **Vías de transición:** Vía A (rclgd en PC) y vía B (rosbridge `ws://`)
-   sirven para prototipar sin código nativo (docs/12 §5); no sustituyen
-   a la vía C.
+5. **Versión de Godot — DECIDIDA (2026-10-27): Godot 4 (`godot4-vita`, 4.8-dev7).** `rclgd`
+   (el estado del arte, docs/17) es solo Godot 4 (`Callable`, lambdas, `await`); así *el mismo
+   script* corre en el PC y en la Vita. Se descarta Godot 3.5. Alcance: apps **2D/HMI** (la ruta
+   GXM 2D es la validada del port); el 3D de la Vita se queda en `vita-app/` (ADR 0007). El módulo
+   está reescrito para la API in-tree de Godot 4 (docs/18 §6).
+6. **Vías de transición:** la vía A (rclgd en el PC) sirve para desarrollar sin Vita. La vía B
+   (rosbridge `ws://`) **ya no existe**: `godot4-vita` desactiva `websocket` y `mbedtls` (docs/18 §2.4).
 
-7. **Una sola base de código para 3.5 y 4.x**: `godot/ros2_vita/godot_compat.h`
-   concentra las diferencias de API (2026-10-27). El trabajo avanza en 3.5; 4.x
-   se activa cuando se cumpla el criterio de `godot/README.md`.
+7. **Reglas de enlace (docs/18 §3.2):** el módulo vive dentro de un `libgodot.so` PIC sin libc: código PIC,
+   cierre de imports contra `default_dynlib.c` del loader (parche `godot/loader-patches/`), sin TLS, y
+   las bibliotecas `.a` se pasan a SCons como *File* (la plataforma descarta las cadenas).
 8. **Sondas antes que supuestos**: `tools/hwprobe/` mide RAM, núcleos y ancho de
    banda (docs/14 §9) antes de fijar presupuestos de la app Godot.
 

@@ -1,7 +1,12 @@
-# SCsub — ¡ESQUELETO SIN VERIFICAR! (validar en el PC)
-# Variables de entorno esperadas (las exporta tools/build-godot-template.sh):
-#   PSVITA_ROS_ROOT : raíz de este repo
-#   PSVITA_ROS_LIBS : carpeta con libvita_modules_rust.a o las .a de impl-c
+#!/usr/bin/env python
+# SCsub — módulo ros2_vita (Godot 4.8-dev7). ¡SIN COMPILAR!
+#
+# Las implementaciones C de los módulos duales se compilan DENTRO del módulo con
+# el entorno de SCons del motor (misma toolchain, mismos flags PIC), porque el
+# runtime de la Vita es un libgodot.so PIC sin libc propia (docs/18 §3).
+# Alternativa dual: pasar la staticlib Rust (modules PIC) en vez de los .c:
+#   scons ... ros2_vita_rust_lib=/ruta/libvita_modules_rust.a
+# (hay que construirla con relocation-model=pic; ver tools/build-rust-pic.sh).
 import os
 
 Import("env")
@@ -9,16 +14,25 @@ Import("env_modules")
 
 env_ros = env_modules.Clone()
 
-root = os.environ.get("PSVITA_ROS_ROOT", "")
-libs = os.environ.get("PSVITA_ROS_LIBS", "")
+here = Dir(".").abspath
+repo = os.path.abspath(os.path.join(here, "..", ".."))
+mods = os.path.join(repo, "modules")
 
-# Headers C de los módulos duales (contrato único).
-for mod in ("msg-ring", "mem-pool", "net-udp", "microros-transport"):
-    env_ros.Append(CPPPATH=[os.path.join(root, "modules", mod, "include")])
+for m in ("msg-schema", "msg-ring"):
+    env_ros.Prepend(CPPPATH=[os.path.join(mods, m, "include")])
 
 env_ros.add_source_files(env.modules_sources, "*.cpp")
 
-# Enlazado estático de la capa ROS al ejecutable de Godot.
-if libs:
-    env.Append(LIBPATH=[libs])
-    env.Append(LIBS=["vita_modules_rust"])  # o las .a de la variante C
+rust_lib = ARGUMENTS.get("ros2_vita_rust_lib", "")
+if rust_lib:
+    # OJO: la plataforma vita filtra LIBS y descarta los str (los trata como
+    # bibliotecas del SDK que resuelve el loader): la staticlib debe ser un File.
+    env.Append(LIBS=[env.File(rust_lib)])
+else:
+    env_ros.add_source_files(
+        env.modules_sources,
+        [
+            os.path.join(mods, "msg-schema", "impl-c", "msg_schema.c"),
+            os.path.join(mods, "msg-ring", "impl-c", "msg_ring.c"),
+        ],
+    )

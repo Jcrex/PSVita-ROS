@@ -1,5 +1,9 @@
 # 12 — Investigación: Godot + ROS2 en la PS Vita
 
+> **DECISIÓN 2026-10-27:** el usuario priorizó **Godot 4** (`godot4-vita`); todo lo que esta página dice
+> de Godot 3.5 (`godot-vita`, plantillas 3.5, vía B de rosbridge) queda **descartado**: ver
+> `docs/18-migracion-a-godot4.md` y el ADR 0008 (Aceptado).
+>
 > **ACTUALIZACIÓN 2026-10-27 (ROSCon):** se estudió el código fuente completo de
 > `rclgd` y `roomba_ws` → **`docs/17-rclgd-estado-del-arte-godot-ros2.md`**.
 > Correcciones a esta página: `rclgd` está **mantenido** (v3.0.0, 4 distros con

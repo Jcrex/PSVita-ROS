@@ -54,6 +54,7 @@ typedef enum {
 } msg_schema_status;
 
 #define MSG_SCHEMA_MAX_DEPTH 16
+#define MSG_SCHEMA_NO_TYPE 0xFFFFFFFFu /* elem_type de arrays que no son de structs */
 
 typedef enum {
     MSG_PRIM_BOOL = 0, MSG_PRIM_U8 = 1, MSG_PRIM_I8 = 2, MSG_PRIM_U16 = 3,
@@ -105,15 +106,17 @@ uint32_t msg_prim_size(msg_prim p);
  * (bits del float para F32/F64; bool = 0/1; ints con signo como complemento a
  * dos en su ancho, sin extensión de signo). */
 typedef struct {
-    int (*begin_struct)(void *ctx, const char *name);
+    /* type_idx = tipo del struct que se abre (el raíz lleva el tipo pedido) */
+    int (*begin_struct)(void *ctx, const char *name, uint32_t type_idx);
     int (*end_struct)(void *ctx);
     int (*prim)(void *ctx, const char *name, int prim, uint64_t raw);
     int (*string)(void *ctx, const char *name, const uint8_t *s, uint32_t len);
     /* secuencia/array fijo de PRIMITIVAS: data -> payload, count elementos LE */
     int (*prim_array)(void *ctx, const char *name, int prim, const uint8_t *data, uint32_t count);
     /* secuencia/array fijo de strings o structs: se avisa del tamaño y luego
-     * llegan `count` elementos (string(NULL,..) o begin_struct(NULL)/end_struct) */
-    int (*begin_array)(void *ctx, const char *name, uint32_t count);
+     * llegan `count` elementos (string(NULL,..) o begin_struct(NULL,..)/end_struct).
+     * elem_type = tipo de los elementos si son structs; MSG_SCHEMA_NO_TYPE si son strings */
+    int (*begin_array)(void *ctx, const char *name, uint32_t count, uint32_t elem_type);
     int (*end_array)(void *ctx);
 } msg_visitor;
 
@@ -123,7 +126,7 @@ int msg_schema_decode(const msg_schema *s, uint32_t type_idx, const uint8_t *buf
 
 /* ---- Codificación (source) --------------------------------------------- */
 typedef struct {
-    int (*begin_struct)(void *ctx, const char *name);
+    int (*begin_struct)(void *ctx, const char *name, uint32_t type_idx);
     int (*end_struct)(void *ctx);
     int (*prim)(void *ctx, const char *name, int prim, uint64_t *raw);
     int (*string)(void *ctx, const char *name, const uint8_t **s, uint32_t *len);

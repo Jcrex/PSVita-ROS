@@ -1,0 +1,6 @@
+; Proyecto mínimo de pruebas de host de ros2_vita (godot/test/run_host_tests.sh).
+config_version=5
+
+[application]
+
+config/name="ros2_vita_host_tests"

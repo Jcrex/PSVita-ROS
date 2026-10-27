@@ -942,3 +942,33 @@ cd web && pnpm build                      # o: docker compose up -d --build
     `msg-schema` en el módulo Godot y probar `godot4-vita` con un `.pck` mínimo.
   - **Preguntas al usuario (docs/17 §10):** ¿Godot 4 primero?, ¿hay Windows para
     el editor de `godot4-vita`?, ¿HMI de teleop con cámara como piloto?
+
+- **(2026-10-27, 4.ª sesión, laptop) Prioridad: migración a Godot 4.** El
+  usuario decidió pasar a `godot4-vita` (Godot 4.8-dev7) y pidió una
+  investigación extensiva de qué migrar, sabiendo que el SDK de Rust para la
+  Vita **no depende de Godot**.
+  - **`docs/18-migracion-a-godot4.md`**: estado real de godot4-vita (3 rutas de
+    render), internals (loader PIC, tabla de imports, relocaciones, TLS), matriz
+    de consumidores Rust y reglas de enlace, análisis de clausura de imports,
+    opciones de red (A: backend sceNet en `net-udp`, recomendada; B: init en el
+    motor), tabla 3.5→4.x, sesgo de versión 4.7.1↔4.8-dev7, puertas G0–G7,
+    riesgos R1–R9 y backlog M1–M17. ADR 0008 **Aceptado** (decisión 5 = Godot 4).
+  - **Hallazgos:** el motor no importa `sceNet*` ni inicializa red; faltan en la
+    tabla del loader `sincosf`, `bcmp` y 11 funciones `sce*` de red (parche
+    validado con `git apply --check`: `godot/loader-patches/`); XRCE/CDR tienen 0
+    imports sin resolver; Rust debe ir PIC + `core` solamente; `texture_2d_update`
+    recrea la textura (coste para cámara); el exportador exige el editor 4.8-dev7.
+  - **Código:** `godot/ros2_vita/` reescrito a módulo en árbol de Godot 4
+    (`RosMsg` sobre `msg-schema`, `RosNode`, pub/sub/timer, parámetros, singleton
+    `rclgd`, `LoopbackTransport`, `XrceTransport` stub); `godot/test/` (pruebas
+    GDScript, round-trip de los 24 fixtures); `tools/check-vita-imports.py`,
+    `tools/build-rust-pic.sh`, `tools/build-godot-template.sh` y `vita-doctor.sh`
+    actualizados. **Todo sin compilar ni ejecutar.**
+  - **Bloqueado por el entorno:** no se pudo compilar el motor aquí (la ejecución
+    de SCons/código del repo ajeno no se autorizó); queda como puerta **G1** en
+    el PC.
+  - **Siguiente paso exacto (PC):** `tools/vita-doctor.sh` → `tools/build-godot-template.sh`
+    (G1) → compilar `godot/test` con un Godot de host (`godot/test/run_host_tests.sh`) →
+    `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
+  - **Preguntas abiertas:** ¿Windows/addon para el editor 4.8-dev7?; ¿red por A o B?;
+    ¿política de fork/parches hacia godot4-vita?

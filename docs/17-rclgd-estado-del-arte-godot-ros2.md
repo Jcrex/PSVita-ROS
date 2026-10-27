@@ -303,7 +303,11 @@ Coste de CPU en la Vita **[?]** → medir con `hwprobe`/FPS.
 - `docs/16`: las páginas de `rclgd.readthedocs.io` ya no son necesarias (se leyó
   el código y la documentación fuente en el repositorio).
 
-## 10. Preguntas abiertas para el usuario
+## 10. Preguntas abiertas — RESUELTA la 1 (2026-10-27)
+
+**Decisión:** Godot 4 (`godot4-vita`) primero → `docs/18`. Siguen abiertas las preguntas 2 y 3 y las de `docs/18` §11.
+
+## 10 (original). Preguntas abiertas para el usuario
 
 1. ¿Priorizamos **Godot 4** (`godot4-vita`, editor Windows) para ser compatibles
    con `rclgd`/el taller, o se mantiene 3.5 como primera meta?

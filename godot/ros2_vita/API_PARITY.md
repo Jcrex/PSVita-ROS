@@ -3,7 +3,11 @@
 > Fuente: código y documentación de [Ozuba/rclgd](https://github.com/Ozuba/rclgd)
 > (commit `4d0a8b3`, v3.0.0), estudiados en `docs/17`. Objetivo: **el mismo
 > script GDScript corre en el PC (rclgd) y en la Vita (`ros2_vita`)**.
-> Estado de la columna Vita = **diseño**; nada está implementado ni compilado.
+> **Godot 4 decidido (2026-10-27, `docs/18`).** Estado de la columna Vita:
+> ✅ = *implementado en `godot/ros2_vita/` pero SIN COMPILAR* (validar en el PC,
+> puerta G1); ⏳ = no implementado. El transporte real (`XrceTransport`) es
+> aún un stub: hoy solo funciona el `LoopbackTransport` (pruebas en host,
+> `godot/test/`).
 > Leyenda: ✅ igual · 🟡 parcial/diferente · ⏳ fase posterior · ❌ no aplica.
 
 ## Singleton `rclgd`
@@ -59,7 +63,17 @@
 - Suscripciones, timers y acciones: **hilo principal**.
 - Servicios servidor y aceptación de goal: **hilo de red** (no tocar el árbol de escena; `call_deferred`).
 - Todos los objetos `Ros*` son `RefCounted`: **guardar la referencia** o se cancelan.
-- `Callable` y `await` ⇒ **Godot 4** (ver `docs/17` §6.1).
+- `Callable` y `await` ⇒ **Godot 4** (decidido, `docs/18`).
+
+## Notas del módulo nativo (Godot 4 en árbol, no GDExtension)
+- `godot4-vita` **no soporta GDExtension**: el módulo se compila dentro del motor
+  (`custom_modules=<repo>/godot`). Las clases se registran con `GDREGISTER_CLASS`.
+- Cada `RosMsg` necesita su esquema `.rsch` (generado en el PC con
+  `tools/gen_msg_schema.py`) dentro del `.pck`; el filtro de exportación debe
+  incluir `*.rsch` (M10).
+- Argumentos: `rclgd.init(["-p","agent_ip:=…","-p","transport:=loopback"])`.
+- Entrega de mensajes: cola acotada (256, descarta el más antiguo) volcada al hilo
+  principal en `process_frame`.
 
 ## Ejes y tipos
 - Mismos helpers de conversión y mismo sentido (`Transform3D` de Godot ⇄ REP-103).

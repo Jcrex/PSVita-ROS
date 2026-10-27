@@ -120,3 +120,18 @@ debug = false
   [Platform support (md)](https://raw.githubusercontent.com/rust-lang/rust/master/src/doc/rustc/src/platform-support/armv7-sony-vita-newlibeabihf.md)
 - [vita-rust](https://github.com/vita-rust) · [cargo-vita](https://github.com/vita-rust/cargo-vita)
 - [newlib `sbrk.c` de VitaSDK](https://raw.githubusercontent.com/vitasdk/newlib/vita/newlib/libc/sys/vita/sbrk.c)
+
+## 10. Rust dentro de `libgodot.so` (godot4-vita) — añadido 2026-10-27
+
+Los mismos crates se pueden enlazar en el runtime de Godot 4, pero el destino cambia
+(detalle en `docs/18` §3):
+- **`-C relocation-model=pic`** (el target usa `static`): el loader solo admite relocaciones
+  ABS32/GLOB_DAT/JUMP_SLOT/RELATIVE.
+- **`-Zbuild-std=core`** (sin `std`): evita pthread/TLS y reduce los imports que debe aportar el loader
+  (el TLS del port está a medias: `tls_stubs.c`).
+- **Cierre de imports**: `tools/check-vita-imports.py` con `arm-vita-eabi-nm`. En host ya se ve que el
+  staticlib pide `bcmp` (de comparar slices con `==`), que no está en la tabla del loader: o se añade
+  (parche `godot/loader-patches/0001-ros2-vita-imports.patch`) o se evita con un bucle.
+- Receta: `tools/build-rust-pic.sh` (sin verificar). Si no pasa `verify_runtime.py`, el módulo compila
+  los `.c` (valor por defecto de `godot/ros2_vita/SCsub`): **Rust sigue siendo opcional** en el módulo,
+  igual que el C es el respaldo permanente del repo.

@@ -51,9 +51,11 @@ cd web && docker compose up -d --build  # production site, localhost:4321
 - `vita-app/` — the Fase 1 homebrew (`main.c` + uxr glue + netlog +
   CMake/VitaSDK + `.vpk`). Builds only on the PC. `scripts/` cross-compiles
   microxrcedds_client.
-- `godot/` — esqueleto SIN VERIFICAR del módulo Godot `ros2_vita` (ADR 0008,
-  `docs/12`); `tools/vita-doctor.sh` diagnostica el entorno;
-  `tools/build-godot-template.sh` es la receta (solo PC); `tools/hwprobe/`
+- `godot/` — módulo Godot **4** `ros2_vita` en árbol (godot4-vita; ADR 0008,
+  `docs/18`), SIN COMPILAR; `godot/loader-patches/` parchea el loader;
+  `godot/test/` pruebas GDScript; el SDK Rust no depende de Godot; `tools/vita-doctor.sh` diagnostica el entorno;
+  `tools/build-godot-template.sh` es la receta (solo PC);
+  `tools/check-vita-imports.py` / `build-rust-pic.sh` verifican/construyen los enlaces; `tools/hwprobe/`
   es una sonda de hardware (sin compilar; docs/14 §9).
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
   (complete; validated against a live Jazzy graph in `robotnik_dev`).

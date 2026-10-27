@@ -264,5 +264,5 @@ parcial.
 | E-H2 | ¿Qué núcleos admite un homebrew? | 4 hilos con máscaras `n<<16`; leer `currentCpuId` |
 | E-H3 | Ancho de banda memcpy en RAM cacheada / no cacheada / CDRAM | `sceKernelAllocMemBlock` de 4 MiB por tipo, `sceKernelGetProcessTimeWide` |
 | E-H4 | RAM útil real: heap máximo, `size_user/cdram/phycont` | `sceKernelGetFreeMemorySize` + sondeo con `malloc` |
-| E-H5 | ¿Cambia con `ATTRIBUTE2=12`? | repetir E-H4 con el `.vpk` reempaquetado |
+| E-H5 | ¿Cambia con `ATTRIBUTE2=12`? | repetir E-H4 con el `.vpk` reempaquetado. *(Nota 2026-10-27: el loader de godot4-vita ya empaqueta con `ATTRIBUTE2=12` y declara un heap de newlib de 256 MiB — docs/18 §2.2; sigue sin medirse en hardware.)* |
 | E-H6 | Tamaño de L2 y latencias | recorrido de punteros con saltos crecientes (idea; no implementado) |
