@@ -33,3 +33,35 @@ hilo de red (XRCE)  ──push──►  msg_ring (SPSC)  ──pop en _process�
 - [ ] P4: conectar `RosNode` a la sesión XRCE (hoy solo drena el ring).
 - [ ] P1: alinear los nombres de la API GDScript con rclgd.
 - [ ] Capa para Godot 4 (`initialize_ros2_vita_module(ModuleInitializationLevel)`).
+
+## Godot 3.5 hoy, Godot 4 mañana (2026-10-27)
+
+El módulo se escribe **una vez** con `godot_compat.h` aislando las diferencias
+de API (tabla dentro del header). Plan por versión:
+
+| | **3.5** (`godot-vita`) | **4.x** (`godot4-vita`) |
+|---|---|---|
+| Prioridad | **Primera** (receta de plantilla conocida) | Segunda; tras P3/P5 |
+| Editor | Linux/Windows oficial + plantilla propia | **Solo Windows** (editor integrado del port) |
+| Registro del módulo | `register_ros2_vita_types()` | `initialize_ros2_vita_module(level)` |
+| Bytes | `PoolByteArray` | `PackedByteArray` |
+| Sockets de Godot | desactivados en la plantilla oficial; **irrelevante**: ROS usa `sceNet` | por comprobar |
+| Mapa de memoria | RAM del port (`ATTRIBUTE2` por comprobar) | `ATTRIBUTE2=12` (~365 MiB) |
+| GDExtension | n/a | **no soportado** → módulo estático igualmente |
+| Cuándo salta a "viable" | P2 + P4 verificados en hardware | P3 (Windows) + P5 (RAM/FPS) + P4 |
+
+Criterio para adoptar 4.x: que `godot4-vita` pase de "3D experimental" y publique
+plantillas reproducibles en Linux; hasta entonces **no se bloquea el trabajo en 3.5**.
+
+## Cómo se usará desde GDScript (diseño provisional, no implementado)
+
+```gdscript
+# Misma forma que rclgd en el PC (P1: confirmar nombres reales)
+var ros := RosNode.new()
+add_child(ros)
+ros.connect("message_received", self, "_on_msg")   # 3.5; en 4.x: ros.message_received.connect(...)
+func _on_msg(topic_id, cdr):                        # cdr: bytes CDR crudos (ver msg-cdr)
+    pass
+```
+Siguiente capa prevista: decodificar con `msg-cdr` dentro del módulo C++ y emitir
+`Dictionary` ya hechos (`tf`, `joint_state`, `marker`) para no exponer CDR a GDScript.

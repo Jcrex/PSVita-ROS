@@ -45,6 +45,12 @@ Se quiere poder desarrollar aplicaciones de Vita con Godot que usen ROS2
    sirven para prototipar sin código nativo (docs/12 §5); no sustituyen
    a la vía C.
 
+7. **Una sola base de código para 3.5 y 4.x**: `godot/ros2_vita/godot_compat.h`
+   concentra las diferencias de API (2026-10-27). El trabajo avanza en 3.5; 4.x
+   se activa cuando se cumpla el criterio de `godot/README.md`.
+8. **Sondas antes que supuestos**: `tools/hwprobe/` mide RAM, núcleos y ancho de
+   banda (docs/14 §9) antes de fijar presupuestos de la app Godot.
+
 ## Alternativas descartadas
 
 - **GDExtension / godot-rust (gdext):** imposible sin enlace dinámico.

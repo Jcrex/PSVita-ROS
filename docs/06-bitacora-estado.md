@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-27 (laptop: **investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware** — `docs/12`, `docs/13`, ADR 0008, módulo dual `msg-ring`; ver bloque 2026-10-27 al final. Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-27, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -881,3 +881,38 @@ cd web && pnpm build                      # o: docker compose up -d --build
     fijar commit de `godot-vita` (P2); implementar Etapa D (`viz-math`,
     `msg-cdr` con fixtures de `robotnik_dev`, `tf-tree`) y cross-compilar
     `msg-ring`. **Con la Vita:** experimento E1 y estrés ARM de `msg-ring`.
+
+- **(2026-10-27, 2.ª sesión, en la laptop, sin Vita) Hardware de la Vita,
+  Rust nativo, módulos de la Etapa D y lista de páginas bloqueadas.**
+  - `docs/14-hardware-vita-memoria-hilos-optimizacion.md`: CPU/memoria/hilos/GPU
+    con fuentes de código (vita-headers, newlib de VitaSDK, vitaGL, spec del
+    target Rust). Hallazgos verificados: heap de newlib = **un memblock de
+    128 MiB** sobrescribible con `_newlib_heap_size_user`; tipos de memblock y
+    sus valores; `SceKernelThreadInfo` expone `currentCpuId`/`lastExecutedCpuId`
+    (permite medir núcleos); afinidad en bits 16–19; el planificador ve 4 CPUs;
+    tabla de **256 hilos** en newlib; defaults de GXM (parameter buffer 16 MiB,
+    tile 32×32, alineaciones). Sigue **sin confirmar**: qué núcleos puede usar
+    un homebrew, L2, ancho de banda → experimentos E-H1…E-H6.
+  - **`tools/hwprobe/`** (sonda en C, sin compilar): mide relojes, núcleos,
+    ancho de banda por tipo de memblock y heap máximo; salida por netlog.
+  - `docs/15-rust-nativo-y-optimizacion-vita.md` + `docs/rust/04`: modos de uso
+    de Rust (A módulos+C, B app Rust, C mixta), spec del target, perfil de
+    compilación recomendado (a validar), memoria e hilos desde Rust.
+    **Pregunta abierta:** el SDK/entorno Rust propio de pruebas anteriores del
+    usuario no está en el repo; hay que incorporarlo o describirlo.
+  - **Etapa D1–D3 hecha en host** (docs/10 §7): `viz-math` (valores esperados a
+    mano), `msg-cdr` (fixtures de `rosbags`/Jazzy en `tests/fixtures/`, recortes
+    byte a byte y fuzz de 28 000 mutaciones con hash idéntico en C y Rust; ASan/UBSan
+    limpios) y `tf-tree` (lookup, ciclos, tabla llena). Entran al crate paraguas
+    (`vita-app/rust-modules`): compila y enlaza en host sin duplicados.
+    **No integrados todavía en `main.c`** (D4) y **sin cross-compilar**.
+    El fuzz encontró una divergencia real (estado parcial ante errores) que se corrigió.
+  - Godot 3.5/4: `godot_compat.h` + tabla de plan por versión en `godot/README.md`.
+  - `docs/16-paginas-pendientes-de-leer.md`: URLs no accesibles desde esta sesión,
+    con prioridad y qué extraer de cada una (las inferidas van con †).
+  - **Siguiente paso exacto (PC):** (1) `tools/vita-doctor.sh`; (2) leer las
+    páginas prioridad A de docs/16; (3) cross-compilar `msg-ring`/`viz-math`/
+    `msg-cdr`/`tf-tree` y `hwprobe`; (4) cruzar fixtures con `rclpy` en
+    `robotnik_dev`; (5) D4: suscripciones `/tf` y `/joint_states` en `main.c`.
+    **Con la Vita:** correr `hwprobe` (con y sin `EXTENDED_MEMORY`) y pegar la salida
+    en docs/14 §9.

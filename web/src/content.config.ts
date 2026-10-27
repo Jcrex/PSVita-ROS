@@ -48,6 +48,7 @@ const codigo = defineCollection({
       'modules/*/README.md',
       'vita-app/README.md',
       'godot/README.md',
+      'tools/*/README.md',
       'mcp/*/README.md',
     ],
     base: '..',

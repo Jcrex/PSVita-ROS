@@ -44,7 +44,7 @@ cd web && docker compose up -d --build  # production site, localhost:4321
 
 ## Layout
 
-- `modules/{mem-pool,net-udp,microros-transport,msg-ring}/` — dual modules (each has
+- `modules/{mem-pool,net-udp,microros-transport,msg-ring,viz-math,msg-cdr,tf-tree}/` — dual modules (each has
   its own README with API/design/status). Platform split is *inside* each
   impl: `#ifdef __vita__` / `#[cfg(target_os = "vita")]`; the host branch
   exists so parity tests run on the laptop.
@@ -53,7 +53,8 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   microxrcedds_client.
 - `godot/` — esqueleto SIN VERIFICAR del módulo Godot `ros2_vita` (ADR 0008,
   `docs/12`); `tools/vita-doctor.sh` diagnostica el entorno;
-  `tools/build-godot-template.sh` es la receta (solo PC).
+  `tools/build-godot-template.sh` es la receta (solo PC); `tools/hwprobe/`
+  es una sonda de hardware (sin compilar; docs/14 §9).
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
   (complete; validated against a live Jazzy graph in `robotnik_dev`).
 - `docs/rust/` — Rust learning series tied to real repo code. The user is a
