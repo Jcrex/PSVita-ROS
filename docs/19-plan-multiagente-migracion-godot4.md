@@ -39,7 +39,7 @@
 | `Ozuba/rclgd` | `rolling` @ `4d0a8b3` (HEAD por defecto, v3.0.0) | estudiado en docs/17 | referencia de API |
 | | **`jazzy`** @ `aeb82b3` | rama de nuestra distro; difiere de `rolling` en `README.md`, `ros_type_utils.hpp` y el `.gdextension` de la plantilla; `GODOT_VERSION "4.7.1"` igual | **la que instala el usuario en el PC** |
 | | `kilted`, `lyrical` | otras distros | ignorar |
-| | **`feature/native-msg-classes`** @ `92ef998` (2026-10-26) | **cambio de API próximo**: clases tipadas nativas registradas al arrancar desde `package.xml`; **elimina** las clases sombra y `RosMsg.gen_editor_support` | **seguir de cerca** (§2.3, rama R-N) |
+| | ~~`feature/native-msg-classes`~~ @ `92ef998` (2026-10-26) | clases tipadas nativas desde `package.xml`; **elimina** las clases sombra y `RosMsg.gen_editor_support`. **Fusionada en `rolling` (`bfbda5c`) y `jazzy` (`fb12a65`) el 2026-10-28**; la rama ya no existe [V 2026-10-29] | **adoptar** (§2.3, rama R-N) |
 | | `main` (2026-10-21), `colcon` (2026-01) | históricas | ignorar |
 | `Ozuba/roomba_ws` | `main` @ `8332acb` | taller ROSCon | fuente de la HMI piloto |
 
@@ -49,7 +49,7 @@
 |---|---|---|
 | **R-M** Módulo en árbol | `godot/ros2_vita` compilado dentro del motor (`custom_modules=`) | **Base elegida**; escrita, sin compilar (G1) |
 | **R-G** GDExtension estática | Escribir `ros2_vita` contra **godot-cpp** y en la Vita cargarlo **enlazado estáticamente** con `GDExtensionManager::load_extension_from_function()` (existe en el core de godot4-vita, `core/extension/gdextension_manager.h:72` **[V]**; `dlopen` es un stub nulo, `loader/dl_stubs.c` **[V]**). En el PC el mismo código sería una GDExtension dinámica cargable en el **editor 4.7.1 de rclgd** ⇒ **pruebas sin compilar el motor**. | **Spike** (agente A7b). Riesgos: godot-cpp en un `.so` `-nostdlib` (imports de libstdc++) **[?]**; choque de nombres con rclgd si se cargan juntos (no se cargan juntos: proyecto de pruebas aparte) |
-| **R-N** Clases tipadas nativas | Igual que la rama `feature/native-msg-classes` de rclgd: registrar `RosGeometryMsgsTwist`… como clases reales derivadas de `RosMsg`, desde el **esquema `.rsch`** (no hace falta ament ni babel_fish). En R-M se haría con `ClassDB::register_extension_class(ObjectGDExtension*)` (existe en `core/object/class_db.h:304` **[V]**); en R-G con `classdb_register_extension_class6`, como rclgd. | **Adoptar** en cuanto rclgd la fusione; hasta entonces soportar ambas (clases sombra GDScript + nativas) |
+| **R-N** Clases tipadas nativas | Igual que la rama `feature/native-msg-classes` de rclgd: registrar `RosGeometryMsgsTwist`… como clases reales derivadas de `RosMsg`, desde el **esquema `.rsch`** (no hace falta ament ni babel_fish). En R-M se haría con `ClassDB::register_extension_class(ObjectGDExtension*)` (existe en `core/object/class_db.h:304` **[V]**); en R-G con `classdb_register_extension_class6`, como rclgd. | **Adoptar** — rclgd ya la fusionó (2026-10-28). No se implementan clases sombra (T3.2.3 descartada); hasta T3.2.4, scripts portables con tipos por texto (`API_PARITY.md`) |
 | **R-RENDER** | GXM 2D (validado en juegos) / GXM 3D experimental / VitaGL-GLES3 (atascado) | **GXM 2D**; 3D solo pruebas |
 | **R-NET** | A (elegida) / B (init en el motor) | **A**; B queda como posible PR a upstream si algún día se quiere ENet de Godot |
 | **R-LANG** | Código del `.so`: solo C / C + Rust PIC `core` | **C primero** (ya validado en Fase 1); Rust PIC cuando pase `verify_runtime.py` (R2) |
@@ -57,7 +57,10 @@
 | **R-THREAD** | Sesión XRCE en hilo propio con colas (rx: `Mutex`+`List`; tx: `msg-ring` SPSC) / perfil `UCLIENT_PROFILE_MULTITHREAD` | **Hilo propio + colas** |
 | **R-EXPORT** | editor 4.8-dev7 Linux oficial (instantánea *dev*) **[?]** / compilarlo desde la etiqueta `4.8-dev7` / parchear el control de versión del addon | 1.ª opción si existe; si no, compilar; el parche del addon solo como último recurso (formato de recursos) |
 
-### 2.3 Impacto de `feature/native-msg-classes` (rclgd) en nuestro diseño **[V]** (CHANGELOG *Forthcoming*)
+### 2.3 Impacto de las clases nativas de rclgd (antes `feature/native-msg-classes`, **fusionadas el 2026-10-28**) en nuestro diseño **[V]** (CHANGELOG *Forthcoming*)
+> Actualización 2026-10-29: skill `rclgd` y `API_PARITY.md` revisadas contra `jazzy@fb12a65`. rclgd lee
+> `depend`/`exec_depend`/`build_depend` de `res://package.xml` y resuelve en el índice ament; la Vita lo hará
+> desde el `.rsch`. rclgd usa `thread_local` al construir: el módulo en árbol debe evitarlo (TLS a medias).
 - Toda interfaz de las dependencias de `res://package.xml` se registra al arrancar como clase nativa
   (`Ros` + PascalCase) con propiedades tipadas, `new()` y ayuda del editor. **Breaking:** desaparecen
   `addons/rclgd/gen`, el plugin y `RosMsg.gen_editor_support`; un script pasado como tipo ya no se
@@ -135,8 +138,8 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 ├─ 3.2 RosMsg
 │  ├─ T3.2.1 RosMsg dinámico sobre msg-schema (_get/_set, Packed*) ................ A7 · L · G1 · 🟡
 │  ├─ T3.2.2 Carga del esquema: res://ros/schema.rsch al iniciar el módulo ........ A7 · L · G1 · 🟡
-│  ├─ T3.2.3 Clases sombra GDScript (compatibilidad con rclgd 3.0.0) ............... A7 · L · G1 · ⏳
-│  └─ T3.2.4 Clases tipadas NATIVAS desde el esquema (rama R-N) ................... A7 · L · G1 · ⏳ 🔭
+│  ├─ T3.2.3 ~~Clases sombra GDScript~~ — descartada: rclgd ya no las usa (2026-10-28) A7 · — · —  · ✗
+│  └─ T3.2.4 Clases tipadas NATIVAS desde el esquema (rama R-N; rclgd ya las tiene) A7 · L · G1 · ⏳
 ├─ 3.3 Runtime
 │  ├─ T3.3.1 Singleton rclgd, init(args), ok, shutdown, ros_ready ................. A8 · L · G1 · 🟡
 │  ├─ T3.3.2 RosNode: pub/sub/timer, ~ y relativos, parámetros locales ............ A8 · L · G1 · 🟡
@@ -207,7 +210,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 └─ T9.4 docs/16: páginas pendientes de leer (editor 4.8-dev7, issues del port) ... A1 · P · —  · ⏳
 
 10. UPSTREAM Y VIGILANCIA
-├─ T10.1 rclgd: fusión de native-msg-classes, cambios de API, nueva versión de Godot A1 · L · — · 🔭
+├─ T10.1 rclgd: cambios de API, nueva versión publicada, nueva versión de Godot .. A1 · L · — · 🔭 (native-msg-classes fusionada 2026-10-28)
 ├─ T10.2 godot4-vita: commits nuevos, salida a 4.8 estable, ruta GL ............. A1 · L · — · 🔭
 ├─ T10.3 micro-XRCE-DDS / micro-ROS agent Jazzy ................................. A1 · L · — · 🔭
 └─ T10.4 PRs nuestros a upstream (loader, panel trasero, textura) ............... A2 · P · — · ⏳
@@ -219,7 +222,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T11.1.3 conceptos / tooling / mensajes-y-tipos / versiones / errores ....... K2,K3 · L · E1 · ✅
 │  ├─ T11.1.4 scripts: rclgd-docs.sh (probado), xml_to_md.py (probado), dump_api.gd K1 · L/P · E1 · 🟡 (dump_api sin ejecutar)
 │  ├─ T11.1.5 Repasar TODOS los tests de rclgd y extraer recetas por método ........ K3 · L · E1 · ⏳
-│  └─ T11.1.6 Rama native-msg-classes: actualizar la skill cuando se fusione ...... K1 · L · E1 · 🔭
+│  └─ T11.1.6 Clases nativas: skill actualizada a `jazzy@fb12a65` (2026-10-29) ..... K1 · P · E1 · ✅
 ├─ 11.2 Skill `godot4-ros-scripting` (skills/godot4-ros-scripting/)
 │  ├─ T11.2.1 SKILL.md + godot4-esencial + patrones-roomba ......................... K4 · L · E1 · ✅
 │  ├─ T11.2.2 templates/*.gd (robot, sensor, HMI, runner) ......................... K4 · L · E2 · 🟡 (sin ejecutar)
@@ -229,7 +232,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T11.3.1 SKILL.md: diferencias, límites, flujo, reglas ....................... K5 · L · E1 · ✅
 │  └─ T11.3.2 Mantenerla al día con cada puerta G*/H1 ............................. A12 · L · — · continuo
 ├─ 11.4 Verificación con IA limpia
-│  ├─ T11.4.1 Batería skills/rclgd/evals/preguntas.md (15 casos) .................. K6 · L · E1 · ✅ (escrita)
+│  ├─ T11.4.1 Batería skills/rclgd/evals/preguntas.md (18 casos) .................. K6 · L · E1 · ✅ (escrita)
 │  ├─ T11.4.2 Pasarla con un subagente sin contexto y corregir huecos ............... K6 · L · E1 · ⏳
 │  └─ T11.4.3 Re-pasarla tras cada versión de rclgd ................................. K6 · L · E1 · continuo
 └─ 11.5 Distribución
@@ -257,7 +260,7 @@ Puerta nueva **H1** (laptop/PC, sin Vita): el núcleo `xrce_core.c` compilado pa
 | **A4** Toolchain cruzada | Builds PIC C/Rust/XRCE, clausura de imports, SCsub de libs | P | `tools/check-vita-imports.py`, `tools/build-rust-pic.sh`, `tools/build-xrce-pic.sh` (nuevo), `godot/ros2_vita/SCsub` | docs/18 §3–§4 |
 | **A5** Red opción A | `net-udp` en contexto `.so`: idempotencia, pool, estado WiFi, ciclo de vida | L→P→V | `modules/net-udp/**` | docs/18 §4.3 |
 | **A6** Transporte XRCE | `xrce_core.c`, `XrceTransport`, QoS, reconexión, reloj, ajustes E1 | L→V | `godot/ros2_vita/xrce_core.{c,h}`, `XrceTransport` en `ros_runtime.*` | vita-app/src/main.c, docs/13 E1 |
-| **A7** Mensajes y tipos | `RosMsg`, esquemas, generador desde package.xml, clases nativas (R-N) | L | `godot/ros2_vita/ros_msg.*`, `modules/msg-schema/**`, `tools/gen_msg_schema.py` | rclgd `feature/native-msg-classes` |
+| **A7** Mensajes y tipos | `RosMsg`, esquemas, generador desde package.xml, clases nativas (R-N) | L | `godot/ros2_vita/ros_msg.*`, `modules/msg-schema/**`, `tools/gen_msg_schema.py` | rclgd `src/rclgd/ros_type_registry.*` |
 | **A7b** Spike R-G | Prototipo godot-cpp + carga estática; informe go/no-go | L/P | `godot/spike-gdextension/` (nuevo, desechable) | core/extension |
 | **A8** Paridad de API | Runtime, RosNode, TF, logger, servicios, parámetros, señales | L | `godot/ros2_vita/ros_runtime.*` (salvo XrceTransport), `register_types.*` | API_PARITY |
 | **A9** Sensores y entrada | IMU, panel trasero, cámara, texturas | P/V | parches 1.4 (vía A2), `godot/examples/sensors/` | docs/14 |
@@ -363,7 +366,7 @@ Todos empiezan igual: *«Proyecto PSVita-ROS. Lee CLAUDE.md, el último bloque d
 docs/19 (§1, tu fila de §4, tu brief). Respeta la propiedad de ficheros. Paridad nunca en rojo. Lo que
 no puedas verificar, márcalo y entrégalo como checklist. Termina con un informe a A0.»*
 
-**A1 — Vigía upstream.** Compara `Ozuba/rclgd` (`jazzy`, `rolling`, `feature/native-msg-classes`) y
+**A1 — Vigía upstream.** Compara `Ozuba/rclgd` (`jazzy`, `rolling`; nativas ya fusionadas) y
 `WolffsRoom/godot4-vita` (`main`, `release/v0.1`, etiquetas) con los commits fijados en docs/18/19.
 Resume cambios de API, versión de Godot y build. Actualiza `API_PARITY.md` (añade la columna de clases
 nativas R-N) y docs/16. Salida: tabla de cambios + acciones propuestas por agente.
@@ -395,9 +398,9 @@ host en docker y supera **H1** contra `micro-ros-agent:jazzy` (`--net=host --ipc
 `ros2 topic echo/pub` en `robotnik_dev`. Después, `XrceTransport` como envoltura fina.
 
 **A7 — Mensajes y tipos.** Generador `package.xml → schema.rsch` (cierre de dependencias);
-fixtures cruzados con rclpy real; clases sombra GDScript compatibles con rclgd 3.0.0 y diseño de las
-clases **nativas** desde el esquema (rama R-N, `ClassDB::register_extension_class`), cargadas antes de
-analizar scripts. Mantén `msg-schema` con paridad.
+fixtures cruzados con rclpy real; clases **nativas** desde el esquema como las de rclgd (rama R-N,
+`ClassDB::register_extension_class`, sin `thread_local`; referencia `rclgd/src/rclgd/ros_type_registry.*`),
+cargadas antes de analizar scripts. Sin clases sombra (rclgd las eliminó). Mantén `msg-schema` con paridad.
 
 **A7b — Spike R-G.** Prototipo mínimo con godot-cpp (rama de 4.7): una clase `RosMsg` que se cargue
 (a) como GDExtension dinámica en el editor 4.7.1 de rclgd y (b) enlazada estáticamente en un Godot
@@ -433,7 +436,7 @@ dónde sale cada afirmación. Si readthedocs no es accesible, el clon tiene el m
 
 **K1 — Referencia de API.** Regenera `references/api` con `rclgd-docs.sh api`; compara con la versión
 anterior (`git diff`); documenta cambios en `versiones.md`. Si hay Godot+rclgd, ejecuta `dump_api.gd` y
-anota diferencias entre XML y ClassDB real. Vigila `feature/native-msg-classes`.
+anota diferencias entre XML y ClassDB real. Vigila la próxima versión publicada (apt) de rclgd.
 
 **K2 — Conceptos.** Lee `docs/concepts/*` y los tutoriales; verifica cada regla contra el código
 (`rclgd/src/rclgd/*.cpp`) cuando la doc sea ambigua (p. ej. copia de arrays, alias de submensajes).

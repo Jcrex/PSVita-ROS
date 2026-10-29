@@ -33,10 +33,11 @@ Los módulos C/Rust (`modules/*`) **no dependen de Godot**.
 |---|---|---|
 | Tipos de mensaje | babel_fish, cualquier tipo instalado | **solo los del esquema** `res://ros/schema.rsch` (o `ros/schema_path`), generado en el PC con `tools/gen_msg_schema.py` |
 | Crear `RosMsg` | en cualquier momento tras cargar la extensión | **después de `rclgd.init`** (carga el esquema): créalos en `_ready` |
+| Clases tipadas `RosXxx` | **nativas** desde `package.xml` (fuente actual; el apt 3.0.0 usa clases sombra) | **aún no existen** (T3.2.4): un script que nombre `RosGeometryMsgsTwist` no compila en la Vita. **Portable:** tipo por texto, `RosMsg.from_type(...)`, anotaciones `RosMsg` (`API_PARITY.md`) |
 | Argumentos | línea de órdenes `--ros-args` | no hay CLI: `ros/parameters/*` del proyecto; `-p transport:=loopback|xrce`, `-p schema:=…`, `-p agent_ip:=…` (**[pendiente con XRCE]**) |
 | Descubrimiento | DDS | un **agente micro-ROS** en el PC; una sesión XRCE = un participante |
 | Implementado hoy | todo | `init/shutdown/ok/get_dropped`, ejes, `ros_ready`; `RosNode` pub/sub/timer, `~` y relativos, `now()` local, parámetros locales + `parameter_changed`; `RosQoS` (history, depth, reliability, durability) |
-| Pendiente | — | servicios, acciones, TF broadcaster/listener, `RosLogger`/`/rosout`, grafo (`count_*`), clases tipadas nativas (`docs/19` T3.*) |
+| Pendiente | — | servicios, acciones, TF broadcaster/listener, `RosLogger`/`/rosout`, grafo (`count_*`), clases tipadas nativas (`docs/19` T3.2.4) |
 | GDExtension | sí | **no** (módulo compilado dentro del motor) |
 | Entrega de mensajes | `call_deferred` | cola acotada (256, descarta la más vieja; `rclgd.get_dropped()`) volcada en `process_frame` |
 

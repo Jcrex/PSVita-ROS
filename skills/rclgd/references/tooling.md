@@ -43,10 +43,12 @@ lee `ros/parameters/<clave>` de los ajustes del proyecto (la línea de órdenes 
 ## Estructura de un proyecto creado
 ```
 <pkg>/package.xml  project.godot  main.tscn  main.gd  .gitignore(.godot/)
-<pkg>/addons/rclgd/{plugin.cfg, rclgd.gd (genera clases sombra), ros_init.gd (autoload ROS), bin/rclgd.gdextension}
+<pkg>/addons/rclgd/{ros_init.gd (autoload ROS), icon.svg, bin/rclgd.gdextension}
 ```
-`project.godot` incluye `[autoload] ROS="*res://addons/rclgd/ros_init.gd"` y el plugin en `[editor_plugins]`
-(desaparece con las clases nativas; ver `versiones.md`).
+`project.godot` incluye `[autoload] ROS="*res://addons/rclgd/ros_init.gd"`; **no hay plugin de editor**
+(versión con clases nativas). Las dependencias `<depend>` de `package.xml` deciden qué clases tipadas se
+registran al cargar (`mensajes-y-tipos.md` §2). Con rclgd 3.0.0 (apt) la plantilla traía además
+`plugin.cfg` + `rclgd.gd` (generador de clases sombra) en `[editor_plugins]`.
 
 ## Pruebas headless (patrón oficial, `rclgd/test/`)
 ```bash
