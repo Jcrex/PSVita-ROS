@@ -1,6 +1,6 @@
 # Referencia de clases de rclgd (generada)
 
-Fuente: `rclgd/doc_classes/*.xml` de **rolling@4d0a8b3 (v3.0.0; jazzy@aeb82b3 idéntica en doc_classes)**. Generado con `skills/rclgd/scripts/xml_to_md.py`;
+Fuente: `rclgd/doc_classes/*.xml` de **jazzy@fb12a65**. Generado con `skills/rclgd/scripts/xml_to_md.py`;
 no editar a mano: regenerar al cambiar de versión.
 
 | Clase | Resumen |
@@ -10,7 +10,7 @@ no editar a mano: regenerar al cambiar de versión.
 | [RosClient](RosClient.md) | A ROS 2 Service Client for making requests to a service server. |
 | [RosGoalHandle](RosGoalHandle.md) | A handle that tracks the lifecycle of a goal sent through a `RosActionClient`. |
 | [RosLogger](RosLogger.md) | A named ROS 2 logger, with the same API as rclpy's logger. |
-| [RosMsg](RosMsg.md) | A dynamic wrapper for ROS 2 messages. |
+| [RosMsg](RosMsg.md) | A ROS 2 message, with native typed subclasses for the interfaces a project depends on. |
 | [RosNode](RosNode.md) | A ROS 2 Node that manages publishers, subscribers, and other communication interfaces. |
 | [RosPublisher](RosPublisher.md) | A ROS 2 Publisher for sending messages to a topic. |
 | [RosQoS](RosQoS.md) | Configuration for ROS 2 Quality of Service (QoS) profiles. |

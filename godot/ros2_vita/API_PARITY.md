@@ -1,7 +1,8 @@
 # Paridad de API: `rclgd` (PC, Godot 4.7) ↔ `ros2_vita` (Vita)
 
 > Fuente: código y documentación de [Ozuba/rclgd](https://github.com/Ozuba/rclgd)
-> (commit `4d0a8b3`, v3.0.0), estudiados en `docs/17`. Objetivo: **el mismo
+> (commit `4d0a8b3`, v3.0.0, estudiados en `docs/17`; tipos revisados contra `jazzy@fb12a65`,
+> 2026-10-29, que ya trae las **clases tipadas nativas**). Objetivo: **el mismo
 > script GDScript corre en el PC (rclgd) y en la Vita (`ros2_vita`)**.
 > **Godot 4 decidido (2026-10-27, `docs/18`).** Estado de la columna Vita:
 > ✅ = *implementado en `godot/ros2_vita/` pero SIN COMPILAR* (validar en el PC,
@@ -24,7 +25,7 @@
 |---|---|---|
 | `init(node_name, namespace="")` | 🟡 | **una sesión XRCE ⇒ un participante**; varios `RosNode` comparten sesión (nombres como prefijo de topics) **[I]** |
 | `get_name()`, `get_namespace()`, `resolve_frame(id)` | ✅ | `~frame` ⇒ espacio de nombres |
-| `create_publisher(topic, type, qos)` | ✅ | `type` = `String` o clase sombra con `ROS_TYPE_NAME` |
+| `create_publisher(topic, type, qos)` | 🟡 | `type` = `String` ✅ (o script con `ROS_TYPE_NAME`, que rclgd **ya no** acepta); clase nativa o instancia ⏳ (T3.2.4) |
 | `create_subscription(topic, type, callable, qos)` | ✅ | callback en el hilo principal (cola `msg-ring`) |
 | `create_timer(seconds, callable)` | ✅ | reloj local (monotónico) |
 | `now()` | 🟡 | `Time` local; sincronización con el agente ⏳ (`uxr_synchronize_session`) |
@@ -37,24 +38,40 @@
 | `get_topic_names_and_types()`, `count_publishers/subscribers` | ❌ | sin API de grafo en XRCE |
 | `get_logger()` | 🟡 | ver arriba |
 
-## `RosMsg` (RefCounted) y clases sombra
+## `RosMsg` (RefCounted) y clases tipadas
 | rclgd | Vita | Nota |
 |---|---|---|
-| `RosMsg.from_type("pkg/msg/T")`, `init(type)` | ✅ | requiere el esquema `.rsch` del tipo en el `.pck` (módulo `msg-schema`) |
+| `RosMsg.from_type("pkg/msg/T")` | ✅ | requiere el esquema `.rsch` del tipo en el `.pck` (módulo `msg-schema`); en rclgd devuelve la clase tipada, en la Vita un `RosMsg` dinámico hasta T3.2.4 |
+| `RosMsg.new()` + `init(type)` | ✅ | en rclgd también da siempre un `RosMsg` dinámico: **igual** |
 | propiedades dinámicas anidadas (`msg.pose.position.x`) | ✅ | `_get/_set` + conversión perezosa y caché, como rclgd |
 | `get_member`, `set_member`, `get_type_name()`, `get_ros_interface_name()`, `_to_string()` | ✅ | |
 | arrays primitivos ⇄ `Packed*Array` | ✅ | `memcpy` (CDR little-endian = memoria de la Vita) |
-| `RosMsg.gen_editor_support(type, dir)` | ❌ en la Vita | **se ejecuta en el PC** (rclgd) y las clases `Ros*` generadas se copian al proyecto |
-| clases `RosGeometryMsgsTwist`... con `ROS_TYPE_NAME` | ✅ | idénticas (GDScript puro) |
-| semántica "los arrays se copian: asignar el array entero" | ✅ | mantener igual |
+| semántica "los arrays se copian: asignar el array entero"; asignar un submensaje copia | ✅ | mantener igual |
 
-### Próximo cambio de rclgd: clases tipadas nativas (rama `feature/native-msg-classes`, 2026-10-26)
-| rclgd (próximo) | Vita | Nota |
+### Clases tipadas nativas — **ya en rclgd** (fuente de `jazzy`/`rolling` ≥ 2026-10-28; apt 3.0.0 aún no)
+rclgd registra al cargar (nivel `SCENE`) una clase nativa derivada de `RosMsg` por cada interfaz de las
+dependencias (`depend`/`exec_depend`/`build_depend`) de `res://package.xml` y sus anidados, resueltas en el
+índice ament (`src/rclgd/ros_type_registry.cpp`). Las clases sombra, el plugin y `gen_editor_support`
+**desaparecen**. Detalle de uso: skill `rclgd`, `references/mensajes-y-tipos.md` §2.
+
+| rclgd (actual) | Vita | Nota |
 |---|---|---|
-| Clases `RosXxx` nativas registradas al arrancar desde `res://package.xml` | ⏳ (T3.2.4) | registrar desde `schema.rsch` con `ClassDB::register_extension_class` **[I]**; esquema cargado antes de analizar scripts |
-| Se eliminan `addons/rclgd/gen`, el plugin y `RosMsg.gen_editor_support` | ⏳ | mientras no se fusione, mantener ambas vías |
-| `create_publisher(topic, RosGeometryMsgsTwist)` acepta clase o instancia | ⏳ | — |
-| `package.xml` en el filtro de no-recursos al exportar | ⏳ (T5.2.3) | igual en la Vita: `package.xml` + `*.rsch` |
+| `RosGeometryMsgsTwist.new()`, anotaciones `msg: RosNavMsgsOdometry` | ⏳ (T3.2.4) | **en la Vita hoy no existen**: un script que las nombre **no compila** allí. Registrarlas desde el `.rsch` (no hay índice ament en la Vita): el esquema debe contener el cierre transitivo y cargarse en la inicialización del módulo, antes de analizar scripts |
+| `from_type`, mensajes recibidos, peticiones/respuestas y goal/feedback/result devuelven la clase tipada | ⏳ (T3.2.4) | hoy `RosMsg` dinámico (mismo acceso por propiedades) |
+| `create_publisher/subscription(topic, RosXxx)` o con una instancia | ⏳ (T3.2.4) | hoy solo `String` |
+| arrays de mensajes como `Array[RosXxx]` tipados | ⏳ (T3.2.4) | hoy `Array` |
+| campos que chocan con miembros de `RosMsg`/palabras clave → solo `get_member` | ⏳ | replicar la misma lista (palabras clave de GDScript + miembros de `RosMsg`) |
+| conjunto de clases fijo al cargar; `package.xml` en el filtro de no-recursos al exportar | ⏳ (T5.2.3) | en la Vita: `package.xml` + `*.rsch` |
+| ~~`RosMsg.gen_editor_support`~~, ~~clases sombra con `ROS_TYPE_NAME`~~ | — | **eliminado en rclgd**; la Vita no lo implementará |
+
+**Regla para scripts portables PC ↔ Vita hasta T3.2.4:** tipos por **texto**
+(`create_publisher("/cmd_vel", "geometry_msgs/msg/Twist")`), mensajes con `RosMsg.from_type(...)` y
+anotaciones `RosMsg`. Así el mismo `.gd` corre en el editor de rclgd (nativas) y en la Vita (dinámico).
+
+**Notas de diseño para T3.2.4 (de leer el código de rclgd):** registra con la interfaz C de GDExtension
+(`classdb_register_extension_class6` + getter/setter tipados por campo, para que GDScript vea el tipo
+estático) y usa un `thread_local` durante la construcción; en el módulo en árbol se usará `ClassDB`
+directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18` §2.1).
 
 ## Otras clases
 | rclgd | Vita | Nota |

@@ -49,9 +49,25 @@ scons, cmake, vitaGL, vita2d y docker OK. Faltan: cliente XRCE ARM en esta copia
 (`vita-app/scripts/build-xrce-client-vita.sh`), clon de `godot4-vita`, compilar/instalar rclgd, y el
 contenedor `robotnik_dev` (en el PC solo hay `rmf_unified` y `microros-agent`).
 
+**Hecho después en la misma sesión:**
+- Skills instaladas con `tools/install-skills.sh` (los enlaces antiguos de `~/.claude/skills` apuntaban
+  a `/home/jcrex/skills`, inexistente). `--check` → «Todo correcto». Falta reiniciar Claude Code.
+- **rclgd cambió:** `jazzy` pasó de `aeb82b3` a `fb12a65` (2026-10-28) y **ya incluye las clases tipadas
+  nativas** (antes rama `feature/native-msg-classes`, ya borrada): sin clases sombra, sin plugin, sin
+  `RosMsg.gen_editor_support`; tipos desde `depend`/`exec_depend`/`build_depend` de `res://package.xml`,
+  fijados al cargar; `package.xml` en el filtro de exportación. Sigue siendo 3.0.0 + «Forthcoming»: el
+  **apt 3.0.0 aún usa clases sombra**.
+- **Skill `rclgd` actualizada** a `jazzy@fb12a65`: referencia de la API regenerada (cambian `RosMsg`,
+  `RosNode.create_publisher/subscription`, `rclgd`), `mensajes-y-tipos.md` reescrito (nativas como
+  sistema actual, migración desde 3.0.0, cómo saber qué versión hay), `versiones.md`, `tooling.md`,
+  `errores-comunes.md` (5 síntomas nuevos), `SKILL.md` (regla 9 y esqueleto con clases tipadas) y
+  batería de evaluación (18 casos).
+- Puente con la Vita: `API_PARITY.md` y skill `ros2-vita-godot` — en la Vita las clases `RosXxx` **aún
+  no existen** (T3.2.4); **regla de scripts portables**: tipos por texto, `RosMsg.from_type`, anotaciones
+  `RosMsg`. `docs/19`: R-N pasa a «adoptar», T3.2.3 (clases sombra) descartada, T11.1.6 hecha.
+
 **Siguiente paso exacto (PC, oleada O1 de `docs/19`):**
-1. Instalar las skills (`skills/INSTALAR.md` → `tools/install-skills.sh`, `--check`,
-   `skills/rclgd/scripts/rclgd-docs.sh sync jazzy`) y reiniciar Claude Code.
+1. Reiniciar Claude Code para cargar las skills.
 2. **G1:** clonar `godot4-vita` @ `d1a5f29`, compilar `platform=linuxbsd custom_modules=<repo>/godot`
    y pasar `godot/test/run_host_tests.sh`.
 3. **G2:** cliente XRCE + módulos en PIC; `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.

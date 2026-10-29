@@ -31,7 +31,7 @@ Creates and returns a `RosClient` for the specified service name and type. Use `
 
 ### `create_publisher(topic: String, type: Variant, qos: RosQoS = null) -> RosPublisher`
 
-Creates and returns a `RosPublisher` to send messages to a specific `topic`. Use `qos` to configure the Quality of Service for the publisher.
+Creates and returns a `RosPublisher` to send messages to a specific `topic`. `type` is the message type: an interface name (`"geometry_msgs/msg/Twist"`), a typed message class (`RosGeometryMsgsTwist`) or a message instance. Use `qos` to configure the Quality of Service for the publisher.
 
 ### `create_service(srv_name: String, srv_type: Variant, callback: Callable, qos: RosQoS = null) -> RosService`
 
@@ -39,7 +39,7 @@ Creates and returns a `RosService` server for the specified service name and typ
 
 ### `create_subscription(topic: String, type: Variant, callback: Callable, qos: RosQoS = null) -> RosSubscriber`
 
-Creates and returns a `RosSubscriber` to receive messages from a specific `topic`. The `callback` is triggered for every new message received, always on the Godot main thread. Use `qos` to configure the Quality of Service for the subscription.
+Creates and returns a `RosSubscriber` to receive messages from a specific `topic`. `type` is given as for `create_publisher`. The `callback` is triggered for every new message received, always on the Godot main thread; messages of a type with a typed class arrive as that class (see `RosMsg`). Use `qos` to configure the Quality of Service for the subscription.
 
 ### `create_tf_broadcaster() -> RosTfBroadcaster`
 

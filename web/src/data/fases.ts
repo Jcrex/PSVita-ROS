@@ -132,6 +132,7 @@ export const fases: Fase[] = [
       { texto: 'Spike R-G: GDExtension godot-cpp enlazada estáticamente (load_extension_from_function) — go/no-go', estado: 'bloqueado-pc' },
       { texto: 'Fusión de la rama godot-migration (Godot 3.5, hardware OK) como histórico en godot/godot35/; rclgd (jazzy, Godot 4.7.1) clonado en godot/rclgd/', estado: 'hecho' },
       { texto: 'Escuadra K (6 agentes rclgd) en el plan + skills rclgd, godot4-ros-scripting y ros2-vita-godot (docs oficiales, API generada, plantillas, batería para IA limpia)', estado: 'hecho' },
+      { texto: 'Skill rclgd actualizada a jazzy@fb12a65: clases tipadas nativas (sin clases sombra), API regenerada; API_PARITY y regla de scripts portables para la Vita (T3.2.4 pendiente)', estado: 'hecho' },
       { texto: 'Verificar las skills: batería E1 con IA limpia y plantillas E2 en el editor de rclgd', estado: 'pendiente' },
       { texto: 'Conseguir/compilar el editor 4.8-dev7 para Linux y exportar un VPK de prueba desde CachyOS (el Godot de rclgd es 4.7.1 y no exporta a Vita)', estado: 'bloqueado-pc' },
       { texto: 'Fork de godot4-vita solo si hace falta (parches mínimos, proponibles a upstream; compatible con el entorno estándar)', estado: 'pendiente' },
