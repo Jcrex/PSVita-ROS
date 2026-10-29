@@ -134,8 +134,8 @@ inicializada** (§4.3).
 La interfaz (headers C) es la misma; **ningún crate cambia de código**. Cambian flags de compilación.
 
 ### 3.2 Reglas nuevas para cualquier código que entre en `libgodot.so`
-1. **PIC**: C con `-fPIC` (SCons ya lo pone); Rust con `-C relocation-model=pic` **[?]** (la bandera existe;
-   que el resultado pase `verify_runtime.py` solo se sabe en el PC).
+1. **PIC**: C con `-fPIC` (SCons ya lo pone); Rust con `-C relocation-model=pic` — **compila (G2, 2026-10-29)**;
+   que el `.so` final pase `verify_runtime.py` se sabe en G3.
 2. **Cierre de imports**: todo símbolo no definido debe estar en `default_dynlib.c` (§4).
 3. **Sin TLS**: nada de `thread_local`/`#[thread_local]`; nuestros módulos son `no_std` ⇒ cumplen **[T: 0 referencias
    a TLS en `libmods_c.a`, el staticlib Rust, `libmicroxrcedds_client.a` ni `libmicrocdr.a`, `nm -A` en host]**.
@@ -168,6 +168,21 @@ Además, la rama **Vita** de `net-udp` (C y Rust) pide 11 funciones del SDK que 
 `sceSysmoduleLoadModule`, `sceNetInit/Term`, `sceNetCtlInit/Term`, `sceNetSocket/SocketClose/Connect/Send/Recv/Setsockopt`.
 La tabla trae `socket/sendto/recvfrom` (newlib) pero **ninguna `sceNet*`** (solo 21 funciones `sce*`: audio, ctrl, io, motion,
 power, touch).
+
+**Resultado real en ARM (G2, PC, 2026-10-29)** con `arm-vita-eabi-nm` y la tabla **parcheada** (695 símbolos):
+
+| Artefacto PIC (ARM) | Script | Tamaño (text / bss) | Imports ausentes |
+|---|---|---|---|
+| `libmicroxrcedds_client.a` v2.4.3 (+ microcdr) | `XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh` | 25 KB / 0 | **0** |
+| `libmicrocdr.a` v2.0.1 | (el mismo) | 24 KB / 0 | **0** |
+| Los 8 módulos C (`libvita_modules_c_pic.a`) | `tools/build-c-pic.sh` | 8,5 KB / 1 MiB* | **0** |
+| Staticlib Rust umbrella (`core`, PIC) | `tools/build-rust-pic.sh` | 279 KB† / 1 MiB* | **0** |
+
+\* el pool de `sceNetInit` de `net-udp` (T2.1.2). † incluye `core` y `compiler_builtins`; el enlazador descarta lo no usado.
+**Control:** con la tabla **sin** parchear (681 símbolos) C y Rust dan exactamente los 11 imports de red ⇒ la comprobación
+no pasa en vacío. `sincosf`, `bcmp` y `__errno_location` **no aparecen en ARM** (eran artefactos del host). **0 TLS** en
+las cuatro (`readelf`: ni relocaciones TLS ni `.tbss`/`.tdata`). Pendiente para G3: posibles símbolos duplicados entre
+`compiler_builtins` de Rust y el `libgcc` del motor si se enlaza la variante Rust.
 
 ### 4.2 Parche del loader (hecho, comprobado)
 `godot/loader-patches/0001-ros2-vita-imports.patch` añade `bcmp`, `sincosf`, los 11 `sce*` de red y `sceSysmoduleUnloadModule`
@@ -204,7 +219,8 @@ aceptado por upstream), `net_udp_init` solo debe detectar «ya inicializada» y 
 
 ### 4.4 Herramientas entregadas
 `tools/check-vita-imports.py` (esta comprobación, con `--nm arm-vita-eabi-nm` en el PC),
-`tools/build-rust-pic.sh`, `tools/build-godot-template.sh` (aplica el parche, compila, ejecuta `verify_runtime.py`).
+`tools/build-rust-pic.sh`, `tools/build-c-pic.sh`, `XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh`,
+`tools/build-godot-template.sh` (aplica el parche, compila, ejecuta `verify_runtime.py`; reutiliza clon y parche si ya están).
 
 ---
 
@@ -288,7 +304,7 @@ PC (CachyOS, Linux)                   Vita
 |---|---|---|---|
 | **G0** | laptop | 8 módulos con paridad; `msg-schema` con `type_idx`; parche del loader aplica en `d1a5f29`; `check-vita-imports` funciona; scripts de build con `--dry-run` | **VERDE (2026-10-27)** |
 | **G1** | PC (host) | El módulo **compila** contra Godot 4.8 (`platform=linuxbsd custom_modules=…`) y pasa `godot/test` (RosMsg ↔ CDR bit a bit, pub/sub loopback, timers, ejes) | **VERDE (2026-10-29, PC)**: 294 comprobaciones, 0 fallos |
-| **G2** | PC (cruzada) | C y Rust PIC compilados para ARM; `check-vita-imports` (con `arm-vita-eabi-nm`) sin faltantes tras el parche | pendiente |
+| **G2** | PC (cruzada) | C y Rust PIC compilados para ARM; `check-vita-imports` (con `arm-vita-eabi-nm`) sin faltantes tras el parche | **VERDE (2026-10-29, PC)**: 0 imports ausentes en las 4 libs PIC, 0 TLS |
 | **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | pendiente |
 | **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | pendiente |
 | **G5** | Vita + agente | Transporte XRCE: `std_msgs/String` llega a `ros2 topic echo` | pendiente |
@@ -322,7 +338,7 @@ PC (CachyOS, Linux)                   Vita
 | M3 | Parche del loader (imports) | laptop | — | **hecho (aplica en d1a5f29)** |
 | M4 | Herramientas: `check-vita-imports`, `build-rust-pic`, `build-godot-template` | laptop | — | **hecho** |
 | M5 | G1: compilar el módulo en host y pasar `godot/test` | PC | M2 | **hecho (2026-10-29)** |
-| M6 | G2: cross-compilar C y Rust PIC; cerrar imports con `arm-vita-eabi-nm` | PC | M3,M4 | pendiente |
+| M6 | G2: cross-compilar C y Rust PIC; cerrar imports con `arm-vita-eabi-nm` | PC | M3,M4 | **hecho (2026-10-29)** |
 | M7 | Red en la Vita (opción A/B) + `XrceTransport` (hilo de sesión, entidades por topic) | PC+Vita | M6 | pendiente |
 | M8 | Exportación: `*.rsch` en el filtro, generación de esquemas desde `package.xml`, clases sombra | PC | M5 | pendiente |
 | M9 | HMI piloto en Godot (teleop + estado + dock) tomando `roomba_hmi` | PC+Vita | M7,M8 | pendiente |

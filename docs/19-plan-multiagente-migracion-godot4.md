@@ -92,7 +92,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  └─ T1.1.4 Procedimiento de rebase sobre upstream (script + check) ............ A2 · P · G3 · ⏳ (M17)
 ├─ 1.2 Loader (eboot) y tabla de imports
 │  ├─ T1.2.1 Parche 0001: bcmp, sincosf, 11 sce* de red, sysmodule ................ A2 · L · G0 · ✅
-│  ├─ T1.2.2 Repetir clausura de imports con `arm-vita-eabi-nm` sobre objetos reales A4 · P · G2 · ⏳
+│  ├─ T1.2.2 Repetir clausura de imports con `arm-vita-eabi-nm` sobre objetos reales A4 · P · G2 · ✅
 │  ├─ T1.2.3 Parches 000N para lo que falte (pthread, time, rand…) ................ A2 · P · G2 · ⏳
 │  └─ T1.2.4 Proponer los parches a upstream (PR) ................................ A2 · P · —  · ⏳
 ├─ 1.3 Compilación de la plantilla
@@ -113,7 +113,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T2.1.4 net_udp_shutdown al salir del juego / suspensión de la consola ...... A5 · V · G5 · ⏳
 │  └─ T2.1.5 Añadir sceNetCtlInetGetState (y lo que use) al parche del loader ..... A5+A2 · L · G0 · ⏳
 ├─ 2.2 microros-transport y cliente XRCE
-│  ├─ T2.2.1 Compilar microxrcedds_client + microcdr PIC para el .so .............. A4 · P · G2 · ⏳
+│  ├─ T2.2.1 Compilar microxrcedds_client + microcdr PIC para el .so .............. A4 · P · G2 · ✅
 │  ├─ T2.2.2 Compilar el cliente XRCE para HOST (docker) → pruebas contra el agente A6 · L · H1 · ⏳
 │  └─ T2.2.3 Ajustes XRCE (MTU, historia, heartbeat) — plan E1 de docs/13 ......... A6 · V · G5 · ⏳
 ├─ 2.3 Núcleo de sesión XRCE en C, sin tipos de Godot (nuevo: `ros2_vita/xrce_core.c`)
@@ -127,7 +127,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T2.4.1 Generador desde package.xml (cerrar dependencias como rclgd) .......... A7 · L · G0 · ⏳
 │  ├─ T2.4.2 Cruzar fixtures con rclpy real (robotnik_dev) ........................ A7 · L · G0 · ⏳
 │  └─ T2.4.3 Coste por mensaje en ARM (Imu, LaserScan, Image) ..................... A11 · V · G5 · ⏳
-├─ 2.5 tf-tree / viz-math / msg-ring / mem-pool: compilar PIC y medir ............ A4 · P · G2 · ⏳
+├─ 2.5 tf-tree / viz-math / msg-ring / mem-pool: compilar PIC y medir ............ A4 · P · G2 · ✅
 └─ 2.6 Coexistencia con vita-app (ELF estático): ningún cambio rompe Fase 1-4 ..... A11 · L · G0 · continuo
 
 3. MÓDULO GODOT ros2_vita (API = rclgd)
@@ -161,9 +161,9 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 4. TOOLCHAIN Y BUILD
 ├─ T4.1 tools/vita-doctor.sh (Godot 4) ......................................... A4 · L · G0 · ✅
 ├─ T4.2 tools/check-vita-imports.py ............................................ A4 · L · G0 · ✅
-├─ T4.3 tools/build-rust-pic.sh (nightly, -Zbuild-std=core, PIC) ................ A4 · P · G2 · 🟡
+├─ T4.3 tools/build-rust-pic.sh (nightly, -Zbuild-std=core, PIC) ................ A4 · P · G2 · ✅
 ├─ T4.4 tools/build-godot-template.sh (base fijada + parches + verify) .......... A2 · P · G3 · 🟡
-├─ T4.5 Script de build PIC del cliente XRCE (variante de vita-app/scripts) ..... A4 · P · G2 · ⏳
+├─ T4.5 Script de build PIC del cliente XRCE (variante de vita-app/scripts) ..... A4 · P · G2 · ✅
 ├─ T4.6 Imagen docker de host para H1 (cliente XRCE + agente) .................. A11 · L · H1 · ⏳
 └─ T4.7 CI ligera (GitHub Actions): paridad + host tests + web build ........... A11 · L · —  · ⏳ (opcional)
 
@@ -198,7 +198,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 └─ T7.4 Coste de texturas por fotograma (cámara/mapa) ........................... A9 · V · G7 · ⏳
 
 8. RUST (SDK propio, independiente de Godot)
-├─ T8.1 Umbrella crate PIC para libgodot.so (core-only, sin TLS, sin panics std) A13 · P · G2 · ⏳
+├─ T8.1 Umbrella crate PIC para libgodot.so (core-only, sin TLS, sin panics std) A13 · P · G2 · ✅
 ├─ T8.2 verify_runtime.py con Rust dentro (relocaciones 2/21/22/23) ............ A13 · P · G3 · ⏳ (R2)
 ├─ T8.3 App cargo-vita independiente reutilizando los módulos ................... A13 · P · —  · ⏳
 └─ T8.4 Serie docs/rust: PIC, build-std, cdylib vs staticlib (explicado) ........ A12 · L · —  · ⏳
@@ -353,7 +353,8 @@ K5 (coherencia) y al final K6 (verificación E1); K6 repite E2 en O1 con el PC.
 | E2 | pendiente (PC) | — | plantillas sin ejecutar |
 | G1 | **verde** | 2026-10-29 | PC: godot4-vita `d1a5f29` `linuxbsd` + `ros2_vita` compila; `run_host_tests.sh` 294 comprobaciones / 0 fallos |
 | G1' | pendiente | — | spike R-G sin empezar |
-| G2–G7 | pendiente | — | — |
+| G2 | **verde** | 2026-10-29 | PC: XRCE+microcdr, 8 módulos C y umbrella Rust en PIC; `check-vita-imports` (arm-vita-eabi-nm) 0 ausentes con el parche (11 sin él); 0 TLS |
+| G3–G7 | pendiente | — | — |
 
 Hechos de partida para O0: Fase 1 **cerró en hardware** (2026-07-01: `/vita_hello` visible y
 `/pc_hello` recibido) con `net-udp` + `microros-transport` + XRCE en un ELF estático ⇒ la opción A usa

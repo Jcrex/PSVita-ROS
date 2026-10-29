@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-29 (PC, 2.ª sesión: **G1 VERDE** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; ver el primer bloque). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-29 (PC, 2.ª sesión: **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,41 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-29 (PC, 2.ª sesión, cont.) — Puerta G2 VERDE
+
+**Qué se hizo.** Todo lo que entrará en `libgodot.so` se compiló como **PIC** para la Vita y se comparó con la
+tabla de imports del loader (parche `godot/loader-patches/0001` ya aplicado al clon de G1):
+
+```bash
+source tools/env-devpc.sh
+XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh   # → vita-app/third_party/xrce-vita-pic/
+tools/build-c-pic.sh                                    # → toolchains/pic/libvita_modules_c_pic.a (NUEVO)
+tools/build-rust-pic.sh                                 # → toolchains/pic/rust-target/.../libvita_modules_rust.a
+tools/check-vita-imports.py --dynlib toolchains/godot4-vita/engine/platform/vita/loader/default_dynlib.c \
+    --nm $VITASDK/bin/arm-vita-eabi-nm <las 4 .a>
+```
+
+Resultado: **0 imports ausentes** en las cuatro bibliotecas y **0 TLS**. Control: con la tabla sin parchear,
+C y Rust piden exactamente los 11 `sceNet*`/`sceSysmodule*` ⇒ el parche es necesario y suficiente.
+`sincosf`/`bcmp` no aparecen en ARM (solo en el host). Detalle y tamaños en `docs/18` §4.1.
+
+**Cambios de scripts:**
+- `build-xrce-client-vita.sh`: modo `XRCE_PIC=1` con prefijo y carpetas de build propios; la variante sin PIC
+  de `vita-app` no se toca (la relocación 25 rompe `vita-elf-create`, pero en el `.so` la valida
+  `verify_runtime.py`).
+- `build-rust-pic.sh`: `--target-dir toolchains/pic/rust-target`; antes habría **sobrescrito** el staticlib
+  estático de `vita-app` (misma ruta).
+- `build-godot-template.sh`: reutiliza el clon y no reaplica el parche si ya está (antes fallaba en G3).
+
+**Siguiente paso exacto (PC): G3.** Requiere el VitaGL del port: clonar VitaGL (fork *nosplash*) en el commit de
+`platform/vita/vitagl/dependency.json`, aplicar `vitagl-vita-port.patch` y compilar con
+`make NO_SPLASHSCREEN=1 NO_DEBUG=0 HAVE_GLSL_UBOS=1 HAVE_GLSL_TEXTURE_SIZE=1 HAVE_SHARK_LOG=1 LOG_ERRORS=2`
+(o `platform/vita/tools/build_ubo_probe.py`); luego
+`VITAGL_ROOT=<vitagl> tools/build-godot-template.sh` hasta `verify_runtime.py` PASS (≈1–2 h). Vigilar
+duplicados `compiler_builtins`/`libgcc` si se enlaza la variante Rust (`RUST_PIC_LIB=`).
 
 ---
 
