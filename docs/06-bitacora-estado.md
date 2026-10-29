@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-29 (PC, 2.ª sesión: **G1 VERDE** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; ver el primer bloque). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,50 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-29 (PC, 2.ª sesión) — Puerta G1 VERDE
+
+**Qué se hizo.** `godot4-vita` clonado en `toolchains/godot4-vita/engine` (gitignorado; la misma ruta que
+usa `tools/build-godot-template.sh`) y fijado en `d1a5f29`. Compilado el motor de host con el módulo:
+
+```bash
+cd toolchains/godot4-vita/engine
+scons -j14 platform=linuxbsd target=editor custom_modules=$REPO/godot x11=no wayland=no vulkan=no opengl3=no
+godot/test/run_host_tests.sh toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+```
+
+Resultado: **294 comprobaciones, 0 fallos** (round-trip CDR bit a bit de los 24 fixtures, propiedades
+anidadas, valores inválidos, pub/sub loopback, timers, parámetros, ejes). La primera compilación
+completa del motor llevó ~20 min (13:34→13:57, intentos fallidos incluidos, 16 hilos); luego es incremental (~12 s).
+
+**Arreglos que pidió el primer compilado** (el código nunca se había compilado):
+- Godot 4.8 renombró `core/object/callable_method_pointer.h` → `core/object/callable_mp.h`.
+- `ros_runtime.cpp` necesitaba `core/object/class_db.h` (`ClassDB`, `D_METHOD`, `DEFVAL`).
+- El virtual de Godot 4 es `_to_string()`, no `to_string()`.
+- `RosMsg::_set` devolvía `false` al **rechazar** un valor: para Godot 4 eso es «propiedad inexistente»
+  y lanza un `SCRIPT ERROR` que aborta la función de GDScript (se saltaban 2 comprobaciones sin contar
+  como fallo). Ahora devuelve `true` + `ERR_PRINT` y conserva el valor previo.
+- Godot interpreta los literales `const char*` como **Latin-1**: los mensajes de error van en ASCII
+  (sin tildes) o salen como `estÃ¡`. Los comentarios sí llevan tildes.
+- `runner.gd`: `var x := msg.campo` no compila (propiedad dinámica sin tipo) → `var x = ...`.
+
+**Por qué no se usa el Godot de rclgd para G1** (pregunta del usuario): rclgd descarga el binario oficial
+`4.7.1-stable` y se carga como GDExtension; `ros2_vita` es un módulo **en árbol** (la Vita no carga
+librerías) y solo existe si se compila el motor con él, y G1 debe validar contra el mismo código que irá
+a la Vita (godot4-vita, 4.8-dev7). El Godot de rclgd sirve para el desarrollo en PC (A3) y para el spike
+R-G (G1', T3.1.3).
+
+**Permisos:** el modo automático bloquea `scons` sobre el repo ajeno; el usuario añadió la regla local
+`Bash(scons:*)` con `/permissions`.
+
+**Siguiente paso exacto (PC, O1 de `docs/19`):**
+1. **G2:** compilar el cliente XRCE ARM (`vita-app/scripts/build-xrce-client-vita.sh`) y los módulos en
+   PIC; `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
+2. **G3:** `tools/build-godot-template.sh` (reutiliza `toolchains/godot4-vita/engine`) hasta
+   `verify_runtime.py` PASS.
+3. En paralelo: compilar rclgd (`godot/rclgd`) y el editor 4.8-dev7 Linux (M18).
 
 ---
 

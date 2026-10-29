@@ -1,4 +1,4 @@
-// ¡SIN COMPILAR! Godot 4.x (in-tree).
+// Godot 4.x (in-tree). Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3).
 #include "register_types.h"
 
 #include "core/config/engine.h"

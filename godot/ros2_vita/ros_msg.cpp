@@ -1,4 +1,4 @@
-// ros_msg.cpp — ¡SIN COMPILAR! (Godot 4.x in-tree; validar en el host del PC, puerta G1)
+// ros_msg.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3).
 #include "ros_msg.h"
 
 #include "core/object/class_db.h"
@@ -12,13 +12,13 @@ bool RosMsg::schema_loaded = false;
 
 // ------------------------------------------------------------------ esquema
 Error RosMsg::load_schema_bytes(const Vector<uint8_t> &p_blob) {
-	ERR_FAIL_COND_V_MSG(p_blob.is_empty(), ERR_INVALID_PARAMETER, "RosMsg: esquema vacío.");
+	ERR_FAIL_COND_V_MSG(p_blob.is_empty(), ERR_INVALID_PARAMETER, "RosMsg: esquema vacio.");
 	schema_blob = p_blob; // copia: el blob debe vivir mientras exista `schema`
 	msg_schema tmp;
 	if (msg_schema_init(&tmp, schema_blob.ptr(), schema_blob.size()) != MSG_SCHEMA_OK) {
 		schema_blob.clear();
 		schema_loaded = false;
-		ERR_FAIL_V_MSG(ERR_FILE_CORRUPT, "RosMsg: esquema .rsch inválido.");
+		ERR_FAIL_V_MSG(ERR_FILE_CORRUPT, "RosMsg: esquema .rsch invalido.");
 	}
 	schema = tmp;
 	schema_loaded = true;
@@ -155,7 +155,7 @@ void RosMsg::init(const String &p_ros_type) {
 	uint32_t idx = 0;
 	CharString cs = p_ros_type.utf8();
 	ERR_FAIL_COND_MSG(msg_schema_find_type(&schema, cs.get_data(), &idx) != MSG_SCHEMA_OK,
-			vformat("RosMsg: tipo '%s' no está en el esquema.", p_ros_type));
+			vformat("RosMsg: tipo '%s' no esta en el esquema.", p_ros_type));
 	init_idx(idx);
 }
 
@@ -282,8 +282,10 @@ bool RosMsg::_set(const StringName &p_name, const Variant &p_value) {
 	bool ok = true;
 	Variant v = _coerce(f, p_value, ok);
 	if (!ok) {
-		ERR_PRINT(vformat("RosMsg: valor no válido para el campo '%s' de %s.", String(p_name), ros_name));
-		return false;
+		ERR_PRINT(vformat("RosMsg: valor no valido para el campo '%s' de %s.", String(p_name), ros_name));
+		// true = el campo existe y se trató (rechazado, valor previo intacto). Con false
+		// Godot 4 entiende "propiedad inexistente" y lanza un SCRIPT ERROR que aborta el script.
+		return true;
 	}
 	members[p_name] = v;
 	return true;
@@ -689,7 +691,7 @@ PackedByteArray RosMsg::serialize() const {
 			return out;
 		}
 		if (rc != MSG_SCHEMA_ERR_NO_SPACE) {
-			ERR_PRINT(vformat("RosMsg: serialize falló (código %d) para %s.", rc, ros_name));
+			ERR_PRINT(vformat("RosMsg: serialize fallo (codigo %d) para %s.", rc, ros_name));
 			return PackedByteArray();
 		}
 		cap *= 2;
@@ -699,7 +701,7 @@ PackedByteArray RosMsg::serialize() const {
 }
 
 // ---------------------------------------------------------------- texto
-String RosMsg::to_string() {
+String RosMsg::_to_string() {
 	String out = get_type_name() + " {\n";
 	uint32_t nf = 0;
 	if (type_idx != MSG_SCHEMA_NO_TYPE) {

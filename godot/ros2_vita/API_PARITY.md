@@ -5,8 +5,8 @@
 > 2026-10-29, que ya trae las **clases tipadas nativas**). Objetivo: **el mismo
 > script GDScript corre en el PC (rclgd) y en la Vita (`ros2_vita`)**.
 > **Godot 4 decidido (2026-10-27, `docs/18`).** Estado de la columna Vita:
-> ✅ = *implementado en `godot/ros2_vita/` pero SIN COMPILAR* (validar en el PC,
-> puerta G1); ⏳ = no implementado. El transporte real (`XrceTransport`) es
+> ✅ = *implementado en `godot/ros2_vita/`, compilado y probado en host* (puerta G1
+> verde el 2026-10-29; en la Vita falta G3); ⏳ = no implementado. El transporte real (`XrceTransport`) es
 > aún un stub: hoy solo funciona el `LoopbackTransport` (pruebas en host,
 > `godot/test/`).
 > Leyenda: ✅ igual · 🟡 parcial/diferente · ⏳ fase posterior · ❌ no aplica.

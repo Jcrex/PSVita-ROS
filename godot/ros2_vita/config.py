@@ -1,5 +1,5 @@
 # config.py — módulo estático de Godot 4 (godot4-vita 4.8-dev7).
-# ¡SIN COMPILAR! Ver godot/README.md (puerta G1: compilar en el host del PC).
+# Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3). Ver godot/README.md.
 
 
 def can_build(env, platform):
