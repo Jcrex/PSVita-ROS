@@ -16,6 +16,10 @@ build/
 *.velf
 *.self
 
+# Objetos que scons (custom_modules) deja junto a las fuentes C
+*.o
+*.os
+
 # Editor/OS
 .DS_Store
 *.swp
@@ -27,7 +31,18 @@ target/
 # Tests de paridad en host
 build-host/
 
+# Sandbox de práctica del tutorial (código propio de los retos)
+practica/
+
 # Toolchains locales del PC de desarrollo (VitaSDK, rustup, cargo, cmake)
 toolchains/
 auditoria/
 Videos/
+
+# Clon local de Ozuba/rclgd (rama jazzy; trae su propio Godot 4.7.1). Repo
+# aparte con su propio .git: no se versiona aquí (ver godot/README.md).
+godot/rclgd/
+
+# Objetos sueltos de la compilación del template Godot 3.5 (SCons los deja
+# junto a las fuentes: modules/*/impl-c/, vita-app/src/, godot/godot35/modules/)
+*.vita.opt.32.o

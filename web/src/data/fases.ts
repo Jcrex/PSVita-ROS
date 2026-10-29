@@ -78,6 +78,18 @@ export const fases: Fase[] = [
     ],
   },
   {
+    id: 'fase-godot35',
+    nombre: 'Migración a Godot 3.5 — teleop sobre el engine (histórico)',
+    resumen:
+      'Replicar la app teleop dentro del fork godot-vita 3.5 mediante un módulo custom del engine (custom_modules) que reutiliza el código C/Rust existente, sin reescribir nada. Validada en hardware; desde 2026-10-29 es histórico (godot/godot35/, docs/20 y docs/21): el proyecto se muda a Godot 4.',
+    hitos: [
+      { texto: 'G1 — Esqueleto: módulo microros (puente C++→singleton GDScript), escena teleop con stub en el editor, build script y docs', estado: 'hecho' },
+      { texto: 'G2 — Template custom compila en el PC: engine godot-vita + microros → vita_release.zip instalado. Prerreq. del VitaSDK resueltos: PVR_PSP2 v3.9, códecs vdpm, patch bullet-vita-no-clew y stub dlfcn.h (docs/20 §Prerrequisitos); uninstall-godot.sh', estado: 'hecho' },
+      { texto: 'G3 — Teleop Godot en hardware: el .vpk instala, el singleton MicroROS corre y la sesión XRCE publica /cmd_vel (confirmado en hardware). Lecciones del .vpk: TITLE_ID 9 chars, imágenes sce_sys 8-bit, y el bug del input reliable stream corregido', estado: 'hecho' },
+      { texto: 'Fusionado en la línea Godot 4 (2026-10-29): proyecto 3.5 movido a godot/godot35/. El G4 de 3.5 (variante Rust) no se hará: la variante Rust sigue en Godot 4 (docs/19 T8.x)', estado: 'hecho' },
+    ],
+  },
+  {
     id: 'fase-3-4',
     nombre: 'Objetivos 3 y 4 — rviz2 / mini-rviz en la Vita',
     resumen:
@@ -118,6 +130,7 @@ export const fases: Fase[] = [
       { texto: 'Plan multiagente de la migración (docs/19): mapa jerárquico, ramas de ataque, 15 agentes + escuadra K, oleadas O0-O4', estado: 'hecho' },
       { texto: 'Oleada O0 (laptop): núcleo xrce_core.c + puerta H1 contra el agente, generador package.xml→schema, TF/logger, net-udp idempotente', estado: 'pendiente' },
       { texto: 'Spike R-G: GDExtension godot-cpp enlazada estáticamente (load_extension_from_function) — go/no-go', estado: 'bloqueado-pc' },
+      { texto: 'Fusión de la rama godot-migration (Godot 3.5, hardware OK) como histórico en godot/godot35/; rclgd (jazzy, Godot 4.7.1) clonado en godot/rclgd/', estado: 'hecho' },
       { texto: 'Escuadra K (6 agentes rclgd) en el plan + skills rclgd, godot4-ros-scripting y ros2-vita-godot (docs oficiales, API generada, plantillas, batería para IA limpia)', estado: 'hecho' },
       { texto: 'Verificar las skills: batería E1 con IA limpia y plantillas E2 en el editor de rclgd', estado: 'pendiente' },
       { texto: 'Conseguir/compilar el editor 4.8-dev7 para Linux y exportar un VPK de prueba desde CachyOS (el Godot de rclgd es 4.7.1 y no exporta a Vita)', estado: 'bloqueado-pc' },

@@ -55,5 +55,11 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 M5 compilar en host · M6 cruzada · M7 red + transporte XRCE · M8 exportación de `.rsch` y clases sombra ·
 M9 HMI piloto · M10 panel trasero/cámara · M11 TF · M12 servicios · M15 sesgo 4.7.1↔4.8-dev7.
 
-> La versión anterior de este directorio apuntaba a Godot 3.5 (`godot-vita`): se descartó el 2026-10-27
-> porque `rclgd` exige Godot 4 (`Callable`/`await`). Sigue en el historial de git.
+## Otras carpetas
+| Ruta | Qué es |
+|---|---|
+| `godot35/` | **Histórico, validado en hardware:** la app teleop en **Godot 3.5** (`godot-vita`) con el módulo `microros` (rama `godot-migration`, fusionada el 2026-10-29). Referencia para la HMI piloto y las lecciones del `.vpk`. Ver `godot35/README.md` y `docs/20`/`21` |
+| `rclgd/` | Clon local de [`Ozuba/rclgd`](https://github.com/Ozuba/rclgd) (rama `jazzy`, Godot **4.7.1**): el editor/entorno de desarrollo del PC (`ros2 rclgd editor`). **No se versiona** (`.gitignore`); es la referencia de la API que imita `ros2_vita` |
+
+> Godot 3.5 se descartó como destino el 2026-10-27 porque `rclgd` exige Godot 4 (`Callable`/`await`);
+> su app sigue funcionando en `godot35/`.

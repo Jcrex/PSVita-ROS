@@ -1,0 +1,27 @@
+# bullet-vita-no-clew.patch
+#
+# Excluye thirdparty/bullet/clew/clew.c de la compilacion de Bullet.
+#
+# Por que: clew es el cargador dinamico de OpenCL (aceleracion de fisica por
+# GPU). Hace #include <dlfcn.h> y usa dlopen/dlsym, que NO existen en la
+# newlib de la Vita (sin carga dinamica de librerias, por diseno). Godot solo
+# compila la "Bullet2 API" (fisica en CPU) y nunca referencia clew
+# (clewInit/OpenCL solo aparece en Bullet3OpenCL/*, que no se compila), asi que
+# clew.c es codigo muerto que solo rompe el build en Vita.
+#
+# Quitarlo NO afecta a la fisica: Bullet sigue corriendo entero en CPU
+# (rigid bodies, colisiones, joints, soft bodies). La aceleracion por GPU/OpenCL
+# es imposible en la Vita de todos modos (PowerVR SGX543 = solo GLES2).
+#
+# Se aplica sobre el fork godot-vita (tag 3.5-rc5-vita1) desde build-vita-template.sh.
+--- a/modules/bullet/SCsub
++++ b/modules/bullet/SCsub
+@@ -183,8 +183,6 @@
+         "BulletSoftBody/BulletReducedDeformableBody/btReducedDeformableBodySolver.cpp",
+         "BulletSoftBody/BulletReducedDeformableBody/btReducedDeformableContactConstraint.cpp",
+         "BulletSoftBody/poly34.cpp",
+-        # clew
+-        "clew/clew.c",
+         # LinearMath
+         "LinearMath/btAlignedAllocator.cpp",
+         "LinearMath/btConvexHull.cpp",
