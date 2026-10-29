@@ -96,7 +96,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T1.2.3 Parches 000N para lo que falte (pthread, time, rand…) ................ A2 · P · G2 · ⏳
 │  └─ T1.2.4 Proponer los parches a upstream (PR) ................................ A2 · P · —  · ⏳
 ├─ 1.3 Compilación de la plantilla
-│  ├─ T1.3.1 G1 host: Godot 4.8 linuxbsd + custom_modules=godot → godot/test ...... A2 · P · G1 · ⏳
+│  ├─ T1.3.1 G1 host: Godot 4.8 linuxbsd + custom_modules=godot → godot/test ...... A2 · P · G1 · ✅
 │  ├─ T1.3.2 G3 Vita: build-godot-template.sh → verify_runtime.py PASS ............ A2 · P · G3 · ⏳
 │  └─ T1.3.3 Medir tamaño/tiempo de arranque de libgodot.so con ros2_vita ......... A11 · V · G4 · ⏳
 ├─ 1.4 Entrada y sensores en el motor
@@ -132,18 +132,18 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 
 3. MÓDULO GODOT ros2_vita (API = rclgd)
 ├─ 3.1 Infraestructura del módulo
-│  ├─ T3.1.1 config.py/SCsub/register_types (Godot 4) ............................ A8 · L · G1 · 🟡
+│  ├─ T3.1.1 config.py/SCsub/register_types (Godot 4) ............................ A8 · L · G1 · ✅
 │  ├─ T3.1.2 SCsub: compilar xrce_core.c, uxr/microcdr PIC como File nodes ........ A4 · P · G1 · ⏳
 │  └─ T3.1.3 (rama R-G) spike godot-cpp + load_extension_from_function ............ A7b · L/P · G1' · ⏳
 ├─ 3.2 RosMsg
-│  ├─ T3.2.1 RosMsg dinámico sobre msg-schema (_get/_set, Packed*) ................ A7 · L · G1 · 🟡
-│  ├─ T3.2.2 Carga del esquema: res://ros/schema.rsch al iniciar el módulo ........ A7 · L · G1 · 🟡
+│  ├─ T3.2.1 RosMsg dinámico sobre msg-schema (_get/_set, Packed*) ................ A7 · L · G1 · ✅
+│  ├─ T3.2.2 Carga del esquema: res://ros/schema.rsch al iniciar el módulo ........ A7 · L · G1 · ✅
 │  ├─ T3.2.3 ~~Clases sombra GDScript~~ — descartada: rclgd ya no las usa (2026-10-28) A7 · — · —  · ✗
 │  └─ T3.2.4 Clases tipadas NATIVAS desde el esquema (rama R-N; rclgd ya las tiene) A7 · L · G1 · ⏳
 ├─ 3.3 Runtime
-│  ├─ T3.3.1 Singleton rclgd, init(args), ok, shutdown, ros_ready ................. A8 · L · G1 · 🟡
-│  ├─ T3.3.2 RosNode: pub/sub/timer, ~ y relativos, parámetros locales ............ A8 · L · G1 · 🟡
-│  ├─ T3.3.3 LoopbackTransport (pruebas) ......................................... A8 · L · G1 · 🟡
+│  ├─ T3.3.1 Singleton rclgd, init(args), ok, shutdown, ros_ready ................. A8 · L · G1 · ✅
+│  ├─ T3.3.2 RosNode: pub/sub/timer, ~ y relativos, parámetros locales ............ A8 · L · G1 · ✅
+│  ├─ T3.3.3 LoopbackTransport (pruebas) ......................................... A8 · L · G1 · ✅
 │  ├─ T3.3.4 XrceTransport = envoltura Godot de xrce_core.c ....................... A6 · L/P · G5 · ⏳
 │  ├─ T3.3.5 now() sincronizado con el agente ..................................... A6 · V · G5 · ⏳
 │  └─ T3.3.6 Señales de error de red/estado (ros_ready, ros_lost) ................. A8 · L · G1 · ⏳
@@ -154,7 +154,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T3.4.4 Acciones (sobre servicios + topics; muy posterior) .................. A8 · — · —  · ⏳
 │  └─ T3.4.5 Mantener API_PARITY.md al día con cada versión de rclgd ............. A1 · L · —  · continuo
 └─ 3.5 Pruebas del módulo
-   ├─ T3.5.1 godot/test: runner GDScript (24 fixtures, loopback, timers, ejes) .... A11 · P · G1 · 🟡
+   ├─ T3.5.1 godot/test: runner GDScript (24 fixtures, loopback, timers, ejes) .... A11 · P · G1 · ✅
    ├─ T3.5.2 Pruebas del XrceTransport en host contra el agente (docker) .......... A11 · L/P · H1 · ⏳
    └─ T3.5.3 Mismo script de prueba en el editor de rclgd (PC) y en la Vita ....... A11 · P/V · G5 · ⏳
 
@@ -351,7 +351,8 @@ K5 (coherencia) y al final K6 (verificación E1); K6 repite E2 en O1 con el PC.
 | H1 | pendiente | — | — |
 | E1 | batería escrita; pendiente de pasar con IA limpia | 2026-10-27 | `skills/rclgd/evals/preguntas.md` |
 | E2 | pendiente (PC) | — | plantillas sin ejecutar |
-| G1 / G1' | pendiente | — | intento bloqueado en la sesión cloud (política del entorno) |
+| G1 | **verde** | 2026-10-29 | PC: godot4-vita `d1a5f29` `linuxbsd` + `ros2_vita` compila; `run_host_tests.sh` 294 comprobaciones / 0 fallos |
+| G1' | pendiente | — | spike R-G sin empezar |
 | G2–G7 | pendiente | — | — |
 
 Hechos de partida para O0: Fase 1 **cerró en hardware** (2026-07-01: `/vita_hello` visible y

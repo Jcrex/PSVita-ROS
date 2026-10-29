@@ -35,7 +35,8 @@ commit `d1a5f29` (2026-10-27, 547 MB), `Ozuba/rclgd` `4d0a8b3`, `Ozuba/roomba_ws
    - `websocket` y `mbedtls` están desactivados: la vía B (rosbridge) **ya no existe** en 4.x (§2.4).
 5. **Lo que se puede verificar sin Vita** está dividido en puertas G0–G7 (§8). Hoy: G0 verde.
    La compilación del motor con SCons **no se ejecutó** aquí (el entorno bloqueó correr los scripts
-   de build de un repositorio de terceros); queda como puerta G1 en el PC.
+   de build de un repositorio de terceros); queda como puerta G1 en el PC. **G1 verde el 2026-10-29** (PC: compila y
+   pasa `godot/test`, 294 comprobaciones / 0 fallos).
 
 ---
 
@@ -211,7 +212,7 @@ aceptado por upstream), `net_udp_init` solo debe detectar «ya inicializada» y 
 
 | Capacidad | Estado en `ros2_vita` | Nota |
 |---|---|---|
-| `RosMsg` dinámico (propiedades anidadas, arrays, strings) | **Escrito** (`ros_msg.cpp`), sobre `msg-schema` | sin compilar; pruebas GDScript listas (§8, G1) |
+| `RosMsg` dinámico (propiedades anidadas, arrays, strings) | **Escrito** (`ros_msg.cpp`), sobre `msg-schema` | compilado y probado en host (G1 verde, 2026-10-29) |
 | Pub/Sub/Timer/QoS/Parámetros/`now()` | **Escrito** con transporte `loopback` | `xrce` es un *stub* (M7) |
 | Clases sombra GDScript (`Ros*` con `ROS_TYPE_NAME`) | Generables **en el PC con rclgd**; nuestro `RosMsg` acepta la clase como tipo | adjuntar el script al recibir ⇒ opcional (M8) |
 | Esquema `.rsch` en el `.pck` | Generador listo (`tools/gen_msg_schema.py`) | hay que **incluir `*.rsch` en el filtro de exportación** (no es recurso) (M8) |
@@ -286,7 +287,7 @@ PC (CachyOS, Linux)                   Vita
 | Puerta | Dónde | Qué demuestra | Estado |
 |---|---|---|---|
 | **G0** | laptop | 8 módulos con paridad; `msg-schema` con `type_idx`; parche del loader aplica en `d1a5f29`; `check-vita-imports` funciona; scripts de build con `--dry-run` | **VERDE (2026-10-27)** |
-| **G1** | PC (host) | El módulo **compila** contra Godot 4.8 (`platform=linuxbsd custom_modules=…`) y pasa `godot/test` (RosMsg ↔ CDR bit a bit, pub/sub loopback, timers, ejes) | pendiente (intento aquí **bloqueado** por política del entorno) |
+| **G1** | PC (host) | El módulo **compila** contra Godot 4.8 (`platform=linuxbsd custom_modules=…`) y pasa `godot/test` (RosMsg ↔ CDR bit a bit, pub/sub loopback, timers, ejes) | **VERDE (2026-10-29, PC)**: 294 comprobaciones, 0 fallos |
 | **G2** | PC (cruzada) | C y Rust PIC compilados para ARM; `check-vita-imports` (con `arm-vita-eabi-nm`) sin faltantes tras el parche | pendiente |
 | **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | pendiente |
 | **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | pendiente |
@@ -320,7 +321,7 @@ PC (CachyOS, Linux)                   Vita
 | M2 | Reescribir módulo a Godot 4 (RosMsg, runtime, pruebas) | laptop | — | **hecho (sin compilar)** |
 | M3 | Parche del loader (imports) | laptop | — | **hecho (aplica en d1a5f29)** |
 | M4 | Herramientas: `check-vita-imports`, `build-rust-pic`, `build-godot-template` | laptop | — | **hecho** |
-| M5 | G1: compilar el módulo en host y pasar `godot/test` | PC | M2 | pendiente |
+| M5 | G1: compilar el módulo en host y pasar `godot/test` | PC | M2 | **hecho (2026-10-29)** |
 | M6 | G2: cross-compilar C y Rust PIC; cerrar imports con `arm-vita-eabi-nm` | PC | M3,M4 | pendiente |
 | M7 | Red en la Vita (opción A/B) + `XrceTransport` (hilo de sesión, entidades por topic) | PC+Vita | M6 | pendiente |
 | M8 | Exportación: `*.rsch` en el filtro, generación de esquemas desde `package.xml`, clases sombra | PC | M5 | pendiente |

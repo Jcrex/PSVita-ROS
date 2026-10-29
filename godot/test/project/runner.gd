@@ -1,5 +1,5 @@
 extends SceneTree
-## Pruebas de host del módulo ros2_vita (Godot 4). ¡SIN EJECUTAR!: requieren un Godot
+## Pruebas de host del módulo ros2_vita (Godot 4). Verdes en G1 (2026-10-29: 294 comprobaciones, 0 fallos). Requieren un Godot
 ## compilado con el módulo (puerta G1 de docs/18). Se ejecutan con:
 ##   godot --headless --path godot/test/project --script res://runner.gd -- fixtures=<dir>
 ## donde <dir> = modules/msg-schema/tests/fixtures (schema.rsch + casos .bin/.type).
@@ -147,7 +147,7 @@ func _test_set_properties() -> void:
 func _test_bad_values() -> void:
 	var imu := RosMsg.from_type("sensor_msgs/msg/Imu")
 	# array fijo de 9 con 3 elementos: se rechaza y el valor anterior se conserva
-	var before := imu.orientation_covariance
+	var before = imu.orientation_covariance  # propiedad dinámica: sin tipo inferible
 	imu.orientation_covariance = PackedFloat64Array([1.0, 2.0, 3.0])
 	expect(imu.orientation_covariance == before, "array fijo con longitud errónea se rechaza")
 	# compuesto de otro tipo

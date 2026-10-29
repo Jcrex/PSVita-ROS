@@ -1,4 +1,4 @@
-// ¡SIN COMPILAR! Godot 4.x (in-tree). Nombre del módulo = nombre de la carpeta.
+// Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3). Godot 4.x (in-tree). Nombre del módulo = nombre de la carpeta.
 #pragma once
 
 #include "modules/register_module_types.h"

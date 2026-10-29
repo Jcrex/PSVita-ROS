@@ -1,8 +1,8 @@
 # `godot/` — módulo `ros2_vita` para Godot 4 (godot4-vita 4.8-dev7)
 
-> **Estado: SIN COMPILAR NI EJECUTAR.** La laptop no pudo compilar el motor de terceros (el
-> entorno bloqueó ejecutar los scripts de SCons de ese repositorio) y no hay Vita conectada.
-> Todo lleva el marcador **validar en el PC / en hardware**. Decisión y razones:
+> **Estado (2026-10-29): G1 VERDE** — el módulo compila dentro de godot4-vita @ `d1a5f29`
+> (`platform=linuxbsd`, en el PC) y `godot/test/run_host_tests.sh` pasa (294 comprobaciones, 0 fallos).
+> **Para la Vita aún sin compilar** (G2/G3) y sin transporte XRCE: marcador **validar en el PC / en hardware**. Decisión y razones:
 > `docs/adr/0008-godot-via-modulo-estatico.md`; investigación y plan: **`docs/18-migracion-a-godot4.md`**.
 
 ## Qué es

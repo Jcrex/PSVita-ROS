@@ -1,7 +1,8 @@
-// ros_runtime.cpp — ¡SIN COMPILAR! (Godot 4.x in-tree; validar en el host del PC, puerta G1)
+// ros_runtime.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3).
 #include "ros_runtime.h"
 
 #include "core/config/project_settings.h"
+#include "core/object/class_db.h"
 #include "core/object/script_language.h"
 #include "core/os/os.h"
 #include "scene/main/scene_tree.h"
@@ -99,7 +100,7 @@ void RosPublisher::publish(const Ref<RosMsg> &p_msg) {
 	ERR_FAIL_COND_MSG(!r->ok() || pub_id < 0, "RosPublisher: contexto ROS no activo.");
 	ERR_FAIL_COND_MSG(p_msg.is_null(), "RosPublisher: mensaje nulo.");
 	ERR_FAIL_COND_MSG(p_msg->get_ros_interface_name() != type_name,
-			vformat("RosPublisher: se esperaba %s y llegó %s.", type_name, p_msg->get_ros_interface_name()));
+			vformat("RosPublisher: se esperaba %s y llego %s.", type_name, p_msg->get_ros_interface_name()));
 	PackedByteArray bytes = p_msg->serialize();
 	ERR_FAIL_COND(bytes.is_empty());
 	r->get_transport()->publish(pub_id, bytes.ptr(), bytes.size());
@@ -124,7 +125,7 @@ void RosSubscriber::deliver(const uint8_t *p_data, size_t p_len) {
 		memcpy(bytes.ptrw(), p_data, p_len);
 	}
 	if (msg->deserialize(bytes) != OK) {
-		WARN_PRINT(vformat("RosSubscriber: CDR inválido para %s.", type_name));
+		WARN_PRINT(vformat("RosSubscriber: CDR invalido para %s.", type_name));
 		return;
 	}
 	callback.call(msg);
@@ -197,7 +198,7 @@ void RosNode::_bind_methods() {
 
 void RosNode::init(const String &p_name, const String &p_namespace) {
 	ERR_FAIL_COND_MSG(!node_name.is_empty(), "RosNode: ya inicializado.");
-	ERR_FAIL_COND_MSG(p_name.is_empty() || p_name.contains("/"), "RosNode: nombre de nodo inválido.");
+	ERR_FAIL_COND_MSG(p_name.is_empty() || p_name.contains("/"), "RosNode: nombre de nodo invalido.");
 	node_name = p_name;
 	String ns = p_namespace.strip_edges();
 	if (ns.is_empty() || ns == "/") {
@@ -252,7 +253,7 @@ Ref<RosPublisher> RosNode::create_publisher(const String &p_topic, const Variant
 	String type = _type_from_variant(p_type);
 	ERR_FAIL_COND_V_MSG(type.is_empty(), Ref<RosPublisher>(), "RosNode: no se pudo resolver el tipo ROS.");
 	int id = r->get_transport()->advertise(_resolve_topic(p_topic), type, p_qos);
-	ERR_FAIL_COND_V_MSG(id < 0, Ref<RosPublisher>(), "RosNode: el transporte rechazó el publisher.");
+	ERR_FAIL_COND_V_MSG(id < 0, Ref<RosPublisher>(), "RosNode: el transporte rechazo el publisher.");
 	Ref<RosPublisher> pub;
 	pub.instantiate();
 	pub->setup(id, type);
@@ -266,7 +267,7 @@ Ref<RosSubscriber> RosNode::create_subscription(const String &p_topic, const Var
 	String type = _type_from_variant(p_type);
 	ERR_FAIL_COND_V_MSG(type.is_empty(), Ref<RosSubscriber>(), "RosNode: no se pudo resolver el tipo ROS.");
 	int id = r->get_transport()->subscribe(_resolve_topic(p_topic), type, p_qos);
-	ERR_FAIL_COND_V_MSG(id < 0, Ref<RosSubscriber>(), "RosNode: el transporte rechazó la suscripción.");
+	ERR_FAIL_COND_V_MSG(id < 0, Ref<RosSubscriber>(), "RosNode: el transporte rechazo la suscripcion.");
 	Ref<RosSubscriber> sub;
 	sub.instantiate();
 	sub->setup(id, type, p_cb);
@@ -277,7 +278,7 @@ Ref<RosSubscriber> RosNode::create_subscription(const String &p_topic, const Var
 Ref<RosTimer> RosNode::create_timer(double p_seconds, const Callable &p_cb) {
 	rclgd *r = rclgd::get_singleton();
 	ERR_FAIL_COND_V_MSG(!r || !r->ok(), Ref<RosTimer>(), "RosNode: rclgd.init() primero.");
-	ERR_FAIL_COND_V_MSG(p_seconds <= 0.0, Ref<RosTimer>(), "RosNode: periodo del timer inválido.");
+	ERR_FAIL_COND_V_MSG(p_seconds <= 0.0, Ref<RosTimer>(), "RosNode: periodo del timer invalido.");
 	Ref<RosTimer> t;
 	t.instantiate();
 	t->setup(p_seconds, p_cb);
@@ -297,7 +298,7 @@ Ref<RosMsg> RosNode::now() {
 
 void RosNode::declare_parameter(const String &p_name, const Variant &p_default) {
 	if (params.has(p_name)) {
-		ERR_FAIL_MSG(vformat("RosNode: parámetro '%s' ya declarado.", p_name));
+		ERR_FAIL_MSG(vformat("RosNode: parametro '%s' ya declarado.", p_name));
 	}
 	Variant v = p_default;
 	rclgd *r = rclgd::get_singleton();
@@ -319,7 +320,7 @@ void RosNode::declare_parameter(const String &p_name, const Variant &p_default) 
 }
 
 void RosNode::set_parameter(const String &p_name, const Variant &p_value) {
-	ERR_FAIL_COND_MSG(!params.has(p_name), vformat("RosNode: parámetro '%s' no declarado.", p_name));
+	ERR_FAIL_COND_MSG(!params.has(p_name), vformat("RosNode: parametro '%s' no declarado.", p_name));
 	params[p_name] = p_value;
 	emit_signal(SNAME("parameter_changed"), p_name, p_value);
 }
@@ -372,7 +373,7 @@ Error rclgd::init(const PackedStringArray &p_args) {
 		String path = overrides.has("schema") ? String(overrides["schema"])
 				: (ps->has_setting("ros/schema_path") ? String(ps->get_setting("ros/schema_path")) : String("res://ros/schema.rsch"));
 		if (RosMsg::load_schema_file(path) != OK) {
-			WARN_PRINT(vformat("rclgd: sin esquema (%s); RosMsg.from_type no funcionará.", path));
+			WARN_PRINT(vformat("rclgd: sin esquema (%s); RosMsg.from_type no funcionara.", path));
 		}
 	}
 

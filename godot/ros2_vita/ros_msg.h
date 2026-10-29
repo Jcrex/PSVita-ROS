@@ -1,5 +1,5 @@
 // ros_msg.h — RosMsg: mensaje ROS2 dinámico guiado por esquema (Godot 4.x, in-tree).
-// ¡SIN COMPILAR! Equivalente en la Vita del RosMsg de rclgd (que usa ros_babel_fish):
+// Compilado y probado en host (G1). Equivalente en la Vita del RosMsg de rclgd (que usa ros_babel_fish):
 // aquí el árbol de valores vive en Variants y el CDR se (de)codifica con
 // modules/msg-schema (docs/17 §6.2). Mantiene la API pública de rclgd:
 //   RosMsg.from_type("pkg/msg/T"), propiedades anidadas (msg.pose.position.x),
@@ -62,5 +62,5 @@ public:
 	PackedByteArray serialize() const;
 	Error deserialize(const PackedByteArray &p_payload);
 
-	String to_string() override;
+	String _to_string() override; // en Godot 4 el virtual es _to_string()
 };

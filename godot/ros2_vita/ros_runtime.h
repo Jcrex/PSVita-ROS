@@ -1,12 +1,12 @@
 // ros_runtime.h — singleton `rclgd`, RosNode, RosPublisher, RosSubscriber, RosTimer, RosQoS
-// (Godot 4.x in-tree). ¡SIN COMPILAR! API y semántica copiadas de rclgd (docs/17,
+// (Godot 4.x in-tree). Compilado y probado en host (G1). API y semántica copiadas de rclgd (docs/17,
 // godot/ros2_vita/API_PARITY.md); el transporte es intercambiable:
 //   - LoopbackTransport : publica y recibe en el propio proceso (pruebas de host, sin Vita)
 //   - XrceTransport     : micro-ROS sobre WiFi/UDP (pendiente, ver ros_runtime.cpp)
 #pragma once
 
 #include "core/io/resource.h"
-#include "core/object/callable_method_pointer.h"
+#include "core/object/callable_mp.h" // en 4.8 sustituye a callable_method_pointer.h
 #include "core/object/ref_counted.h"
 #include "core/os/mutex.h"
 #include "core/templates/hash_map.h"
