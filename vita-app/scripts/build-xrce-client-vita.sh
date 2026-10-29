@@ -35,13 +35,24 @@
 #    GOT-relativas (R_ARM_BASE_PREL, tipo 25) que vita-elf-create NO admite
 #    ("Invalid relocation type 25!" al empaquetar el .vpk). El homebrew de la
 #    Vita es estático/position-dependent, así que apagamos PIC en ambas libs.
+#  - XRCE_PIC=1 (Godot 4, puerta G2 de docs/18): compila las MISMAS libs con PIC=ON
+#    y las instala en third_party/xrce-vita-pic. Las necesita el módulo ros2_vita,
+#    que vive dentro de libgodot.so (un .so PIC que reubica el loader de
+#    godot4-vita). Allí la relocación 25 no molesta: no pasa por vita-elf-create,
+#    sino por verify_runtime.py. La variante sin PIC (vita-app) no se toca.
 #  - Si la compilación choca con algo de newlib, documentar el muro en
 #    docs/02 (sección incógnita dura) antes de parchear.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PREFIX="$APP_DIR/third_party/xrce-vita"
+XRCE_PIC="${XRCE_PIC:-0}"
+if [[ "$XRCE_PIC" == 1 ]]; then
+    PIC=ON; SUFFIX="-pic"   # para libgodot.so (Godot 4)
+else
+    PIC=OFF; SUFFIX=""      # para el ELF estático de vita-app
+fi
+PREFIX="$APP_DIR/third_party/xrce-vita$SUFFIX"
 WORK="$APP_DIR/third_party/_build"
 XRCE_TAG="${XRCE_TAG:-v2.4.3}"
 CDR_TAG="${CDR_TAG:-v2.0.1}"
@@ -71,18 +82,18 @@ COMMON_ARGS=(
 )
 
 # 1) microcdr (serialización CDR) — dependencia del cliente.
-cmake -S Micro-CDR -B build-microcdr "${COMMON_ARGS[@]}" \
+cmake -S Micro-CDR -B "build-microcdr$SUFFIX" "${COMMON_ARGS[@]}" \
     -DUCDR_ISOLATED_INSTALL=OFF \
-    -DUCDR_PIC=OFF
-cmake --build build-microcdr -j"$(nproc)"
-cmake --install build-microcdr
+    -DUCDR_PIC="$PIC"
+cmake --build "build-microcdr$SUFFIX" -j"$(nproc)"
+cmake --install "build-microcdr$SUFFIX"
 
 # 2) microxrcedds_client (sin superbuild): encuentra microcdr vía $PREFIX.
-cmake -S Micro-XRCE-DDS-Client -B build-uclient "${COMMON_ARGS[@]}" \
+cmake -S Micro-XRCE-DDS-Client -B "build-uclient$SUFFIX" "${COMMON_ARGS[@]}" \
     -DCMAKE_PREFIX_PATH="$PREFIX" \
     -DUCLIENT_SUPERBUILD=OFF \
     -DUCLIENT_ISOLATED_INSTALL=OFF \
-    -DUCLIENT_PIC=OFF \
+    -DUCLIENT_PIC="$PIC" \
     -DUCLIENT_PROFILE_UDP=OFF \
     -DUCLIENT_PROFILE_TCP=OFF \
     -DUCLIENT_PROFILE_SERIAL=OFF \
@@ -90,8 +101,8 @@ cmake -S Micro-XRCE-DDS-Client -B build-uclient "${COMMON_ARGS[@]}" \
     -DUCLIENT_PROFILE_CUSTOM_TRANSPORT=ON \
     -DUCLIENT_PROFILE_MULTITHREAD=OFF \
     -DUCLIENT_PROFILE_SHARED_MEMORY=OFF
-cmake --build build-uclient -j"$(nproc)"
-cmake --install build-uclient
+cmake --build "build-uclient$SUFFIX" -j"$(nproc)"
+cmake --install "build-uclient$SUFFIX"
 
 echo
 echo ">> Instalado en $PREFIX"

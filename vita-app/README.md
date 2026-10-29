@@ -31,7 +31,7 @@ main.c ──> uxr_glue ──> microros-transport ──> net-udp ──> WiFi/
 | `scripts/gen-ui-header.mjs` | Codegen `layout.json` → `ui_layout.h` (node, sin dependencias). |
 | `scripts/check-ui-layout.sh` | Verificación EN HOST: regenera el header y comprueba que compila (gcc `-fsyntax-only`). |
 | `rust-modules/` | Crate paraguas: un solo `libvita_modules_rust.a` con los 3 módulos duales (evita staticlibs Rust duplicadas). |
-| `scripts/build-xrce-client-vita.sh` | Cross-compila `microxrcedds_client`+`microcdr` para armv7 Vita (perfil custom transport, sin POSIX). |
+| `scripts/build-xrce-client-vita.sh` | Cross-compila `microxrcedds_client`+`microcdr` para armv7 Vita (perfil custom transport, sin POSIX). Con `XRCE_PIC=1` genera la variante PIC para Godot 4 en `third_party/xrce-vita-pic`. |
 | `CMakeLists.txt` | Build con VitaSDK, selección `-DVITA_IMPL=c\|rust`, empaquetado `.vpk`. |
 
 ## Compilar (EN EL PC, no en la laptop)

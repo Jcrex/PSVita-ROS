@@ -38,12 +38,23 @@ if [[ $DRY -eq 0 ]]; then
 fi
 
 echo "== 1. Clonar godot4-vita @ $REF =="
-run git clone "$URL" "$WORK/engine"
+# Idempotente: si el clon ya existe (p. ej. el de la puerta G1) se reutiliza.
+if [[ -d "$WORK/engine/.git" ]]; then
+    echo "  (ya clonado en $WORK/engine; se reutiliza)"
+else
+    run git clone "$URL" "$WORK/engine"
+fi
 run git -C "$WORK/engine" checkout "$REF"
 
 echo "== 2. Parche del loader: imports de red y helpers que piden los módulos duales =="
-run git -C "$WORK/engine" apply --check "$REPO/godot/loader-patches/0001-ros2-vita-imports.patch"
-run git -C "$WORK/engine" apply "$REPO/godot/loader-patches/0001-ros2-vita-imports.patch"
+PATCH="$REPO/godot/loader-patches/0001-ros2-vita-imports.patch"
+# Idempotente: si el parche ya está aplicado (aplica al revés), no se vuelve a aplicar.
+if [[ $DRY -eq 0 ]] && git -C "$WORK/engine" apply --reverse --check "$PATCH" 2>/dev/null; then
+    echo "  (parche ya aplicado)"
+else
+    run git -C "$WORK/engine" apply --check "$PATCH"
+    run git -C "$WORK/engine" apply "$PATCH"
+fi
 
 echo "== 3. Motor + módulo ros2_vita (≈1–2 h) =="
 EXTRA=()

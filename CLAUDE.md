@@ -55,7 +55,7 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   `docs/18`), compilado y probado en host (G1), sin compilar para la Vita; `godot/loader-patches/` parchea el loader;
   `godot/test/` pruebas GDScript; el SDK Rust no depende de Godot; `tools/vita-doctor.sh` diagnostica el entorno;
   `tools/build-godot-template.sh` es la receta (solo PC);
-  `tools/check-vita-imports.py` / `build-rust-pic.sh` verifican/construyen los enlaces; `tools/hwprobe/`
+  `tools/check-vita-imports.py` / `build-rust-pic.sh` / `build-c-pic.sh` verifican/construyen los enlaces (G2); `tools/hwprobe/`
   es una sonda de hardware (sin compilar; docs/14 §9).
   `godot/godot35/` = app teleop en Godot 3.5 (HISTÓRICO, validada en hardware; docs/20–21);
   `godot/rclgd/` = clon local de rclgd (jazzy, trae Godot 4.7.1), no versionado.
