@@ -7,7 +7,9 @@ header C. Proyecto experimental de largo plazo con vocación de publicarse.
 
 **Estado:** Objetivo 1 (topics) y **Objetivo 2 (teleoperación) CERRADOS y
 validados en hardware real** · Objetivos 3/4 (mini-rviz 3D) **en ejecución**
-con las dos primeras etapas hechas · web del proyecto operativa (taller,
+con las dos primeras etapas hechas · **Godot:** el teleop en **Godot 3.5** ya publicó `/cmd_vel` en hardware
+(`godot/godot35/`, histórico) y el proyecto **se muda a Godot 4** (`godot4-vita` +
+API de `rclgd`; ADR 0008, `docs/18`–`19`) · web del proyecto operativa (taller,
 monitor, visor 3D). Detalle vivo en
 [`docs/06-bitacora-estado.md`](docs/06-bitacora-estado.md).
 
@@ -38,6 +40,7 @@ velocidad y el Twist publicado:
 | 2026-07-07 | **Objetivo 2 cerrado**: teleop `/cmd_vel` con sticks/botones (39 checks host del mapeo) |
 | 2026-07-10 | **Objetivo 3 respondido con evidencia** (rviz2 no portable → ADR 0006: mini-rviz propio) |
 | 2026-07-10 | **Modo VIZ 3D en la consola** (vitaGL, ADR 0007) + IP del agente editable desde la Vita + **robot móvil real controlado** (vídeo de arriba) |
+| 2026-07-13 | **Migración a Godot (rama `godot-migration`):** módulo `microros` como módulo custom del engine, template `.vpk` compilado en el PC, y **teleop en Godot publicando `/cmd_vel` en hardware** (variante C completa, G1-G3) |
 
 ---
 
@@ -60,9 +63,8 @@ compilación para la Vita ocurre en el PC.
 
 ```
 PSVita-ROS/
-├── docs/                  # 00-17 + adr/ (8 ADRs) + rust/ + guias-vita/ + superpowers/
+├── docs/                  # 00-21 + adr/ (8 ADRs) + rust/ + guias-vita/ + tutorial/ + superpowers/
 ├── modules/               # 8 módulos duales (paridad C/Rust en host)
-├── godot/                 # módulo Godot 4 ros2_vita + parche del loader + pruebas (sin compilar)
 │   ├── mem-pool/          #   asignador de bloques fijos sin malloc
 │   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
 │   └── microros-transport/#   los 4 callbacks XRCE (la ex-incógnita dura)
@@ -71,6 +73,12 @@ PSVita-ROS/
 │   ├── src/viz/           #   mini-rviz: cámara orbital + escena 3D (Objetivos 3/4)
 │   ├── ui/layout.json     #   la pantalla, editable desde la web (/taller/ui)
 │   └── scripts/           #   checks host + cross-compilación del cliente XRCE
+├── godot/                 # Godot 4: módulo ros2_vita (sin compilar) + parche del loader + pruebas
+│   ├── ros2_vita/         #   módulo estático con la API de rclgd (RosNode, RosMsg...)
+│   ├── loader-patches/    #   imports que faltan en el loader de godot4-vita
+│   ├── test/              #   pruebas GDScript en host
+│   ├── rclgd/             #   clon local de rclgd (jazzy, Godot 4.7.1) — no versionado
+│   └── godot35/           #   HISTÓRICO: app teleop Godot 3.5 (microros), validada en hardware
 ├── mcp/ros2-introspection/# servidor MCP: el grafo ROS2 visible para Claude
 ├── media/                 # fotos y vídeos de los hitos
 ├── skills/                # skills de IA (instalar: skills/INSTALAR.md · tools/install-skills.sh)
@@ -132,6 +140,8 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/19-plan-multiagente-migracion-godot4.md` | **Plan multiagente** de la migración: mapa jerárquico, ramas, agentes y oleadas |
 | `docs/18-migracion-a-godot4.md` | **Migración a Godot 4** (godot4-vita): qué cambia, enlace de Rust, red, riesgos y backlog |
 | `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
+| `docs/20-godot35-migracion-historico.md` | *(Histórico)* Migración a **Godot 3.5** validada en hardware: prerrequisitos del VitaSDK y requisitos del `.vpk` |
+| `docs/21-godot35-plan-implementacion-historico.md` | *(Histórico)* Plan de tareas de la migración a Godot 3.5 |
 | `docs/rust/` | Aprendizaje de Rust ligado al código del repo |
 | `docs/guias-vita/` | Instalar el homebrew de la consola (también en la web) |
 

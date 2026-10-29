@@ -57,6 +57,8 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   `tools/build-godot-template.sh` es la receta (solo PC);
   `tools/check-vita-imports.py` / `build-rust-pic.sh` verifican/construyen los enlaces; `tools/hwprobe/`
   es una sonda de hardware (sin compilar; docs/14 §9).
+  `godot/godot35/` = app teleop en Godot 3.5 (HISTÓRICO, validada en hardware; docs/20–21);
+  `godot/rclgd/` = clon local de rclgd (jazzy, trae Godot 4.7.1), no versionado.
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
   (complete; validated against a live Jazzy graph in `robotnik_dev`).
 - `skills/` — AI skills (versioned; install with `tools/install-skills.sh`, steps in `skills/INSTALAR.md`): `vita-*` (Vita workflow), `rclgd` (rclgd

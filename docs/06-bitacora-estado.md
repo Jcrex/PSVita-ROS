@@ -1,20 +1,63 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
 2026-07-10). Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
 confirmado por el usuario en hardware real**: la app teleop instalada en
 la Vita publica `/cmd_vel` y controla robots según el mapeo de
-`docs/09-objetivo2-control-robot.md`. En la misma sesión: `.vpk` subido
-por FTP y verificado, y **arranca la planificación de los Objetivos 3 y
-4** — guía completa de desarrollo por etapas en
-`docs/10-plan-objetivos-3-4.md`. La Fase 1 sigue COMPLETA; la fase web
-sigue con su primer hito alcanzado)
+`docs/09-objetivo2-control-robot.md`. Fase 1 COMPLETA; fase web con primer hito
+alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-29 (PC) — Fusión de `godot-migration` + siguiente paso exacto
+
+**Qué pasó.** Había dos líneas de Godot que no se conocían entre sí:
+- `godot-migration` (PC, julio): **Godot 3.5** (`godot-vita`), módulo `microros` del motor, escena
+  teleop; **G1–G3 en hardware** (el teleop en Godot publicó `/cmd_vel`).
+- `ccr-44e2db2a-mr6xqr` (sesión en la nube, octubre): **Godot 4** (`godot4-vita`), ADR 0008, docs/17–19,
+  `msg-schema`, módulo `ros2_vita` con la API de `rclgd` (sin compilar), skills de IA.
+
+**Decisión del usuario:** fusionar `godot-migration` **teniendo en cuenta que nos mudamos a Godot 4**.
+Cómo quedó:
+- El proyecto 3.5 entero se movió de la raíz de `godot/` a **`godot/godot35/`** (histórico, sigue
+  compilable: `build-vita-template.sh`, `uninstall-godot.sh` y el `SCsub` de `microros` ya usan las rutas
+  nuevas). `godot/` queda para Godot 4 (`ros2_vita/`, `test/`, `loader-patches/`).
+- `docs/12-migracion-godot.md` → **`docs/20-godot35-migracion-historico.md`** y
+  `docs/13-plan-implementacion-godot.md` → **`docs/21-godot35-plan-implementacion-historico.md`**
+  (chocaban en número con `docs/12`/`13` de Godot 4). **En los bloques de julio de abajo:**
+  «docs/12 §Requisitos del .vpk/Prerrequisitos» = `docs/20`; «docs/13» = `docs/21`;
+  `godot/<ruta>` (proyecto 3.5) = `godot/godot35/<ruta>`.
+- Los hitos G1–G4 de la rama 3.5 **no son** las puertas G0–G7 de `docs/18` §8. El G4 de 3.5
+  (variante Rust del template) **no se hará**: la variante Rust sigue en Godot 4 (`docs/19` T8.x).
+- `godot/rclgd/`: clon de `Ozuba/rclgd` (rama `jazzy`, `GODOT_VERSION 4.7.1`) puesto por el usuario;
+  trae el Godot 4.7.1 de desarrollo (D4 de `docs/19`). **No se versiona** (`.gitignore`, `.dockerignore`).
+- Web: colecciones `tutorial` (de la rama 3.5) y `skills` conviven; `godot/godot35/README.md` publicado.
+
+**Lecciones de 3.5 que valen para Godot 4** (no reabrir): TITLE_ID de 9 caracteres en mayúsculas;
+imágenes `sce_sys` PNG 8-bit (icon0 128×128, bg 840×500, startup 280×158); el **input reliable
+stream** es obligatorio o la sesión XRCE crashea con el agente arriba; la escena
+`godot/godot35/scenes/teleop/teleop.gd` es la referencia funcional para la HMI piloto (T6.1).
+
+**Estado del PC (`tools/vita-doctor.sh`, 2026-10-29):** VitaSDK, gcc 15.2, Rust nightly, cargo-vita,
+scons, cmake, vitaGL, vita2d y docker OK. Faltan: cliente XRCE ARM en esta copia
+(`vita-app/scripts/build-xrce-client-vita.sh`), clon de `godot4-vita`, compilar/instalar rclgd, y el
+contenedor `robotnik_dev` (en el PC solo hay `rmf_unified` y `microros-agent`).
+
+**Siguiente paso exacto (PC, oleada O1 de `docs/19`):**
+1. Instalar las skills (`skills/INSTALAR.md` → `tools/install-skills.sh`, `--check`,
+   `skills/rclgd/scripts/rclgd-docs.sh sync jazzy`) y reiniciar Claude Code.
+2. **G1:** clonar `godot4-vita` @ `d1a5f29`, compilar `platform=linuxbsd custom_modules=<repo>/godot`
+   y pasar `godot/test/run_host_tests.sh`.
+3. **G2:** cliente XRCE + módulos en PIC; `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
+4. **G3:** `tools/build-godot-template.sh` hasta `verify_runtime.py` PASS.
+5. En paralelo: compilar rclgd (`godot/rclgd`, colcon en un contenedor Jazzy) y comprobar
+   `ros2 rclgd editor` (4.7.1); conseguir/compilar el editor 4.8-dev7 Linux (M18).
 
 ---
 
@@ -653,6 +696,71 @@ cd web && pnpm build                      # o: docker compose up -d --build
      **Pendiente manual en la Vita:** instalar el `.vpk` desde VitaShell
      (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
      hacer la verificación en vivo del punto siguiente.
+
+- **(2026-07-13, en el PC + hardware) `godot-migration` — G3: EL TELEOP EN
+  GODOT FUNCIONA EN HARDWARE, publica `/cmd_vel` (migración C COMPLETA,
+  confirmado por el usuario).** Camino de export→instalar→conectar, con tres
+  lecciones pagadas (todas documentadas en docs/12 §"Requisitos del .vpk de
+  Godot"): (1) instalar daba `0xF0030000` por TITLE_ID inválido — el editor
+  precompilado de 2022 usa el campo `Title` como TITLE_ID e IGNORA `Title Id`;
+  debe ser 9 chars MAYÚS alfanumérico sin símbolos (se usó `PSVITAROS`, que no
+  choca con el `VROS00001` nativo). (2) Luego `0x8010113D` por imágenes
+  `sce_sys` mal: `icon0.png` tiene que ser 128×128 8-bit colormap (era 64×64
+  RGBA) y el `template.xml` de livearea (embebido en el editor) reclamaba
+  `bg.png`/`startup.png` ausentes → se generaron placeholders 8-bit
+  (`godot/vita_{icon128,bg,startup}.png`, imagemagick) y se conectaron en el
+  preset. (3) Ya instalada y con la escena teleop respondiendo a mandos, al
+  Conectar crasheaba (`C2-…`, core dump) SOLO con el agente arriba: **bug del
+  port** — el módulo creaba el stream reliable de salida pero NO el de entrada
+  (`main.c:201` sí lo crea); sin él, al responder el agente el cliente XRCE
+  deref-a un input stream inexistente. Arreglado con `input_stream_buf` +
+  `uxr_create_input_reliable_stream` en `connect_agent()`. Además el
+  `build-vita-template.sh` ahora limpia `bin/vita_template` antes de `scons`
+  (el `Copy` del fork falla en rebuilds con "File exists"). Detalle del
+  exportador: ignora el export path y escribe `<Title>.vpk` en la raíz.
+  **SIGUIENTE (G4):** variante Rust del template (staticlib paraguas).
+
+- **(2026-07-13, en el PC) `godot-migration` — G2 (el template custom
+  COMPILA en el PC):** `build-vita-template.sh c` produce el engine godot-vita
+  entero con el módulo `microros` dentro (7,5 min) → `vita_release.zip` (19 MB,
+  `eboot.bin` + `.suprx` PowerVR + `microros` registrado vía
+  `register_microros_types()`), instalado como template en
+  `~/.local/share/godot/templates/3.5.rc5/`. Cadena de obstáculos resuelta,
+  todos con la MISMA raíz de siempre (la Vita es newlib, no Linux, y sin
+  carga dinámica): (1) entorno — hay que `source tools/env-devpc.fish` (VitaSDK
+  y toolchains vendorizados en `toolchains/`, no en el sistema) + `pacman -S
+  scons zip`; (2) `EGL/egl.h` → falta el driver **PVR_PSP2 v3.9**, instalado
+  con `vita-makepkg`+`vdpm` desde `../Godot/vita-packages-extra/pvr_psp2`; (3)
+  Bullet `clew.c` usa `dlopen` → **patch versionado** `godot/patches/bullet-vita-no-clew.patch`
+  que lo excluye (Godot no usa clew; la física corre entera en CPU, la GPU/OpenCL
+  es imposible en el PowerVR de todos modos); (4) `ogg/ogg.h` y códecs →
+  `vdpm libjpeg-turbo freetype libogg libvorbis libtheora opus`; (5) el driver
+  GLES2 stock de Godot hace `#include <dlfcn.h>` (llamadas muertas, solo
+  Android/iOS) → **stub versionado** `godot/vitasdk-stubs/dlfcn.h`. Los pasos
+  4-5 los aplica el build script solo, idempotente. Nuevo: `uninstall-godot.sh`
+  para revertirlo todo limpio (`patch -R`, `vdpm -u` —respeta ficheros
+  compartidos—, template, build). **Siguiente paso exacto (G3):** exportar el
+  `.vpk` desde el editor (Proyecto → Exportar → PlayStation Vita) y validar en
+  hardware que el singleton `MicroROS` aparece en GDScript y que la sesión XRCE
+  controla el robot real. Ver docs/12 §"Prerrequisitos del VitaSDK".
+
+- **(2026-07-13, en la laptop) Branch `godot-migration` — G1 (esqueleto
+  Godot) COMPLETO:** existe un fork de Godot 3.5-rc5 con plataforma Vita
+  nativa ya probado por el usuario en su consola (editor x11 +
+  `vita_template_3.5.rc5.tpz`), y se decidió replicar la app teleop en
+  Godot **sin reescribir nada de C/Rust** (diseño: docs/12; plan:
+  docs/13). Clave técnica: en la Vita no hay GDNative
+  (`platform/vita/detect.py` del fork lo deshabilita), así que el código
+  nativo entra como **módulo custom del engine** vía `custom_modules=`
+  — `godot/modules/microros/` linkea los módulos duales + XRCE v2.4.3 +
+  el glue de `vita-app/src/` y expone el singleton `MicroROS` a
+  GDScript. En la branch quedaron: el proyecto Godot versionado, el
+  módulo completo (validar en el PC), la escena teleop con stub (corre
+  en el editor de la laptop en modo SIMULADO), el script
+  `godot/scripts/build-vita-template.sh` (PC) y el README publicado en
+  la web. **Siguiente paso exacto:** en el PC, `git pull`, correr
+  `godot/scripts/build-vita-template.sh` (Tarea 7 de docs/13), exportar
+  el `.vpk` y verificar en hardware (Tarea 8).
 
 - **(2026-07-10, en el PC) ETAPA A del plan de Objetivos 3/4 EJECUTADA —
   la respuesta al Objetivo 3, con evidencia real:** siguiendo

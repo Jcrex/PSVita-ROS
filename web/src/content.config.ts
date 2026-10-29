@@ -41,6 +41,11 @@ const rust = defineCollection({
   loader: glob({ pattern: '*.md', base: '../docs/rust' }),
 });
 
+// docs/tutorial/*.md — el tutorial práctico C/Rust sobre el código real
+const tutorial = defineCollection({
+  loader: glob({ pattern: '*.md', base: '../docs/tutorial' }),
+});
+
 // READMEs técnicos del código (módulos, app, MCP)
 const codigo = defineCollection({
   loader: glob({
@@ -48,6 +53,7 @@ const codigo = defineCollection({
       'modules/*/README.md',
       'vita-app/README.md',
       'godot/README.md',
+      'godot/godot35/README.md',
       'tools/*/README.md',
       'mcp/*/README.md',
     ],
@@ -64,4 +70,4 @@ const skills = defineCollection({
   }),
 });
 
-export const collections = { guias, fundacion, adrs, rust, codigo, skills };
+export const collections = { guias, fundacion, adrs, rust, tutorial, codigo, skills };
