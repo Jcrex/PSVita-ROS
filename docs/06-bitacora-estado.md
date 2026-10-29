@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-29 (PC, 2.ª sesión: **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,16 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-29 (PC, cierre) — Pausa: el usuario deja el PC; plan de acceso remoto
+
+El usuario se va a estudiar y no estará en la red de casa. Para seguir desde la laptop se dejó escrita la
+recomendación en **`docs/22-acceso-remoto-pc.md`**: Tailscale + SSH con claves + tmux (+ Sunshine/Moonlight
+para el escritorio, `claude remote-control` para Claude Code). **Aún sin aplicar**: falta instalar Tailscale y
+tmux (`sudo`) y probarlo desde fuera de la red. Estado del proyecto al pausar: **G1 y G2 verdes**, siguiente
+**G3** (ver el bloque de G2 justo debajo); lanzarlo dentro de tmux.
 
 ---
 
