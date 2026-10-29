@@ -59,7 +59,7 @@ const codigo = defineCollection({
 // El frontmatter (name, description) es el de las skills; no se valida aquí.
 const skills = defineCollection({
   loader: glob({
-    pattern: ['*/SKILL.md', '*/references/*.md', '*/references/api/*.md', '*/evals/*.md'],
+    pattern: ['INSTALAR.md', '*/SKILL.md', '*/references/*.md', '*/references/api/*.md', '*/evals/*.md'],
     base: '../skills',
   }),
 });

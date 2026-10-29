@@ -59,7 +59,7 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   es una sonda de hardware (sin compilar; docs/14 §9).
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
   (complete; validated against a live Jazzy graph in `robotnik_dev`).
-- `skills/` — AI skills (versioned; install per docs/05): `vita-*` (Vita workflow), `rclgd` (rclgd
+- `skills/` — AI skills (versioned; install with `tools/install-skills.sh`, steps in `skills/INSTALAR.md`): `vita-*` (Vita workflow), `rclgd` (rclgd
   API + `scripts/rclgd-docs.sh` to fetch the official docs), `godot4-ros-scripting`,
   `ros2-vita-godot`. Published on the web ("Skills de IA"). Regenerate `rclgd/references/api` when
   rclgd changes (`references/versiones.md`).
