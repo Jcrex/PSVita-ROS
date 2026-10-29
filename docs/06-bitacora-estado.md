@@ -996,3 +996,10 @@ cd web && pnpm build                      # o: docker compose up -d --build
     fuente de GitHub (mismo contenido; docs idénticas en `jazzy`/`rolling`). Sección web «Skills de IA».
   - **Pendiente:** pasar la batería E1 con un subagente sin contexto; E2 (plantillas en el editor de
     rclgd) en el PC; `dump_api.gd` sin ejecutar.
+
+- **(2026-10-29, laptop/cloud) Instalador de skills.** `tools/install-skills.sh` (enlaza o copia
+  todas las carpetas de `skills/` con `SKILL.md` en `~/.claude/skills/` o `.claude/skills/`, valida el
+  frontmatter YAML y `name`, `--check`/`--uninstall`; probado aquí en un destino temporal, incluido un
+  caso de YAML roto) y **`skills/INSTALAR.md`**: pasos para que Claude Code del PC instale, verifique y
+  active las skills e informe. **Siguiente paso (PC):** decirle a Claude Code «lee skills/INSTALAR.md e
+  instala las skills», reiniciarlo y seguir con la oleada O1 (docs/19).
