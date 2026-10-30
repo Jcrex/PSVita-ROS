@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-30 (PC, 3.ª parte: **G5 VERDE en hardware** — Godot 4 publica en ROS 2 desde la Vita; red iniciada en el cargador por `UID_RL_OVERFLOW`; estación `docker/`; ver el primer bloque). Antes, 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,43 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-30 (PC, 3.ª parte) — Puerta G5 VERDE en hardware + estación docker propia
+
+**Resultado:** `godot/g5-xrce` en la Vita → el agente (estación `docker/`, en el PC por ethernet) registra la
+sesión desde `192.168.1.94`, `ros2 topic echo /vita_hello` recibe «hola desde ros2_vita #N» y `/cmd_vel` llega a
+**10,1 Hz**. Primera vez que Godot 4 + `ros2_vita` publica en ROS 2 desde la Vita.
+
+**Qué se hizo:**
+1. **`XrceTransport`** (`godot/ros2_vita/xrce_transport.*`): sesión micro-ROS sobre `microros-transport`/`net-udp`,
+   entidades por XML (topic + datawriter/datareader por endpoint, QoS → XML de Fast DDS), streams fiable y best
+   effort, fragmentación en el fiable. **Un solo hilo:** `RosTransport::poll()` cada frame con
+   `uxr_run_session_time(0)`. `rclgd.get_transport_info()` devuelve contadores y códigos de red (diagnóstico).
+2. **Pruebas en host antes del hardware:** `XRCE_HOST=1 build-xrce-client-vita.sh` → `xrce-vita-host`; el SCsub
+   activa XRCE si encuentra las libs. Agente en docker + `ros2 topic echo`: verde. Lección: **`--ipc=host` en todos
+   los contenedores** o Fast DDS descubre los topics pero no pasan datos (memoria compartida).
+3. **El muro de hardware:** dentro de Godot, `sceNetInit`/`sceNetCtlInit` devolvían **`0x8002450D` =
+   `SCE_KERNEL_ERROR_UID_RL_OVERFLOW`** (el motor ya agotó el cupo de objetos del kernel del proceso). Arreglo: el
+   parche del cargador (`godot/loader-patches/0001`) **inicia la red al principio de `main()`** (sysmodule NET +
+   `sceNetInit` con pool estático de 1 MiB + `sceNetCtlInit`, como la Fase 1); `net_udp_init` la encuentra hecha.
+   Diagnóstico que lo destapó: callbacks propios con contadores + `sceNetCtlInet*` (2 entradas más en la tabla del
+   cargador; 694 imports). Los logs del motor se leen por FTP: `ux0:data/gxm3d/godot_stderr.log` y
+   `ux0:data/logs/godot_loader.log`.
+4. **Hipótesis descartada:** «el PC por ethernet no llega a la Vita». Llega por el router (FTP, XRCE). El capturador
+   en la tarjeta del PC y el cortafuegos (ufw permite 192.168.1.0/24) lo confirmaron.
+5. **Estación `docker/`** (petición del usuario): agente oficial (`vita_agent`) + `vita_station` (ROS 2 Jazzy
+   desktop, `zenoh-bridge-ros2dds`, turtlesim, TurtleBot3/Gazebo con `/cmd_vel` en `Twist`, `tcpdump`) y
+   `scripts/vita_monitor.py`; se maneja con `docker/vita-ros.sh`. `tools/vita-stack.sh` la usa por defecto.
+6. `tools/deploy-vpk-ftp.sh` (verifica sha256) y `tools/export-vita-vpk.sh` en uso; WiFi lenta = subida de 22 MB
+   en 20–150 s.
+
+**Pendiente de confirmar:** que la pantalla pase a **verde** (llega `/pc_hello`; el monitor lo publica). GUI de la
+estación (turtlesim/Gazebo/RViz) y puente Zenoh entre dos equipos: sin probar.
+
+**Siguiente paso exacto: G6 (HMI piloto)** — teleop `/cmd_vel` con los mandos + `/odom` en pantalla, contra
+`docker/vita-ros.sh sim` (turtlesim) o `sim-tb3`.
 
 ---
 

@@ -1,8 +1,8 @@
 # `godot/` — módulo `ros2_vita` para Godot 4 (godot4-vita 4.8-dev7)
 
 > **Estado (2026-10-30): G1–G4 VERDES** — compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
-> **corre en la Vita** en *loopback* (G4). **G5 (transporte XRCE):** probado en host de punta a punta contra el
-> agente en docker y ROS 2 Jazzy (`godot/g5-xrce`); en la Vita: **validar en hardware**. Decisión y razones:
+> **corre en la Vita** en *loopback* (G4) y con **transporte XRCE publica en ROS 2 Jazzy desde la Vita** (G5,
+> 2026-10-30: `/vita_hello` y `/cmd_vel` a 10 Hz en `ros2 topic echo`). Decisión y razones:
 > `docs/adr/0008-godot-via-modulo-estatico.md`; investigación y plan: **`docs/18-migracion-a-godot4.md`**.
 
 ## Qué es

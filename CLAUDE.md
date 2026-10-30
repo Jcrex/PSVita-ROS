@@ -53,7 +53,7 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   microxrcedds_client.
 - `godot/` — módulo Godot **4** `ros2_vita` en árbol (godot4-vita; ADR 0008,
   `docs/18`), compilado y probado en host (G1) y compilado para la Vita con `verify_runtime.py` PASS (G3) y
-  **corriendo en hardware** en loopback (G4, 2026-10-30; falta red/XRCE = G5); `godot/loader-patches/` parchea el loader; `godot/vitasdk-stubs/dlfcn.h` va al SDK;
+  **corriendo en hardware** con transporte XRCE: publica en ROS 2 Jazzy (G4+G5, 2026-10-30; siguiente G6 = HMI piloto); `godot/loader-patches/` parchea el loader; `godot/vitasdk-stubs/dlfcn.h` va al SDK;
   `godot/test/` pruebas GDScript; `godot/g4-smoke/` + `tools/export-vita-vpk.sh` = proyecto mínimo y exportación a `.vpk` (G4, editor 4.8-dev7); el SDK Rust no depende de Godot; `tools/vita-doctor.sh` diagnostica el entorno;
   `tools/build-godot-template.sh` es la receta (solo PC; necesita VitaGL del port en `toolchains/vitagl-src` y
   `tools/build-pcre2-vita.sh`, docs/18 §4.5);
@@ -61,6 +61,8 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   es una sonda de hardware (sin compilar; docs/14 §9).
   `godot/godot35/` = app teleop en Godot 3.5 (HISTÓRICO, validada en hardware; docs/20–21);
   `godot/rclgd/` = clon local de rclgd (jazzy, trae Godot 4.7.1), no versionado.
+- `docker/` — estación ROS 2 Jazzy propia (`vita-ros.sh`): agente micro-ROS, monitor de la Vita,
+  puente Zenoh, turtlesim/TurtleBot3; `tools/vita-stack.sh` la usa por defecto.
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
   (complete; validated against a live Jazzy graph in `robotnik_dev`).
 - `skills/` — AI skills (versioned; install with `tools/install-skills.sh`, steps in `skills/INSTALAR.md`): `vita-*` (Vita workflow), `rclgd` (rclgd
