@@ -20,11 +20,111 @@
 #include "core/config/project_settings.h"
 #include "core/string/print_string.h"
 
+#include <uxr/client/client.h>
+
 extern "C" {
-#include "uxr_glue.h" // vita-app/src: los 4 callbacks del transporte propio -> microros-transport
+#include "microros_transport.h" // modules/microros-transport (dual C/Rust) -> net-udp
+#include "net_udp.h"
 }
 
+#ifdef VITA_ENABLED
+#include <malloc.h>
+#include <psp2/net/net.h>
+#include <psp2/net/netctl.h>
+#include <psp2/sysmodule.h>
+#endif
+
 namespace {
+
+// ---------------------------------------------------------------------------------------------
+// Diagnóstico (G5 en hardware): contadores de los 4 callbacks del transporte propio. En la Vita no
+// hay consola visible, así que rclgd.get_transport_info() los expone a GDScript para pintarlos.
+struct XrceDiag {
+	String step = "sin iniciar"; // último paso alcanzado
+	String agent;
+	int writes = 0, write_errors = 0, write_bytes = 0;
+	int reads = 0, read_errors = 0, read_bytes = 0, read_packets = 0;
+	int netctl_state = -1; // sceNetCtlInetGetState: 0 desconectado ... 3 IP obtenida
+	String vita_ip;
+	// Códigos de la inicialización de red (Vita): 0 = OK; 0x8041... = errores de sceNet.
+	int rc_sysmodule = 0, rc_netinit = 0, rc_netctl = 0, rc_net_udp = 0;
+};
+XrceDiag g_diag;
+
+struct TransportArgs {
+	const char *ip;
+	uint16_t port;
+};
+
+// Los 4 callbacks de uxrCustomTransport: delegan 1:1 en microros-transport, como
+// vita-app/src/uxr_glue.c, pero contando lo que pasa.
+bool cb_open(uxrCustomTransport *t) {
+	TransportArgs *a = (TransportArgs *)t->args;
+	return a && microros_transport_open(a->ip, a->port);
+}
+bool cb_close(uxrCustomTransport *) {
+	return microros_transport_close();
+}
+size_t cb_write(uxrCustomTransport *, const uint8_t *buf, size_t len, uint8_t *err) {
+	size_t n = microros_transport_write(buf, len, err);
+	g_diag.writes++;
+	if (n == 0 || (err && *err)) {
+		g_diag.write_errors++;
+	}
+	g_diag.write_bytes += (int)n;
+	return n;
+}
+size_t cb_read(uxrCustomTransport *, uint8_t *buf, size_t len, int timeout, uint8_t *err) {
+	size_t n = microros_transport_read(buf, len, (int32_t)timeout, err);
+	g_diag.reads++;
+	if (err && *err) {
+		g_diag.read_errors++;
+	}
+	if (n > 0) {
+		g_diag.read_packets++;
+		g_diag.read_bytes += (int)n;
+	}
+	return n;
+}
+
+// Inicializa la red de la Vita ANTES de net_udp_init, guardando el código de cada paso (net_udp solo
+// devuelve "fallo"). El pool de sceNetInit sale del montón (memalign) y no del array estático de
+// net_udp.c: dentro de libgodot.so ese array vive en la imagen que mapea el cargador, no en memoria
+// normal de la app (hipótesis de G5 en hardware). net_udp_init acepta la red ya iniciada (EBUSY).
+void vita_net_init() {
+#ifdef VITA_ENABLED
+	static void *pool = nullptr;
+	const int POOL = 1024 * 1024;
+	g_diag.rc_sysmodule = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
+	if (!pool) {
+		pool = memalign(4096, POOL);
+	}
+	if (pool) {
+		SceNetInitParam param;
+		param.memory = pool;
+		param.size = POOL;
+		param.flags = 0;
+		g_diag.rc_netinit = sceNetInit(&param);
+	} else {
+		g_diag.rc_netinit = -1; // sin memoria para el pool
+	}
+	g_diag.rc_netctl = sceNetCtlInit();
+#endif
+	g_diag.rc_net_udp = net_udp_init();
+}
+
+void read_netctl() {
+#ifdef VITA_ENABLED
+	int state = -1;
+	if (sceNetCtlInetGetState(&state) >= 0) {
+		g_diag.netctl_state = state;
+	}
+	SceNetCtlInfo info;
+	if (sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &info) >= 0) {
+		g_diag.vita_ip = String(info.ip_address);
+	}
+#endif
+}
 
 // Tamaños como en vita-app/src/main.c (probados en hardware). La MTU del transporte propio es 512
 // (UXR_CONFIG_CUSTOM_TRANSPORT_MTU): un mensaje mayor se fragmenta (solo en el stream fiable).
@@ -65,8 +165,8 @@ class XrceTransport : public RosTransport {
 	};
 
 	uxrCustomTransport transport = {};
-	vita_transport_args targs = {};
-	CharString agent_ip; // targs.agent_ip apunta aquí: debe vivir mientras el transporte
+	TransportArgs targs = {};
+	CharString agent_ip; // targs.ip apunta aquí: debe vivir mientras el transporte
 	uxrSession session = {};
 	bool transport_open = false;
 	bool session_open = false;
@@ -145,24 +245,38 @@ public:
 		int domain = p_args.has("domain_id") ? String(p_args["domain_id"]).to_int()
 											 : int(ps->get_setting("ros/domain_id", 0));
 		agent_ip = ip.utf8();
-		targs.agent_ip = agent_ip.get_data();
-		targs.agent_port = (uint16_t)port;
+		targs.ip = agent_ip.get_data();
+		targs.port = (uint16_t)port;
+		g_diag = XrceDiag();
+		g_diag.agent = vformat("%s:%d", ip, port);
 		print_line(vformat("ros2_vita/xrce: conectando con el agente %s:%d (dominio %d)...", ip, port, domain));
 
 		// Abre el socket UDP (en la Vita: sceNetInit + sceNetCtlInit dentro de net_udp_init, docs/18 §4.3 A).
-		ERR_FAIL_COND_V_MSG(!vita_uxr_transport_init(&transport, &targs), ERR_CANT_CONNECT,
+		// false = sin framing: UDP ya delimita datagramas (el framing es para transportes serie).
+		uxr_set_custom_transport_callbacks(&transport, false, cb_open, cb_close, cb_write, cb_read);
+		g_diag.step = "iniciando red";
+		vita_net_init();
+		g_diag.step = "abriendo socket UDP";
+		bool opened = uxr_init_custom_transport(&transport, &targs);
+		read_netctl(); // net_udp_init ya inicializo sceNetCtl
+		ERR_FAIL_COND_V_MSG(!opened, ERR_CANT_CONNECT,
 				"ros2_vita/xrce: no se pudo abrir el socket UDP (red de la Vita sin conectar?).");
 		transport_open = true;
+		g_diag.step = "creando sesion XRCE";
 
 		uxr_init_session(&session, &transport.comm, 0xCAFE0005);
 		uxr_set_topic_callback(&session, &XrceTransport::_on_topic, this);
-		if (!uxr_create_session(&session)) {
+		bool created = uxr_create_session(&session);
+		read_netctl();
+		if (!created) {
+			g_diag.step = "sin respuesta del agente";
 			stop();
 			ERR_FAIL_V_MSG(ERR_CANT_CONNECT, vformat("ros2_vita/xrce: sin respuesta del agente en %s:%d "
 													 "(esta corriendo micro-ros-agent udp4 --port %d?).",
 													 ip, port, port));
 		}
 		session_open = true;
+		g_diag.step = "creando entidades";
 
 		reliable_out = uxr_create_output_reliable_stream(&session, reliable_out_buf, sizeof(reliable_out_buf), RELIABLE_HISTORY);
 		reliable_in = uxr_create_input_reliable_stream(&session, reliable_in_buf, sizeof(reliable_in_buf), RELIABLE_HISTORY);
@@ -181,6 +295,7 @@ public:
 			stop();
 			return ERR_CANT_CREATE;
 		}
+		g_diag.step = "sesion abierta";
 		print_line("ros2_vita/xrce: sesion XRCE establecida.");
 		return OK;
 	}
@@ -289,6 +404,26 @@ public:
 };
 
 } // namespace
+
+Dictionary ros2_vita_xrce_diagnostics() {
+	Dictionary d;
+	d["step"] = g_diag.step;
+	d["agent"] = g_diag.agent;
+	d["writes"] = g_diag.writes;
+	d["write_errors"] = g_diag.write_errors;
+	d["write_bytes"] = g_diag.write_bytes;
+	d["reads"] = g_diag.reads;
+	d["read_errors"] = g_diag.read_errors;
+	d["read_packets"] = g_diag.read_packets;
+	d["read_bytes"] = g_diag.read_bytes;
+	d["netctl_state"] = g_diag.netctl_state;
+	d["vita_ip"] = g_diag.vita_ip;
+	d["rc_sysmodule"] = g_diag.rc_sysmodule;
+	d["rc_netinit"] = g_diag.rc_netinit;
+	d["rc_netctl"] = g_diag.rc_netctl;
+	d["rc_net_udp"] = g_diag.rc_net_udp;
+	return d;
+}
 
 RosTransport *ros2_vita_create_xrce_transport() {
 	return memnew(XrceTransport);

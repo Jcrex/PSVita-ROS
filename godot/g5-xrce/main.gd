@@ -35,6 +35,7 @@ func _ready() -> void:
 	_log("rclgd.init(xrce) -> %s" % error_string(err))
 	if err != OK:
 		_estado(Color(0.6, 0.1, 0.1), "G5 FALLO: sin sesión XRCE (¿agente corriendo? ¿IP correcta? ¿WiFi?)")
+		_diagnostico()
 		return
 	node = RosNode.new()
 	node.init("vita_g5", "")
@@ -47,6 +48,7 @@ func _ready() -> void:
 	t_hello = node.create_timer(1.0, _on_hello)
 	t_cmd = node.create_timer(0.1, _on_cmd)
 	_estado(Color(0.6, 0.5, 0.1), "sesión XRCE abierta: publicando /vita_hello y /cmd_vel")
+	_diagnostico()
 
 
 func _on_hello() -> void:
@@ -73,6 +75,22 @@ func _on_pc_hello(m: RosMsg) -> void:
 
 func _process(_delta: float) -> void:
 	info.text = "\n".join(lineas) + "\n\n/vita_hello enviados: %d   /pc_hello recibidos: %d\núltimo /pc_hello: %s" % [enviados, recibidos, ultimo_pc]
+
+
+## Contadores del transporte (rclgd.get_transport_info): ¿salen los envíos? ¿hay WiFi e IP?
+## netctl: 0 desconectado, 1 conectando, 2 IP pendiente, 3 IP obtenida (sceNetCtlInetGetState).
+func _diagnostico() -> void:
+	var d: Dictionary = rclgd.get_transport_info()
+	if d.is_empty():
+		_log("(sin diagnóstico del transporte)")
+		return
+	_log("paso: %s · agente %s" % [d.step, d.agent])
+	_log("WiFi netctl=%d · IP de la Vita: %s" % [d.netctl_state, d.vita_ip])
+	# Códigos de arranque de la red (0 = OK). En hexadecimal, como los errores de sceNet (0x8041....).
+	_log("red: sysmodule=%08X sceNetInit=%08X sceNetCtlInit=%08X net_udp_init=%d" % [
+			d.rc_sysmodule & 0xFFFFFFFF, d.rc_netinit & 0xFFFFFFFF, d.rc_netctl & 0xFFFFFFFF, d.rc_net_udp])
+	_log("envíos %d (errores %d, %d bytes) · lecturas %d (errores %d, paquetes %d)" % [
+			d.writes, d.write_errors, d.write_bytes, d.reads, d.read_errors, d.read_packets])
 
 
 func _estado(c: Color, s: String) -> void:

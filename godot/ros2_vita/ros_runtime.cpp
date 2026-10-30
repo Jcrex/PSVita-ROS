@@ -346,11 +346,20 @@ void rclgd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("shutdown"), &rclgd::shutdown);
 	ClassDB::bind_method(D_METHOD("ok"), &rclgd::ok);
 	ClassDB::bind_method(D_METHOD("get_dropped"), &rclgd::get_dropped);
+	ClassDB::bind_method(D_METHOD("get_transport_info"), &rclgd::get_transport_info);
 	ClassDB::bind_method(D_METHOD("godot_to_ros_vector", "v"), &rclgd::godot_to_ros_vector);
 	ClassDB::bind_method(D_METHOD("ros_to_godot_vector", "v"), &rclgd::ros_to_godot_vector);
 	ClassDB::bind_method(D_METHOD("godot_to_ros_quat", "q"), &rclgd::godot_to_ros_quat);
 	ClassDB::bind_method(D_METHOD("ros_to_godot_quat", "q"), &rclgd::ros_to_godot_quat);
 	ADD_SIGNAL(MethodInfo("ros_ready"));
+}
+
+Dictionary rclgd::get_transport_info() const {
+#ifdef ROS2_VITA_XRCE
+	return ros2_vita_xrce_diagnostics();
+#else
+	return Dictionary();
+#endif
 }
 
 Error rclgd::init(const PackedStringArray &p_args) {

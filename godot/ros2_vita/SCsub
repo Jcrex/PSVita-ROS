@@ -36,9 +36,9 @@ if with_xrce:
     env_ros.Append(CPPDEFINES=["ROS2_VITA_XRCE"])
     for m in ("net-udp", "microros-transport"):
         env_ros.Prepend(CPPPATH=[os.path.join(mods, m, "include")])
-    env_ros.Prepend(CPPPATH=[os.path.join(xrce_prefix, "include"), os.path.join(repo, "vita-app", "src")])
-    # Pegamento uxr <-> microros-transport reutilizado TAL CUAL de vita-app (como la app Godot 3.5).
-    env_ros.add_source_files(env.modules_sources, [os.path.join(repo, "vita-app", "src", "uxr_glue.c")])
+    env_ros.Prepend(CPPPATH=[os.path.join(xrce_prefix, "include")])
+    # Los callbacks uxr <-> microros-transport van en xrce_transport.cpp (como vita-app/src/uxr_glue.c,
+    # pero con contadores de diagnóstico).
     # OJO (Vita): LIBS como File, no str (la plataforma descarta los str; ver la nota de Rust abajo).
     env.Append(LIBS=[env.File(f) for f in xrce_libs])
     print("ros2_vita: transporte XRCE activado (%s)" % xrce_prefix)
