@@ -25,7 +25,13 @@ Antes de comenzar, verificar que se cumplen todas las condiciones siguientes:
 
 ## Paso 1 — Subir el `.vpk` a la Vita por FTP
 
-Usar `curl` para transferir el archivo al almacenamiento de la Vita:
+**Preferido:** `tools/deploy-vpk-ftp.sh <app>.vpk [vita-ip]`. Busca la Vita si no se da la IP, mide el ping,
+comprueba que el FTP responde, sube con aborto por enlace caído, **descarga de vuelta y compara el sha256**
+(reintenta 3 veces). Motivo: en hardware (2026-10-30) una subida de 22 MB llegó cortada (~2 MB) con `curl` sin
+error y el listado FTP mostrando el tamaño completo; con la Vita lejos del router el ping iba a 55–190 ms.
+Acercarla al router lo resolvió (sospecha de WiFi débil, no confirmada del todo).
+
+A mano, con `curl` (sin verificación):
 
 ```bash
 curl -T <app>.vpk "ftp://<vita-ip>:1337/ux0:/<app>.vpk"
