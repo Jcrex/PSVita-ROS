@@ -142,6 +142,7 @@ export const fases: Fase[] = [
       { texto: 'G3: plantilla de la Vita con el módulo: verify_runtime.py PASS (681 imports) y vita_release.zip (23,5 MB); variante Rust también PASS. VitaGL del port, pcre2-32 propio y stub dlfcn.h; bug de RUSTFLAGS en build-rust-pic.sh corregido', estado: 'hecho' },
       { texto: 'G5: transporte XRCE en ros2_vita — Godot 4 en la Vita publica /vita_hello y /cmd_vel (10 Hz) en ROS 2 Jazzy (confirmado en hardware). La red se inicia en el cargador: dentro de Godot sceNetInit daba UID_RL_OVERFLOW', estado: 'hecho' },
       { texto: 'Estación docker/ propia: agente micro-ROS, monitor de la Vita, puente Zenoh, turtlesim y TurtleBot3/Gazebo', estado: 'hecho' },
+      { texto: 'G6: HMI piloto en Godot 4 — la Vita teleopera turtlesim (/cmd_vel 19,5 Hz) y dibuja /odom en vista cenital (62,5 Hz, robot + rastro sincronizados, retardo apenas perceptible). Confirmado en hardware', estado: 'hecho' },
       { texto: 'Cruzar fixtures de msg-cdr con ROS2 real (robotnik_dev) y cross-compilar los módulos nuevos', estado: 'bloqueado-pc' },
       { texto: 'Experimentos de latencia XRCE (MTU, heartbeat, streams) y estrés ARM de msg-ring', estado: 'bloqueado-hw' },
       { texto: '"Hola mundo" Godot en la Vita: RAM, FPS, ATTRIBUTE2=12 (P5/P6)', estado: 'bloqueado-hw' },
