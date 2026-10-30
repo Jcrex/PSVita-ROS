@@ -191,6 +191,7 @@ public:
 	bool ok() const { return running; }
 	Dictionary get_overrides() const { return overrides; }
 	int get_dropped() const { return dropped; }
+	Dictionary get_transport_info() const; // diagnóstico del transporte (XRCE: contadores, WiFi)
 
 	// Convención de ejes REP-103 <-> Godot (idéntica a rclgd; ver docs/17 §3.3)
 	Vector3 godot_to_ros_vector(const Vector3 &p_v) const { return Vector3(-p_v.z, -p_v.x, p_v.y); }
