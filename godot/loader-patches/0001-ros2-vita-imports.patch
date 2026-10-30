@@ -50,3 +50,42 @@ index 1730a21..d572ff9 100644
    { "vita_gxm_init", (uintptr_t)&vita_gxm_init },
    { "vita_gxm_texture_create", (uintptr_t)&vita_gxm_texture_create },
    { "vita_gxm_texture_free", (uintptr_t)&vita_gxm_texture_free },
+diff --git a/platform/vita/loader/main.c b/platform/vita/loader/main.c
+index 257fd10..05e5a23 100644
+--- a/platform/vita/loader/main.c
++++ b/platform/vita/loader/main.c
+@@ -138,6 +138,25 @@ void fatal_error(const char *fmt, ...) {
+ 	}
+ }
+ 
++/* ros2_vita (PSVita-ROS, docs/18 §4.3): la red se inicia AQUÍ, al principio del proceso.
++ * Dentro de Godot, sceNetInit/sceNetCtlInit devuelven 0x8002450D (SCE_KERNEL_ERROR_UID_RL_OVERFLOW):
++ * cuando el juego pide la red, el motor ya agotó el cupo de objetos del kernel del proceso (G5 en
++ * hardware, 2026-10-30). Iniciada antes, net_udp_init (módulo net-udp, dentro de libgodot.so) la
++ * encuentra hecha (EBUSY / ya iniciado) y sigue. Mismo pool estático de 1 MiB que la app de la Fase 1. */
++static char ros2_vita_net_pool[1024 * 1024] __attribute__((aligned(4096)));
++
++static void ros2_vita_early_net(void) {
++	int rc_mod = sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
++	SceNetInitParam param;
++	param.memory = ros2_vita_net_pool;
++	param.size = sizeof(ros2_vita_net_pool);
++	param.flags = 0;
++	int rc_init = sceNetInit(&param);
++	int rc_ctl = sceNetCtlInit();
++	debugPrintf("[ros2_vita] early net: sysmodule=0x%08x sceNetInit=0x%08x sceNetCtlInit=0x%08x\n",
++			(unsigned int)rc_mod, (unsigned int)rc_init, (unsigned int)rc_ctl);
++}
++
+ int main(int argc, char *argv[]) {
+     sceIoMkdir(VITA_LOG_ROOT, 0777);
+     sceIoMkdir(VITA_LOG_ROOT "/logs", 0777);
+@@ -151,6 +170,8 @@ int main(int argc, char *argv[]) {
+ 	scePowerSetGpuClockFrequency(222);
+ 	scePowerSetGpuXbarClockFrequency(166);
+ 
++	ros2_vita_early_net();
++
+ 	enum capunlocker_mode cap_mode = read_capunlocker_mode();
+ 	int cap_result = cap_mode == CAPUNLOCKER_DISABLED ? -1 : probe_capunlocker();
+ 	int cap_available = cap_mode != CAPUNLOCKER_DISABLED && cap_result >= 0;
