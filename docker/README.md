@@ -42,7 +42,7 @@ La IP que muestra `up` es la que va en `ros/agent_ip` del proyecto Godot (p. ej.
 | `build` / `up` / `agent` / `down` / `shell` / `status` / `logs [agent\|station]` / `clean` | Ciclo de vida. `agent` levanta solo el agente |
 | `monitor [--sin-pc-hello]` | `scripts/vita_monitor.py`: frecuencia y último valor de `/vita_hello` y `/cmd_vel`, «VITA VIVA» si publicó en los últimos 3 s; publica `/pc_hello` a 1 Hz |
 | `topics` / `echo [topic]` | `ros2 topic list -t` / `ros2 topic echo` |
-| `sim` | turtlesim con `/turtle1/cmd_vel` remapeado a `/cmd_vel` (ligero, sin GPU) |
+| `sim` | turtlesim con `/turtle1/cmd_vel` remapeado a `/cmd_vel` (ligero, sin GPU) + `scripts/turtle_odom.py`, que publica su pose como `/odom` (relativa al inicio) para la HMI de la Vita |
 | `sim-tb3` | TurtleBot3 Burger en Gazebo Harmonic (mundo vacío). En Jazzy su `/cmd_vel` es `TwistStamped`; la imagen lo cambia a `Twist` (lo que publica la Vita) en los YAML del puente de Gazebo. GUI: validar en el PC |
 | `rviz` / `rqt` / `teleop` | RViz2, `rqt_graph`, `teleop_twist_keyboard` (para probar sin la Vita) |
 | `bridge-server` | Puente Zenoh escuchando en TCP 7447 |

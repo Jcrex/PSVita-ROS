@@ -18,6 +18,7 @@
 #ifdef ROS2_VITA_XRCE // SCsub lo define solo si encuentra las libs XRCE
 
 #include "core/config/project_settings.h"
+#include "core/os/os.h"
 #include "core/string/print_string.h"
 
 #include <uxr/client/client.h>
@@ -48,6 +49,8 @@ struct XrceDiag {
 	String vita_ip;
 	// Códigos de la inicialización de red (Vita): 0 = OK; 0x8041... = errores de sceNet.
 	int rc_sysmodule = 0, rc_netinit = 0, rc_netctl = 0, rc_net_udp = 0;
+	int topic_callbacks = 0, topic_dropped = 0; // datos entregados por uxr / descartados aquí
+	int reliable_full = 0; // publicaciones desviadas al stream best effort por estar lleno el fiable
 };
 XrceDiag g_diag;
 
@@ -126,10 +129,14 @@ void read_netctl() {
 #endif
 }
 
-// Tamaños como en vita-app/src/main.c (probados en hardware). La MTU del transporte propio es 512
-// (UXR_CONFIG_CUSTOM_TRANSPORT_MTU): un mensaje mayor se fragmenta (solo en el stream fiable).
-constexpr size_t RELIABLE_SLOT = 4096;
-constexpr uint16_t RELIABLE_HISTORY = 4;
+// La MTU del transporte propio es 512 (UXR_CONFIG_CUSTOM_TRANSPORT_MTU): un mensaje mayor se fragmenta
+// (solo en el stream fiable). Historial 16 y no 4 (vita-app): a 20 Hz, 4 huecos se llenaban antes de
+// que llegara la confirmación del agente (G6). Cada hueco guarda un datagrama (<= MTU).
+constexpr size_t RELIABLE_SLOT = UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
+constexpr uint16_t RELIABLE_HISTORY = 16;
+constexpr size_t MAX_RX = 16 * 1024; // mensaje recibido más grande (reconstruido de fragmentos)
+// Cabeceras XRCE dentro de un datagrama (mensaje + submensaje WRITE_DATA): lo que no cabe se fragmenta.
+constexpr size_t XRCE_OVERHEAD = 24;
 constexpr size_t BEST_EFFORT_BUF = UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
 constexpr int ENTITY_TIMEOUT_MS = 2000; // espera de la respuesta del agente al crear entidades
 
@@ -219,11 +226,17 @@ class XrceTransport : public RosTransport {
 
 	static void _on_topic(uxrSession *, uxrObjectId p_object, uint16_t, uxrStreamId, ucdrBuffer *p_ub, uint16_t p_len, void *p_args) {
 		XrceTransport *self = (XrceTransport *)p_args;
+		g_diag.topic_callbacks++;
 		for (const KeyValue<int, Endpoint> &kv : self->subs) {
 			if (kv.value.entity.id == p_object.id && kv.value.entity.type == p_object.type) {
-				if (self->rx && p_len <= ucdr_buffer_remaining(p_ub)) {
-					// El payload empieza en el iterador del buffer (como hace vita-app con ucdr_deserialize_*).
-					self->rx(self->rx_ctx, kv.key, p_ub->iterator, p_len);
+				// Un mensaje reconstruido de fragmentos NO es contiguo: cada trozo sigue en su hueco del stream
+				// y ucdr salta de uno a otro con su callback de buffer lleno. Por eso se copia con
+				// ucdr_deserialize_array_uint8_t y no con p_ub->iterator (eso perdía todo /odom, G6).
+				static uint8_t buf[MAX_RX];
+				if (self->rx && p_len <= MAX_RX && ucdr_deserialize_array_uint8_t(p_ub, buf, p_len)) {
+					self->rx(self->rx_ctx, kv.key, buf, p_len);
+				} else {
+					g_diag.topic_dropped++;
 				}
 				return;
 			}
@@ -264,7 +277,12 @@ public:
 		transport_open = true;
 		g_diag.step = "creando sesion XRCE";
 
-		uxr_init_session(&session, &transport.comm, 0xCAFE0005);
+		// Clave de cliente distinta en cada arranque: con una fija, dos clientes (la Vita y una prueba en
+		// el PC) se echaban el uno al otro de la sesión del agente. -p client_key:=N para fijarla.
+		uint32_t key = p_args.has("client_key") ? (uint32_t)String(p_args["client_key"]).to_int()
+												: (uint32_t)(OS::get_singleton()->get_ticks_usec() ^ (uint64_t)OS::get_singleton()->get_unix_time() * 2654435761u);
+		key = key ? key : 0xCAFE0005;
+		uxr_init_session(&session, &transport.comm, key);
 		uxr_set_topic_callback(&session, &XrceTransport::_on_topic, this);
 		bool created = uxr_create_session(&session);
 		read_netctl();
@@ -390,13 +408,21 @@ public:
 		const Endpoint *ep = pubs.getptr(p_id);
 		ERR_FAIL_NULL_V(ep, ERR_DOES_NOT_EXIST);
 		ucdrBuffer ub;
-		uxrStreamId stream = ep->reliable ? reliable_out : best_effort_out;
-		if (uxr_prepare_output_stream(&session, stream, ep->entity, &ub, (uint32_t)p_len) == UXR_INVALID_REQUEST_ID) {
-			// No cabe en un datagrama (o los slots fiables están llenos): fragmentar (solo fiable).
+		const bool fits = p_len + XRCE_OVERHEAD <= UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
+		if (!fits) {
+			// Mayor que un datagrama: solo el stream fiable sabe fragmentar.
 			ERR_FAIL_COND_V_MSG(!ep->reliable, ERR_OUT_OF_MEMORY,
 					vformat("ros2_vita/xrce: %d bytes no caben en un datagrama best effort (MTU %d).", (int)p_len, (int)BEST_EFFORT_BUF));
-			ERR_FAIL_COND_V_MSG(uxr_prepare_output_stream_fragmented(&session, stream, ep->entity, &ub, p_len, &XrceTransport::_flush, nullptr) == UXR_INVALID_REQUEST_ID,
-					ERR_BUSY, "ros2_vita/xrce: stream fiable lleno; mensaje descartado.");
+			ERR_FAIL_COND_V_MSG(uxr_prepare_output_stream_fragmented(&session, reliable_out, ep->entity, &ub, p_len, &XrceTransport::_flush, nullptr) == UXR_INVALID_REQUEST_ID,
+					ERR_BUSY, "ros2_vita/xrce: stream fiable lleno; mensaje grande descartado.");
+		} else if (!ep->reliable || uxr_prepare_output_stream(&session, reliable_out, ep->entity, &ub, (uint32_t)p_len) == UXR_INVALID_REQUEST_ID) {
+			// Best effort, o el fiable está lleno (WiFi lenta, sin confirmar aún): mejor enviar sin garantía
+			// que bloquear o tirar el mensaje (para un teleop cuenta el último). La QoS DDS no cambia: la
+			// fiabilidad aquí es solo del tramo Vita <-> agente.
+			if (ep->reliable) {
+				g_diag.reliable_full++;
+			}
+			ERR_FAIL_COND_V(uxr_prepare_output_stream(&session, best_effort_out, ep->entity, &ub, (uint32_t)p_len) == UXR_INVALID_REQUEST_ID, ERR_BUSY);
 		}
 		ucdr_serialize_array_uint8_t(&ub, p_data, p_len);
 		return OK;
@@ -422,6 +448,9 @@ Dictionary ros2_vita_xrce_diagnostics() {
 	d["rc_netinit"] = g_diag.rc_netinit;
 	d["rc_netctl"] = g_diag.rc_netctl;
 	d["rc_net_udp"] = g_diag.rc_net_udp;
+	d["topic_callbacks"] = g_diag.topic_callbacks;
+	d["topic_dropped"] = g_diag.topic_dropped;
+	d["reliable_full"] = g_diag.reliable_full;
 	return d;
 }
 

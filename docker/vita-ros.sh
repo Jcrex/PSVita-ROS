@@ -48,8 +48,9 @@ case "${1:-help}" in
     topics)  run "ros2 topic list -t" ;;
     echo)    run "ros2 topic echo ${2:-/vita_hello}" ;;
     sim)
-        # turtlesim: ligero, sin GPU. La tortuga obedece al /cmd_vel de la Vita.
-        run "ros2 run turtlesim turtlesim_node --ros-args -r /turtle1/cmd_vel:=/cmd_vel" ;;
+        # turtlesim: ligero, sin GPU. La tortuga obedece al /cmd_vel de la Vita y turtle_odom.py
+        # publica su pose como /odom (lo que espera la HMI de la Vita, godot/g6-hmi).
+        run "python3 /scripts/turtle_odom.py & ODOM_PID=\$!; ros2 run turtlesim turtlesim_node --ros-args -r /turtle1/cmd_vel:=/cmd_vel; kill \$ODOM_PID" ;;
     sim-tb3)
         # TurtleBot3 Burger en Gazebo Harmonic (mundo vacío). Ver README: tipo de /cmd_vel.
         run "ros2 launch turtlebot3_gazebo empty_world.launch.py" ;;
@@ -88,7 +89,7 @@ Uso: docker/vita-ros.sh <comando>
 
   monitor             ver lo que publica la Vita y responderle /pc_hello (G5 en verde)
   topics | echo [topic]
-  sim                 turtlesim obedeciendo /cmd_vel (ligero)
+  sim                 turtlesim obedeciendo /cmd_vel + su pose como /odom (ligero)
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
