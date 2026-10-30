@@ -36,6 +36,16 @@ curl -T <app>.vpk "ftp://<vita-ip>:1337/ux0:/<app>.vpk"
 
 Si se prefiere un cliente FTP gráfico (FileZilla, etc.), conectar a `<vita-ip>:1337` sin credenciales (acceso anónimo) y copiar el `.vpk` a `ux0:/`.
 
+**Si no se conoce la IP:** buscar el puerto 1337 en la LAN (sin nmap):
+`for i in $(seq 2 254); do (timeout 1 bash -c "echo > /dev/tcp/192.168.1.$i/1337" 2>/dev/null && echo 192.168.1.$i) & done; wait`
+
+**Si `curl` se queda colgado hasta el timeout (visto en hardware, 2026-10-30):** el TCP conecta pero VitaShell
+no envía el saludo `220` ⇒ el servidor FTP está congelado (pantalla apagada/en espera, VitaShell en segundo plano;
+ping de ~140 ms = WiFi en ahorro de energía). No es un problema de red del PC. Arreglo: en la Vita cancelar el
+modo FTP y volver a activarlo con `Select`, con VitaShell en primer plano y la espera automática desactivada
+(Ajustes → Ahorro de energía). Comprobar antes de subir: `curl -s --max-time 8 ftp://<vita-ip>:1337/ux0:/` debe
+listar carpetas. Un `.vpk` de Godot 4 (~22 MB) sube en menos de un minuto.
+
 **Nota de estado — validar en hardware:** la velocidad de transferencia por WiFi varía; archivos grandes pueden tardar varios segundos. Confirmar que la transferencia completa antes de continuar.
 
 ---
