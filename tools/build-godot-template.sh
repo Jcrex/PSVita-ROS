@@ -2,7 +2,7 @@
 # build-godot-template.sh — plantilla de exportación de godot4-vita (Godot 4.8-dev7)
 # con el módulo `ros2_vita` compilado dentro.
 #
-# ¡SIN VERIFICAR! (docs/18, puertas G1-G3). Solo en el PC de desarrollo (Linux/WSL,
+# VERIFICADO en el PC (G3 verde, 2026-10-30; docs/18 §4.5). Solo en el PC de desarrollo (Linux/WSL,
 # VitaSDK, SCons, CMake). Sigue la receta oficial platform/vita/tools/build_release_template.sh
 # del propio port, añadiendo: parche del loader, módulo ros2_vita y comprobación de imports.
 #
@@ -56,13 +56,24 @@ else
     run git -C "$WORK/engine" apply "$PATCH"
 fi
 
+echo "== 2b. Stub dlfcn.h en el VitaSDK (newlib no lo trae; os_unix.cpp lo incluye) =="
+DLFCN="${VITASDK:-$VITASDK_}/arm-vita-eabi/include/dlfcn.h"
+# Se instala si falta o si es el stub de Godot 3.5 (sin RTLD_NEXT).
+if [[ $DRY -eq 1 ]] || ! grep -q RTLD_NEXT "$DLFCN" 2>/dev/null; then
+    run cp "$REPO/godot/vitasdk-stubs/dlfcn.h" "$DLFCN"
+else
+    echo "  (dlfcn.h ya tiene RTLD_NEXT)"
+fi
+
 echo "== 3. Motor + módulo ros2_vita (≈1–2 h) =="
+# custom_modules apunta al módulo mismo: con "$REPO/godot" SCons busca recursivamente
+# y recoge también godot/godot35/modules/microros (3.5, solo se activa con platform=vita).
 EXTRA=()
 [[ -n "${RUST_PIC_LIB:-}" ]] && EXTRA+=("ros2_vita_rust_lib=$RUST_PIC_LIB")
 ( cd "$WORK/engine" 2>/dev/null || true
   run python3 -m SCons platform=vita arch=arm32 target=template_release optimize=size \
       disable_path_overrides=no vita_shared=yes vita_gxm3d=yes vita_gl_root="${VITAGL_ROOT:-/ruta/vitagl}" \
-      custom_modules="$REPO/godot" "${EXTRA[@]+"${EXTRA[@]}"}" -j"$(nproc)" )
+      custom_modules="$REPO/godot/ros2_vita" "${EXTRA[@]+"${EXTRA[@]}"}" -j"$(nproc)" )
 
 echo "== 4. Comprobar que todo lo que pide el .so lo resuelve el loader =="
 run mkdir -p "$OUT"

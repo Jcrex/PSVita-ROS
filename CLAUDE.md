@@ -52,9 +52,11 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   CMake/VitaSDK + `.vpk`). Builds only on the PC. `scripts/` cross-compiles
   microxrcedds_client.
 - `godot/` — módulo Godot **4** `ros2_vita` en árbol (godot4-vita; ADR 0008,
-  `docs/18`), compilado y probado en host (G1), sin compilar para la Vita; `godot/loader-patches/` parchea el loader;
+  `docs/18`), compilado y probado en host (G1) y compilado para la Vita con `verify_runtime.py` PASS (G3, sin probar
+  en hardware); `godot/loader-patches/` parchea el loader; `godot/vitasdk-stubs/dlfcn.h` va al SDK;
   `godot/test/` pruebas GDScript; el SDK Rust no depende de Godot; `tools/vita-doctor.sh` diagnostica el entorno;
-  `tools/build-godot-template.sh` es la receta (solo PC);
+  `tools/build-godot-template.sh` es la receta (solo PC; necesita VitaGL del port en `toolchains/vitagl-src` y
+  `tools/build-pcre2-vita.sh`, docs/18 §4.5);
   `tools/check-vita-imports.py` / `build-rust-pic.sh` / `build-c-pic.sh` verifican/construyen los enlaces (G2); `tools/hwprobe/`
   es una sonda de hardware (sin compilar; docs/14 §9).
   `godot/godot35/` = app teleop en Godot 3.5 (HISTÓRICO, validada en hardware; docs/20–21);

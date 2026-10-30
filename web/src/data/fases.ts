@@ -138,7 +138,7 @@ export const fases: Fase[] = [
       { texto: 'Fork de godot4-vita solo si hace falta (parches mínimos, proponibles a upstream; compatible con el entorno estándar)', estado: 'pendiente' },
       { texto: 'G1: módulo ros2_vita compilado dentro de godot4-vita (Godot 4.8, linuxbsd) y pruebas de host verdes (294 comprobaciones, 0 fallos)', estado: 'hecho' },
       { texto: 'G2: cliente XRCE, 8 módulos C y staticlib Rust compilados en PIC para la Vita; 0 imports fuera de la tabla del loader parcheada, 0 TLS', estado: 'hecho' },
-      { texto: 'G3: plantilla de la Vita con el módulo hasta verify_runtime.py PASS', estado: 'bloqueado-pc' },
+      { texto: 'G3: plantilla de la Vita con el módulo: verify_runtime.py PASS (681 imports) y vita_release.zip (23,5 MB); variante Rust también PASS. VitaGL del port, pcre2-32 propio y stub dlfcn.h; bug de RUSTFLAGS en build-rust-pic.sh corregido', estado: 'hecho' },
       { texto: 'Red en el motor (opción A: backend sceNet en net-udp) e implementar XrceTransport', estado: 'bloqueado-pc' },
       { texto: 'Cruzar fixtures de msg-cdr con ROS2 real (robotnik_dev) y cross-compilar los módulos nuevos', estado: 'bloqueado-pc' },
       { texto: 'Experimentos de latencia XRCE (MTU, heartbeat, streams) y estrés ARM de msg-ring', estado: 'bloqueado-hw' },

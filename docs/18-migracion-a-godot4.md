@@ -135,7 +135,7 @@ La interfaz (headers C) es la misma; **ningún crate cambia de código**. Cambia
 
 ### 3.2 Reglas nuevas para cualquier código que entre en `libgodot.so`
 1. **PIC**: C con `-fPIC` (SCons ya lo pone); Rust con `-C relocation-model=pic` — **compila (G2, 2026-10-29)**;
-   que el `.so` final pase `verify_runtime.py` se sabe en G3.
+   el `.so` final pasa `verify_runtime.py` (**G3 verde, 2026-10-30**; relocaciones 2/21/22/23).
 2. **Cierre de imports**: todo símbolo no definido debe estar en `default_dynlib.c` (§4).
 3. **Sin TLS**: nada de `thread_local`/`#[thread_local]`; nuestros módulos son `no_std` ⇒ cumplen **[T: 0 referencias
    a TLS en `libmods_c.a`, el staticlib Rust, `libmicroxrcedds_client.a` ni `libmicrocdr.a`, `nm -A` en host]**.
@@ -220,7 +220,45 @@ aceptado por upstream), `net_udp_init` solo debe detectar «ya inicializada» y 
 ### 4.4 Herramientas entregadas
 `tools/check-vita-imports.py` (esta comprobación, con `--nm arm-vita-eabi-nm` en el PC),
 `tools/build-rust-pic.sh`, `tools/build-c-pic.sh`, `XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh`,
-`tools/build-godot-template.sh` (aplica el parche, compila, ejecuta `verify_runtime.py`; reutiliza clon y parche si ya están).
+`tools/build-godot-template.sh` (aplica el parche, compila, ejecuta `verify_runtime.py`; reutiliza clon y parche si ya están),
+`tools/build-pcre2-vita.sh` (la `pcre2-32` que pide el loader y no trae vitasdk; G3).
+
+### 4.5 Resultado de G3 (PC, 2026-10-30) **[T]**
+`VITAGL_ROOT=$PWD/toolchains/vitagl-src tools/build-godot-template.sh` completa: `verify_runtime.py` → **PASS: ELF
+layout, relocations, main and 681 imports supported by the loader** (relocaciones 2/21/22/23), `godot_loader.vpk`
+(23 MB) y `toolchains/godot4-vita/out/vita_release.zip` (23,5 MB). `RosNode`/`RosMsg`/`RosPublisher`/`RosSubscriber`
+están en el `.so`.
+
+**Ojo:** el `.so` aún **no** importa ningún `sceNet*` ni contiene `uxr_*`: `ros2_vita` solo trae hoy el transporte
+*loopback* y `msg-schema`/`msg-ring`. Las libs PIC de G2 (XRCE, `net-udp`, `microros-transport`) entran con
+`XrceTransport` en **G5**; ahí habrá que repetir `verify_runtime.py`.
+
+**Prerrequisitos que aparecieron (todos en `toolchains/`, ya resueltos; no reabrir):**
+1. **VitaGL del port**: `git clone https://github.com/Rinnegatamante/vitaGL toolchains/vitagl-src`, checkout `df63ce8`
+   (está en el repo oficial), `git apply platform/vita/vitagl/vitagl-vita-port.patch`, y `make` con las opciones de
+   `dependency.json` (+ `VGL_GIT_HASH=df63ce8`) → `libvitaGL.a` 5,8 MB.
+2. **`custom_modules=<repo>/godot/ros2_vita`** (no `<repo>/godot`): SCons de Godot 4 busca módulos de forma recursiva y
+   recogía `godot/godot35/modules/microros` (solo se activa con `platform=vita`; por eso en G1 no salió).
+3. **Librerías del SDK** (el port compila con `builtin_*=False`): `vdpm libwebp zstd bzip2 kubridge`.
+   **`pcre2-32` no existe en vitasdk/packages** → `tools/build-pcre2-vita.sh` (PCRE2 10.47, la de Godot; solo 32 bits,
+   estática, sin JIT y **sin PIC**: la enlaza el eboot del loader y con PIC sale `vita-elf-create: Invalid relocation
+   type 25!`, igual que en la Fase 1).
+4. **`dlfcn.h`**: el stub de Godot 3.5 que había en el SDK no tiene `RTLD_NEXT` (lo usa `drivers/unix/os_unix.cpp`
+   para iconv) → `godot/vitasdk-stubs/dlfcn.h` (superconjunto; `dl_stubs.c` del loader devuelve siempre NULL) lo
+   instala `build-godot-template.sh`.
+5. Si cambia una lib del SDK, **borrar `out/loader/godot_loader`**: CMake no reenlaza el loader (las libs van por `-l`).
+
+**Variante Rust** (`RUST_PIC_LIB=…/libvita_modules_rust.a … build-godot-template.sh toolchains/godot4-vita/out-rust`):
+**PASS con 650 imports**, `out-rust/vita_release.zip` (23,7 MB). Dos hallazgos:
+- **Bug de G2 en `tools/build-rust-pic.sh`:** `RUSTFLAGS=… \` seguido de otra asignación no exporta nada a `cargo`, así
+  que el staticlib de G2 **no era PIC** (1399 `R_ARM_THM_MOVW/MOVT_ABS`; el enlace del `.so` daba *dangerous relocation*).
+  G2 no lo vio porque solo miraba imports y TLS. Arreglado con `export` y el script ahora **falla si quedan MOVW/MOVT_ABS**.
+  Las libs C y XRCE PIC sí estaban bien (0 MOVW/MOVT_ABS).
+- **Duplicados `compiler_builtins`** (riesgo previsto en §4.1): con Rust, 31 símbolos que la variante C importa del loader
+  (`__aeabi_idiv/uidivmod/ldivmod/l2d/d2lz…`, `__ctzdi2`, `floor/ceil/round/rint/fmod/fmin/fmax/sqrt/cbrtf` y sus `f`)
+  quedan **definidos dentro del `.so`** por el `core`/`compiler_builtins` de Rust y el motor entero los usa. Enlaza y
+  valida, pero cambia la implementación de matemáticas básicas de todo Godot ⇒ **para hardware (G4) se usa la variante
+  C**; la Rust queda como alternativa a medir (rendimiento de `sqrt`/`floor`) **[validar en hardware]**.
 
 ---
 
@@ -305,7 +343,7 @@ PC (CachyOS, Linux)                   Vita
 | **G0** | laptop | 8 módulos con paridad; `msg-schema` con `type_idx`; parche del loader aplica en `d1a5f29`; `check-vita-imports` funciona; scripts de build con `--dry-run` | **VERDE (2026-10-27)** |
 | **G1** | PC (host) | El módulo **compila** contra Godot 4.8 (`platform=linuxbsd custom_modules=…`) y pasa `godot/test` (RosMsg ↔ CDR bit a bit, pub/sub loopback, timers, ejes) | **VERDE (2026-10-29, PC)**: 294 comprobaciones, 0 fallos |
 | **G2** | PC (cruzada) | C y Rust PIC compilados para ARM; `check-vita-imports` (con `arm-vita-eabi-nm`) sin faltantes tras el parche | **VERDE (2026-10-29, PC)**: 0 imports ausentes en las 4 libs PIC, 0 TLS |
-| **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | pendiente |
+| **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | **VERDE (2026-10-30, PC)**: PASS, 681 imports; `vita_release.zip` 23,5 MB (§4.5) |
 | **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | pendiente |
 | **G5** | Vita + agente | Transporte XRCE: `std_msgs/String` llega a `ros2 topic echo` | pendiente |
 | **G6** | Vita + robot | HMI piloto: teleop `/cmd_vel` + `/odom` en pantalla | pendiente |
