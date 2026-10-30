@@ -44,7 +44,8 @@ sesión desde `192.168.1.94`, `ros2 topic echo /vita_hello` recibe «hola desde 
 6. `tools/deploy-vpk-ftp.sh` (verifica sha256) y `tools/export-vita-vpk.sh` en uso; WiFi lenta = subida de 22 MB
    en 20–150 s.
 
-**Pendiente de confirmar:** que la pantalla pase a **verde** (llega `/pc_hello`; el monitor lo publica). GUI de la
+**Confirmado por el usuario:** la pantalla pasa a **verde** — llega `/pc_hello` publicado por el monitor de la
+estación ⇒ **ida y vuelta en hardware** (Vita → ROS 2 y ROS 2 → Vita). GUI de la
 estación (turtlesim/Gazebo/RViz) y puente Zenoh entre dos equipos: sin probar.
 
 **Siguiente paso exacto: G6 (HMI piloto)** — teleop `/cmd_vel` con los mandos + `/odom` en pantalla, contra
