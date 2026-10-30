@@ -30,6 +30,8 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 | `../tools/build-godot-template.sh` | Receta completa: clonar, parchear, compilar con el módulo, verificar, empaquetar |
 | `../tools/build-rust-pic.sh` | Staticlib Rust PIC `core` para enlazar en `libgodot.so` (opcional) |
 | `../tools/check-vita-imports.py` | Comprueba los imports de cualquier `.a/.o` contra la tabla del loader |
+| `../tools/export-vita-vpk.sh` | Exporta un proyecto Godot 4 a `.vpk` con el addon `psvita` y nuestra plantilla (G4) |
+| `g4-smoke/` | Proyecto mínimo de la puerta G4 (loopback + `Twist`, sin red) |
 
 ## Puertas de verificación (docs/18 §8)
 
@@ -43,7 +45,17 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
    Prueba: `RosMsg` ↔ CDR **bit a bit** con los 24 tipos de `modules/msg-schema/tests/fixtures`,
    propiedades anidadas, pub/sub por *loopback*, timers, parámetros y ejes.
 2. **G2/G3 — PC (cruzada):** `tools/build-godot-template.sh` (necesita VitaSDK, SCons, VitaGL parcheado).
-3. **G4+ — Vita:** `.pck` mínimo, luego transporte XRCE, luego HMI piloto.
+3. **G4 — Vita:** proyecto mínimo `godot/g4-smoke/` (rclgd en *loopback* + pub/sub de `Twist`; fondo verde = OK,
+   rojo = fallo). Editor de host **4.8-dev7** (el exportador `psvita` rechaza otra versión):
+   ```bash
+   cd <godot4-vita>
+   GODOT_VERSION_STATUS=dev7 scons platform=linuxbsd target=editor \
+        custom_modules=<repo>/godot/ros2_vita x11=no wayland=no vulkan=no opengl3=no
+   tools/export-vita-vpk.sh godot/g4-smoke build/g4-smoke.vpk   # exporta sobre una copia
+   ```
+   `export-vita-vpk.sh` copia el proyecto, le añade el addon `psvita` y `out/vita_release.zip` (variante C) y
+   exporta en modo *headless*. Después: instalar el `.vpk` (FTP o modo USB de VitaShell). **Validar en hardware.**
+4. **G5+ — Vita:** transporte XRCE, luego HMI piloto.
 
 ## Reglas heredadas de rclgd (mantener)
 - Callbacks de suscripciones y timers: **hilo principal** (`process_frame`).

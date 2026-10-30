@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-30 (PC, 2.ª sesión: **G4 preparada** — editor 4.8-dev7, `build/g4-smoke.vpk` exportado, falta probarlo en la Vita; ver el primer bloque). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,29 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-30 (PC, 2.ª sesión) — G4 preparada: editor 4.8-dev7 y primer `.vpk` de Godot 4
+
+**Qué se hizo.**
+1. **Editor 4.8-dev7 de host:** mismo árbol y opciones que G1, con `GODOT_VERSION_STATUS=dev7` y
+   `custom_modules=<repo>/godot/ros2_vita` (headless: `x11=no wayland=no vulkan=no opengl3=no`). El cambio de
+   versión recompila casi todo (~7 min con 14 hilos). `--version` → `4.8.dev7.custom_build.d1a5f291b`.
+   Las pruebas de host de G1 siguen verdes con él (294/0).
+2. **Proyecto mínimo `godot/g4-smoke/`:** `rclgd.init(["-p","transport:=loopback"])` (en la Vita el transporte por
+   defecto es `xrce`, aún no implementado) + pub/sub de `geometry_msgs/msg/Twist` con un timer de 0,5 s.
+   Fondo **verde** = OK, **rojo** = fallo (no depende de que la fuente se vea). Ejecutado en host: «G4 OK».
+3. **`tools/export-vita-vpk.sh <proyecto> [salida.vpk]`:** copia el proyecto a un temporal, le añade el addon
+   `psvita` y `out/vita_release.zip` (variante C) en la ruta por defecto del addon, `--import` y
+   `--export-release "PS Vita"` en headless. Resultado: **`build/g4-smoke.vpk` (22 MB)**, con `game_data/`
+   dentro del VPK (`data/separate_folder=false`: un solo archivo que instalar). `include_filter="ros/*.rsch"` es
+   necesario: Godot no exporta archivos que no son recursos.
+
+**Siguiente paso exacto (con la Vita):** instalar `build/g4-smoke.vpk` (FTP o modo USB de VitaShell, skill
+`vita-deploy-logs`) y lanzar «ROS2 Vita G4» (TITLE_ID `RVGD40004`). Fondo verde + «G4 OK: …» ⇒ G4 VERDE.
+Si se cierra o queda en negro: probable fallo del loader/kubridge o de memoria (no de `ros2_vita`); el runtime
+necesita kubridge instalado (requisito del port). Después, **G5**: `XrceTransport` + red en el motor.
 
 ---
 
