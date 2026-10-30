@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-30 (PC: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,47 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-30 (PC) — Puerta G3 VERDE
+
+**Qué se hizo.** `VITAGL_ROOT=$PWD/toolchains/vitagl-src tools/build-godot-template.sh` completa entero:
+`verify_runtime.py` → **PASS: ELF layout, relocations, main and 681 imports supported by the loader**;
+`toolchains/godot4-vita/out/vita_release.zip` (23,5 MB) + `godot_loader.vpk` (23 MB). `RosNode`/`RosMsg`/
+`RosPublisher`/`RosSubscriber` están en el `.so`. Variante Rust (`RUST_PIC_LIB=…`, salida `out-rust/`): también
+**PASS** (650 imports, 23,7 MB). Detalle y lista de prerrequisitos en **`docs/18` §4.5** (no reabrir).
+
+**Muros que aparecieron y cómo se resolvieron:**
+1. VitaGL del port: clonado del repo **oficial** (`Rinnegatamante/vitaGL`, el commit `df63ce8` está ahí) en
+   `toolchains/vitagl-src`, parche del port aplicado, `make` con las opciones de `dependency.json`.
+2. `custom_modules=<repo>/godot` metía también `godot/godot35/modules/microros` (SCons de Godot 4 busca recursivo)
+   → el script apunta ahora a `godot/ros2_vita`.
+3. Librerías del SDK: `vdpm libwebp zstd bzip2 kubridge`; **`pcre2-32` no existe en vitasdk** →
+   `tools/build-pcre2-vita.sh` (nuevo; **sin PIC**, si no `Invalid relocation type 25!` en el eboot del loader).
+4. `RTLD_NEXT` no estaba en el stub `dlfcn.h` de 3.5 → `godot/vitasdk-stubs/dlfcn.h` (nuevo, superconjunto),
+   lo instala `build-godot-template.sh`.
+5. CMake no reenlaza el loader si cambia una lib del SDK → borrar `out/loader/godot_loader`.
+6. **Bug real de G2:** `tools/build-rust-pic.sh` no exportaba `RUSTFLAGS` ⇒ el staticlib Rust **no era PIC**
+   (1399 MOVW/MOVT_ABS). Arreglado con `export` y el script ahora falla si quedan relocaciones absolutas.
+   Las libs C y XRCE PIC estaban bien.
+
+**Ojo para G4–G5:**
+- El `.so` aún **no** importa `sceNet*` ni lleva `uxr_*`: `ros2_vita` solo tiene el transporte *loopback*. Las libs PIC
+  de G2 entran con `XrceTransport` (G5); entonces hay que repetir `verify_runtime.py`.
+- Con Rust, `compiler_builtins` define dentro del `.so` 31 símbolos (`__aeabi_*`, `floor`, `sqrt`, …) que el motor
+  usa en vez de los del loader ⇒ **para hardware se usa la variante C**.
+- El exportador `psvita` exige `engine.status == "dev7"` y nuestro editor de host de G1 dice `4.8.dev`
+  (`version.py` tiene `status = "dev"`) ⇒ **lo rechazaría**.
+
+**Siguiente paso exacto (PC): G4.**
+1. Editor 4.8-dev7 (T5.1.2): o bien el oficial `Godot_v4.8-dev7_linux.x86_64` (releases de godotengine/godot-builds),
+   o bien recompilar el de host con `GODOT_VERSION_STATUS=dev7 scons platform=linuxbsd target=editor
+   custom_modules=$REPO/godot/ros2_vita …` (mismo árbol que G1; el `custom_modules` ya no puede ser `godot/`).
+2. Proyecto mínimo de G4 (copia de `godot/test/project` o uno nuevo): script con `rclgd.init` en loopback + `RosMsg`
+   que escriba `rclgd.ok()` en pantalla; ajustes Vita (960×544, Compatibility, T5.2.4).
+3. Exportar con el addon `psvita` (`platform/vita/editor/addons/psvita`) usando
+   `toolchains/godot4-vita/out/vita_release.zip` como *Custom Template* → `.vpk` → Vita (FTP o modo USB de VitaShell).
 
 ---
 

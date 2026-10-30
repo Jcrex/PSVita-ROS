@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-# SCsub — módulo ros2_vita (Godot 4.8-dev7). Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3).
+# SCsub — módulo ros2_vita (Godot 4.8-dev7). Compilado y probado en host (G1, 2026-10-29); compilado para la
+# Vita con verify_runtime.py PASS (G3, 2026-10-30, C y Rust); en hardware: validar (G4).
 #
 # Las implementaciones C de los módulos duales se compilan DENTRO del módulo con
 # el entorno de SCons del motor (misma toolchain, mismos flags PIC), porque el

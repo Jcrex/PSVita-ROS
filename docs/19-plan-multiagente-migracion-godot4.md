@@ -97,7 +97,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  └─ T1.2.4 Proponer los parches a upstream (PR) ................................ A2 · P · —  · ⏳
 ├─ 1.3 Compilación de la plantilla
 │  ├─ T1.3.1 G1 host: Godot 4.8 linuxbsd + custom_modules=godot → godot/test ...... A2 · P · G1 · ✅
-│  ├─ T1.3.2 G3 Vita: build-godot-template.sh → verify_runtime.py PASS ............ A2 · P · G3 · ⏳
+│  ├─ T1.3.2 G3 Vita: build-godot-template.sh → verify_runtime.py PASS ............ A2 · P · G3 · ✅
 │  └─ T1.3.3 Medir tamaño/tiempo de arranque de libgodot.so con ros2_vita ......... A11 · V · G4 · ⏳
 ├─ 1.4 Entrada y sensores en el motor
 │  ├─ T1.4.1 IMU ya expuesta (Input accel/gyro/gravity) → verificar valores/ejes .. A9 · V · G7 · ⏳
@@ -162,7 +162,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 ├─ T4.1 tools/vita-doctor.sh (Godot 4) ......................................... A4 · L · G0 · ✅
 ├─ T4.2 tools/check-vita-imports.py ............................................ A4 · L · G0 · ✅
 ├─ T4.3 tools/build-rust-pic.sh (nightly, -Zbuild-std=core, PIC) ................ A4 · P · G2 · ✅
-├─ T4.4 tools/build-godot-template.sh (base fijada + parches + verify) .......... A2 · P · G3 · 🟡
+├─ T4.4 tools/build-godot-template.sh (base fijada + parches + verify) .......... A2 · P · G3 · ✅
 ├─ T4.5 Script de build PIC del cliente XRCE (variante de vita-app/scripts) ..... A4 · P · G2 · ✅
 ├─ T4.6 Imagen docker de host para H1 (cliente XRCE + agente) .................. A11 · L · H1 · ⏳
 └─ T4.7 CI ligera (GitHub Actions): paridad + host tests + web build ........... A11 · L · —  · ⏳ (opcional)
@@ -199,7 +199,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 
 8. RUST (SDK propio, independiente de Godot)
 ├─ T8.1 Umbrella crate PIC para libgodot.so (core-only, sin TLS, sin panics std) A13 · P · G2 · ✅
-├─ T8.2 verify_runtime.py con Rust dentro (relocaciones 2/21/22/23) ............ A13 · P · G3 · ⏳ (R2)
+├─ T8.2 verify_runtime.py con Rust dentro (relocaciones 2/21/22/23) ............ A13 · P · G3 · ✅ (docs/18 §4.5)
 ├─ T8.3 App cargo-vita independiente reutilizando los módulos ................... A13 · P · —  · ⏳
 └─ T8.4 Serie docs/rust: PIC, build-std, cdylib vs staticlib (explicado) ........ A12 · L · —  · ⏳
 
@@ -305,7 +305,7 @@ T2.4.1 ─► T5.3.2 ─► T3.2.4 (R-N)        T3.1.3 (R-G) ─► decisión go
 | Oleada | Dónde | Agentes en paralelo | Sale cuando |
 |---|---|---|---|
 | **O0 — ya, sin PC ni Vita** | laptop | A1 (vigilancia + API_PARITY con R-N), A5 (idempotencia/estado WiFi en host), A6 (`xrce_core.c` + H1 en docker), A7 (generador desde package.xml, fixtures con rclpy), A8 (TF, logger local, señales), A11 (imagen H1, CI), A12 | H1 verde; paridad verde |
-| **O1 — PC** | CachyOS | A2 (G1, G3), A3 (rclgd jazzy, editor 4.8-dev7, export), A4 (PIC, imports), A7b (spike R-G), A13 (Rust PIC) | G1, G2, G3 verdes; go/no-go R-G |
+| **O1 — PC** | CachyOS | A2 (G1, G3), A3 (rclgd jazzy, editor 4.8-dev7, export), A4 (PIC, imports), A7b (spike R-G), A13 (Rust PIC) | G1, G2, G3 verdes (G3: 2026-10-30); go/no-go R-G |
 | **O2 — PC + Vita** | Vita | A3 (despliegue), A6 (XRCE real), A5 (WiFi real), A11 (medidas) | G4, G5 |
 | **O3 — apps** | PC + Vita | A9, A10, A11 | G6, G7 |
 | **O4 — consolidación** | todas | A2 (PRs upstream, rebase), A1, A12 (guía final) | fork mínimo o cero; docs cerradas |
