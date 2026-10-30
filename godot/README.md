@@ -1,8 +1,8 @@
 # `godot/` — módulo `ros2_vita` para Godot 4 (godot4-vita 4.8-dev7)
 
-> **Estado (2026-10-29): G1 VERDE** — el módulo compila dentro de godot4-vita @ `d1a5f29`
-> (`platform=linuxbsd`, en el PC) y `godot/test/run_host_tests.sh` pasa (294 comprobaciones, 0 fallos).
-> **Para la Vita aún sin compilar** (G2/G3) y sin transporte XRCE: marcador **validar en el PC / en hardware**. Decisión y razones:
+> **Estado (2026-10-30): G1–G4 VERDES** — compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
+> **corre en la Vita** en *loopback* (G4). **G5 (transporte XRCE):** probado en host de punta a punta contra el
+> agente en docker y ROS 2 Jazzy (`godot/g5-xrce`); en la Vita: **validar en hardware**. Decisión y razones:
 > `docs/adr/0008-godot-via-modulo-estatico.md`; investigación y plan: **`docs/18-migracion-a-godot4.md`**.
 
 ## Qué es
@@ -16,7 +16,7 @@ Un módulo C++ **estático** del motor (la Vita no admite GDExtension) que expon
 GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_runtime.cpp / ros_msg.cpp
                                                                     │ msg-schema (CDR guiado por esquema)
                                        transporte intercambiable ◄──┘ modules/ (C o Rust, header C único)
-                                         loopback (host)  |  xrce (Vita, pendiente)
+                                         loopback (pruebas)  |  xrce (micro-ROS por UDP; host y Vita)
 ```
 
 ## Contenido
@@ -32,6 +32,8 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 | `../tools/check-vita-imports.py` | Comprueba los imports de cualquier `.a/.o` contra la tabla del loader |
 | `../tools/export-vita-vpk.sh` | Exporta un proyecto Godot 4 a `.vpk` con el addon `psvita` y nuestra plantilla (G4) |
 | `g4-smoke/` | Proyecto mínimo de la puerta G4 (loopback + `Twist`, sin red) |
+| `ros2_vita/xrce_transport.*` | Transporte micro-ROS (G5): sesión XRCE, entidades por XML, streams fiable/best effort |
+| `g5-xrce/` | Proyecto de la puerta G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
 
 ## Puertas de verificación (docs/18 §8)
 
@@ -55,7 +57,21 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
    ```
    `export-vita-vpk.sh` copia el proyecto, le añade el addon `psvita` y `out/vita_release.zip` (variante C) y
    exporta en modo *headless*. Después: instalar el `.vpk` (FTP o modo USB de VitaShell). **Validar en hardware.**
-4. **G5+ — Vita:** transporte XRCE, luego HMI piloto.
+4. **G5 — transporte XRCE.** Libs del cliente: `XRCE_PIC=1` (Vita) o `XRCE_HOST=1` (host)
+   `vita-app/scripts/build-xrce-client-vita.sh`; el SCsub activa el transporte si las encuentra
+   (`ros2_vita: transporte XRCE activado` en la salida de SCons). Prueba en el PC:
+   ```bash
+   docker run -d --name g5-agent --net=host --ipc=host microros/micro-ros-agent:jazzy udp4 --port 8888
+   godot --headless --path <copia de godot/g5-xrce sin el plugin> -- -p agent_ip:=127.0.0.1
+   docker run --rm --net=host --ipc=host --entrypoint bash microros/micro-ros-agent:jazzy -c \
+     'source /opt/ros/jazzy/setup.bash; ros2 topic echo /vita_hello'
+   ```
+   `--ipc=host` en **los dos** contenedores: si no, Fast DDS intenta memoria compartida entre contenedores
+   distintos, el descubrimiento funciona pero **no llegan datos**. En la Vita: `tools/export-vita-vpk.sh godot/g5-xrce`
+   (la IP del agente va en `ros/agent_ip` de `project.godot`).
+   Diseño: un solo hilo; `poll()` cada frame con `uxr_run_session_time(0)` (no bloquea). Sin agente, `rclgd.init`
+   se bloquea ~10 s (10 intentos de sesión) y devuelve `ERR_CANT_CONNECT`.
+5. **G6+ — Vita:** HMI piloto.
 
 ## Reglas heredadas de rclgd (mantener)
 - Callbacks de suscripciones y timers: **hilo principal** (`process_frame`).

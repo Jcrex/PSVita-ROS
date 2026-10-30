@@ -7,9 +7,9 @@
 > **Godot 4 decidido (2026-10-27, `docs/18`).** Estado de la columna Vita:
 > ✅ = *implementado en `godot/ros2_vita/`, compilado y probado en host* (puerta G1
 > verde el 2026-10-29; G3 verde el 2026-10-30: compila para la Vita y pasa `verify_runtime.py`, falta
-> probarlo en hardware, G4); ⏳ = no implementado. El transporte real (`XrceTransport`) es
-> aún un stub: hoy solo funciona el `LoopbackTransport` (pruebas en host,
-> `godot/test/`).
+> corre en la Vita en loopback, G4); ⏳ = no implementado. Transportes: `LoopbackTransport` (pruebas,
+> `godot/test/`) y `XrceTransport` (micro-ROS; G5 probado en host contra ROS 2 Jazzy, en la Vita: validar en
+> hardware).
 > Leyenda: ✅ igual · 🟡 parcial/diferente · ⏳ fase posterior · ❌ no aplica.
 
 ## Singleton `rclgd`
@@ -97,7 +97,11 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
 - Cada `RosMsg` necesita su esquema `.rsch` (generado en el PC con
   `tools/gen_msg_schema.py`) dentro del `.pck`; el filtro de exportación debe
   incluir `*.rsch` (M10).
-- Argumentos: `rclgd.init(["-p","agent_ip:=…","-p","transport:=loopback"])`.
+- Argumentos: `rclgd.init(["-p","agent_ip:=…","-p","transport:=loopback"])`. También `agent_port` y `domain_id`;
+  por defecto salen de los ajustes de proyecto `ros/agent_ip`, `ros/agent_port` (8888) y `ros/domain_id` (0).
+  Transporte por defecto: `xrce` en la Vita, `loopback` en el host.
+- XRCE: `RosQoS` se traduce a XML de Fast DDS (reliability, durability, history/depth). Mensajes > ~490 bytes
+  se fragmentan solo en el stream fiable; en *best effort* se rechazan (MTU 512).
 - Entrega de mensajes: cola acotada (256, descarta el más antiguo) volcada al hilo
   principal en `process_frame`.
 
