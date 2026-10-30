@@ -2,7 +2,7 @@
 // (Godot 4.x in-tree). Compilado y probado en host (G1). API y semántica copiadas de rclgd (docs/17,
 // godot/ros2_vita/API_PARITY.md); el transporte es intercambiable:
 //   - LoopbackTransport : publica y recibe en el propio proceso (pruebas de host, sin Vita)
-//   - XrceTransport     : micro-ROS sobre WiFi/UDP (pendiente, ver ros_runtime.cpp)
+//   - XrceTransport     : micro-ROS sobre WiFi/UDP (xrce_transport.cpp, puerta G5)
 #pragma once
 
 #include "core/io/resource.h"
@@ -61,6 +61,9 @@ public:
 	virtual void unadvertise(int p_id) = 0;
 	virtual void unsubscribe(int p_id) = 0;
 	virtual Error publish(int p_pub_id, const uint8_t *p_data, size_t p_len) = 0;
+	// Una vez por frame desde rclgd::_pump (hilo principal), antes de entregar lo recibido.
+	// XRCE la usa para atender la sesión sin bloquear; loopback no la necesita.
+	virtual void poll() {}
 };
 
 // ---------------------------------------------------------------------------

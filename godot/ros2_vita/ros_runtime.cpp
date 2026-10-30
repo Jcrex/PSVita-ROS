@@ -1,4 +1,5 @@
-// ros_runtime.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3).
+// ros_runtime.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); corre en la Vita en loopback (G4,
+// 2026-10-30). El transporte XRCE vive en xrce_transport.cpp (G5).
 #include "ros_runtime.h"
 
 #include "core/config/project_settings.h"
@@ -6,6 +7,10 @@
 #include "core/object/script_language.h"
 #include "core/os/os.h"
 #include "scene/main/scene_tree.h"
+
+#ifdef ROS2_VITA_XRCE
+#include "xrce_transport.h"
+#endif
 
 rclgd *rclgd::singleton = nullptr;
 
@@ -49,17 +54,13 @@ public:
 	}
 };
 
-// TODO (puerta G5, hardware): sesión micro-ROS/XRCE sobre WiFi/UDP.
-//   - hilo propio: uxr_run_session_time + callbacks -> rx() (ya hay cola en rclgd)
-//   - transporte custom = modules/microros-transport sobre net-udp. En el runtime
-//     de godot4-vita hay que (a) exportar sceNet*/sceNetCtl*/sceSysmodule* en la
-//     tabla del loader, o (b) usar sockets POSIX tras un VitaNet::init() del motor
-//     (docs/18 §4.3).
-//   - entidades: participant/topic/publisher/datawriter por topic (ver vita-app/src/main.c)
-class XrceTransport : public RosTransport {
+#ifndef ROS2_VITA_XRCE
+// Compilado sin las libs XRCE (SCsub no las encontró): el transporte xrce no está disponible.
+// Se construyen con vita-app/scripts/build-xrce-client-vita.sh (XRCE_PIC=1 Vita, XRCE_HOST=1 host).
+class XrceUnavailable : public RosTransport {
 public:
 	Error start(const Dictionary &) override {
-		ERR_FAIL_V_MSG(ERR_UNAVAILABLE, "ros2_vita: transporte XRCE pendiente (docs/18, hito M7).");
+		ERR_FAIL_V_MSG(ERR_UNAVAILABLE, "ros2_vita: compilado sin XRCE (faltan las libs; ver godot/README.md).");
 	}
 	void stop() override {}
 	int advertise(const String &, const String &, const Ref<RosQoS> &) override { return -1; }
@@ -68,6 +69,7 @@ public:
 	void unsubscribe(int) override {}
 	Error publish(int, const uint8_t *, size_t) override { return ERR_UNAVAILABLE; }
 };
+#endif
 
 } // namespace
 
@@ -384,7 +386,11 @@ Error rclgd::init(const PackedStringArray &p_args) {
 #endif
 	String which = overrides.has("transport") ? String(overrides["transport"]) : def_transport;
 	if (which == "xrce") {
-		transport = memnew(XrceTransport);
+#ifdef ROS2_VITA_XRCE
+		transport = ros2_vita_create_xrce_transport();
+#else
+		transport = memnew(XrceUnavailable);
+#endif
 	} else {
 		transport = memnew(LoopbackTransport);
 	}
@@ -463,6 +469,10 @@ void rclgd::_rx_trampoline(void *p_ctx, int p_sub_id, const uint8_t *p_data, siz
 void rclgd::_pump() {
 	if (!running) {
 		return;
+	}
+	// 0) el transporte atiende la red (XRCE: envía lo pendiente y recibe sin bloquear)
+	if (transport) {
+		transport->poll();
 	}
 	// 1) mensajes recibidos (todos los callbacks al hilo principal, como rclgd)
 	List<RxItem> local;

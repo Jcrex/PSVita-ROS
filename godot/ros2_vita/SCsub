@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # SCsub — módulo ros2_vita (Godot 4.8-dev7). Compilado y probado en host (G1, 2026-10-29); compilado para la
-# Vita con verify_runtime.py PASS (G3, 2026-10-30, C y Rust); en hardware: validar (G4).
+# Vita con verify_runtime.py PASS (G3, 2026-10-30, C y Rust); corre en la Vita en loopback (G4, 2026-10-30).
+# Transporte XRCE (G5): se compila si están las libs XRCE de la plataforma (ver más abajo).
 #
 # Las implementaciones C de los módulos duales se compilan DENTRO del módulo con
 # el entorno de SCons del motor (misma toolchain, mismos flags PIC), porque el
@@ -22,6 +23,28 @@ mods = os.path.join(repo, "modules")
 for m in ("msg-schema", "msg-ring"):
     env_ros.Prepend(CPPPATH=[os.path.join(mods, m, "include")])
 
+# --- Transporte XRCE (puerta G5) ---------------------------------------------------------------
+# Libs de vita-app/scripts/build-xrce-client-vita.sh: XRCE_PIC=1 -> xrce-vita-pic (Vita, PIC para
+# libgodot.so); XRCE_HOST=1 -> xrce-vita-host (pruebas de host). Se puede forzar otra ruta con
+# ros2_vita_xrce_prefix=... Sin libs, el módulo compila igual y el transporte xrce da ERR_UNAVAILABLE.
+is_vita = env["platform"] == "vita"
+xrce_prefix = ARGUMENTS.get("ros2_vita_xrce_prefix", os.path.join(
+    repo, "vita-app", "third_party", "xrce-vita-pic" if is_vita else "xrce-vita-host"))
+xrce_libs = [os.path.join(xrce_prefix, "lib", n) for n in ("libmicroxrcedds_client.a", "libmicrocdr.a")]
+with_xrce = all(os.path.isfile(f) for f in xrce_libs)
+if with_xrce:
+    env_ros.Append(CPPDEFINES=["ROS2_VITA_XRCE"])
+    for m in ("net-udp", "microros-transport"):
+        env_ros.Prepend(CPPPATH=[os.path.join(mods, m, "include")])
+    env_ros.Prepend(CPPPATH=[os.path.join(xrce_prefix, "include"), os.path.join(repo, "vita-app", "src")])
+    # Pegamento uxr <-> microros-transport reutilizado TAL CUAL de vita-app (como la app Godot 3.5).
+    env_ros.add_source_files(env.modules_sources, [os.path.join(repo, "vita-app", "src", "uxr_glue.c")])
+    # OJO (Vita): LIBS como File, no str (la plataforma descarta los str; ver la nota de Rust abajo).
+    env.Append(LIBS=[env.File(f) for f in xrce_libs])
+    print("ros2_vita: transporte XRCE activado (%s)" % xrce_prefix)
+else:
+    print("ros2_vita: SIN transporte XRCE (no hay libs en %s)" % xrce_prefix)
+
 env_ros.add_source_files(env.modules_sources, "*.cpp")
 
 rust_lib = ARGUMENTS.get("ros2_vita_rust_lib", "")
@@ -37,3 +60,11 @@ else:
             os.path.join(mods, "msg-ring", "impl-c", "msg_ring.c"),
         ],
     )
+    if with_xrce:  # la staticlib Rust ya trae net-udp y microros-transport
+        env_ros.add_source_files(
+            env.modules_sources,
+            [
+                os.path.join(mods, "net-udp", "impl-c", "net_udp.c"),
+                os.path.join(mods, "microros-transport", "impl-c", "microros_transport.c"),
+            ],
+        )

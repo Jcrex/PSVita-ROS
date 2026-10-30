@@ -6,7 +6,8 @@
 #   - VITASDK exportado (source tools/env-devpc.sh) y arm-vita-eabi-gcc en PATH
 #   - git, cmake
 #
-# Instala en vita-app/third_party/xrce-vita/{include,lib}.
+# Instala en vita-app/third_party/xrce-vita/{include,lib} (xrce-vita-pic con XRCE_PIC=1,
+# xrce-vita-host con XRCE_HOST=1).
 #
 # Por qué NO usamos el superbuild de eProsima (UCLIENT_SUPERBUILD=ON):
 #   el ExternalProject_Add(uclient) de cmake/SuperBuild.cmake NO reenvía
@@ -47,7 +48,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 XRCE_PIC="${XRCE_PIC:-0}"
-if [[ "$XRCE_PIC" == 1 ]]; then
+# XRCE_HOST=1: mismas versiones y perfil, pero para Linux (sin VitaSDK). Lo usan las pruebas de
+# host del XrceTransport de godot/ros2_vita (puerta G5, docs/18 §8) contra un agente en docker.
+XRCE_HOST="${XRCE_HOST:-0}"
+if [[ "$XRCE_HOST" == 1 ]]; then
+    PIC=ON; SUFFIX="-host"  # el editor de host es un ejecutable PIE: las .a deben ser PIC
+elif [[ "$XRCE_PIC" == 1 ]]; then
     PIC=ON; SUFFIX="-pic"   # para libgodot.so (Godot 4)
 else
     PIC=OFF; SUFFIX=""      # para el ELF estático de vita-app
@@ -57,7 +63,7 @@ WORK="$APP_DIR/third_party/_build"
 XRCE_TAG="${XRCE_TAG:-v2.4.3}"
 CDR_TAG="${CDR_TAG:-v2.0.1}"
 
-if [[ -z "${VITASDK:-}" ]]; then
+if [[ "$XRCE_HOST" != 1 && -z "${VITASDK:-}" ]]; then
     echo "ERROR: exporta VITASDK (source tools/env-devpc.sh)" >&2
     exit 1
 fi
@@ -74,9 +80,11 @@ if [[ ! -d Micro-XRCE-DDS-Client ]]; then
         https://github.com/eProsima/Micro-XRCE-DDS-Client.git
 fi
 
-COMMON_ARGS=(
-    -DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake"
-    -DCMAKE_INSTALL_PREFIX="$PREFIX"
+COMMON_ARGS=(-DCMAKE_INSTALL_PREFIX="$PREFIX")
+if [[ "$XRCE_HOST" != 1 ]]; then
+    COMMON_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake")
+fi
+COMMON_ARGS+=(
     -DCMAKE_BUILD_TYPE=Release
     -DBUILD_SHARED_LIBS=OFF
 )
