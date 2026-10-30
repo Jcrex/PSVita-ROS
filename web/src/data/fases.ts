@@ -135,7 +135,7 @@ export const fases: Fase[] = [
       { texto: 'Skill rclgd actualizada a jazzy@fb12a65: clases tipadas nativas (sin clases sombra), API regenerada; API_PARITY y regla de scripts portables para la Vita (T3.2.4 pendiente)', estado: 'hecho' },
       { texto: 'Verificar las skills: batería E1 con IA limpia y plantillas E2 en el editor de rclgd', estado: 'pendiente' },
       { texto: 'Editor 4.8-dev7 para Linux compilado (mismo árbol que G1, GODOT_VERSION_STATUS=dev7) y VPK de prueba exportado desde CachyOS con tools/export-vita-vpk.sh (godot/g4-smoke, 22 MB; en host da G4 OK)', estado: 'hecho' },
-      { texto: 'G4: instalar build/g4-smoke.vpk en la Vita — fondo verde = rclgd.init(loopback) y pub/sub de Twist funcionan en hardware', estado: 'bloqueado-hw' },
+      { texto: 'G4: Godot 4 con ros2_vita corre en la Vita — g4-smoke.vpk muestra fondo verde y «G4 OK» (rclgd.init en loopback + pub/sub de Twist en hardware)', estado: 'hecho' },
       { texto: 'Fork de godot4-vita solo si hace falta (parches mínimos, proponibles a upstream; compatible con el entorno estándar)', estado: 'pendiente' },
       { texto: 'G1: módulo ros2_vita compilado dentro de godot4-vita (Godot 4.8, linuxbsd) y pruebas de host verdes (294 comprobaciones, 0 fallos)', estado: 'hecho' },
       { texto: 'G2: cliente XRCE, 8 módulos C y staticlib Rust compilados en PIC para la Vita; 0 imports fuera de la tabla del loader parcheada, 0 TLS', estado: 'hecho' },

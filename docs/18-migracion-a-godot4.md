@@ -344,7 +344,7 @@ PC (CachyOS, Linux)                   Vita
 | **G1** | PC (host) | El módulo **compila** contra Godot 4.8 (`platform=linuxbsd custom_modules=…`) y pasa `godot/test` (RosMsg ↔ CDR bit a bit, pub/sub loopback, timers, ejes) | **VERDE (2026-10-29, PC)**: 294 comprobaciones, 0 fallos |
 | **G2** | PC (cruzada) | C y Rust PIC compilados para ARM; `check-vita-imports` (con `arm-vita-eabi-nm`) sin faltantes tras el parche | **VERDE (2026-10-29, PC)**: 0 imports ausentes en las 4 libs PIC, 0 TLS |
 | **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | **VERDE (2026-10-30, PC)**: PASS, 681 imports; `vita_release.zip` 23,5 MB (§4.5) |
-| **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | **PREPARADA (2026-10-30, PC)**: editor 4.8-dev7 compilado, `build/g4-smoke.vpk` exportado (`tools/export-vita-vpk.sh godot/g4-smoke`); en host «G4 OK». Falta hardware |
+| **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | **VERDE (2026-10-30, hardware)**: `godot/g4-smoke` exportado con el editor 4.8-dev7 (`tools/export-vita-vpk.sh`) → en la Vita fondo verde y «G4 OK» |
 | **G5** | Vita + agente | Transporte XRCE: `std_msgs/String` llega a `ros2 topic echo` | pendiente |
 | **G6** | Vita + robot | HMI piloto: teleop `/cmd_vel` + `/odom` en pantalla | pendiente |
 | **G7** | Vita | IMU (`Input.get_*`) y panel trasero publicados; cámara (decisión de diseño) | pendiente |
