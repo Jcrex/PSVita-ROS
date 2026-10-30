@@ -56,6 +56,7 @@ const codigo = defineCollection({
       'godot/godot35/README.md',
       'tools/*/README.md',
       'mcp/*/README.md',
+      'docker/README.md',
     ],
     base: '..',
   }),
