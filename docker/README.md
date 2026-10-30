@@ -7,8 +7,9 @@ Zenoh** para unir el grafo ROS 2 de dos equipos (PC por ethernet y laptop por Wi
 (`~/Documentos/IR2134/DOCKER`), pero propio del proyecto y versionado aquí para ampliarlo.
 
 > **Estado (2026-10-30):** creado en el PC. Imagen construida; agente + monitor probados de punta a punta
-> con la app `godot/g5-xrce` en el host (1 Hz / 10 Hz, «G5 OK»). Con la Vita, GUI (turtlesim, Gazebo,
-> RViz) y puente Zenoh entre dos equipos: validar. `tools/vita-stack.sh` usa ya esta estación por defecto.
+> con la app `godot/g5-xrce` en el host (1 Hz / 10 Hz, «G5 OK»). **Con la Vita (G5–G6, hardware):** agente, monitor y
+> `sim` (turtlesim con ventana + `/odom`) funcionan: la HMI `godot/g6-hmi` mueve la tortuga y dibuja su odometría.
+> Pendiente: Gazebo/RViz y el puente Zenoh entre dos equipos. `tools/vita-stack.sh` usa ya esta estación por defecto.
 
 ## Qué hay dentro
 

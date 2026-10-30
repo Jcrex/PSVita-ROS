@@ -346,7 +346,7 @@ PC (CachyOS, Linux)                   Vita
 | **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | **VERDE (2026-10-30, PC)**: PASS, 681 imports; `vita_release.zip` 23,5 MB (§4.5) |
 | **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | **VERDE (2026-10-30, hardware)**: `godot/g4-smoke` exportado con el editor 4.8-dev7 (`tools/export-vita-vpk.sh`) → en la Vita fondo verde y «G4 OK» |
 | **G5** | Vita + agente | Transporte XRCE: `std_msgs/String` llega a `ros2 topic echo` | **VERDE (2026-10-30, hardware)**: `godot/g5-xrce` en la Vita → `ros2 topic echo /vita_hello` recibe «hola desde ros2_vita #N», `/cmd_vel` a 10 Hz y la Vita recibe `/pc_hello` (pantalla verde: ida y vuelta; agente en el PC, estación `docker/`). Hizo falta iniciar la red en el cargador (`UID_RL_OVERFLOW` dentro de Godot) |
-| **G6** | Vita + robot | HMI piloto: teleop `/cmd_vel` + `/odom` en pantalla | pendiente |
+| **G6** | Vita + robot | HMI piloto: teleop `/cmd_vel` + `/odom` en pantalla | **VERDE (2026-10-30, hardware)**: `godot/g6-hmi` controla turtlesim (estación `docker/`, `vita-ros.sh sim`): `/cmd_vel` a 19,5 Hz, `/odom` (720 B, fragmentado) a 62,5 Hz; vista cenital con robot, rastro y pose sincronizados; retardo apenas perceptible (usuario) |
 | **G7** | Vita | IMU (`Input.get_*`) y panel trasero publicados; cámara (decisión de diseño) | pendiente |
 
 ---

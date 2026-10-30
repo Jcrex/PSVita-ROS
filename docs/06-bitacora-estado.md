@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-30 (PC, 3.ª parte: **G5 VERDE en hardware** — Godot 4 publica en ROS 2 desde la Vita; red iniciada en el cargador por `UID_RL_OVERFLOW`; estación `docker/`; ver el primer bloque). Antes, 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-30 (PC, 4.ª parte: **G6 VERDE en hardware** — la HMI de Godot 4 en la Vita teleopera turtlesim y dibuja `/odom`; ver el primer bloque). Antes, 2026-10-30 (PC, 3.ª parte: **G5 VERDE en hardware** — Godot 4 publica en ROS 2 desde la Vita; red iniciada en el cargador por `UID_RL_OVERFLOW`; estación `docker/`; ver el primer bloque). Antes, 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,33 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-30 (PC, 4.ª parte) — Puerta G6 VERDE en hardware: HMI piloto
+
+**Resultado (confirmado por el usuario):** con `godot/g6-hmi` en la Vita se controla turtlesim (estación
+`docker/vita-ros.sh sim`, ventana en el escritorio del PC). En la Vita aparecen el robot (flecha), su rastro y la pose
+**sincronizados con la tortuga**; el retardo «apenas se nota». Medido en el PC: `/cmd_vel` de la Vita a **19,5 Hz**
+(objetivo 20) y `/odom` a **62,5 Hz** (720 B por mensaje, llega troceado en 2 datagramas).
+
+**La app:** mapeo de docs/09 (stick izquierdo avanzar/girar, cruceta, L/R giro fijo 0,5 rad/s, △/✕ escala ±0,5 hasta
+stop, ○ borra el rastro; sin lateral porque los robots de prueba son diferenciales). Vista cenital centrada en el robot:
+rejilla de 1 m, rastro (600 puntos), línea verde con el comando, panel con conexión, Hz de `/odom`, velocidad y pose.
+En el host, `-- demo` conduce en círculo sin mandos (prueba automática).
+
+**Fallos encontrados en el host antes del hardware (arreglados en `xrce_transport.cpp`):**
+1. **Se perdía todo `/odom`:** un mensaje reconstruido de fragmentos **no es contiguo** (cada trozo sigue en su hueco del
+   stream y microcdr salta con su callback). Copiar con `ucdr_deserialize_array_uint8_t`, no con `ub->iterator`.
+2. **«stream fiable lleno»** a 20 Hz: 4 huecos se llenaban antes de que llegara la confirmación. Ahora 16 huecos de
+   512 B y, si aun así se llena, la publicación sale por el stream *best effort* (la QoS DDS no cambia).
+3. **Clave de cliente fija:** una prueba en el PC echó a la Vita de su sesión (misma clave `0xCAFE0005`). Ahora es
+   distinta en cada arranque (`-p client_key:=N` para fijarla).
+4. turtlesim no publica `/odom` ⇒ `docker/scripts/turtle_odom.py` (pose relativa al inicio), lanzado por `vita-ros.sh sim`.
+
+**Siguiente paso exacto: G7** — sensores de la Vita publicados en ROS 2: IMU (`Input.get_accelerometer/gyroscope`
+→ `sensor_msgs/Imu`), panel trasero táctil, y decidir la cámara (docs/18 §8). Pendiente sin bloqueo: probar
+`sim-tb3` (Gazebo) y RViz en la estación, y el puente Zenoh entre PC y laptop.
 
 ---
 

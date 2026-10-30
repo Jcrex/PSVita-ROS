@@ -2,7 +2,8 @@
 
 > **Estado (2026-10-30): G1–G4 VERDES** — compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
 > **corre en la Vita** en *loopback* (G4) y con **transporte XRCE publica en ROS 2 Jazzy desde la Vita** (G5,
-> 2026-10-30: `/vita_hello` y `/cmd_vel` a 10 Hz en `ros2 topic echo`). Decisión y razones:
+> 2026-10-30: `/vita_hello` y `/cmd_vel` a 10 Hz en `ros2 topic echo`). **G6:** la HMI `g6-hmi` teleopera turtlesim y
+> dibuja `/odom` en hardware (`/cmd_vel` 19,5 Hz, `/odom` 62,5 Hz). Decisión y razones:
 > `docs/adr/0008-godot-via-modulo-estatico.md`; investigación y plan: **`docs/18-migracion-a-godot4.md`**.
 
 ## Qué es
@@ -34,6 +35,7 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 | `g4-smoke/` | Proyecto mínimo de la puerta G4 (loopback + `Twist`, sin red) |
 | `ros2_vita/xrce_transport.*` | Transporte micro-ROS (G5): sesión XRCE, entidades por XML, streams fiable/best effort |
 | `g5-xrce/` | Proyecto de la puerta G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
+| `g6-hmi/` | HMI piloto (G6): teleop `/cmd_vel` con el mapeo de docs/09 + vista cenital de `/odom` (rejilla, robot, rastro, panel) |
 
 ## Puertas de verificación (docs/18 §8)
 
@@ -71,7 +73,12 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
    (la IP del agente va en `ros/agent_ip` de `project.godot`).
    Diseño: un solo hilo; `poll()` cada frame con `uxr_run_session_time(0)` (no bloquea). Sin agente, `rclgd.init`
    se bloquea ~10 s (10 intentos de sesión) y devuelve `ERR_CANT_CONNECT`.
-5. **G6+ — Vita:** HMI piloto.
+5. **G6 — HMI piloto (verde en hardware).** `docker/vita-ros.sh up` + `sim` (turtlesim + `/odom`) y
+   `tools/export-vita-vpk.sh godot/g6-hmi` → `tools/deploy-vpk-ftp.sh build/g6-hmi.vpk`. Lecciones de XRCE: un
+   mensaje reconstruido de fragmentos **no es contiguo** (copiar con `ucdr_deserialize_array_uint8_t`); a 20 Hz el
+   stream fiable de 4 huecos se llenaba (ahora 16 + desvío a *best effort*); clave de cliente distinta por arranque.
+   Límite actual: mensajes salientes de hasta ~7,5 KB (16 fragmentos de 512 B); entrantes hasta 16 KB.
+6. **G7+ — Vita:** IMU (`Input.get_*`), panel trasero, cámara.
 
 ## Reglas heredadas de rclgd (mantener)
 - Callbacks de suscripciones y timers: **hilo principal** (`process_frame`).
