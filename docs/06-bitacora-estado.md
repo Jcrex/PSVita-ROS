@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-30 (PC, 4.ª parte: **G6 VERDE en hardware** — la HMI de Godot 4 en la Vita teleopera turtlesim y dibuja `/odom`; ver el primer bloque). Antes, 2026-10-30 (PC, 3.ª parte: **G5 VERDE en hardware** — Godot 4 publica en ROS 2 desde la Vita; red iniciada en el cargador por `UID_RL_OVERFLOW`; estación `docker/`; ver el primer bloque). Antes, 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
+**Última actualización:** 2026-10-30 (PC, cierre: estado para retomar en el primer bloque). Antes, 2026-10-30 (PC, 4.ª parte: **G6 VERDE en hardware** — la HMI de Godot 4 en la Vita teleopera turtlesim y dibuja `/odom`; ver el primer bloque). Antes, 2026-10-30 (PC, 3.ª parte: **G5 VERDE en hardware** — Godot 4 publica en ROS 2 desde la Vita; red iniciada en el cargador por `UID_RL_OVERFLOW`; estación `docker/`; ver el primer bloque). Antes, 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
 Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
 compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
 mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
@@ -12,6 +12,35 @@ alcanzado, dashboard `/monitor` mergeado a main)
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-10-30 (PC, cierre de la sesión) — Estado para retomar
+
+- **Rama:** `ccr-44e2db2a-mr6xqr`, pusheada (G1–G6 verdes). `main` sin tocar: fusionar cuando el usuario lo decida.
+- **Puertas Godot 4 (docs/18 §8):** G1–G6 **VERDES**, G4–G6 en hardware. **Siguiente: G7** (IMU → `sensor_msgs/Imu`,
+  panel trasero, decisión sobre la cámara).
+- **Arranque de una sesión con la Vita (PC):**
+  1. `docker/vita-ros.sh up` (agente UDP 8888 + estación) y, si hace falta robot, `docker/vita-ros.sh sim`.
+  2. Cambios en `godot/ros2_vita` ⇒ editor de host (`GODOT_VERSION_STATUS=dev7 scons platform=linuxbsd target=editor
+     custom_modules=$REPO/godot/ros2_vita x11=no wayland=no vulkan=no opengl3=no`, ~15 s incremental) para probar en
+     host, y plantilla de la Vita: `bash -c 'source tools/env-devpc.sh && VITAGL_ROOT=$PWD/toolchains/vitagl-src
+     tools/build-godot-template.sh'` (~2 min incremental; debe decir `PASS … 694 imports`).
+  3. `tools/export-vita-vpk.sh godot/<proyecto> build/<proyecto>.vpk` → `tools/deploy-vpk-ftp.sh build/<x>.vpk 192.168.1.94`
+     (FTP de VitaShell activo; la Vita cerca del router).
+  4. Prueba en host sin la Vita: copia del proyecto sin la línea del plugin y
+     `godot --headless --path <copia> -- -p agent_ip:=127.0.0.1` (en `g6-hmi`, añadir `demo`).
+- **Diagnóstico en la Vita:** pantalla roja con `rclgd.get_transport_info()`; logs por FTP en
+  `ux0:data/gxm3d/godot_stderr.log` (motor) y `ux0:data/logs/godot_loader.log` (cargador, con la línea
+  `[ros2_vita] early net: …`).
+- **Entorno del PC (gitignorado, no rehacer):** `toolchains/godot4-vita/engine` con el parche del cargador aplicado
+  (red temprana + 13 entradas de red en la tabla); editor de host 4.8-dev7 con XRCE en `engine/bin/`; plantilla C con
+  XRCE en `toolchains/godot4-vita/out/`; libs XRCE en `vita-app/third_party/xrce-vita-{pic,host}`; imagen docker
+  `psvita-ros-station:jazzy`.
+- **Datos de red:** Vita en `192.168.1.94` (FTP 1337), PC `192.168.1.65` (ethernet; llega a la Vita por el router;
+  ufw permite 192.168.1.0/24). La WiFi de la Vita va lenta lejos del router (subida de 22 MB: 20–150 s).
+- **Pendiente sin bloqueo:** probar `sim-tb3` (Gazebo) y RViz en la estación; puente Zenoh PC ↔ laptop; acceso remoto
+  (`docs/22`); variante Rust de la plantilla con XRCE (para hardware se usa la C).
 
 ---
 
