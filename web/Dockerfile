@@ -30,6 +30,7 @@ COPY vita-app/ /app/vita-app/
 COPY godot/ /app/godot/
 COPY tools/hwprobe/README.md /app/tools/hwprobe/README.md
 COPY mcp/ /app/mcp/
+COPY docker/README.md /app/docker/README.md
 COPY skills/ /app/skills/
 RUN pnpm build
 
