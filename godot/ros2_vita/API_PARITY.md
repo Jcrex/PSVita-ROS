@@ -8,8 +8,7 @@
 > ✅ = *implementado en `godot/ros2_vita/`, compilado y probado en host* (puerta G1
 > verde el 2026-10-29; G3 verde el 2026-10-30: compila para la Vita y pasa `verify_runtime.py`, falta
 > corre en la Vita en loopback, G4); ⏳ = no implementado. Transportes: `LoopbackTransport` (pruebas,
-> `godot/test/`) y `XrceTransport` (micro-ROS; G5 probado en host contra ROS 2 Jazzy, en la Vita: validar en
-> hardware).
+> `godot/test/`) y `XrceTransport` (micro-ROS; G5 verde en hardware, 2026-10-30).
 > Leyenda: ✅ igual · 🟡 parcial/diferente · ⏳ fase posterior · ❌ no aplica.
 
 ## Singleton `rclgd`

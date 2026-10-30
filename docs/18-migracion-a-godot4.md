@@ -345,7 +345,7 @@ PC (CachyOS, Linux)                   Vita
 | **G2** | PC (cruzada) | C y Rust PIC compilados para ARM; `check-vita-imports` (con `arm-vita-eabi-nm`) sin faltantes tras el parche | **VERDE (2026-10-29, PC)**: 0 imports ausentes en las 4 libs PIC, 0 TLS |
 | **G3** | PC | `build-godot-template.sh` completa; `verify_runtime.py` PASS; `vita_release.zip` | **VERDE (2026-10-30, PC)**: PASS, 681 imports; `vita_release.zip` 23,5 MB (§4.5) |
 | **G4** | Vita | Un `.pck` con script que usa `rclgd.init(loopback)` y `RosMsg` arranca; `rclgd.ok()` | **VERDE (2026-10-30, hardware)**: `godot/g4-smoke` exportado con el editor 4.8-dev7 (`tools/export-vita-vpk.sh`) → en la Vita fondo verde y «G4 OK» |
-| **G5** | Vita + agente | Transporte XRCE: `std_msgs/String` llega a `ros2 topic echo` | pendiente |
+| **G5** | Vita + agente | Transporte XRCE: `std_msgs/String` llega a `ros2 topic echo` | **VERDE (2026-10-30, hardware)**: `godot/g5-xrce` en la Vita → `ros2 topic echo /vita_hello` recibe «hola desde ros2_vita #N» y `/cmd_vel` a 10 Hz (agente en el PC, estación `docker/`). Hizo falta iniciar la red en el cargador (`UID_RL_OVERFLOW` dentro de Godot) |
 | **G6** | Vita + robot | HMI piloto: teleop `/cmd_vel` + `/odom` en pantalla | pendiente |
 | **G7** | Vita | IMU (`Input.get_*`) y panel trasero publicados; cámara (decisión de diseño) | pendiente |
 
