@@ -15,8 +15,9 @@ extends Control
 ##
 ## Lección que explica este archivo línea a línea: docs/tutorial/08-godot-imu-primer-sensor.md
 ##
-## ESTADO (2026-10-31): probado en el PC (`-- demo`) y corre en la Vita. Falta validar en hardware
-## las unidades y los ejes del sensor (ver HIPÓTESIS más abajo; lección 08, retos 1–2).
+## ESTADO (2026-11-01): corre en la Vita. Unidades y ejes MEDIDOS en hardware (lección 08, retos 1–2):
+## la Vita da g y rad/s con ejes de Sony (x derecha, y hacia los gatillos, z saliendo de la pantalla) y
+## el acelerómetro mide la GRAVEDAD (z ≈ −1 g con la pantalla arriba). Ver escala_acel y ejes.
 
 # --- Constantes -----------------------------------------------------------------------------------
 # `const` = valor fijo que no cambia nunca. `:=` deja que GDScript deduzca el tipo (aquí float).
@@ -51,9 +52,10 @@ var t_pub: RosTimer
 var hz := 30.0
 var topic := "/vita/imu"
 var frame_id := "vita_imu"
-var escala_acel := G          # HIPÓTESIS: el acelerómetro da unidades de g (≈1.0 en reposo)
-var escala_giro := 1.0        # HIPÓTESIS: el giroscopio da rad/s
-var ejes: Array = [[0, 1.0], [1, 1.0], [2, 1.0]]   # sensor → ROS sin cambios (ver _parsear_ejes)
+# Medido en la Vita el 2026-11-01:
+var escala_acel := -G         # da g; el − pasa de gravedad a REACCIÓN (+9,8 hacia arriba, REP-145)
+var escala_giro := 1.0        # ya da rad/s
+var ejes: Array = [[1, 1.0], [0, -1.0], [2, 1.0]]  # = "y,-x,z": ejes de Sony → REP-103 (ver _parsear_ejes)
 
 # --- Estado ---------------------------------------------------------------------------------------
 var conectado := false
@@ -108,7 +110,7 @@ func _ready() -> void:
 	node.declare_parameter("frame_id", frame_id)
 	node.declare_parameter("escala_acel", escala_acel)
 	node.declare_parameter("escala_giro", escala_giro)
-	node.declare_parameter("ejes", "x,y,z")
+	node.declare_parameter("ejes", "y,-x,z")
 	hz = node.get_parameter("hz")
 	topic = node.get_parameter("topic")
 	frame_id = node.get_parameter("frame_id")
@@ -166,11 +168,16 @@ func _a_ros(v: Vector3) -> Vector3:
 # _process(delta) se llama en CADA fotograma; delta = segundos desde el anterior (≈0.016 a 60 fps).
 func _process(delta: float) -> void:
 	if demo:
-		# Sin sensores (PC): señal inventada — la consola se balancea despacio de lado a lado.
+		# Sin sensores (PC): señal inventada — la consola cabecea despacio (el morro sube y baja).
+		# Se inventa COMO LA DARÍA LA VITA (ejes de Sony, gravedad, g y rad/s), para que el demo
+		# pase por la misma conversión escala_acel + ejes que los datos reales.
+		# Objetivo en ROS: acel = G·(sin i, 0, cos i) y giro = (0, −di/dt, 0)  (morro arriba ⇒ pitch = −i).
+		# Invirtiendo ROS = −G·(s.y, −s.x, s.z):  s = (0, −sin i, −cos i).
+		# Invirtiendo ROS = (g.y, −g.x, g.z):      g = (di/dt, 0, 0), con di/dt = 0,5·cos(t).
 		t_demo += delta
 		var inclinacion := sin(t_demo) * 0.5                       # radianes
-		acel_crudo = Vector3(sin(inclinacion), 0.0, cos(inclinacion))   # en g
-		giro_crudo = Vector3(cos(t_demo) * 0.5, 0.0, 0.0)          # derivada de la inclinación
+		acel_crudo = Vector3(0.0, -sin(inclinacion), -cos(inclinacion))   # en g, ejes de Sony
+		giro_crudo = Vector3(cos(t_demo) * 0.5, 0.0, 0.0)                 # rad/s, ejes de Sony
 		grav_cruda = acel_crudo
 	else:
 		acel_crudo = Input.get_accelerometer()
