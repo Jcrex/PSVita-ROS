@@ -72,4 +72,8 @@ Instala con VitaShell, ábrelo y en el PC: `docker/vita-ros.sh echo /vita/imu`.
 | Abrir en el editor | ☑ |
 | Probar en el PC | ☑ |
 | Probar en la Vita | ☑ (2026-10-31) |
-| Retos 1 / 2 / 3 | ☐ ☐ ☐ |
+| Retos 1 / 2 / 3 | ☑ ☑ ☐ |
+
+**Resultado (2026-11-01):** el sensor da g y rad/s, en ejes de Sony (x derecha, y gatillos, z fuera de
+la pantalla), y el acelerómetro mide la **gravedad**. Por eso `escala_acel = -G` y `ejes = "y,-x,z"`.
+Describe las posturas por cruceta, botones y gatillos: «izquierda» confunde.

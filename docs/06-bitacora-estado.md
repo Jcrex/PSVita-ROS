@@ -9,6 +9,47 @@ El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un
 
 ---
 
+## 2026-11-01 (PC, tarde) — G7b: visor 3D de la IMU (suscriptor + filtro)
+
+- El usuario confirma que `/vita/imu` llega bien desde la Vita (retos 1–2 de la lección 08 aún sin anotar).
+- **Nuevo `godot/g7b-imu3d/`** (decisión del usuario: ros2_vita en el PC, filtro complementario, el
+  filtro lo escribe él). Visor 3D (al principio una píldora, luego el modelo de la Vita) con ejes REP-103 de colores; `main.gd` se suscribe a `/vita/imu` con
+  QoS **BEST_EFFORT** (un suscriptor *reliable* no casa con el publicador), calcula `dt` con `header.stamp`
+  y convierte la orientación de ROS a Godot (`ROS_A_GODOT`). `filtro.gd` = reto (cuerpo vacío con pistas).
+  Probado con el demo y con la Vita real.
+- Arreglo en el demo de `g7-imu`: el giro simulado iba en x y la aceleración simulaba cabeceo (eje y).
+- Lección `docs/tutorial/09-godot-visor-3d-imu.md`.
+- **Investigación «cómo trabajar con Godot» (3 subagentes):** corto `docs/informes/05-flujo-trabajo-godot.md`,
+  largo con fuentes `docs/ia/investigacion-flujo-godot-2026-11-01.md`. **Decisión del usuario: no instalar MCP
+  por ahora.** Pendiente de decidir: hábitos (re-guardar `.tscn`, versionar `*.uid`, avisos = error), LSP del
+  editor vía `socat` y, si acaso, probar `hi-godot/godot-ai` en un proyecto desechable. El usuario ya re-guardó
+  `g7b-imu3d/main.tscn` en el editor (uids añadidos).
+- **Modelo 3D de la Vita** (`g7b-imu3d/assets/PSVita/PSVita.blend`, EricWalker, CC-BY 3.0 → `CREDITOS.md`).
+  Opción del usuario: importar el `.blend` directamente (Godot llama a Blender 5.2.3). Hecho: ajuste del editor
+  `filesystem/import/blender/blender_path = "/usr/bin/blender"` (`~/.config/godot/editor_settings-4.8.tres`, fuera
+  del repo; el portátil no tiene Blender); en `PSVita.blend.import` sin cámaras ni luces. **Trampa:** el aviso
+  «Blender no configurado» del editor, si se elige desactivar, escribe `[filesystem] import/blender/enabled=false`
+  en `project.godot` y Godot deja de ver los `.blend` (sin error). Quitado. Importa 17 mallas (~3000 polígonos),
+  caja ≈ 9,8 × 4,4 × 0,57, de pie (pantalla hacia ±Z de Godot): colocar bajo `Vita` con escala 0,2 y rotación
+  X = -90°. Lo coloca el usuario en el editor.
+- **Calibración de la IMU en hardware (retos 1–2 de la lección 08, datos del usuario en
+  `godot/g7b-imu3d/datos-test*.md`, sin versionar):** unidades confirmadas (acelerómetro en g, |a| ≈ 0,985;
+  giroscopio en rad/s). Ejes de Sony: x hacia la derecha, y hacia los gatillos, z saliendo de la pantalla, y el
+  acelerómetro da la **gravedad** (z ≈ −1 g con la pantalla arriba), no la reacción. Arreglo sin código:
+  `escala_acel = -G` y `ejes = "y,-x,z"` (pruebas A: giro.z > 0 al girar antihorario; B: giro.x > 0 al levantar
+  los gatillos). El giroscopio da 0.0 exacto en reposo: zona muerta de sceMotion (hipótesis:
+  `sceMotionSetDeadband`). Lección aprendida: describir posturas por cruceta, botones y gatillos, no por
+  «izquierda». Aplicado en `g7-imu/main.gd` (valores del usuario; comentarios, lista `ejes` y demo de Claude:
+  el demo ahora inventa datos en ejes de Sony y pasa por la misma conversión). `.vpk` exportado y subido a
+  `ux0:/g7-imu.vpk` (sha256 80c7d43a…). **El usuario lo instaló y funciona: G7a verde** (unidades y ejes).
+- Cierre de G7b: píldora quitada (la sustituye el modelo), `datos-test*.md` borrados (resumen arriba y en la
+  lección 08), `filtro.gd` limpio, lecciones 08–09 al día. Siguiente: reto 3 (`/vita/joy`), panel trasero,
+  ADR de la cámara; opcional: publicar `deviceQuat` de sceMotion en `orientation` para comparar con el filtro.
+- **Cómo retomar:** el usuario prueba el visor con el demo y escribe `filtro.gd`; revisión guiada y commit
+  (`feat(godot4): G7b — visor 3D de la IMU`).
+
+---
+
 ## 2026-11-01 (PC) — Auditoría de la flota + lotes 0–3 aplicados
 
 - **Auditoría (7 agentes, solo lectura):** limpieza A/B, optimización A/B, mapa de Rust, DB-TSDF

@@ -1,0 +1,98 @@
+[gd_scene format=3 uid="uid://ctwem011gljau"]
+
+[ext_resource type="Script" uid="uid://b7o27huwxscw" path="res://main.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://cjq5n5cbwijy6" path="res://assets/PSVita/PSVita.blend" id="2_0xm2m"]
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.08, 0.09, 0.12, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.45, 0.45, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_suelo"]
+albedo_color = Color(0.22, 0.24, 0.28, 1)
+
+[sub_resource type="PlaneMesh" id="malla_suelo"]
+material = SubResource("mat_suelo")
+size = Vector2(8, 8)
+
+[sub_resource type="StandardMaterial3D" id="mat_x"]
+shading_mode = 0
+albedo_color = Color(0.95, 0.25, 0.25, 1)
+
+[sub_resource type="BoxMesh" id="malla_x"]
+material = SubResource("mat_x")
+size = Vector3(0.05, 0.05, 1.6)
+
+[sub_resource type="StandardMaterial3D" id="mat_y"]
+shading_mode = 0
+albedo_color = Color(0.3, 0.9, 0.3, 1)
+
+[sub_resource type="BoxMesh" id="malla_y"]
+material = SubResource("mat_y")
+size = Vector3(1.2, 0.05, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="mat_z"]
+shading_mode = 0
+albedo_color = Color(0.3, 0.5, 1, 1)
+
+[sub_resource type="BoxMesh" id="malla_z"]
+material = SubResource("mat_z")
+size = Vector3(0.05, 1.2, 0.05)
+
+[node name="Main" type="Node3D" unique_id=1834231540]
+script = ExtResource("1")
+
+[node name="Entorno" type="WorldEnvironment" parent="." unique_id=277847400]
+environment = SubResource("env")
+
+[node name="Camara" type="Camera3D" parent="." unique_id=1138676648]
+
+[node name="Luz" type="DirectionalLight3D" parent="." unique_id=653521419]
+
+[node name="Suelo" type="MeshInstance3D" parent="." unique_id=728312677]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.3, 0)
+mesh = SubResource("malla_suelo")
+
+[node name="Vita" type="Node3D" parent="." unique_id=608265231]
+
+[node name="PSVita" parent="Vita" unique_id=289381128 instance=ExtResource("2_0xm2m")]
+transform = Transform3D(0.2, 0, 0, 0, -8.742278e-09, 0.2, 0, -0.2, -8.742278e-09, 0, 0, 0)
+
+[node name="EjeX_rojo_adelante" type="MeshInstance3D" parent="Vita" unique_id=254877094]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.8)
+mesh = SubResource("malla_x")
+
+[node name="EjeY_verde_izquierda" type="MeshInstance3D" parent="Vita" unique_id=1790584550]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0, 0)
+mesh = SubResource("malla_y")
+
+[node name="EjeZ_azul_arriba" type="MeshInstance3D" parent="Vita" unique_id=347157155]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("malla_z")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1034738289]
+
+[node name="Estado" type="Label" parent="HUD" unique_id=160028220]
+offset_left = 16.0
+offset_top = 10.0
+offset_right = 944.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 18
+text = "arrancando..."
+autowrap_mode = 2
+
+[node name="Datos" type="Label" parent="HUD" unique_id=835024111]
+offset_left = 16.0
+offset_top = 64.0
+offset_right = 520.0
+offset_bottom = 300.0
+theme_override_font_sizes/font_size = 15
+
+[node name="Ayuda" type="Label" parent="HUD" unique_id=216539381]
+offset_left = 16.0
+offset_top = 512.0
+offset_right = 944.0
+offset_bottom = 540.0
+theme_override_font_sizes/font_size = 15
+text = "R: reiniciar orientación · Rojo = x (adelante) · Verde = y (izquierda) · Azul = z (arriba)  [REP-103]"
