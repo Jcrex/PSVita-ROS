@@ -31,11 +31,37 @@ Plan B si no rinde: dibujar el modelo «falso 3D» en 2D (proyección propia en 
 
 | # | Decisión | Recomendación | Por qué |
 |---|---|---|---|
-| D1 | ¿En `g7-imu` o proyecto nuevo `g7c`? | `g7-imu` | una sola app en la Vita; `g7-imu` ya publica |
+| D1 | ¿En `g7-imu` o proyecto nuevo `g7c`? | **`g7-imu` (decidido)** | una sola app en la Vita; `g7-imu` ya publica |
 | D2 | `filtro.gd`: ¿copia? | copiar a `g7-imu/` | `res://` no sale del proyecto; anotar en ambos «copia de …» |
 | D3 | Modelo: ¿copiar `assets/PSVita` (1,5 MB)? | copiar solo `.blend` + `.import` + licencia (+ PNG si el `.blend` los referencia) | el `.scn` importado no referencia PNG (verificado con `strings`) |
 | D4 | Cómo repartir pantalla | 3D a pantalla completa con `Camera3D.h_offset` para desplazar el modelo a la derecha; HUD en `CanvasLayer` | evita un `SubViewport` (otra pasada de render en una GPU débil; hipótesis de coste) |
 | D5 | Bola del nivel «a saltos» (`basicOrientation` vale −1/0/1) | dar al nivel `acel_ros` filtrada en vez de `grav_cruda` | reto pendiente de la lección 08 (`guion-leccion-08-imu.md`) |
+
+## Decisiones del usuario (2026-11-01, tras `3a90ccf`)
+
+- **D1 = `g7-imu`** (sin proyecto nuevo). Se importa el modelo `PSVita.blend`.
+- **Corregir todo lo mal optimizado** de `g7-imu` (lista abajo).
+- **Filtro: solo si no hay una forma mejor.** Alternativas a evaluar con el usuario (abajo).
+- **Maquetación:** confirmada por el usuario: hay un hueco libre abajo a la izquierda.
+
+## Optimizaciones encontradas en `godot/g7-imu` (revisión 2026-11-01)
+
+| # | Dónde | Problema | Arreglo |
+|---|---|---|---|
+| O1 | `main.gd:200` → `_pintar_hud` (`:246`) | cada fotograma (60 Hz) formatea ~12 líneas y cambia `Label.text` (re-maquetación) | refrescar a ~10 Hz con un acumulador de tiempo |
+| O2 | `_a_ros` (`:160`), llamado 2×/fotograma (`:195-196`) | indexa un `Array` de `Array` (Variant, sin tipos) | precalcular **una `Basis`** en `_ready` a partir de `ejes`; `acel_ros = M * (acel_crudo * escala_acel)` |
+| O3 | `_publicar` (`:208-211`) | crea un `Imu` entero (`RosMsg.from_type`, hijos y `PackedFloat64Array`) cada 33 ms | crear el mensaje **una vez** en `_ready`; publicar solo actualiza sello y 6 valores. Seguro: `publish` serializa al momento (`ros2_vita/ros_runtime.cpp:106`) |
+| O4 | `nivel.gravedad = grav_cruda` (`:197`) + setter `queue_redraw` (`nivel.gd:14`) | `basicOrientation` solo vale −1/0/1 (bola a saltos) y redibuja cada fotograma aunque no cambie | dar al nivel la gravedad filtrada (ejes ROS) y redibujar solo si cambia > umbral |
+
+## Filtro: alternativas (decisión pendiente del usuario)
+
+| Opción | Qué es | Coste | Calidad |
+|---|---|---|---|
+| F1 `deviceQuat` de Sony | `SceMotionState.deviceQuat` (`psp2/motion.h:46`): orientación ya fusionada por el sistema | tocar el motor (`display_server_vita.cpp:263`, o el módulo `ros2_vita` con `#ifdef __vita__`) y **recompilar la plantilla** (`tools/build-godot-template.sh`, puerta G3) | la mejor (hipótesis: puede usar el magnetómetro ⇒ yaw sin deriva); además permite rellenar `orientation` en `/vita/imu` (REP-145) |
+| F2 filtro con `Basis`/cuaternión | mismo complementario pero sin ángulos de Euler: `basis = basis * Basis(giro_norm, |giro|·dt)` + corrección suave hacia la gravedad | solo GDScript | sin bloqueo a ±90° de pitch (la Vita en vertical, como en las pruebas), menos trigonometría |
+| F3 copiar `filtro.gd` tal cual | reutilizar el del usuario | nulo | Euler: falla cerca de pitch ±90° |
+
+Recomendación de Claude: **F2 ahora** (G7c solo en GDScript) y **F1 como hito aparte** (requiere recompilar el motor).
 
 ## Maquetación propuesta (960×544)
 
