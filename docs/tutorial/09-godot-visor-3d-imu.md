@@ -31,15 +31,12 @@ $G --headless --path godot/g7-imu -- demo -p agent_ip:=127.0.0.1    # terminal 1
 $G.gui --path godot/g7b-imu3d -- -p agent_ip:=127.0.0.1             # terminal 2: el visor
 ```
 
-- `.gui` es el editor con ventana (el visor necesita pantalla, no `--headless`).
-- Con la Vita real: abre g7-imu en la Vita y omite la terminal 1.
-- Debe poner «a 30 Hz».
-- El modelo `.blend` necesita Blender (Ajustes del editor → Import → Blender) y que el aviso de Blender no desactive la importación.
+- `.gui` = editor con ventana. Con la Vita real, omite la terminal 1. Debe poner «a 30 Hz».
+- El `.blend` necesita Blender (Ajustes del editor → Import → Blender).
 
 ## Reto (trabajo real)
 
-1. **Filtro complementario** en `filtro.gd → actualizar()`. Las pistas están en el archivo.
-   Con el demo, el modelo debe **cabecear** ±29° (rojo sube y baja).
+1. **Filtro complementario** en `filtro.gd → actualizar()`. Con el demo, el modelo cabecea ±29°.
 2. **Experimenta con `alfa`:** 1.0 (solo giro), 0.0 (solo acelerómetro), 0.98. Anota qué ves.
 3. **Con la Vita:** deja la consola quieta 1 min. ¿Se desvía el yaw? ¿Y roll/pitch? ¿Por qué?
 
@@ -49,6 +46,14 @@ $G.gui --path godot/g7b-imu3d -- -p agent_ip:=127.0.0.1             # terminal 2
 2. ¿Por qué `dt` se calcula con `header.stamp` y no con `delta` de `_process`?
 3. ¿Por qué el acelerómetro no puede dar el yaw?
 4. Columna 1 de `ROS_A_GODOT`: ¿por qué `(0, 0, -1)`?
+
+## Respuestas (dos dudas de la revisión)
+
+- **¿`alfa = 1.0`?** Solo cuenta el giro: el error se acumula (**deriva**) y, si arrancas inclinado, no
+  se entera. Con `0.0`, no deriva pero tiembla. `0.98` = lo mejor de ambos.
+- **¿Por qué solo `escala_acel = -G` lleva signo?** La Vita mide la **gravedad** (abajo) y ROS quiere la
+  **reacción** (arriba): eso solo afecta al acelerómetro. El giroscopio mide velocidad de giro; con
+  `"y,-x,z"` ya salió bien (pruebas A y B).
 
 ## Para saber más
 

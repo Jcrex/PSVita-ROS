@@ -56,7 +56,7 @@ cd web && docker compose up -d --build  # production site, localhost:4321
 - `godot/` — módulo Godot **4** `ros2_vita` en árbol (godot4-vita; ADR 0008,
   `docs/18`), compilado y probado en host (G1) y compilado para la Vita con `verify_runtime.py` PASS (G3) y
   **corriendo en hardware** con transporte XRCE: ida y vuelta con ROS 2 Jazzy y HMI de teleop con `/odom`
-  (G4+G5+G6, 2026-10-30; siguiente G7 = IMU, panel trasero, cámara); `godot/loader-patches/` parchea el loader; `godot/vitasdk-stubs/dlfcn.h` va al SDK;
+  (G4+G5+G6, 2026-10-30; G7 IMU calibrada en hardware y visor 3D en PC `godot/g7b-imu3d`, 2026-11-01; siguiente G7c = modelo 3D en la propia Vita, guion `docs/ia/guion-g7c-3d-en-la-vita.md`; luego panel trasero y cámara); `godot/loader-patches/` parchea el loader; `godot/vitasdk-stubs/dlfcn.h` va al SDK;
   `godot/test/` pruebas GDScript; `godot/g4-smoke/` + `tools/export-vita-vpk.sh` = proyecto mínimo y exportación a `.vpk` (G4, editor 4.8-dev7); el SDK Rust no depende de Godot; `tools/vita-doctor.sh` diagnostica el entorno;
   `tools/build-godot-template.sh` es la receta (solo PC; necesita VitaGL del port en `toolchains/vitagl-src` y
   `tools/build-pcre2-vita.sh`, docs/18 §4.5);
