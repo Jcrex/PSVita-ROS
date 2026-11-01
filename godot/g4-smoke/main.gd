@@ -3,7 +3,7 @@ extends Control
 ## Qué demuestra: la plantilla con ros2_vita arranca, rclgd.init() funciona con el
 ## transporte loopback (sin red) y RosMsg serializa/deserializa un Twist.
 ## Indicador que no depende de la fuente: fondo VERDE = todo bien, ROJO = fallo.
-## Validar en hardware.
+## Validado en hardware 2026-10-30 (G4 verde: fondo verde y «G4 OK»).
 
 const OBJETIVO := 3   # mensajes que deben volver por loopback para dar la puerta por buena
 

@@ -55,7 +55,8 @@ rápidas de `rclgd` hacia `Packed*Array`.
 ## Estado
 
 - [x] Paridad C/Rust en host (2026-10-27), fuzz y sanitizers limpios.
-- [ ] **Validar en el PC:** cross-compilar (el crate paraguas ya lo incluye).
+- [x] Cross-compilado en G2 (2026-10-29): `impl-c` con `tools/build-c-pic.sh`; Rust en el crate paraguas PIC.
 - [ ] **Validar en hardware:** coste por mensaje (Image, LaserScan) en la Cortex-A9.
-- [ ] Integrar en `godot/ros2_vita` (`RosMsg` dinámico) y en `vita-app` si conviene.
+- [x] Integrado en `godot/ros2_vita` (`RosMsg` dinámico, `ros_msg.cpp`), en hardware desde G4–G6 (2026-10-30).
+- [ ] Integrar en `vita-app` si conviene.
 - [ ] Cruzar fixtures con `rclpy.serialization` en `robotnik_dev` (como `msg-cdr`).

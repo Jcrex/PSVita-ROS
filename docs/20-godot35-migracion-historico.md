@@ -137,10 +137,10 @@ para el target Vita (guardas `#ifdef __vita__` / `platform=vita` en
 
 **PC CachyOS (tras `git pull`):**
 
-1. `godot/scripts/build-vita-template.sh` — comprueba VitaSDK, asegura
+1. `godot/godot35/scripts/build-vita-template.sh` — comprueba VitaSDK, asegura
    `vita-app/third_party/` (lo compila si falta, reutilizando
    `build-xrce-client-vita.sh`), y compila el fork:
-   `scons platform=vita target=release custom_modules=<repo>/godot/modules`.
+   `scons platform=vita target=release custom_modules=<repo>/godot/godot35/modules`.
 2. El binario resultante se instala como template custom del proyecto
    (reemplaza al `.tpz` oficial solo para este proyecto).
 3. Export normal desde el editor Godot → `.vpk` → FTP a la Vita
@@ -170,13 +170,13 @@ cerrar G2; se documenta porque un VitaSDK limpio lo necesita:
 3. **Códecs y freetype (vdpm):** el engine enlaza ogg/vorbis/theora/opus,
    jpeg y freetype:
    `vdpm libjpeg-turbo freetype libogg libvorbis libtheora opus`.
-4. **Patch `bullet-vita-no-clew`** (`godot/patches/`, lo aplica el build
+4. **Patch `bullet-vita-no-clew`** (`godot/godot35/patches/`, lo aplica el build
    script solo): Bullet incluye `clew/clew.c` (loader OpenCL) que usa
    `dlopen`; la newlib de la Vita no tiene carga dinámica. Godot nunca usa
    clew (solo `Bullet3OpenCL/*`, que no se compila), así que se excluye.
    **No afecta a la física:** Bullet corre entero en CPU; la aceleración por
    GPU/OpenCL es imposible en el PowerVR SGX543 de todos modos.
-5. **Stub `dlfcn.h`** (`godot/vitasdk-stubs/`, lo copia el build script solo):
+5. **Stub `dlfcn.h`** (`godot/godot35/vitasdk-stubs/`, lo copia el build script solo):
    código stock de Godot (`drivers/gles2/rasterizer_storage_gles2.cpp`) hace
    `#include <dlfcn.h>` en cualquier target GLES2, pero las llamadas reales a
    `dlopen`/`dlsym` quedan en bloques `#ifdef ANDROID/IPHONE` — código muerto
@@ -185,7 +185,7 @@ cerrar G2; se documenta porque un VitaSDK limpio lo necesita:
 Los pasos 1-3 tocan el VitaSDK vendorizado (gitignorado); los pasos 4-5 viven
 en el repo y el `build-vita-template.sh` los aplica de forma **idempotente**.
 
-**Desinstalación limpia:** `godot/scripts/uninstall-godot.sh` revierte todo lo
+**Desinstalación limpia:** `godot/godot35/scripts/uninstall-godot.sh` revierte todo lo
 anterior (parches con `patch -R`, stubs, paquetes vdpm con `vdpm -u` —que
 respeta ficheros compartidos—, template y `godot/build/`), dejando el VitaSDK
 en su estado pre-Godot. No toca el toolchain base compartido con `vita-app`.

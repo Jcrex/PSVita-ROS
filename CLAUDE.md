@@ -9,15 +9,17 @@ via micro-ROS (XRCE-DDS) over WiFi/UDP. The repo now contains **everything**:
 docs, the dual Rust+C modules, the Vita homebrew app, the MCP server, the
 Claude Code skills and the project website. Current state and exact next
 steps live in `docs/06-bitacora-estado.md` — **read that first** when
-resuming work, and **update it** when closing milestones (also update
-`web/src/data/fases.ts`).
+resuming work, and **update it** when closing milestones. (`web/src/data/fases.ts`
+too, but the web is **paused** since 2026-11-01 — see `web/` below.) The latest full-repo
+audit is `docs/ia/auditoria/README.md` (2026-11-01): pending cleanup lots, bugs and
+optimizations.
 
 ### Machine roles
 
 | Role | Machine | IP | Responsibility |
 |---|---|---|---|
-| Workshop | Laptop (this repo) | 192.168.1.108 | Portable code + host parity tests, docs, web, MCP. Will also run the micro-ROS Agent (it is on the Vita's WiFi network and has ROS2 Jazzy via the `robotnik_dev` docker container). |
-| Development | PC CachyOS | 192.168.1.65 | VitaSDK cross-compilation, `.vpk` packaging, hardware deploys |
+| Workshop | Laptop | 192.168.1.108 | Portable code + host parity tests, docs, web, MCP. ROS 2 tests via the `robotnik_dev` container (historical: it ran the agent in Fase 1). |
+| Development | PC CachyOS | 192.168.1.65 | VitaSDK cross-compilation, `.vpk` packaging, hardware deploys, **and the micro-ROS Agent** (station `docker/vita-ros.sh up`, UDP 8888) |
 | Target | PS Vita 1000 | — | ARM Cortex-A9 32-bit, 512 MB RAM, newlib (not Linux) |
 
 **No project toolchains are installed on the laptop.** Rust builds go through
@@ -73,16 +75,46 @@ cd web && docker compose up -d --build  # production site, localhost:4321
 - `docs/rust/` — Rust learning series tied to real repo code. The user is a
   Rust beginner: **every new Rust construct must be explained in comments
   and/or this series**.
+- `archivo/` — archived (obsolete or superseded) material, keeping its original path inside
+  (`archivo/docs/superpowers/` …). See `archivo/README.md`; pending lots in `docs/ia/auditoria/README.md`.
+- `docs/informes/` — short reports for the user (≤ 500 words), e.g. the 2026-11-01 audit;
+  their long versions are in `docs/ia/auditoria/`.
 - `docs/guias-vita/` — homebrew install guides (YAML frontmatter; the web
   renders them directly from here — do not duplicate content into web/).
 - `web/` — Astro 5 SSR + better-sqlite3 + Docker; DB volume at `web/data/`.
   Future home: psvita-ros.jcrex999.com (recipe in `web/README.md`).
-  **All documentation must be published on the web in its section** (user
+  **PAUSED (user decision, 2026-11-01):** the user is planning a restructure and may
+  discontinue the web now that Godot is the main product. Do not add collections or
+  sections (e.g. for `docs/informes/` or `archivo/`) until they decide.
+  Previous rule, suspended meanwhile: **all documentation must be published on the web in its section** (user
   rule). This is automated via glob collections in `src/content.config.ts`:
   any new .md under `docs/`, `docs/adr/`, `docs/rust/`, `docs/guias-vita/`
   or a module/app/MCP README shows up after a rebuild. If you create a NEW
   docs folder or category, add a collection + section for it (and a COPY
   line in `web/Dockerfile` if it's a new top-level path).
+
+## Working method: learning mode (since 2026-10-31, user decision)
+
+The user wants to continue the project on their own, audit code and explain it in detail —
+not just validate what Claude writes. Full method and curriculum:
+`docs/tutorial/07-ruta-completa-de-aprendizaje.md`. In every milestone:
+
+- **Explain before coding**: plan in plain Spanish (what, why, alternatives); the user decides.
+- **Leave the user a real coding task** (a "reto" in the lesson) instead of writing everything.
+- **Give commands, don't run them** (docker, `ros2`, build, export, deploy): explain each part;
+  run them yourself only if the user asks.
+- **Guided audit before commit**: walk the `git diff` with the P10 checklist and ask the user what
+  each part does.
+- **Every milestone leaves a lesson** in `docs/tutorial/` (like `08-godot-imu-primer-sensor.md`),
+  with "comprueba que lo has entendido" questions and a progress table.
+- Cite `file:line` or official docs for every claim; mark guesses as hypotheses.
+- **Two documentations.** For the user: chat explanations, `docs/tutorial/` and `docs/informes/` docs are
+  **≤ 500 words each** (check with `wc -w`): direct, tables and commands, no padding. For Claude:
+  `docs/ia/` (detailed teaching scripts and `docs/ia/auditoria/`, not on the web) + the technical docs `docs/00–23`.
+  Rules: `docs/ia/README.md`.
+- **Shells:** the user runs **fish** on the PC CachyOS (this machine) and **zsh** elsewhere. Commands
+  given to the user for the PC must be fish-valid (`set VAR valor`, not `VAR=valor` alone; no
+  `export`, `$(...)` → `(...)`); for the laptop, zsh. Scripts with a shebang (`tools/*.sh`) are fine.
 
 ## Conventions
 

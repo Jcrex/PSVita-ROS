@@ -4,7 +4,7 @@
 // (ver src/lib/db.ts), para alimentar el dashboard /monitor.
 //
 // Proceso separado del servidor Astro (ver
-// docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md): no
+// archivo/docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md): no
 // puede importar db.ts (TypeScript) en runtime, así que lee el MISMO
 // archivo de esquema que usa db.ts (./vita-monitor-schema.sql, junto a
 // este script) en vez de duplicar el DDL.

@@ -12,7 +12,7 @@ Contrato: `include/net_udp.h` (la verdad). Implementaciones equivalentes en
 
 | Plataforma | C (`#ifdef __vita__`) | Rust (`#[cfg(target_os = "vita")]`) | Estado |
 |---|---|---|---|
-| PS Vita | `sceNet`/`sceNetCtl` + pool estático de 1 MiB | FFI manual a los stubs `sceNet*` de VitaSDK | escrito, **compilar en el PC y validar en hardware** |
+| PS Vita | `sceNet`/`sceNetCtl` + pool estático de 1 MiB | FFI manual a los stubs `sceNet*` de VitaSDK | C validado en hardware (Fase 1, 2026-07-01; G5, 2026-10-30); Rust compilado (G2) pero **sin correr en la Vita** |
 | Host (Linux) | sockets POSIX | FFI manual a la libc (sin crate `libc`) | paridad verificada en laptop |
 
 La rama host existe para poder ejecutar los tests de paridad sin la consola;
@@ -60,5 +60,6 @@ argumentos inválidos de send/recv y uso tras close.
 ## Estado
 
 - [x] Paridad C/Rust verificada en host (laptop).
-- [ ] Compilación cruzada Vita (VitaSDK / cargo nightly) — en el PC.
-- [ ] Validación de constantes sceNet y comportamiento real — en hardware.
+- [x] Compilación cruzada Vita (VitaSDK / cargo nightly) — en el PC (Fase 1; PIC en G2, 2026-10-29).
+- [x] Validación de constantes sceNet y comportamiento real — en hardware con la impl **C** (Fase 1, 2026-07-01; G5, 2026-10-30).
+- [ ] La impl **Rust** en hardware — validar en hardware.

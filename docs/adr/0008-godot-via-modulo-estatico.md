@@ -1,6 +1,6 @@
 # ADR 0008: Godot en la Vita — módulo C++ estático sobre la capa ROS dual, app separada
 
-- **Estado:** Aceptado el 2026-10-27 (usuario: priorizar Godot 4) — **la ejecución sigue sin validar** en PC y hardware (puertas G1–G7, docs/18 §8). Historia: propuesto con 3.5; revisado tras estudiar `rclgd`/`roomba_ws` (docs/17).
+- **Estado:** Aceptado el 2026-10-27 (usuario: priorizar Godot 4) — **ejecución validada** (puertas de docs/18 §8, a 2026-11-01): G1–G3 verdes en el PC y **G4–G6 verdes en hardware** (2026-10-30); G7 en curso. Historia: propuesto con 3.5; revisado tras estudiar `rclgd`/`roomba_ws` (docs/17).
 - **Fecha:** 2026-10-27
 
 ## Contexto

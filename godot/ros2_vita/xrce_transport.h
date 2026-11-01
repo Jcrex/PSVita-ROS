@@ -1,5 +1,5 @@
 // xrce_transport.h — transporte micro-ROS (XRCE-DDS sobre UDP) de ros2_vita. Puerta G5 (docs/18 §8).
-// Probado en host contra el agente micro-ROS en docker; en la Vita: validar en hardware.
+// Probado en host contra el agente micro-ROS en docker; validado en la Vita 2026-10-30 (G5/G6).
 //
 // Cadena (la misma que vita-app y la app Godot 3.5, ya probadas en hardware):
 //   XrceTransport -> uxr (microxrcedds_client) -> callbacks propios (como vita-app/src/uxr_glue.c)

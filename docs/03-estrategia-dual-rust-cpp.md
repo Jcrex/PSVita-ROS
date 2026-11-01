@@ -35,6 +35,18 @@ El target de compilación es `armv7-sony-vita-newlibeabihf`, el target de Rust p
 
 ## Selección en build time
 
+> **Diseño actual (actualizado 2026-11-01).** Lo que sigue (CMake por módulo con `cargo-vita`,
+> `crate-type = ["staticlib"]` en cada `Cargo.toml`) fue el diseño inicial. Hoy:
+> - Los crates de módulo son **`rlib`**; el `.a` se produce explícitamente con
+>   `cargo rustc --crate-type staticlib` (un único staticlib Rust por binario).
+> - **App C (`vita-app/`)**: `-DVITA_IMPL=c|rust` se interpreta en `vita-app/CMakeLists.txt:26,72-82`,
+>   no en cada módulo; con `rust` enlaza el crate paraguas `vita-app/rust-modules/` (los 8 módulos).
+> - **Godot 4 (`ros2_vita`)**: C por defecto (los `.c` se compilan en el `SCsub`); Rust con
+>   `ros2_vita_rust_lib=` y la staticlib PIC de `tools/build-rust-pic.sh`.
+> - **Paridad en host**: `tools/run-parity-tests.sh` compila cada `impl-c` con gcc y cada `impl-rust`
+>   con `cargo rustc --crate-type staticlib` contra el mismo test C.
+> - Los `CMakeLists.txt` de `mem-pool`, `net-udp` y `microros-transport` quedan como plantilla; nada los incluye.
+
 La elección de implementación ocurre en tiempo de compilación mediante la variable CMake **`-DVITA_IMPL=c`** o **`-DVITA_IMPL=rust`**. El `CMakeLists.txt` de cada módulo interpreta esta variable y enlaza la biblioteca estática correcta.
 
 ```cmake

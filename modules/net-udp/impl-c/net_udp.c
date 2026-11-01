@@ -4,7 +4,8 @@
  * Dos plataformas dentro del mismo archivo, separadas por #ifdef __vita__:
  *  - Vita: sceNet/sceNetCtl. Compila solo con VitaSDK (en el PC). Los pasos
  *    de inicialización siguen el orden requerido por el SO de la consola
- *    (sysmodule -> sceNetInit con pool -> sceNetCtlInit). VALIDAR EN HARDWARE.
+ *    (sysmodule -> sceNetInit con pool -> sceNetCtlInit). Validado en hardware
+ *    (Fase 1, 2026-07-01; G5 en Godot 4, 2026-10-30).
  *  - Host (Linux): sockets POSIX, para los tests de paridad en laptop/PC.
  */
 #include "net_udp.h"

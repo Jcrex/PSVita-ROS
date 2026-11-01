@@ -1,5 +1,5 @@
 // xrce_transport.cpp — transporte micro-ROS (XRCE-DDS) de ros2_vita. Puerta G5 (docs/18 §8).
-// Probado en host contra el agente micro-ROS en docker; en la Vita: validar en hardware.
+// Probado en host contra el agente micro-ROS en docker; validado en la Vita 2026-10-30 (G5/G6).
 //
 // Diseño (el mismo que la app Godot 3.5, que funcionó en hardware):
 //  - UN hilo: todo (crear entidades, publicar, atender la sesión) va en el hilo principal. poll()

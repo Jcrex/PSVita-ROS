@@ -43,10 +43,16 @@ if [[ -n "${VITASDK:-}" ]]; then
 fi
 
 echo "== Artefactos del repo =="
-[[ -f "$REPO_ROOT/vita-app/third_party/install/lib/libmicroxrcedds_client.a" ]] \
-    && ok "cliente XRCE (ARM)" "" \
-    || miss "cliente XRCE (ARM)" "vita-app/scripts/build-xrce-client-vita.sh (PC)"
-ls "$REPO_ROOT"/vita-app/build*/*.vpk >/dev/null 2>&1 && ok ".vpk" "" || miss ".vpk" "PC: vita-build-package"
+# build-xrce-client-vita.sh instala en third_party/xrce-vita$SUFFIX:
+# xrce-vita (estático, vita-app), xrce-vita-pic (Godot 4), xrce-vita-host (pruebas).
+for v in xrce-vita xrce-vita-pic xrce-vita-host; do
+    [[ -f "$REPO_ROOT/vita-app/third_party/$v/lib/libmicroxrcedds_client.a" ]] \
+        && ok "cliente XRCE ($v)" "" \
+        || miss "cliente XRCE ($v)" "vita-app/scripts/build-xrce-client-vita.sh (PC)"
+done
+[[ -d "$REPO_ROOT/toolchains/pic" ]] && ok "toolchains/pic (Rust PIC)" "" || miss "toolchains/pic" "tools/build-rust-pic.sh (PC)"
+ls "$REPO_ROOT"/build/*.vpk "$REPO_ROOT"/vita-app/build*/*.vpk >/dev/null 2>&1 \
+    && ok ".vpk" "" || miss ".vpk" "Godot 4: tools/export-vita-vpk.sh; Fase 1: vita-build-package"
 
 echo "== Godot 4 / godot4-vita (docs/18) =="
 [[ -d "$REPO_ROOT/toolchains/godot4-vita/engine" ]] && ok "godot4-vita clonado" "" \
@@ -55,7 +61,7 @@ python3 -m SCons --version >/dev/null 2>&1 && ok "SCons (python3 -m SCons)" "" |
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3,12) else 1)' 2>/dev/null \
     && ok "Python >= 3.12" "" || miss "Python >= 3.12" "lo pide el port (BUILDING.md)"
 [[ -n "${VITAGL_ROOT:-}" && -f "${VITAGL_ROOT:-}/libvitaGL.a" ]] && ok "VITAGL_ROOT (VitaGL parcheado)" "$VITAGL_ROOT" \
-    || miss "VITAGL_ROOT" "VitaGL parcheado del port (platform/vita/vitagl/README.md)"
+    || miss "VITAGL_ROOT" "VitaGL del port en toolchains/vitagl-src (docs/18 §4.5)"
 have x86_64-w64-mingw32-gcc && ok "MinGW-w64 (editor Windows, opcional)" "" || miss "MinGW-w64" "solo para el editor de Windows"
 
 echo

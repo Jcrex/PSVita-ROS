@@ -143,6 +143,12 @@ a mano byte a byte (`parse_ipv4`) o se crean con el literal `c"net_udp"`
 ## Lo que este repo **no** usa todavía (y verás en cualquier tutorial)
 
 `String`/`Vec` (necesitan heap/allocator — nuestros módulos son no_std sin
-alloc), `Result<T, E>` con `?` (los errores cruzan la frontera C como
-códigos enteros), traits propios, genéricos, lifetimes explícitos, hilos.
-Irán apareciendo cuando el proyecto crezca (p. ej. en tooling de PC).
+alloc) y traits propios. Irán apareciendo cuando el proyecto crezca (p. ej.
+en tooling de PC).
+
+> **Actualizado 2026-11-01:** cuando se escribió esto (2026-06) tampoco se
+> usaban `Result<T, E>` con `?`, genéricos, lifetimes explícitos ni hilos.
+> Los módulos posteriores **sí** los usan (por dentro; en la frontera C los
+> errores siguen siendo enteros): `Result` + `?` en `msg-cdr` y `msg-schema`
+> (`docs/rust/04`, `05`), genéricos constantes y lifetimes en `msg-cdr`
+> (`docs/rust/04`), atómicos entre hilos en `msg-ring` (`docs/rust/03`).
