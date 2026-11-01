@@ -100,7 +100,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T1.3.2 G3 Vita: build-godot-template.sh → verify_runtime.py PASS ............ A2 · P · G3 · ✅
 │  └─ T1.3.3 Medir tamaño/tiempo de arranque de libgodot.so con ros2_vita ......... A11 · V · G4 · ⏳
 ├─ 1.4 Entrada y sensores en el motor
-│  ├─ T1.4.1 IMU ya expuesta (Input accel/gyro/gravity) → verificar valores/ejes .. A9 · V · G7 · ⏳
+│  ├─ T1.4.1 IMU ya expuesta (Input accel/gyro/gravity) → verificar valores/ejes .. A9 · V · G7 · ⏳ en curso (G7a: valores/ejes sin confirmar)
 │  ├─ T1.4.2 Panel táctil trasero (parche display_server_vita.cpp) ................ A9 · P · G7 · ⏳
 │  └─ T1.4.3 Cámara: actualización de textura sin recrearla (texture_2d_update) .. A9 · P · G7 · ⏳
 └─ 1.5 Red en el motor (opción B) .............................................. — · — · —  · ✗ descartada (D2)
@@ -114,9 +114,9 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  └─ T2.1.5 Añadir sceNetCtlInetGetState (y lo que use) al parche del loader ..... A5+A2 · L · G0 · ⏳
 ├─ 2.2 microros-transport y cliente XRCE
 │  ├─ T2.2.1 Compilar microxrcedds_client + microcdr PIC para el .so .............. A4 · P · G2 · ✅
-│  ├─ T2.2.2 Compilar el cliente XRCE para HOST (docker) → pruebas contra el agente A6 · L · H1 · ⏳
+│  ├─ T2.2.2 Compilar el cliente XRCE para HOST (docker) → pruebas contra el agente A6 · L · H1 · ✅ (`vita-app/third_party/xrce-vita-host`, `SCsub:29-31`)
 │  └─ T2.2.3 Ajustes XRCE (MTU, historia, heartbeat) — plan E1 de docs/13 ......... A6 · V · G5 · ⏳
-├─ 2.3 Núcleo de sesión XRCE en C, sin tipos de Godot (nuevo: `ros2_vita/xrce_core.c`)
+├─ 2.3 Núcleo de sesión XRCE en C, sin tipos de Godot (nuevo: `ros2_vita/xrce_core.c`) — *2026-11-01: `xrce_core.c` no se creó; la sesión vive en `godot/ros2_vita/xrce_transport.cpp`*
 │  ├─ T2.3.1 API C: start/stop/advertise/subscribe/publish/poll + callback rx ...... A6 · L · H1 · ⏳
 │  ├─ T2.3.2 Hilo de sesión + cola tx (msg-ring SPSC) + cola rx ................... A6 · L · H1 · ⏳
 │  ├─ T2.3.3 Entidades XML por topic; nombres DDS rt/… y pkg::msg::dds_::T_ ....... A6 · L · H1 · ⏳
@@ -133,7 +133,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 3. MÓDULO GODOT ros2_vita (API = rclgd)
 ├─ 3.1 Infraestructura del módulo
 │  ├─ T3.1.1 config.py/SCsub/register_types (Godot 4) ............................ A8 · L · G1 · ✅
-│  ├─ T3.1.2 SCsub: compilar xrce_core.c, uxr/microcdr PIC como File nodes ........ A4 · P · G1 · ⏳
+│  ├─ T3.1.2 SCsub: compilar xrce_core.c, uxr/microcdr PIC como File nodes ........ A4 · P · G1 · ✅ (sin `xrce_core.c`: libs uxr/microcdr como `File`, `SCsub:39-40`)
 │  └─ T3.1.3 (rama R-G) spike godot-cpp + load_extension_from_function ............ A7b · L/P · G1' · ⏳
 ├─ 3.2 RosMsg
 │  ├─ T3.2.1 RosMsg dinámico sobre msg-schema (_get/_set, Packed*) ................ A7 · L · G1 · ✅
@@ -144,7 +144,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  ├─ T3.3.1 Singleton rclgd, init(args), ok, shutdown, ros_ready ................. A8 · L · G1 · ✅
 │  ├─ T3.3.2 RosNode: pub/sub/timer, ~ y relativos, parámetros locales ............ A8 · L · G1 · ✅
 │  ├─ T3.3.3 LoopbackTransport (pruebas) ......................................... A8 · L · G1 · ✅
-│  ├─ T3.3.4 XrceTransport = envoltura Godot de xrce_core.c ....................... A6 · L/P · G5 · ⏳
+│  ├─ T3.3.4 XrceTransport = envoltura Godot de xrce_core.c ....................... A6 · L/P · G5 · ✅ (`godot/ros2_vita/xrce_transport.cpp`, G5 2026-10-30)
 │  ├─ T3.3.5 now() sincronizado con el agente ..................................... A6 · V · G5 · ⏳
 │  └─ T3.3.6 Señales de error de red/estado (ros_ready, ros_lost) ................. A8 · L · G1 · ⏳
 ├─ 3.4 Paridad de API pendiente
@@ -155,7 +155,7 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 │  └─ T3.4.5 Mantener API_PARITY.md al día con cada versión de rclgd ............. A1 · L · —  · continuo
 └─ 3.5 Pruebas del módulo
    ├─ T3.5.1 godot/test: runner GDScript (24 fixtures, loopback, timers, ejes) .... A11 · P · G1 · ✅
-   ├─ T3.5.2 Pruebas del XrceTransport en host contra el agente (docker) .......... A11 · L/P · H1 · ⏳
+   ├─ T3.5.2 Pruebas del XrceTransport en host contra el agente (docker) .......... A11 · L/P · H1 · ✅ (G5 en host contra Jazzy, `fc4d0fc`)
    └─ T3.5.3 Mismo script de prueba en el editor de rclgd (PC) y en la Vita ....... A11 · P/V · G5 · ⏳
 
 4. TOOLCHAIN Y BUILD
@@ -170,22 +170,22 @@ Formato: `ID  Elemento — dueño · máquina · puerta · estado`. Máquinas: *
 5. FLUJO DE TRABAJO Y EXPORTACIÓN
 ├─ 5.1 Editores
 │  ├─ T5.1.1 rclgd (rama jazzy) en el PC; `ros2 rclgd editor` (4.7.1) ............ A3 · P · —  · ⏳
-│  ├─ T5.1.2 Editor 4.8-dev7 Linux (descarga dev o compilar etiqueta 4.8-dev7) .... A3 · P · G3 · ⏳ (M18)
+│  ├─ T5.1.2 Editor 4.8-dev7 Linux (descarga dev o compilar etiqueta 4.8-dev7) .... A3 · P · G3 · ✅ (M18; G4, `c3f414c`)
 │  └─ T5.1.3 Prueba de sesgo 4.7.1 ↔ 4.8-dev7 (escenas, recursos importados) ...... A3 · P · G4 · ⏳ (M15)
 ├─ 5.2 Exportación
-│  ├─ T5.2.1 Addon psvita + plantilla propia vita_release.zip (Custom Template) .. A3 · P · G4 · ⏳
-│  ├─ T5.2.2 Script de exportación headless sobre una copia del proyecto ......... A3 · P · G4 · ⏳
+│  ├─ T5.2.1 Addon psvita + plantilla propia vita_release.zip (Custom Template) .. A3 · P · G4 · ✅ (`tools/export-vita-vpk.sh`)
+│  ├─ T5.2.2 Script de exportación headless sobre una copia del proyecto ......... A3 · P · G4 · ✅ (`tools/export-vita-vpk.sh`, copia en `/tmp`)
 │  ├─ T5.2.3 Filtros: *.rsch y package.xml como no-recursos ...................... A3 · P · G4 · ⏳ (M8)
 │  └─ T5.2.4 Ajustes de proyecto Vita (960×544, worker_pool=2, Compatibility) .... A3 · P · G4 · ⏳
 ├─ 5.3 Proyecto "doble" (PC rclgd ↔ Vita ros2_vita)
 │  ├─ T5.3.1 Plantilla de proyecto con package.xml + autoload ROS + ajustes ros/* A10 · L · G1 · ⏳
 │  ├─ T5.3.2 Paso de export: package.xml → schema.rsch (+ clases nativas, R-N) ... A7 · L · G4 · ⏳
 │  └─ T5.3.3 Parámetros sin línea de órdenes (ros/agent_ip, ros/parameters/*) .... A8 · L · G1 · ⏳
-└─ 5.4 Despliegue: VitaShell/FTP + ux0:data/<juego>, netlog ...................... A3 · P/V · G4 · ⏳
+└─ 5.4 Despliegue: VitaShell/FTP + ux0:data/<juego>, netlog ...................... A3 · P/V · G4 · ✅ (`tools/deploy-vpk-ftp.sh`)
 
 6. APLICACIONES Y SENSORES
-├─ T6.1 HMI piloto (de roomba_hmi): teleop /cmd_vel + /odom + estado ............ A10 · P/V · G6 · ⏳ (M9)
-├─ T6.2 Publicar IMU (sensor_msgs/Imu) desde Input ............................... A9 · V · G7 · ⏳
+├─ T6.1 HMI piloto (de roomba_hmi): teleop /cmd_vel + /odom + estado ............ A10 · P/V · G6 · ✅ (M9; `godot/g6-hmi`, G6 2026-10-30)
+├─ T6.2 Publicar IMU (sensor_msgs/Imu) desde Input ............................... A9 · V · G7 · ⏳ en curso (G7a `godot/g7-imu`, 2026-10-31)
 ├─ T6.3 Panel trasero → topic propio / Joy ...................................... A9 · V · G7 · ⏳
 ├─ T6.4 Cámara → CompressedImage (decisión de diseño, coste) ..................... A9 · V · G7 · ⏳
 ├─ T6.5 Mini-rviz en Godot (TF + marcadores) — reutiliza tf-tree/viz-math ........ A10 · V · G6+ · ⏳
@@ -354,7 +354,11 @@ K5 (coherencia) y al final K6 (verificación E1); K6 repite E2 en O1 con el PC.
 | G1 | **verde** | 2026-10-29 | PC: godot4-vita `d1a5f29` `linuxbsd` + `ros2_vita` compila; `run_host_tests.sh` 294 comprobaciones / 0 fallos |
 | G1' | pendiente | — | spike R-G sin empezar |
 | G2 | **verde** | 2026-10-29 | PC: XRCE+microcdr, 8 módulos C y umbrella Rust en PIC; `check-vita-imports` (arm-vita-eabi-nm) 0 ausentes con el parche (11 sin él); 0 TLS |
-| G3–G7 | pendiente | — | — |
+| G3 | **verde** | 2026-10-30 | PC: plantilla de la Vita con `ros2_vita`; `verify_runtime.py` PASS en C y Rust (`docs/06`) |
+| G4 | **verde** | 2026-10-30 | Vita: `godot/g4-smoke` en loopback, «G4 OK» (`11d7bba`) |
+| G5 | **verde** | 2026-10-30 | Vita: `godot/g5-xrce` publica y recibe `/pc_hello` con Jazzy (`8ff9413`, `02e08f1`) |
+| G6 | **verde** | 2026-10-30 | Vita: HMI `godot/g6-hmi` teleopera turtlesim y dibuja `/odom` (`6c42d8a`) |
+| G7 | en curso | 2026-10-31 | G7a IMU (`godot/g7-imu`, sin commit): corre en la Vita; unidades y ejes sin confirmar |
 
 Hechos de partida para O0: Fase 1 **cerró en hardware** (2026-07-01: `/vita_hello` visible y
 `/pc_hello` recibido) con `net-udp` + `microros-transport` + XRCE en un ELF estático ⇒ la opción A usa

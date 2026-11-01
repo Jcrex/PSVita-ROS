@@ -1,6 +1,6 @@
 # `godot/` — módulo `ros2_vita` para Godot 4 (godot4-vita 4.8-dev7)
 
-> **Estado (2026-10-30): G1–G4 VERDES** — compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
+> **Estado (2026-10-31): G1–G6 VERDES, G7a en curso** — compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
 > **corre en la Vita** en *loopback* (G4) y con **transporte XRCE publica en ROS 2 Jazzy desde la Vita** (G5,
 > 2026-10-30: `/vita_hello` y `/cmd_vel` a 10 Hz en `ros2 topic echo`). **G6:** la HMI `g6-hmi` teleopera turtlesim y
 > dibuja `/odom` en hardware (`/cmd_vel` 19,5 Hz, `/odom` 62,5 Hz). Decisión y razones:
@@ -36,6 +36,7 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 | `ros2_vita/xrce_transport.*` | Transporte micro-ROS (G5): sesión XRCE, entidades por XML, streams fiable/best effort |
 | `g5-xrce/` | Proyecto de la puerta G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
 | `g6-hmi/` | HMI piloto (G6): teleop `/cmd_vel` con el mapeo de docs/09 + vista cenital de `/odom` (rejilla, robot, rastro, panel) |
+| `g7-imu/` | G7a: IMU de la Vita → `sensor_msgs/Imu` en `/vita/imu` (best effort, 30 Hz, parámetros de escala y ejes). Probado en host y **corre en la Vita** (2026-10-31); **validar en hardware** unidades y ejes. Lección: `docs/tutorial/08` |
 
 ## Puertas de verificación (docs/18 §8)
 
@@ -58,7 +59,7 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
    tools/export-vita-vpk.sh godot/g4-smoke build/g4-smoke.vpk   # exporta sobre una copia
    ```
    `export-vita-vpk.sh` copia el proyecto, le añade el addon `psvita` y `out/vita_release.zip` (variante C) y
-   exporta en modo *headless*. Después: instalar el `.vpk` (FTP o modo USB de VitaShell). **Validar en hardware.**
+   exporta en modo *headless*. Después: instalar el `.vpk` (FTP o modo USB de VitaShell). **Validado en hardware 2026-10-30 (G4 verde).**
 4. **G5 — transporte XRCE.** Libs del cliente: `XRCE_PIC=1` (Vita) o `XRCE_HOST=1` (host)
    `vita-app/scripts/build-xrce-client-vita.sh`; el SCsub activa el transporte si las encuentra
    (`ros2_vita: transporte XRCE activado` en la salida de SCons). Prueba en el PC:
@@ -85,6 +86,20 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 - Los objetos `Ros*` son `RefCounted`: **guardar la referencia** o se cancelan.
 - Convención de ejes REP-103 ↔ Godot idéntica (`rclgd.godot_to_ros_vector`...).
 - Los *arrays* de un mensaje son copias: asignar el array entero.
+
+## Esquema de mensajes (`ros/schema.rsch`)
+Cada app lleva su `res://ros/schema.rsch` (Godot exige que esté dentro de `res://`). Hoy hay **4 copias
+idénticas** (`g4-smoke`, `g5-xrce`, `g6-hmi`, `g7-imu`; 4928 B, mismo md5) y son el mismo blob que
+`modules/msg-schema/tests/fixtures/schema.rsch` (40 tipos: `std_msgs`, `geometry_msgs`, `sensor_msgs`,
+`nav_msgs`, `tf2_msgs`, `visualization_msgs`…). Regenerar (laptop o PC, con `rosbags`):
+```bash
+python3 -m venv /tmp/rbvenv && /tmp/rbvenv/bin/pip install rosbags numpy
+/tmp/rbvenv/bin/python modules/msg-schema/tests/gen_fixtures.py          # blob completo de las pruebas
+/tmp/rbvenv/bin/python tools/gen_msg_schema.py -o schema.rsch geometry_msgs/msg/Twist sensor_msgs/msg/Imu  # a medida
+/tmp/rbvenv/bin/python tools/gen_msg_schema.py --dump geometry_msgs/msg/Twist                          # inspeccionar
+```
+Después **copiar el mismo fichero a las 4 apps** (si se añade un tipo en una y no en las otras, esas no
+lo sabrán codificar). Automatizarlo en la exportación es M8 (`docs/18:335`).
 
 ## Pendientes (docs/18 §10)
 M5 compilar en host · M6 cruzada · M7 red + transporte XRCE · M8 exportación de `.rsch` y clases sombra ·

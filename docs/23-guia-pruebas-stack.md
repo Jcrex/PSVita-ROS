@@ -1,4 +1,8 @@
-# Guía de pruebas: cómo levantar el stack completo Vita ↔ ROS2
+# Guía de pruebas del stack Vita ↔ ROS2 (estación `docker/`)
+
+> Antes `docs/09-guia-pruebas-stack.md`; renumerada el 2026-11-01 (auditoría) porque el 09 estaba
+> duplicado. Desde 2026-10-30 el contenedor ROS2 por defecto es la estación propia del repo
+> (`docker/`, ver `docker/README.md`); la de IR2134 (`rmf_unified`) sigue valiendo con variables.
 
 Esta guía describe, paso a paso, cómo probar los programas de la web y la
 conexión real con la PS Vita, repartiendo el trabajo entre las dos
@@ -26,11 +30,12 @@ tools/vita-stack.sh all       # ros2 + micro-ROS agent + bridge zenoh + web
 
 Internamente, en orden:
 
-1. **`ros2 up`** — levanta el contenedor ROS2 Jazzy (`rmf_unified`, delega
-   en `~/Documentos/IR2134/DOCKER/rmf.sh`, override con `ROS2_DOCKER_DIR`).
-2. **`agent up`** — lanza el micro-ROS Agent
-   (`microros/micro-ros-agent:jazzy`) escuchando UDP en el puerto 8888 con
-   `--net=host --ipc=host`. `--ipc=host` es imprescindible: sin él,
+1. **`ros2 up`** — levanta la estación ROS2 Jazzy del repo (`vita_station`,
+   delega en `docker/vita-ros.sh up`; con `ROS2_DOCKER_DIR=~/Documentos/IR2134/DOCKER
+   ROS2_CONTENEDOR=rmf_unified AGENT_NOMBRE=microros-agent` usa el `rmf.sh` de IR2134).
+2. **`agent up`** — lanza el micro-ROS Agent (`vita_agent`, servicio del compose de
+   `docker/`; imagen `microros/micro-ros-agent:jazzy`) escuchando UDP en el puerto 8888 con
+   red e IPC del host. `--ipc=host` es imprescindible: sin él,
    `ros2 topic echo` nunca recibe datos aunque el topic aparezca emparejado
    en `ros2 topic list` (ver el muro documentado en
    `docs/06-bitacora-estado.md` y en `docs/05-setup-entorno-cachyos.md §3`).
@@ -83,11 +88,11 @@ más simple) y comprobar en vivo:
 Para el criterio bidireccional completo, desde una terminal:
 
 ```bash
-docker exec -it rmf_unified bash -lc \
-  "source /opt/ros/jazzy/setup.bash && ros2 topic echo /vita_hello"
+docker/vita-ros.sh echo /vita_hello     # ros2 topic echo dentro de vita_station
+docker/vita-ros.sh monitor              # frecuencia de /vita_hello y /cmd_vel; publica /pc_hello a 1 Hz
 
-docker exec -it rmf_unified bash -lc \
-  "source /opt/ros/jazzy/setup.bash && ros2 topic pub /pc_hello std_msgs/msg/String 'data: hola'"
+# a mano, dentro de la estación (docker/vita-ros.sh shell):
+ros2 topic pub /pc_hello std_msgs/msg/String 'data: hola'
 ```
 
 El netlog de la Vita (en la web o en `netlog-listen.sh`) debe mostrar
@@ -116,5 +121,5 @@ públicos.
 | 1. Levantar ros2+agent+bridge+web | Laptop | `tools/vita-stack.sh all` |
 | 2. Lanzar la app | Vita (LiveArea) | — |
 | 3. Ver logs y topics en vivo | Laptop (navegador) | `http://localhost:4321/dashboard` |
-| 4. Probar bidireccional | Laptop (terminal) | `ros2 topic echo/pub` dentro de `rmf_unified` |
+| 4. Probar bidireccional | Laptop (terminal) | `docker/vita-ros.sh echo` / `monitor` (estación `vita_station`) |
 | 5. Recompilar `.vpk` si hace falta | PC | `source tools/env-devpc.sh` + build + deploy FTP |

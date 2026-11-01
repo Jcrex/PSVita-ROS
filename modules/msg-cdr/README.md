@@ -45,7 +45,8 @@ encapsulación; las alineaciones (4/8) se cuentan desde su inicio.
 ## Estado
 
 - [x] Paridad C/Rust en host (2026-10-27), fuzz y sanitizers limpios.
-- [ ] **Validar en el PC:** fixtures vs ROS2 real; cross-compilar.
+- [x] Cross-compilado en G2 (2026-10-29): `impl-c` con `tools/build-c-pic.sh`; Rust en el crate paraguas PIC.
+- [ ] **Validar en el PC:** fixtures vs ROS2 real. Sin consumidor todavía (camino rápido previsto del mini-rviz).
 - [ ] **Pendiente de diseño:** `OccupancyGrid` ≤ 256×256 = 64 KB no cabe en el
       stream de entrada actual (`STREAM_BUFFER_SIZE 4096`); subirlo y medir (docs/10 §9.4).
 - [ ] Integrar en `main.c` (`on_topic` → decode → `tf-tree`/estado de viz).

@@ -34,6 +34,6 @@ Alias permitido en `mul`, `cross`, `quat_mul`, `rotate_vec3`.
 ## Estado
 
 - [x] Paridad C/Rust verde en host (2026-10-27).
-- [ ] **Validar en el PC:** cross-compilar (el crate paraguas ya lo incluye).
+- [x] Cross-compilado en G2 (2026-10-29): `impl-c` con `tools/build-c-pic.sh`; Rust en el crate paraguas PIC.
 - [ ] **Validar en hardware:** medir coste de `mat4_mul` / `from_trs` por frame.
 - [ ] Integrar en `vita-app/src/viz/` (hoy `camera.c` trae su propia matemática).

@@ -1,4 +1,4 @@
-// ros_msg.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); para la Vita: validar en el PC (G3).
+// ros_msg.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); para la Vita: compilado con verify_runtime.py PASS (G3, 2026-10-30) y validado en hardware (G4–G6, 2026-10-30).
 #include "ros_msg.h"
 
 #include "core/object/class_db.h"

@@ -12,7 +12,8 @@
   enlaza **un único staticlib** producido por el crate paraguas
   `vita-app/rust-modules/` **[V]**. Desde 2026-10-27 el paraguas incluye
   `msg-ring`, `viz-math`, `msg-cdr` y `tf-tree` (compila y enlaza en host,
-  sin símbolos duplicados; **cross-compilar en el PC [?]**).
+  sin símbolos duplicados). Cross-compilado para la Vita en G2/G3 (2026-10-29/30) en su
+  variante PIC (`tools/build-rust-pic.sh`) **[V]**; la variante estática de `vita-app` con los 8 **[?]**.
 - Los tests de paridad ejecutan la misma batería C y Rust en host.
 
 ## 2. Tres formas de usar Rust, y cuándo cada una
@@ -42,9 +43,12 @@ Consecuencias:
 - `+thumb-mode` por defecto: código Thumb-2 (denso). En un bucle caliente
   podría convenir ARM mode (`-C target-feature=-thumb-mode`) **[?]**: medir;
   en Cortex-A9 la diferencia suele ser pequeña **[I]**.
-- `+neon,+vfp3`: LLVM puede **auto-vectorizar** `f32`/enteros con NEON.
-  Las intrínsecas `core::arch::arm` NEON en ARM de 32 bit son inestables
-  **[?]**; preferir auto-vectorización y comprobarla leyendo el ensamblador
+- `+neon,+vfp3`: LLVM puede **auto-vectorizar** enteros con NEON.
+  **Corrección 2026-11-01 [M]:** con `f32` **no** lo hace sin `unsafe-fp-math`/fast-math (NEON no
+  es IEEE: pone a cero los denormales); `viz_math_rust` para la Vita tiene **0** instrucciones NEON
+  (`docs/ia/auditoria/02a-optimizacion-modulos.md`). Para `f32` hacen falta las intrínsecas
+  `core::arch::arm` (inestables: `#![feature(stdarch_arm_neon_intrinsics)]` en nightly).
+  Comprobarlo siempre leyendo el ensamblador
   (`cargo rustc --release -- --emit asm` y buscar `vmla.f32 q`, `vadd.f32 q`).
 
 ## 4. Perfil de compilación recomendado (a validar en el PC)

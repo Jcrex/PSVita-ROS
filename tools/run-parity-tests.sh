@@ -17,6 +17,16 @@ cd "$REPO_ROOT" # los flags por módulo usan rutas relativas al repo
 
 RUST_IMAGE="rust:1-slim"
 
+# En el PC, `cargo` es el lanzador de rustup de toolchains/ y no tiene
+# toolchain por defecto: sin estas variables falla. Se usa el nightly del
+# repo (el mismo que tools/env-devpc.sh) si nadie ha elegido otro.
+if [[ -d "$REPO_ROOT/toolchains/rustup/toolchains" ]]; then
+    export RUSTUP_HOME="${RUSTUP_HOME:-$REPO_ROOT/toolchains/rustup}"
+    export CARGO_HOME="${CARGO_HOME:-$REPO_ROOT/toolchains/cargo}"
+    export PATH="$CARGO_HOME/bin:$PATH"
+    export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-nightly}"
+fi
+
 cargo_build() {
     # $1 = directorio impl-rust del módulo
     local dir="$1"

@@ -8,7 +8,7 @@ extends Node2D
 ##    1 m, el robot como flecha, su rastro y un panel con velocidad, pose y frecuencia de /odom.
 ## Probar contra la estación: docker/vita-ros.sh sim (turtlesim + /odom) o sim-tb3 (TurtleBot3/Gazebo).
 ## En el host, `-- demo` hace que publique un círculo sin mandos (prueba automática).
-## Probado en host contra turtlesim; en la Vita: validar en hardware.
+## Probado en host contra turtlesim; validado en la Vita 2026-10-30 (G6).
 
 const ESCALA := 80.0                      # píxeles por metro
 const CENTRO := Vector2(480, 330)         # el robot se dibuja aquí (la vista lo sigue)

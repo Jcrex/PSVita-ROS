@@ -44,5 +44,5 @@ doble free, y consultas sobre pool NULL.
 ## Estado
 
 - [x] Paridad verificada en host (laptop, x86_64): C y Rust pasan 100%.
-- [ ] Compilación cruzada a la Vita (`-DVITA_IMPL=c|rust` con VitaSDK/cargo
-      nightly): pendiente de hacerse en el PC.
+- [x] Compilación cruzada a la Vita (`-DVITA_IMPL=c|rust` con VitaSDK/cargo
+      nightly): hecha en el PC (Fase 1, 2026-07) y en PIC para `libgodot.so` (G2, 2026-10-29).

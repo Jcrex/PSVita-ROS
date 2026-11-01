@@ -26,7 +26,7 @@
 | `init(node_name, namespace="")` | 🟡 | **una sesión XRCE ⇒ un participante**; varios `RosNode` comparten sesión (nombres como prefijo de topics) **[I]** |
 | `get_name()`, `get_namespace()`, `resolve_frame(id)` | ✅ | `~frame` ⇒ espacio de nombres |
 | `create_publisher(topic, type, qos)` | 🟡 | `type` = `String` ✅ (o script con `ROS_TYPE_NAME`, que rclgd **ya no** acepta); clase nativa o instancia ⏳ (T3.2.4) |
-| `create_subscription(topic, type, callable, qos)` | ✅ | callback en el hilo principal (cola `msg-ring`) |
+| `create_subscription(topic, type, callable, qos)` | ✅ | callback en el hilo principal (cola propia `inbox` + `MutexLock` en `ros_runtime.cpp`; `msg-ring` aún sin usar) |
 | `create_timer(seconds, callable)` | ✅ | reloj local (monotónico) |
 | `now()` | 🟡 | `Time` local; sincronización con el agente ⏳ (`uxr_synchronize_session`) |
 | `create_client(srv, type, qos)` + `await req.completed` | ⏳ | DDS-RPC del cliente XRCE **[?]** |

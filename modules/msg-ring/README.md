@@ -46,7 +46,9 @@ verificados).
 
 - [x] Paridad C/Rust en host (x86_64): verde, incluido el estrés de 2 hilos.
 - [x] ThreadSanitizer (`gcc -fsanitize=thread`) sobre la impl C: sin avisos (2026-10-27).
-- [ ] **Validar en el PC:** cross-compilar a la Vita (`-DVITA_IMPL=c|rust`).
+- [x] Cross-compilado a la Vita en G2 (2026-10-29): C con `tools/build-c-pic.sh` y Rust en el paraguas PIC
+      (`tools/build-rust-pic.sh`). Este módulo no tiene `CMakeLists.txt` propio.
 - [ ] **Validar en hardware:** correr el estrés en la Cortex-A9 (hilos de
       `sceKernelCreateThread`) — única prueba real del orden de memoria ARM.
-- [ ] Integrar en `vita-app` (hilo de red → render) y en el módulo Godot.
+- [ ] Integrar en `vita-app` (hilo de red → render) y en el módulo Godot. *(2026-11-01: `ros2_vita` lo compila
+      (`SCsub`) pero aún no lo usa: su cola de recepción es propia, `inbox` + `MutexLock` en `ros_runtime.cpp`.)*

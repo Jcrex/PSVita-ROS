@@ -30,5 +30,6 @@ reparentado, cuaternión no unitario, tabla llena (31 hijos + raíz) y
 ## Estado
 
 - [x] Paridad C/Rust en host (2026-10-27).
-- [ ] **Validar en el PC / hardware:** cross-compilar; medir `lookup` por frame.
+- [x] Cross-compilado en G2 (2026-10-29): `impl-c` con `tools/build-c-pic.sh`; Rust en el crate paraguas PIC.
+- [ ] **Validar en hardware:** medir `lookup` por frame. Sin consumidor todavía (TF de `ros2_vita`, `docs/19` T3.4.1).
 - [ ] Integrar con `msg-cdr` en `on_topic` y con el modelo VBM (Etapa E).

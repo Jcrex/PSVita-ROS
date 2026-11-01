@@ -6,7 +6,7 @@ extends Control
 ## Color de fondo: AMARILLO = sesión XRCE abierta y publicando; VERDE = además llegó /pc_hello;
 ## ROJO = no hay sesión (mirar el texto). La IP del agente sale de ros/agent_ip (project.godot) o de
 ## la línea de órdenes en el host: godot --path godot/g5-xrce -- -p agent_ip:=127.0.0.1
-## Probado en host contra el agente en docker; en la Vita: validar en hardware.
+## Probado en host contra el agente en docker; validado en la Vita 2026-10-30 (G5).
 
 @onready var info: Label = $Info
 @onready var fondo: ColorRect = $Fondo

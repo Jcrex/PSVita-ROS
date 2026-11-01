@@ -58,6 +58,11 @@ los componentes personalizados del proyecto sin suposiciones.
   (VFPv3 es nativo para `f32`/`f64`, pero NEON solo vectoriza `f32`/enteros **[A]**).
 - Preferir `f32` en matemática 3D (`viz-math` lo hace) y datos contiguos
   (estructuras de arrays) para que la auto-vectorización use NEON **[I]**.
+  **Corrección 2026-11-01 [M]:** la auto-vectorización de `f32` con NEON **no ocurre** (ni GCC ni
+  LLVM) sin `-ffast-math`/`-funsafe-math-optimizations`, porque NEON no es IEEE (pone a cero los
+  denormales): el ensamblador de `viz_math_rust` para la Vita tiene **0** instrucciones NEON (406
+  VFP escalares). Para usar NEON en `f32` hacen falta intrínsecas explícitas
+  (`docs/ia/auditoria/02a-optimizacion-modulos.md`, O16–O17).
 - El WiFi y el CPU compiten por consumo: la comunidad reporta que 444 MHz
   exige apagar WiFi **[V buscador, anecdótico]** → para ROS2 (necesita
   WiFi) **asumir 333 MHz** hasta medir (§9, E-H1).
@@ -214,7 +219,7 @@ Afinidad: fijar red y dibujo a núcleos distintos evita migraciones
 ## 6. Qué implica para Rust nativo
 
 Ver `docs/15`. Puntos duros: `max_atomic_width = 64`; `+neon,+vfp3`
-disponibles al compilador (auto-vectorización); `relocation_model =
+disponibles al compilador (auto-vectorización solo de enteros; `f32` necesita intrínsecas, ver §2); `relocation_model =
 static`; `panic = abort`; heap de newlib de 128 MiB configurable; `std`
 parcial.
 

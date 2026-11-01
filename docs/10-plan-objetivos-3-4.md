@@ -1,6 +1,6 @@
 # 10 — Plan de desarrollo: Objetivos 3 y 4 (rviz2 / mini-rviz en la Vita)
 
-**Fecha:** 2026-07-07 · **Estado:** plan aprobado, ejecución pendiente
+**Fecha:** 2026-07-07 · **Estado:** plan aprobado — **en pausa desde 2026-10-27**: prioridad Godot 4 (ADR 0008); el 3D sigue en `vita-app/` (ADR 0008 §5)
 **Prerrequisitos cumplidos:** Objetivo 1 (topics, Fase 1) y Objetivo 2
 (teleop `/cmd_vel`) cerrados y confirmados en hardware real.
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # SCsub — módulo ros2_vita (Godot 4.8-dev7). Compilado y probado en host (G1, 2026-10-29); compilado para la
 # Vita con verify_runtime.py PASS (G3, 2026-10-30, C y Rust); corre en la Vita en loopback (G4, 2026-10-30).
-# Transporte XRCE (G5): se compila si están las libs XRCE de la plataforma (ver más abajo).
+# Transporte XRCE (G5): se compila si están las libs XRCE de la plataforma (ver más abajo). Validado en hardware:
+# G5 (publica y recibe con ROS 2 Jazzy) y G6 (HMI teleop con /odom), 2026-10-30.
 #
 # Las implementaciones C de los módulos duales se compilan DENTRO del módulo con
 # el entorno de SCons del motor (misma toolchain, mismos flags PIC), porque el

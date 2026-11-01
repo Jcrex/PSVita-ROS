@@ -1,17 +1,93 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-10-30 (PC, cierre: estado para retomar en el primer bloque). Antes, 2026-10-30 (PC, 4.ª parte: **G6 VERDE en hardware** — la HMI de Godot 4 en la Vita teleopera turtlesim y dibuja `/odom`; ver el primer bloque). Antes, 2026-10-30 (PC, 3.ª parte: **G5 VERDE en hardware** — Godot 4 publica en ROS 2 desde la Vita; red iniciada en el cargador por `UID_RL_OVERFLOW`; estación `docker/`; ver el primer bloque). Antes, 2026-10-30 (PC, 2.ª sesión: **G4 VERDE en hardware** — Godot 4 + `ros2_vita` corre en la Vita en loopback; `tools/export-vita-vpk.sh` y `tools/deploy-vpk-ftp.sh`; siguiente G5; ver los dos primeros bloques). Antes, 2026-10-30 (PC, cierre con push: **G3 VERDE** — plantilla de la Vita con `ros2_vita` dentro, `verify_runtime.py` PASS en C y en Rust, `vita_release.zip`; bug de PIC en `build-rust-pic.sh` corregido; ver el primer bloque). Antes, 2026-10-29 (PC, 2.ª sesión: pausa con plan de acceso remoto en `docs/22`; **G1 y G2 VERDES** — `ros2_vita` compila dentro de godot4-vita y pasa las pruebas de host; XRCE, módulos C y Rust en PIC sin imports fuera de la tabla del loader; ver los dos primeros bloques). Antes, 2026-10-29 (PC: **fusión de la rama `godot-migration` en la de Godot 4** — la app teleop en Godot 3.5, validada en hardware el 2026-07-13, queda como histórico en `godot/godot35/` y `docs/20`–`21`; el proyecto sigue con **Godot 4**; `rclgd` clonado en `godot/rclgd/`; instalador de skills `tools/install-skills.sh`. Ver bloque 2026-10-29 abajo). Antes, 2026-10-27, 3.ª sesión (ROSCon: estudio de `rclgd` y `roomba_ws` → `docs/17`, `API_PARITY.md`, módulo `msg-schema`). Antes, 2.ª sesión (laptop: **hardware de la Vita, Rust nativo y módulos de la Etapa D** — `docs/14`–`16`, `tools/hwprobe`, `viz-math`/`msg-cdr`/`tf-tree`; ver el 2.º bloque 2026-10-27 al final). Antes, 2026-10-27, 1.ª sesión: investigación web de Godot/ROS2/Rust en la Vita + infraestructura sin hardware (`docs/12`, `docs/13`, ADR 0008, `msg-ring`; Antes, 2026-07-10 (PC: **ETAPA A del plan de los
-Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
-compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
-mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
-2026-07-10). Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
-confirmado por el usuario en hardware real**: la app teleop instalada en
-la Vita publica `/cmd_vel` y controla robots según el mapeo de
-`docs/09-objetivo2-control-robot.md`. Fase 1 COMPLETA; fase web con primer hito
-alcanzado, dashboard `/monitor` mergeado a main)
+**Última actualización:** 2026-11-01 (auditoría de la flota: siete informes de solo lectura y
+actualización de documentación y marcadores; índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
+El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-11-01 (PC) — Auditoría de la flota + lotes 0–3 aplicados
+
+- **Auditoría (7 agentes, solo lectura):** limpieza A/B, optimización A/B, mapa de Rust, DB-TSDF
+  (código y viabilidad). Largos en `docs/ia/auditoria/` (índice `README.md` con los lotes); cortos
+  para el usuario en `docs/informes/`.
+- **Aplicado (aprobado por el usuario):**
+  - Lote 0: `.godot/` en `.gitignore`; `auditoria/` anclado a la raíz (`/auditoria/`): antes ignoraba
+    también `docs/ia/auditoria/`.
+  - Lote 1: borrados `web/localhost:4321`, `mcp/.gitkeep`, `skills/.gitkeep`,
+    `godot35/imagenes/rover-iberus.jpeg.import`, `godot35/UI/UIIcons_2.zip`.
+  - Lote 2: `docs/superpowers/` → `archivo/docs/superpowers/` (plan y spec del tutorial copiados a
+    `docs/ia/`). Nueva carpeta `archivo/` (conserva la ruta original).
+  - Lote 3: docs y marcadores al día (docs/19, ADR 0008, 03, 10, 11, 14, 15, 20, rust/00–02,
+    tutorial/00, READMEs, `09-guia-pruebas-stack` → `23-`); skills `vita-*` al flujo Godot 4;
+    `tools/vita-doctor.sh` (rutas XRCE y `.vpk`), `tools/netlog-listen.sh` (filtro Kasa),
+    `tools/run-parity-tests.sh` (usa el nightly de `toolchains/` solo). Paridad 16/16 verde.
+- **Web en pausa (decisión del usuario):** posible reestructuración o abandono ahora que Godot es el
+  producto principal. No se añaden colecciones para `docs/informes/` ni `archivo/`.
+- **Pendiente de decisión:** lote 2b (archivar `vita-app/` y `godot/godot35/`), lote 4 (7 bugs) y
+  lote 5 (optimizaciones), candidatos a retos del usuario.
+- **G7a — bola del nivel «a saltos»:** causa encontrada. `display_server_vita.cpp:270` usa
+  `basicOrientation`, que solo vale -1/0/1 (`psp2/motion.h:123-124`). `/vita/imu` no se ve afectado.
+  Arreglo propuesto como reto (filtro paso bajo de la aceleración): `docs/ia/guion-leccion-08-imu.md`.
+- **Cómo retomar:** (1) auditoría guiada del `git diff` y commit de la limpieza; (2) medir la IMU quieta
+  (`ros2 topic echo /vita/imu --field linear_acceleration`) y cerrar unidades/ejes; (3) reto del nivel;
+  (4) commit de G7a. DB-TSDF: objetivo a largo plazo, etapas T0–T8 en `docs/ia/auditoria/04b-*`.
+
+---
+
+## 2026-10-31 (PC, cierre de la sesión) — G7a en la Vita + estado para retomar
+
+- **Resultado en hardware (usuario):** instaló `g7-imu.vpk` y la app funciona en la Vita. El agente lo
+  confirma: sesión desde `192.168.1.94` a las 22:06 (clave `0x3E80E8AC`) y *datawriter* de `/vita/imu`
+  creado. El usuario también ejecutó el proyecto desde el **editor con interfaz** (`.gui`), sin problemas.
+- **Sin confirmar todavía** (lección 08, retos 1–2): unidades del sensor (`|a|` ≈ 1 ⇒ g) y ejes REP-103.
+  Hasta entonces, los valores por defecto `escala_acel = 9.80665`, `escala_giro = 1.0` y `ejes = x,y,z`
+  son hipótesis. **G7a no se da por verde hasta cerrarlos.**
+- **Aviso del editor:** al cerrar el editor, el juego lanzado con F5 siguió vivo (proceso huérfano
+  `...editor.x86_64.gui --remote-debug ...`). Se cerró a mano. Si pasa otra vez: `pkill -f g7-imu`.
+- **Sin commit:** con el método nuevo, el commit va tras revisar juntos el `git diff` (lista P10). Cambios
+  sin versionar: `godot/g7-imu/`, `docs/tutorial/00,07,08`, `docs/ia/`, `CLAUDE.md`, `docs/06`, `docs/18`,
+  `godot/README.md`.
+- **Cómo retomar:**
+  1. Revisar el diff y hacer el commit de G7a (`feat(godot4): G7a — IMU de la Vita en /vita/imu`).
+  2. Retos 1–2 en la Vita: apuntar `|a|` en reposo y la cadena `ejes`, y fijarlos en `main.gd`.
+  3. Reto 3: lo escribe el usuario (`/vita/joy`).
+  4. Después: panel trasero (C++) y ADR de la cámara.
+- Estación docker: queda encendida (`docker/vita-ros.sh down` para apagarla).
+
+---
+
+## 2026-10-31 (PC) — G7a: IMU en Godot 4 + cambio a «modo aprendizaje»
+
+- **Cambio de método (decisión del usuario):** a partir de aquí el usuario quiere aprender a continuar el
+  proyecto solo, auditar el código y poder explicarlo en detalle. Nueva **ruta completa de aprendizaje**
+  `docs/tutorial/07-ruta-completa-de-aprendizaje.md`: 11 pistas, método de trabajo, lista de auditoría y
+  autoevaluación. Reglas para Claude en `CLAUDE.md` («Working method: learning mode»): explicar antes de
+  programar, dejar un reto de código al usuario, dar los comandos en vez de ejecutarlos, auditoría guiada
+  antes del commit y una lección por hito.
+- **G7a — IMU (`godot/g7-imu/`):** `Input.get_accelerometer/gyroscope/gravity` → `sensor_msgs/Imu` en
+  `/vita/imu` (best effort, depth 5, 30 Hz). Parámetros `hz`, `topic`, `frame_id`, `escala_acel`
+  (9.80665, hipótesis: el sensor da g), `escala_giro` (1.0, hipótesis: rad/s) y `ejes` (reordenación a
+  REP-103). Sin orientación: `orientation_covariance[0] = -1` (REP-145). Tara del giroscopio con △,
+  pausa con ✕, HUD con valores crudos y ROS y nivel de burbuja (`nivel.gd`). El esquema `.rsch` es el
+  de G6 (ya trae `Imu` y `Joy`).
+  - **Probado en host** contra el agente de la estación: `/vita/imu` a 29,98 Hz, `BEST_EFFORT`,
+    |a| ≈ 9,8; con `-p hz:=50` sale a unos 50 Hz y `-p ejes:=-z,y,x` reordena bien.
+  - **Falta (hardware, lo hace el usuario: lección 08, retos 1–2):** confirmar las unidades
+    (`SceMotionState` no las documenta) y los ejes de la Vita, y fijar los valores por defecto.
+- **Editor con interfaz:** el editor 4.8-dev7 de host era solo `--headless` (`x11=no ...`). Se compila
+  uno con ventana y `ros2_vita` como `bin/godot.linuxbsd.editor.x86_64.gui` (`extra_suffix=gui`; no pisa
+  el de exportar). Receta en la lección 08 §3.
+- **Lección nueva:** `docs/tutorial/08-godot-imu-primer-sensor.md` (G7a, versión corta).
+- **Dos documentaciones (decisión del usuario):** para el usuario, ≤ 500 palabras por documento o
+  explicación (`docs/tutorial/` y el chat). Para Claude, `docs/ia/` (guiones largos de 07 y 08, guía 00
+  original; fuera de la web a propósito). Reglas en `docs/ia/README.md` y `CLAUDE.md`.
+- **Siguiente:** el usuario prueba G7a en la Vita (retos 1–2) y escribe el reto 4 (`/vita/joy`).
+  Luego, panel trasero (parche C++ en `display_server_vita.cpp`) y el ADR de la cámara.
+  Los estados de `docs/19` §3 están desactualizados (T5.2, T3.3.4, T6.1 ya hechos): revisarlos.
 
 ---
 
@@ -364,7 +440,7 @@ contenedor `robotnik_dev` (en el PC solo hay `rmf_unified` y `microros-agent`).
 
 ---
 
-## Dónde nos quedamos (resumen de 1 minuto)
+## Dónde nos quedamos (resumen de 1 minuto) — HISTÓRICO (2026-06, Fase 0/1; el estado actual está en el primer bloque)
 
 La **Fase 0 (fundación)** está completa y la **Fase 1 (topics ROS2) tiene
 todo el código escrito y verificado hasta donde la laptop permite**:
@@ -514,8 +590,8 @@ sesión en vivo.
   quedan en terminal, es una decisión explícita — ver spec). Brainstorm →
   spec → plan → implementación con `subagent-driven-development` (7
   tareas, revisión por tarea + revisión final de toda la rama):
-  - Spec: `docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
-  - Plan: `docs/superpowers/plans/2026-07-01-dashboard-logs-vita.md`.
+  - Spec: `archivo/docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
+  - Plan: `archivo/docs/superpowers/plans/2026-07-01-dashboard-logs-vita.md`.
   - Arquitectura: `web/scripts/netlog-ingester.mjs` (proceso Node nuevo,
     UDP :9999 → SQLite, mismo `web/data/app.db`) + 4 endpoints Astro
     (`/api/monitor/sessions`, `/session/[id]`, `/status`, `/stream` SSE)
@@ -617,7 +693,7 @@ desarrollo, el ingestor del monitor va aparte: `pnpm dev` (terminal 1) +
 - `rust/00-02`: serie de aprendizaje de Rust ligada al código del repo
   (herramientas, lenguaje, FFI/no_std/unsafe + glosario C↔Rust).
 - `guias-vita/`: 7 guías homebrew con frontmatter (las consume la web).
-- `superpowers/`: specs y planes de brainstorming (Fase 0; dashboard
+- `superpowers/` (hoy en `archivo/docs/superpowers/`): specs y planes de brainstorming (Fase 0; dashboard
   `/monitor` 2026-07-02).
 
 ### `tools/` y `skills/`

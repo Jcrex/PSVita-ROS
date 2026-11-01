@@ -25,7 +25,7 @@ Docker.
 | `/taller` + `/taller/{compilador,debug}` | **Taller** (solo con `TALLER_ENABLED=1`): compilar el `.vpk` real, descargarlo, deploy FTP a la Vita y gdb batch sobre los parity tests |
 | `/progreso` | Fases e hitos con su estado (datos en `src/data/fases.ts`) |
 | `/monitor` | Dashboard en vivo del netlog de la Vita, por sesión |
-| `/api/monitor/*` | Sesiones, líneas y stream SSE (ver `docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`) |
+| `/api/monitor/*` | Sesiones, líneas y stream SSE (ver `archivo/docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`) |
 | `/api/checklist` | GET/POST del checklist (SQLite, validación estricta) |
 | `/api/dashboard/*` | `logs` (SSE), `estado`, `topics`, `layout` (SQLite) |
 | `/api/taller/*` | `estado`, `build`, `debug`, `deploy`, `job/<id>` (SSE), `vpk` |
@@ -75,7 +75,7 @@ pnpm ingester     # terminal 2
 ```
 
 Diseño completo en
-`docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
+`archivo/docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
 
 ## Desarrollo (laptop)
 
