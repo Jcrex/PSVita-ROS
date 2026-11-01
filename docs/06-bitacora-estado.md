@@ -9,6 +9,23 @@ El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un
 
 ---
 
+## 2026-11-01 (PC, cierre) — Estado para retomar: G7a verde, G7b hecho, siguiente G7c
+
+- **Commits (del usuario):** `34a25d9` feat(godot4): G7a verde y G7b; `3ddb572` docs(ia): investigación del
+  flujo de trabajo con Godot. Detalle de la sesión en el bloque de abajo.
+- **Siguiente hito — G7c: el modelo 3D y su animación en la propia Vita**, dentro de `godot/g7-imu`, con
+  el filtro local (sin ROS de ida y vuelta) y el **nivel de burbuja abajo a la izquierda y más pequeño**
+  (≈150 px en 16,352) para dejar la mitad derecha al 3D. Guion completo (decisiones D1–D5, maquetación,
+  riesgos, pasos): `docs/ia/guion-g7c-3d-en-la-vita.md`.
+- **Riesgo:** es el primer 3D de Godot 4 en la Vita; el renderizador GXM 3D del port es experimental
+  (`docs/18:51`). Tratarlo como puerta: medir FPS y que `/vita/imu` siga a ~30 Hz.
+- **Cómo retomar:** (1) explicar D1–D5 y que el usuario decida; (2) él compone la escena en el editor
+  (`$G --editor --path godot/g7-imu`); (3) reto: copiar y entender el giro de `g7b-imu3d/main.gd:107-115`;
+  (4) demo en el PC, export, deploy, medir; (5) lección 10. Pendientes menores: reto 3 (`/vita/joy`) y
+  reto del nivel (paso bajo). Dudas de la lección 09 respondidas en la propia lección.
+
+---
+
 ## 2026-11-01 (PC, tarde) — G7b: visor 3D de la IMU (suscriptor + filtro)
 
 - El usuario confirma que `/vita/imu` llega bien desde la Vita (retos 1–2 de la lección 08 aún sin anotar).
