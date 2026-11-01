@@ -8,16 +8,20 @@ extends Control
 ##   - Los publica como sensor_msgs/msg/Imu en /vita/imu (por defecto 30 Hz, QoS best effort,
 ##     que es lo normal para sensores en ROS 2).
 ##   - Muestra en pantalla los valores CRUDOS (tal cual llegan del sensor) y los ya convertidos
-##     a ROS, y un nivel de burbuja con la gravedad (nivel.gd).
+##     a ROS, un nivel (nivel.gd) y — G7c — un modelo 3D de la Vita que gira con la propia IMU
+##     (filtro.gd, sin pasar por ROS).
 ##
 ## Botones: Triángulo = tara del giroscopio (estando quieta, mide 1 s y resta ese sesgo)
 ##          Cruz      = pausar / reanudar la publicación
+##          Círculo   = reiniciar la orientación del modelo 3D
 ##
 ## Lección que explica este archivo línea a línea: docs/tutorial/08-godot-imu-primer-sensor.md
 ##
 ## ESTADO (2026-11-01): corre en la Vita. Unidades y ejes MEDIDOS en hardware (lección 08, retos 1–2):
 ## la Vita da g y rad/s con ejes de Sony (x derecha, y hacia los gatillos, z saliendo de la pantalla) y
 ## el acelerómetro mide la GRAVEDAD (z ≈ −1 g con la pantalla arriba). Ver escala_acel y ejes.
+## G7c (2026-11-01): optimizaciones O1–O4 (guion docs/ia/guion-g7c-3d-en-la-vita.md) y modelo 3D.
+## El 3D de Godot en la Vita es EXPERIMENTAL: validar en hardware los FPS (se muestran en el HUD).
 
 # --- Constantes -----------------------------------------------------------------------------------
 # `const` = valor fijo que no cambia nunca. `:=` deja que GDScript deduzca el tipo (aquí float).
@@ -29,6 +33,13 @@ const G := 9.80665                        # 1 g en m/s² (valor estándar)
 const SIN_ORIENTACION := [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 const TARA_SEGUNDOS := 1.0
+const HUD_PERIODO := 0.1          # O1: el texto del HUD se rehace 10 veces por segundo, no 60
+const NIVEL_TAU := 0.15           # O4: constante de tiempo (s) del suavizado del nivel
+
+# Cambio de ejes ROS → Godot (el mismo que g7b-imu3d/main.gd): columnas = adónde va cada eje ROS.
+#   ROS x (adelante) → Godot (0,0,−1) · ROS y (izquierda) → Godot (−1,0,0) · ROS z (arriba) → Godot (0,1,0)
+const ROS_A_GODOT := Basis(Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0))
+const Filtro := preload("res://filtro.gd")
 
 # --- Referencias a nodos de la escena (main.tscn) -------------------------------------------------
 # @onready = «rellena esta variable cuando el nodo esté listo». $Estado es un atajo de
@@ -39,6 +50,12 @@ const TARA_SEGUNDOS := 1.0
 # nodo tiene la propiedad `gravedad`. Con el tipo genérico Control daría error al escribirla.
 const Nivel := preload("res://nivel.gd")
 @onready var nivel: Nivel = $Nivel
+# 3D: la escena va en la pantalla principal (la Vita no dibuja 3D en SubViewport, ver marco_3d.gd);
+# Marco3D es solo la guía de dónde y de qué tamaño se ve el modelo.
+@onready var vita3d: Node3D = $Escena/Vita
+@onready var camara: Camera3D = $Escena/Camara
+@onready var marco: Control = $Marco3D
+const MODELO_ALTO := 2.4          # unidades del mundo que deben caber en el alto del Marco3D
 
 # --- Objetos ROS --------------------------------------------------------------------------------
 # Todos los objetos Ros* son RefCounted: Godot los borra cuando nadie los referencia. Por eso se
@@ -47,6 +64,7 @@ const Nivel := preload("res://nivel.gd")
 var node: RosNode
 var pub_imu: RosPublisher
 var t_pub: RosTimer
+var msg_imu: RosMsg               # O3: UN solo mensaje, creado en _ready y reutilizado
 
 # --- Parámetros (se pueden cambiar sin recompilar: `-- -p hz:=50`) -----------------------------
 var hz := 30.0
@@ -55,7 +73,9 @@ var frame_id := "vita_imu"
 # Medido en la Vita el 2026-11-01:
 var escala_acel := -G         # da g; el − pasa de gravedad a REACCIÓN (+9,8 hacia arriba, REP-145)
 var escala_giro := 1.0        # ya da rad/s
-var ejes: Array = [[1, 1.0], [0, -1.0], [2, 1.0]]  # = "y,-x,z": ejes de Sony → REP-103 (ver _parsear_ejes)
+# O2: la reordenación de ejes es una MATRIZ (Basis): convertir = una multiplicación, `ejes * v`.
+# Columnas = adónde va en ROS cada eje del sensor. Esta es "y,-x,z" (ver _parsear_ejes).
+var ejes := Basis(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1))
 
 # --- Estado ---------------------------------------------------------------------------------------
 var conectado := false
@@ -70,6 +90,9 @@ var grav_cruda := Vector3.ZERO
 var acel_ros := Vector3.ZERO       # ya en m/s² y ejes ROS
 var giro_ros := Vector3.ZERO       # ya en rad/s, ejes ROS y sin sesgo
 
+var nivel_suave := Vector3.ZERO   # O4: aceleración ROS suavizada para el nivel
+var filtro := Filtro.new()
+
 var sesgo_giro := Vector3.ZERO     # lo que mide el giroscopio estando quieto (se resta)
 var tara_restante := 0.0           # > 0 mientras se está midiendo la tara
 var tara_suma := Vector3.ZERO
@@ -79,10 +102,13 @@ var enviados := 0
 var enviados_seg := 0
 var hz_real := 0
 var t_hz := 0.0
+var t_hud := 0.0
 
 
 # _ready() se llama UNA vez, cuando el nodo y todos sus hijos ya están en el árbol.
 func _ready() -> void:
+	_encuadrar_3d()
+	marco.item_rect_changed.connect(_encuadrar_3d)   # si el marco cambia, se recoloca la cámara
 	demo = "demo" in OS.get_cmdline_user_args()
 	lbl_estado.text = "Conectando con el agente %s..." % ProjectSettings.get_setting("ros/agent_ip", "?")
 	# `await` pausa esta función hasta que ocurra la señal; aquí, hasta el siguiente fotograma.
@@ -120,7 +146,7 @@ func _ready() -> void:
 	if ejes_nuevos.is_empty():
 		error_txt = "Parámetro 'ejes' inválido: %s (ejemplo válido: -y,x,z)" % node.get_parameter("ejes")
 		return
-	ejes = ejes_nuevos
+	ejes = _ejes_a_basis(ejes_nuevos)
 
 	# 3) Publicador con QoS de sensor: BEST_EFFORT = si un mensaje se pierde, no se reenvía
 	#    (para un sensor vale más el dato nuevo que el viejo). Un Imu ocupa ~320 bytes, cabe en
@@ -132,6 +158,13 @@ func _ready() -> void:
 	if pub_imu == null:
 		error_txt = "El agente rechazó %s" % topic
 		return
+
+	# O3: el mensaje se crea UNA vez. Lo que no cambia (frame_id, covarianza) se rellena aquí;
+	#     _publicar solo toca el sello y 6 números. Es seguro reutilizarlo porque publish()
+	#     serializa el mensaje en el momento (godot/ros2_vita/ros_runtime.cpp:106).
+	msg_imu = RosMsg.from_type("sensor_msgs/msg/Imu")
+	msg_imu.header.frame_id = frame_id
+	msg_imu.orientation_covariance = PackedFloat64Array(SIN_ORIENTACION)
 
 	# 4) Timer de ROS: llama a _publicar cada 1/hz segundos, en el hilo principal.
 	t_pub = node.create_timer(1.0 / hz, _publicar)
@@ -156,12 +189,32 @@ func _parsear_ejes(spec: String) -> Array:
 	return out if out.size() == 3 else []
 
 
-## Aplica la reordenación de ejes. Un Vector3 se puede indexar: v[0] = v.x, v[1] = v.y, v[2] = v.z.
-func _a_ros(v: Vector3) -> Vector3:
-	return Vector3(
-			v[ejes[0][0]] * ejes[0][1],
-			v[ejes[1][0]] * ejes[1][1],
-			v[ejes[2][0]] * ejes[2][1])
+## Coloca la cámara ortográfica para que el origen (el modelo) caiga en el centro de Marco3D y
+## MODELO_ALTO unidades ocupen su alto. En ortográfica, `size` = unidades visibles en el alto de la
+## pantalla ⇒ unidades por píxel = size / alto_pantalla.
+##   h_offset > 0 mueve la cámara a la derecha ⇒ la escena se ve más a la IZQUIERDA (por eso el −).
+##   v_offset > 0 mueve la cámara arriba     ⇒ la escena se ve más ABAJO.
+func _encuadrar_3d() -> void:
+	var pantalla := get_viewport_rect().size
+	var r := marco.get_global_rect()
+	if r.size.y < 1.0:
+		return
+	var alto := minf(r.size.x, r.size.y)     # el modelo cabe entero aunque el marco no sea cuadrado
+	camara.size = MODELO_ALTO * pantalla.y / alto
+	var upp := camara.size / pantalla.y
+	var c := r.get_center()
+	camara.h_offset = -(c.x - pantalla.x / 2.0) * upp
+	camara.v_offset = (c.y - pantalla.y / 2.0) * upp
+
+
+## O2: convierte la lista de _parsear_ejes en una Basis (una sola vez, al arrancar).
+## Par i = [índice del sensor, signo] para el eje ROS i ⇒ la columna `índice` lleva `signo` en la fila i.
+## Ejemplo "y,-x,z": columnas (0,−1,0), (1,0,0), (0,0,1) ⇒ ejes * v = (v.y, −v.x, v.z).
+func _ejes_a_basis(pares: Array) -> Basis:
+	var cols: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO]
+	for i in 3:
+		cols[pares[i][0]][i] = pares[i][1]
+	return Basis(cols[0], cols[1], cols[2])
 
 
 # --- Lectura del sensor (cada fotograma) -----------------------------------------------------------
@@ -192,23 +245,32 @@ func _process(delta: float) -> void:
 		if tara_restante <= 0.0 and tara_n > 0:
 			sesgo_giro = tara_suma / tara_n
 
-	acel_ros = _a_ros(acel_crudo * escala_acel)
-	giro_ros = _a_ros((giro_crudo - sesgo_giro) * escala_giro)
-	nivel.gravedad = grav_cruda      # nivel.gd redibuja solo (setter)
+	acel_ros = ejes * (acel_crudo * escala_acel)                 # O2: una multiplicación
+	giro_ros = ejes * ((giro_crudo - sesgo_giro) * escala_giro)
+
+	# O4: el nivel recibe la aceleración ROS suavizada (paso bajo). 1 − exp(−dt/τ) hace que el
+	# suavizado sea igual a 30 o a 60 fps. El setter de nivel.gd solo redibuja si cambia.
+	nivel_suave = nivel_suave.lerp(acel_ros, 1.0 - exp(-delta / NIVEL_TAU))
+	nivel.gravedad = nivel_suave
+
+	# G7c: orientación con el filtro (reto) → girar el modelo 3D. La misma rotación, vista con los
+	# ejes de Godot: cambio de base ROS_A_GODOT · R · ROS_A_GODOTᵀ (como en g7b-imu3d).
+	filtro.actualizar(acel_ros, giro_ros, delta)
+	vita3d.basis = ROS_A_GODOT * filtro.orientacion * ROS_A_GODOT.transposed()
 
 	_contar_hz(delta)
-	_pintar_hud()
+	t_hud += delta                   # O1: el HUD solo se rehace cada HUD_PERIODO
+	if t_hud >= HUD_PERIODO:
+		t_hud = 0.0
+		_pintar_hud()
 
 
 # --- Publicación (la llama el RosTimer) ------------------------------------------------------------
 func _publicar() -> void:
 	if pausado:
 		return
-	# RosMsg.from_type crea un mensaje vacío del tipo pedido, usando el esquema ros/schema.rsch.
-	var m := RosMsg.from_type("sensor_msgs/msg/Imu")
+	var m := msg_imu                 # O3: el mismo mensaje de siempre (creado en _ready)
 	m.header.stamp = node.now()      # hora del reloj de la Vita (no está sincronizado con el PC)
-	m.header.frame_id = frame_id
-	m.orientation_covariance = PackedFloat64Array(SIN_ORIENTACION)
 	m.linear_acceleration.x = acel_ros.x
 	m.linear_acceleration.y = acel_ros.y
 	m.linear_acceleration.z = acel_ros.z
@@ -232,6 +294,8 @@ func _input(event: InputEvent) -> void:
 			tara_n = 0
 		JOY_BUTTON_A:   # Cruz
 			pausado = not pausado
+		JOY_BUTTON_B:   # Círculo
+			filtro.reiniciar()
 
 
 # --- Pantalla -------------------------------------------------------------------------------------
@@ -263,4 +327,5 @@ func _pintar_hud() -> void:
 			"  linear_acceleration  %+.2f  %+.2f  %+.2f m/s²\n" % [acel_ros.x, acel_ros.y, acel_ros.z] +
 			"  angular_velocity     %+.3f  %+.3f  %+.3f rad/s\n\n" % [giro_ros.x, giro_ros.y, giro_ros.z] +
 			"sesgo del giro  %+.4f  %+.4f  %+.4f\n" % [sesgo_giro.x, sesgo_giro.y, sesgo_giro.z] +
-			"escala acel %.3f · escala giro %.3f" % [escala_acel, escala_giro])
+			"escala acel %.3f · escala giro %.3f\n" % [escala_acel, escala_giro] +
+			"FPS %d" % Engine.get_frames_per_second())
