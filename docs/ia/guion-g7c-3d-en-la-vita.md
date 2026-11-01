@@ -37,6 +37,17 @@ Plan B si no rinde: dibujar el modelo «falso 3D» en 2D (proyección propia en 
 | D4 | Cómo repartir pantalla | 3D a pantalla completa con `Camera3D.h_offset` para desplazar el modelo a la derecha; HUD en `CanvasLayer` | evita un `SubViewport` (otra pasada de render en una GPU débil; hipótesis de coste) |
 | D5 | Bola del nivel «a saltos» (`basicOrientation` vale −1/0/1) | dar al nivel `acel_ros` filtrada en vez de `grav_cruda` | reto pendiente de la lección 08 (`guion-leccion-08-imu.md`) |
 
+## Resultado final (2026-11-01): G7c VERDE
+
+Modelo y filtro F2 en la Vita a 59 FPS, `/vita/imu` a 30 Hz. SubViewport descartado (el port no lo dibuja):
+3D a pantalla completa + `Marco3D` + cámara encuadrada (`_encuadrar_3d`). Detalle en la bitácora.
+
+## Estado (2026-11-01, noche)
+
+Hecho por Claude: O1–O4, modelo copiado, escena con `Vista3D` (SubViewportContainer, decisión del usuario:
+debe poderse colocar en el editor; sustituye a la idea de `h_offset` de D4), `filtro.gd` F2 en esqueleto.
+Pendiente: reto F2 del usuario, maquetación final en el editor, medir FPS/Hz en la Vita. Ver bitácora.
+
 ## Decisiones del usuario (2026-11-01, tras `3a90ccf`)
 
 - **D1 = `g7-imu`** (sin proyecto nuevo). Se importa el modelo `PSVita.blend`.

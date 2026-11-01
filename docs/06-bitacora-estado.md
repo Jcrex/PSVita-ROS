@@ -1,11 +1,64 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-01 (auditoría de la flota: siete informes de solo lectura y
-actualización de documentación y marcadores; índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
+**Última actualización:** 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-11-01 (PC, cierre de la sesión) — Estado para retomar
+
+- **Hecho hoy (todo en git):** auditoría y limpieza (`bbbfa2d`); G7a IMU calibrada en hardware y G7b visor 3D en
+  el PC (`34a25d9`); investigación del flujo con Godot, sin MCP (`3ddb572`); G7c, el 3D en la propia Vita a
+  59 FPS con `/vita/imu` a 30 Hz (commit de esta entrada).
+- **Cómo retomar (elige el usuario):**
+  1. **F1 — `deviceQuat` de Sony:** exponer `SceMotionState.deviceQuat` (`psp2/motion.h:46`) desde el motor
+     (`display_server_vita.cpp:263`) o el módulo `ros2_vita`; publicarlo en `orientation` de `/vita/imu`
+     (quitar `SIN_ORIENTACION`) y compararlo con F2. Requiere recompilar la plantilla (`tools/build-godot-template.sh`,
+     puerta G3) y explicar antes el cambio en C++ (modo aprendizaje).
+  2. **Reto 3 de la lección 08:** `/vita/joy` (`sensor_msgs/Joy`), escrito por el usuario.
+  3. **Panel trasero** (C++) y **ADR de la cámara**.
+- **Pendientes de lectura para el usuario:** lección 10 (F2 y las 4 preguntas); `filtro.gd` de `g7-imu`.
+- **Aprendido:** el 3D GXM del port solo dibuja en la pantalla principal (sin SubViewport); el 2D se pinta
+  encima del 3D; los logs del motor se leen por FTP (`ux0:data/gxm3d/godot_stderr.log`, líneas `gxm2d-perf`
+  = FPS y `gxm3d` = triángulos e instancias).
+- Estación docker: puede quedar encendida (`docker/vita-ros.sh down` para apagarla).
+
+---
+
+## 2026-11-01 (PC, noche) — **G7c VERDE**: primer 3D de Godot 4 en la Vita (`g7-imu`)
+
+- **Resultado en hardware (usuario + log del motor `ux0:data/gxm3d/godot_stderr.log`):** el modelo se ve y
+  gira bien con la IMU; **58,8–59,5 FPS** (`gxm2d-perf`), ~17 ms/fotograma (render ≈ 11,6 ms, `vita-prof`),
+  20 instancias 3D, 5 574 triángulos (presupuesto 60 000), 1 luz; sin el aviso de SubViewport ni otros nuevos.
+  `/vita/imu` sigue a **30 Hz** con el 3D en marcha (usuario).
+- Lo de abajo es cómo se llegó.
+
+- **Decisiones del usuario:** G7c dentro de `g7-imu`; filtro **F2** (Basis) ahora y **F1** (`deviceQuat` de
+  Sony, recompilar motor) más adelante; nivel a 1/4 (80 px) abajo a la izquierda; modelo del tamaño del nivel;
+  textos de muestra en `Estado`/`Datos`; el círculo debe verse en el editor.
+- **Hecho (Claude):** O1 HUD a 10 Hz; O2 `ejes` como `Basis` (`_ejes_a_basis`); O3 `msg_imu` reutilizado;
+  O4 nivel con aceleración ROS suavizada (`1 − exp(−dt/τ)`), canica, umbral de redibujo y `@tool`.
+  Escena: `Vista3D` (SubViewportContainer 80×80 en 740,230) → `Mundo3D` → cámara ortográfica (size 2.4),
+  luz, entorno del color del fondo, `Vita` (modelo copiado de g7b + ejes). FPS en el HUD. Círculo = reiniciar.
+  `filtro.gd` (F2) **escrito por Claude a petición del usuario** (queda como ejercicio de lectura); probado
+  sin ventana: inclinación quieta exacta, 1 rad de yaw exacto, demo 10 s con error máx. de pitch 0,16°, vertical
+  sin bloqueo de cardán. `.vpk` subido a `ux0:/g7-imu.vpk` (sha256 e10a71da…). Lección `docs/tutorial/10-godot-3d-en-la-vita.md`.
+- **Comprobado en el PC:** scripts compilan; escena carga; cámara y encuadre (modelo de 7 a 78 px en 80);
+  `_ejes_a_basis` igual que antes (pruebas con `y,-x,z` y `-z,x,-y`); captura con el demo correcta.
+- **Primera prueba en la Vita: el recuadro 3D salió VACÍO** (el nivel y la canica, bien). Causa en el port:
+  el 3D GXM solo dibuja en la pantalla principal; los SubViewport se ignoran
+  (`toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:839-840`, «offscreen 3D viewports
+  are not implemented»; `GXM_BACKEND.md:47`). El Círculo sí reiniciaba (= `JOY_BUTTON_B`, `joypad_vita.cpp:42`),
+  pero no se veía. **Arreglo (plan B):** escena 3D en la raíz, sin `Fondo` (el 2D tapa al 3D; el fondo pasa a
+  `default_clear_color`), y `Marco3D` (`marco_3d.gd`, `@tool`, borde solo en el editor) con el rectángulo que el
+  usuario compuso (400,51 → 935,501); `_encuadrar_3d()` ajusta `size`/`h_offset`/`v_offset` de la cámara
+  ortográfica para que el modelo caiga en él. Probado en el PC (captura con el demo) y en la Vita (`.vpk` a56a3e20…).
+- **Falta:** exportar y medir FPS y Hz **en la Vita**
+  (riesgo: 3D y SubViewport experimentales en el port; plan B: cámara con `h_offset` sin SubViewport).
 
 ---
 
