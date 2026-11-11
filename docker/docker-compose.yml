@@ -52,3 +52,19 @@ services:
       - NET_RAW          # tcpdump / captura de los paquetes de la Vita
       - NET_ADMIN
     command: bash
+
+  # Unitree G1 (proyecto godot/g1-unitree): MuJoCo + política de marcha oficial de Unitree + puente ROS 2.
+  # Perfil «g1»: no arranca con `up`; se lanza con `vita-ros.sh g1`. docker/g1 se monta (editar sin reconstruir).
+  g1sim:
+    build:
+      context: ./g1
+    image: psvita-ros-g1sim:jazzy
+    container_name: vita_g1sim
+    profiles: ["g1"]
+    network_mode: host
+    ipc: host
+    environment: *ros-env
+    volumes:
+      - ./g1:/opt/g1:ro
+    command: ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && python3 -u /opt/g1/g1_sim.py --casa /opt/g1/casa.json --inicio ${G1_INICIO:-2.5,2.5,0}"]
+

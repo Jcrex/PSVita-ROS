@@ -1,0 +1,669 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://robot/urdf_robot.gd" id="script"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/pelvis_0.obj" id="malla_pelvis_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/pelvis_contour_link_0.obj" id="malla_pelvis_contour_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_hip_pitch_link_0.obj" id="malla_left_hip_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_hip_roll_link_0.obj" id="malla_left_hip_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_hip_yaw_link_0.obj" id="malla_left_hip_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_knee_link_0.obj" id="malla_left_knee_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_ankle_pitch_link_0.obj" id="malla_left_ankle_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_ankle_roll_link_0.obj" id="malla_left_ankle_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_hip_pitch_link_0.obj" id="malla_right_hip_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_hip_roll_link_0.obj" id="malla_right_hip_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_hip_yaw_link_0.obj" id="malla_right_hip_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_knee_link_0.obj" id="malla_right_knee_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_ankle_pitch_link_0.obj" id="malla_right_ankle_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_ankle_roll_link_0.obj" id="malla_right_ankle_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/waist_yaw_link_0.obj" id="malla_waist_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/waist_roll_link_0.obj" id="malla_waist_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/torso_link_0.obj" id="malla_torso_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/logo_link_0.obj" id="malla_logo_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/head_link_0.obj" id="malla_head_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_shoulder_pitch_link_0.obj" id="malla_left_shoulder_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_shoulder_roll_link_0.obj" id="malla_left_shoulder_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_shoulder_yaw_link_0.obj" id="malla_left_shoulder_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_elbow_link_0.obj" id="malla_left_elbow_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_wrist_roll_link_0.obj" id="malla_left_wrist_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_wrist_pitch_link_0.obj" id="malla_left_wrist_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_wrist_yaw_link_0.obj" id="malla_left_wrist_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/left_rubber_hand_0.obj" id="malla_left_rubber_hand_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_shoulder_pitch_link_0.obj" id="malla_right_shoulder_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_shoulder_roll_link_0.obj" id="malla_right_shoulder_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_shoulder_yaw_link_0.obj" id="malla_right_shoulder_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_elbow_link_0.obj" id="malla_right_elbow_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_wrist_roll_link_0.obj" id="malla_right_wrist_roll_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_wrist_pitch_link_0.obj" id="malla_right_wrist_pitch_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_wrist_yaw_link_0.obj" id="malla_right_wrist_yaw_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_g1_vita/right_rubber_hand_0.obj" id="malla_right_rubber_hand_0"]
+
+[sub_resource type="StandardMaterial3D" id="mat_0"]
+albedo_color = Color(0.2, 0.2, 0.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_1"]
+albedo_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="g1_29dof_rev_1_0" type="Node3D"]
+script = ExtResource("script")
+metadata/urdf_robot = "g1_29dof_rev_1_0"
+
+[node name="RosFrame" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0)
+
+[node name="Base" type="Node3D" parent="RosFrame"]
+
+[node name="pelvis" type="Node3D" parent="RosFrame/Base"]
+metadata/urdf_link = "pelvis"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_pelvis_0")
+material_override = SubResource("mat_0")
+
+[node name="pelvis_contour_joint" type="Node3D" parent="RosFrame/Base/pelvis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "pelvis_contour_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="pelvis_contour_link" type="Node3D" parent="RosFrame/Base/pelvis/pelvis_contour_joint"]
+metadata/urdf_link = "pelvis_contour_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/pelvis_contour_joint/pelvis_contour_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_pelvis_contour_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_hip_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.064452, -0.1027)
+metadata/urdf_joint = "left_hip_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.064452, -0.1027)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -2.5307
+metadata/urdf_upper = 2.8798
+
+[node name="left_hip_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint"]
+metadata/urdf_link = "left_hip_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_hip_pitch_link_0")
+material_override = SubResource("mat_0")
+
+[node name="left_hip_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link"]
+transform = Transform3D(0.984744, 0, -0.17401, 0, 1, 0, 0.17401, 0, 0.984744, 0, 0.052, -0.030465)
+metadata/urdf_joint = "left_hip_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(0.984744, 0, -0.17401, 0, 1, 0, 0.17401, 0, 0.984744, 0, 0.052, -0.030465)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -0.5236
+metadata/urdf_upper = 2.9671
+
+[node name="left_hip_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint"]
+metadata/urdf_link = "left_hip_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_hip_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_hip_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025001, 0, -0.12412)
+metadata/urdf_joint = "left_hip_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025001, 0, -0.12412)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -2.7576
+metadata/urdf_upper = 2.7576
+
+[node name="left_hip_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint"]
+metadata/urdf_link = "left_hip_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_hip_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_knee_joint" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link"]
+transform = Transform3D(0.984744, 0, 0.17401, 0, 1, 0, -0.17401, 0, 0.984744, -0.078273, 0.002149, -0.17734)
+metadata/urdf_joint = "left_knee_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(0.984744, 0, 0.17401, 0, 1, 0, -0.17401, 0, 0.984744, -0.078273, 0.002149, -0.17734)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -0.087267
+metadata/urdf_upper = 2.8798
+
+[node name="left_knee_link" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint"]
+metadata/urdf_link = "left_knee_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_knee_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_ankle_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.000094, -0.30001)
+metadata/urdf_joint = "left_ankle_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.000094, -0.30001)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -0.87267
+metadata/urdf_upper = 0.5236
+
+[node name="left_ankle_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link/left_ankle_pitch_joint"]
+metadata/urdf_link = "left_ankle_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link/left_ankle_pitch_joint/left_ankle_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_ankle_pitch_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_ankle_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link/left_ankle_pitch_joint/left_ankle_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.017558)
+metadata/urdf_joint = "left_ankle_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.017558)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -0.2618
+metadata/urdf_upper = 0.2618
+
+[node name="left_ankle_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link/left_ankle_pitch_joint/left_ankle_pitch_link/left_ankle_roll_joint"]
+metadata/urdf_link = "left_ankle_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/left_hip_pitch_joint/left_hip_pitch_link/left_hip_roll_joint/left_hip_roll_link/left_hip_yaw_joint/left_hip_yaw_link/left_knee_joint/left_knee_link/left_ankle_pitch_joint/left_ankle_pitch_link/left_ankle_roll_joint/left_ankle_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_ankle_roll_link_0")
+material_override = SubResource("mat_0")
+
+[node name="right_hip_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.064452, -0.1027)
+metadata/urdf_joint = "right_hip_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.064452, -0.1027)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -2.5307
+metadata/urdf_upper = 2.8798
+
+[node name="right_hip_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint"]
+metadata/urdf_link = "right_hip_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_hip_pitch_link_0")
+material_override = SubResource("mat_0")
+
+[node name="right_hip_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link"]
+transform = Transform3D(0.984744, 0, -0.17401, 0, 1, 0, 0.17401, 0, 0.984744, 0, -0.052, -0.030465)
+metadata/urdf_joint = "right_hip_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(0.984744, 0, -0.17401, 0, 1, 0, 0.17401, 0, 0.984744, 0, -0.052, -0.030465)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -2.9671
+metadata/urdf_upper = 0.5236
+
+[node name="right_hip_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint"]
+metadata/urdf_link = "right_hip_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_hip_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_hip_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025001, 0, -0.12412)
+metadata/urdf_joint = "right_hip_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025001, 0, -0.12412)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -2.7576
+metadata/urdf_upper = 2.7576
+
+[node name="right_hip_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint"]
+metadata/urdf_link = "right_hip_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_hip_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_knee_joint" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link"]
+transform = Transform3D(0.984744, 0, 0.17401, 0, 1, 0, -0.17401, 0, 0.984744, -0.078273, -0.002149, -0.17734)
+metadata/urdf_joint = "right_knee_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(0.984744, 0, 0.17401, 0, 1, 0, -0.17401, 0, 0.984744, -0.078273, -0.002149, -0.17734)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -0.087267
+metadata/urdf_upper = 2.8798
+
+[node name="right_knee_link" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint"]
+metadata/urdf_link = "right_knee_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_knee_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_ankle_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.000094, -0.30001)
+metadata/urdf_joint = "right_ankle_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.000094, -0.30001)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -0.87267
+metadata/urdf_upper = 0.5236
+
+[node name="right_ankle_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link/right_ankle_pitch_joint"]
+metadata/urdf_link = "right_ankle_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link/right_ankle_pitch_joint/right_ankle_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_ankle_pitch_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_ankle_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link/right_ankle_pitch_joint/right_ankle_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.017558)
+metadata/urdf_joint = "right_ankle_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.017558)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -0.2618
+metadata/urdf_upper = 0.2618
+
+[node name="right_ankle_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link/right_ankle_pitch_joint/right_ankle_pitch_link/right_ankle_roll_joint"]
+metadata/urdf_link = "right_ankle_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/right_hip_pitch_joint/right_hip_pitch_link/right_hip_roll_joint/right_hip_roll_link/right_hip_yaw_joint/right_hip_yaw_link/right_knee_joint/right_knee_link/right_ankle_pitch_joint/right_ankle_pitch_link/right_ankle_roll_joint/right_ankle_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_ankle_roll_link_0")
+material_override = SubResource("mat_0")
+
+[node name="waist_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "waist_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -2.618
+metadata/urdf_upper = 2.618
+
+[node name="waist_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint"]
+metadata/urdf_link = "waist_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_waist_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="waist_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.003964, 0, 0.044)
+metadata/urdf_joint = "waist_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.003964, 0, 0.044)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -0.52
+metadata/urdf_upper = 0.52
+
+[node name="waist_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint"]
+metadata/urdf_link = "waist_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_waist_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="waist_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "waist_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -0.52
+metadata/urdf_upper = 0.52
+
+[node name="torso_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint"]
+metadata/urdf_link = "torso_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_torso_link_0")
+material_override = SubResource("mat_1")
+
+[node name="logo_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003964, 0, -0.044)
+metadata/urdf_joint = "logo_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003964, 0, -0.044)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="logo_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/logo_joint"]
+metadata/urdf_link = "logo_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/logo_joint/logo_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_logo_link_0")
+material_override = SubResource("mat_0")
+
+[node name="head_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003964, 0, -0.044)
+metadata/urdf_joint = "head_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003964, 0, -0.044)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="head_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/head_joint"]
+metadata/urdf_link = "head_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/head_joint/head_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_head_link_0")
+material_override = SubResource("mat_0")
+
+[node name="imu_in_torso_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03959, -0.00224, 0.14792)
+metadata/urdf_joint = "imu_in_torso_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03959, -0.00224, 0.14792)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="imu_in_torso" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/imu_in_torso_joint"]
+metadata/urdf_link = "imu_in_torso"
+
+[node name="d435_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(0.674302, 0, 0.738455, 0, 1, 0, -0.738455, 0, 0.674302, 0.057624, 0.01753, 0.42987)
+metadata/urdf_joint = "d435_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0.674302, 0, 0.738455, 0, 1, 0, -0.738455, 0, 0.674302, 0.057624, 0.01753, 0.42987)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="d435_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/d435_joint"]
+metadata/urdf_link = "d435_link"
+
+[node name="mid360_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(0.999194, 0, 0.040132, 0, 1, 0, -0.040132, 0, 0.999194, 0.000284, 0.00003, 0.41618)
+metadata/urdf_joint = "mid360_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0.999194, 0, 0.040132, 0, 1, 0, -0.040132, 0, 0.999194, 0.000284, 0.00003, 0.41618)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="mid360_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/mid360_joint"]
+metadata/urdf_link = "mid360_link"
+
+[node name="left_shoulder_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(1, 0.000199, 0, -0.000192, 0.961246, -0.275692, -0.000055, 0.275692, 0.961246, 0.003956, 0.10022, 0.24778)
+metadata/urdf_joint = "left_shoulder_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0.000199, 0, -0.000192, 0.961246, -0.275692, -0.000055, 0.275692, 0.961246, 0.003956, 0.10022, 0.24778)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -3.0892
+metadata/urdf_upper = 2.6704
+
+[node name="left_shoulder_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint"]
+metadata/urdf_link = "left_shoulder_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_shoulder_pitch_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_shoulder_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 0.961262, 0.275635, 0, -0.275635, 0.961262, 0, 0.038, -0.013831)
+metadata/urdf_joint = "left_shoulder_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 0.961262, 0.275635, 0, -0.275635, 0.961262, 0, 0.038, -0.013831)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -1.5882
+metadata/urdf_upper = 2.2515
+
+[node name="left_shoulder_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint"]
+metadata/urdf_link = "left_shoulder_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_shoulder_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_shoulder_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.00624, -0.1032)
+metadata/urdf_joint = "left_shoulder_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.00624, -0.1032)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -2.618
+metadata/urdf_upper = 2.618
+
+[node name="left_shoulder_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint"]
+metadata/urdf_link = "left_shoulder_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_shoulder_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_elbow_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.015783, 0, -0.080518)
+metadata/urdf_joint = "left_elbow_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.015783, 0, -0.080518)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -1.0472
+metadata/urdf_upper = 2.0944
+
+[node name="left_elbow_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint"]
+metadata/urdf_link = "left_elbow_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_elbow_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_wrist_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.001888, -0.01)
+metadata/urdf_joint = "left_wrist_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.001888, -0.01)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -1.972222
+metadata/urdf_upper = 1.972222
+
+[node name="left_wrist_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint"]
+metadata/urdf_link = "left_wrist_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_wrist_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_wrist_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.038, 0, 0)
+metadata/urdf_joint = "left_wrist_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.038, 0, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -1.61443
+metadata/urdf_upper = 1.61443
+
+[node name="left_wrist_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint"]
+metadata/urdf_link = "left_wrist_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_wrist_pitch_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_wrist_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.046, 0, 0)
+metadata/urdf_joint = "left_wrist_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.046, 0, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -1.61443
+metadata/urdf_upper = 1.61443
+
+[node name="left_wrist_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link/left_wrist_yaw_joint"]
+metadata/urdf_link = "left_wrist_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link/left_wrist_yaw_joint/left_wrist_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_wrist_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="left_hand_palm_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link/left_wrist_yaw_joint/left_wrist_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0415, 0.003, 0)
+metadata/urdf_joint = "left_hand_palm_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0415, 0.003, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="left_rubber_hand" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link/left_wrist_yaw_joint/left_wrist_yaw_link/left_hand_palm_joint"]
+metadata/urdf_link = "left_rubber_hand"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/left_shoulder_pitch_joint/left_shoulder_pitch_link/left_shoulder_roll_joint/left_shoulder_roll_link/left_shoulder_yaw_joint/left_shoulder_yaw_link/left_elbow_joint/left_elbow_link/left_wrist_roll_joint/left_wrist_roll_link/left_wrist_pitch_joint/left_wrist_pitch_link/left_wrist_yaw_joint/left_wrist_yaw_link/left_hand_palm_joint/left_rubber_hand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_left_rubber_hand_0")
+material_override = SubResource("mat_1")
+
+[node name="right_shoulder_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link"]
+transform = Transform3D(1, -0.000199, 0, 0.000192, 0.961246, 0.275692, -0.000055, -0.275692, 0.961246, 0.003956, -0.10021, 0.24778)
+metadata/urdf_joint = "right_shoulder_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, -0.000199, 0, 0.000192, 0.961246, 0.275692, -0.000055, -0.275692, 0.961246, 0.003956, -0.10021, 0.24778)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -3.0892
+metadata/urdf_upper = 2.6704
+
+[node name="right_shoulder_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint"]
+metadata/urdf_link = "right_shoulder_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_shoulder_pitch_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_shoulder_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 0.961262, -0.275635, 0, 0.275635, 0.961262, 0, -0.038, -0.013831)
+metadata/urdf_joint = "right_shoulder_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 0.961262, -0.275635, 0, 0.275635, 0.961262, 0, -0.038, -0.013831)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -2.2515
+metadata/urdf_upper = 1.5882
+
+[node name="right_shoulder_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint"]
+metadata/urdf_link = "right_shoulder_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_shoulder_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_shoulder_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.00624, -0.1032)
+metadata/urdf_joint = "right_shoulder_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.00624, -0.1032)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -2.618
+metadata/urdf_upper = 2.618
+
+[node name="right_shoulder_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint"]
+metadata/urdf_link = "right_shoulder_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_shoulder_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_elbow_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.015783, 0, -0.080518)
+metadata/urdf_joint = "right_elbow_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.015783, 0, -0.080518)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -1.0472
+metadata/urdf_upper = 2.0944
+
+[node name="right_elbow_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint"]
+metadata/urdf_link = "right_elbow_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_elbow_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_wrist_roll_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, -0.001888, -0.01)
+metadata/urdf_joint = "right_wrist_roll_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, -0.001888, -0.01)
+metadata/urdf_axis = Vector3(1, 0, 0)
+metadata/urdf_lower = -1.972222
+metadata/urdf_upper = 1.972222
+
+[node name="right_wrist_roll_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint"]
+metadata/urdf_link = "right_wrist_roll_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_wrist_roll_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_wrist_pitch_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.038, 0, 0)
+metadata/urdf_joint = "right_wrist_pitch_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.038, 0, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+metadata/urdf_lower = -1.61443
+metadata/urdf_upper = 1.61443
+
+[node name="right_wrist_pitch_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint"]
+metadata/urdf_link = "right_wrist_pitch_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_wrist_pitch_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_wrist_yaw_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.046, 0, 0)
+metadata/urdf_joint = "right_wrist_yaw_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.046, 0, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -1.61443
+metadata/urdf_upper = 1.61443
+
+[node name="right_wrist_yaw_link" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link/right_wrist_yaw_joint"]
+metadata/urdf_link = "right_wrist_yaw_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link/right_wrist_yaw_joint/right_wrist_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_wrist_yaw_link_0")
+material_override = SubResource("mat_1")
+
+[node name="right_hand_palm_joint" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link/right_wrist_yaw_joint/right_wrist_yaw_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0415, -0.003, 0)
+metadata/urdf_joint = "right_hand_palm_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0415, -0.003, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="right_rubber_hand" type="Node3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link/right_wrist_yaw_joint/right_wrist_yaw_link/right_hand_palm_joint"]
+metadata/urdf_link = "right_rubber_hand"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/pelvis/waist_yaw_joint/waist_yaw_link/waist_roll_joint/waist_roll_link/waist_pitch_joint/torso_link/right_shoulder_pitch_joint/right_shoulder_pitch_link/right_shoulder_roll_joint/right_shoulder_roll_link/right_shoulder_yaw_joint/right_shoulder_yaw_link/right_elbow_joint/right_elbow_link/right_wrist_roll_joint/right_wrist_roll_link/right_wrist_pitch_joint/right_wrist_pitch_link/right_wrist_yaw_joint/right_wrist_yaw_link/right_hand_palm_joint/right_rubber_hand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_right_rubber_hand_0")
+material_override = SubResource("mat_1")
+
+[node name="imu_in_pelvis_joint" type="Node3D" parent="RosFrame/Base/pelvis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04525, 0, -0.08339)
+metadata/urdf_joint = "imu_in_pelvis_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04525, 0, -0.08339)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="imu_in_pelvis" type="Node3D" parent="RosFrame/Base/pelvis/imu_in_pelvis_joint"]
+metadata/urdf_link = "imu_in_pelvis"

@@ -1,0 +1,145 @@
+[
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q1 · Ancho de banda WiFi medido en NUESTRO repo (único dato de primera mano)",
+    "evidencia": "FTP de VitaShell (TCP, subida de .vpk): lejos del router ~0,55 MB/s (~4,4 Mbit/s) y ping 55–190 ms; cerca del router ~1,6 MB/s (~12,8 Mbit/s) y ping mínimo 1,5 ms, pero media irregular 40–60 ms (hipótesis del repo: ahorro de energía WiFi de la Vita, sin confirmar). Además, una subida de 22 MB llegó cortada a ~2 MB sin error de curl ⇒ el enlace/servidor FTP no es fiable para medir sin verificar. No hay en el repo ninguna medida de throughput UDP ni XRCE (ni pps, ni pérdida): solo cadencias de aplicación (/cmd_vel ~20 Hz, /vita/imu 30–50 Hz) que funcionan. Fecha del dato: 2026-10-30 (reciente).",
+    "fuentes": [
+      "docs/06-bitacora-estado.md:303-311",
+      "docs/06-bitacora-estado.md:183-189",
+      "docs/06-bitacora-estado.md:1147",
+      "docs/01-hardware-y-plataforma.md:20",
+      "git log -S'0,55 MB/s' → 11d7bba 2026-10-30"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0 (ya medido); repetir con método controlado ~15 min",
+    "como_se_mediria_en_hardware": "Paso 0 del microbenchmark (candidato Q4-A): FTP de 20 MB con curl midiendo %{speed_upload}/%{speed_download} cerca y lejos del router + ping a 0,2 s y a 1 s para separar latencia real de power-save."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q1 · Cifras de la comunidad homebrew (FTP, USB, tarjeta, Moonlight)",
+    "evidencia": "No existe un benchmark sistemático publicado de la WiFi de la Vita. Anécdotas: wiki lazyweb «VitaShell FTP is slow (~30 min/GiB)» ≈ 0,57 MiB/s (coincide con nuestro 'lejos del router'); comentario en wololo (VitaShell 1.5, ENERO 2017, anterior a 2025) «my ftp speed is 1.2–1.6 MB» (coincide con nuestro 'cerca'); el modo USB de VitaShell 10 MB/s lectura / 5 MB/s escritura; la tarjeta de memoria lee 6,3–7,6 MB/s y escribe 4,2–7,3 MB/s (Gameranx, antiguo) ⇒ el FTP (≤1,6 MB/s) NO está limitado por almacenamiento sino por red/pila TCP. vita-moonlight elige por defecto 5 Mbit/s (≤720p30), 10 Mbit/s (60 fps o 1080) y 20 Mbit/s (1080p60) de bajada (src/config.c:339-346; repo sin actividad reciente, pre-2025) — es configuración por defecto, no medida. No encontré cifras de vitacompanion/Adrenaline. Techo físico: 802.11n 1×1 a 20 MHz = 65/72,2 Mbit/s PHY; UDP real típico ≈ 40–50 % del PHY — chip y throughput UDP real de la Vita sin fuente [?].",
+    "fuentes": [
+      "https://github-wiki-see.page/m/superjamie/lazyweb/wiki/Gaming-PS-Vita",
+      "https://wololo.net/2017/01/12/vitashell-updated-1-5-provides-usb-mass-storage-access/ (2017, <2025)",
+      "https://gameranx.com/updates/id/5352/article/just-how-fast-are-the-vita-s-memory-cards-anywar/ (<2025)",
+      "https://raw.githubusercontent.com/xyzz/vita-moonlight/master/src/config.c (líneas 339-346, <2025)",
+      "IEEE 802.11n MCS7 1SS 20 MHz = 65/72,2 Mbit/s (conocimiento general, sin URL)"
+    ],
+    "confianza": "[I]",
+    "coste_estimado": "0",
+    "como_se_mediria_en_hardware": "Igual que Q4-A (FTP) y Q4-B (UDP crudo): solo una medida propia de UDP sostenido da el techo real; esperado entre 1,6 MB/s (FTP medido) y ~4 MB/s (≈35 Mbit/s si la pila sceNet no limita) — hipótesis."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q2 · Pila sceNet tal como la usamos: límites conocidos y desconocidos",
+    "evidencia": "Inicio de red en el CARGADOR (sysmodule NET + sceNetInit con pool estático de 1 MiB + sceNetCtlInit), porque dentro de Godot sceNetInit daba 0x8002450D UID_RL_OVERFLOW; ros2_vita repite el intento con pool de 1 MiB de memalign y net_udp_init acepta la red ya iniciada. Socket UDP 'conectado' (sceNetConnect) → send()/recv(); envío bloqueante sin opciones; recepción no bloqueante con SCE_NET_MSG_DONTWAIT cuando timeout=0 (nuestro caso: uxr_run_session_time(0)), o SCE_NET_SO_RCVTIMEO en µs. Tabla estática de 4 sockets (NET_UDP_MAX_SOCKETS). NO se fija SO_RCVBUF/SO_SNDBUF: tamaño por defecto de los búferes de socket de sceNet desconocido; tampoco hay dato de pps máximo ni de la MTU IP de la interfaz (1500 en Ethernet/WiFi estándar es lo esperable). Como XRCE usa datagramas de ≤512 B no hay fragmentación IP. Latencia: solo el ping medido (1,5 ms mín., 40–60 ms medio).",
+    "fuentes": [
+      "docs/06-bitacora-estado.md:275-279",
+      "godot/ros2_vita/xrce_transport.cpp:92-118",
+      "modules/net-udp/impl-c/net_udp.c:40",
+      "modules/net-udp/impl-c/net_udp.c:107-111",
+      "modules/net-udp/impl-c/net_udp.c:178-186",
+      "modules/net-udp/impl-c/net_udp.c:228-264",
+      "modules/net-udp/include/net_udp.h:31",
+      "modules/microros-transport/impl-c/microros_transport.c:50-83"
+    ],
+    "confianza": "[V] lo que hace el código; [?] búferes por defecto, pps y MTU de sceNet",
+    "coste_estimado": "Bajo: añadir sceNetGetsockopt(SCE_NET_SO_RCVBUF/SNDBUF) a get_transport_info (~10 líneas, reto para el usuario)",
+    "como_se_mediria_en_hardware": "Leer SO_RCVBUF/SO_SNDBUF con sceNetGetsockopt y mostrarlos en el panel de diagnóstico; ráfaga UDP de N datagramas seguidos desde el PC (Q4-B) y contar cuántos recibe la Vita en un frame ⇒ búfer efectivo; pps máximo con datagramas de 64 B en el sentido Vita→PC."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Configuración real de micro-XRCE-DDS en nuestro build",
+    "evidencia": "Cliente eProsima v2.4.3 (2024-03, tag del clon) compilado con perfil CUSTOM_TRANSPORT y defaults de CMake: UXR_CONFIG_CUSTOM_TRANSPORT_MTU=512, 1 stream de cada tipo (MAX_OUTPUT/INPUT_{BEST_EFFORT,RELIABLE}_STREAMS=1), MIN_HEARTBEAT_TIME_INTERVAL=100 ms, 10 intentos de sesión. ros2_vita: stream fiable de salida y de entrada con historial 16 × 512 B (8 KiB cada uno), un único búfer best-effort de 512 B, MAX_RX=16 KiB para mensajes recibidos reensamblados, XRCE_OVERHEAD=24 (conservador: el real es cabecera de mensaje 4 B — session id 0x81, sin client key — + subcabecera 4 B + payload WRITE_DATA 4 B + relleno a 4). Payload máximo por datagrama: 488 B según el código (500 B real). Mayor que eso: solo por el fiable, fragmentado; en best effort devuelve ERR_OUT_OF_MEMORY. Si el fiable está lleno, la publicación cae al best effort y suma diag.reliable_full. Un solo hilo: poll() una vez por frame con uxr_run_session_time(0) ⇒ todo envío y lectura de ACK está cuantizado al frame (~16,7 ms a 60 FPS).",
+    "fuentes": [
+      "vita-app/scripts/build-xrce-client-vita.sh:100-111",
+      "vita-app/third_party/xrce-vita-pic/include/uxr/client/config.h:41-60",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/CMakeLists.txt:53-65",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:171",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session_info_internal.h:29-30",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/submessage_internal.h:28",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/write_access.c:14",
+      "godot/ros2_vita/xrce_transport.cpp:132-140",
+      "godot/ros2_vita/xrce_transport.cpp:181-184",
+      "godot/ros2_vita/xrce_transport.cpp:299-302",
+      "godot/ros2_vita/xrce_transport.cpp:335-339",
+      "godot/ros2_vita/xrce_transport.cpp:406-428"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0 (lectura)",
+    "como_se_mediria_en_hardware": "Contadores de rclgd.get_transport_info(): writes, write_bytes, reliable_full, read_packets (xrce_transport.cpp:433-455) por segundo durante el barrido de Q4-C."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Techo teórico BEST EFFORT: ~30 KB/s (~240 kbit/s) por el búfer único de 512 B y el flush por frame",
+    "evidencia": "uxr_prepare_best_effort_buffer_to_write solo escribe si writer+relleno+size ≤ 512; si no cabe devuelve false y ros2_vita devuelve ERR_BUSY (mensaje perdido sin reintento). El búfer solo se vacía en uxr_flash_output_streams, llamado desde uxr_run_session_time en poll(), una vez por frame. ⇒ por frame cabe UN datagrama de 512 B, agregando varios mensajes pequeños. A 60 FPS: ≈ 500 B × 60 ≈ 30 KB/s útiles. Mensajes/s según tamaño CDR s (overhead ~8–11 B por submensaje): s=64 → 6/frame ≈ 360 msg/s; s=128 → 3/frame ≈ 180 msg/s; s=250 → 1/frame = 60 msg/s; s=488 → 60 msg/s; s>488 → imposible. Ejemplo: sensor_msgs/Imu (~320 B CDR, hipótesis) a 30 Hz en BE cabe, pero dos topics BE de >250 B a 60 Hz ya no. Si el juego baja a 30 FPS el techo cae a la mitad.",
+    "fuentes": [
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_best_effort_stream.c:34-51",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:321-339",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:597-610",
+      "godot/ros2_vita/xrce_transport.cpp:140",
+      "godot/ros2_vita/xrce_transport.cpp:418-426"
+    ],
+    "confianza": "[V] mecanismo (código); [I] cifras (cálculo, no medido)",
+    "coste_estimado": "Medir: bajo. Mejorar: llamar a uxr_flash_output_streams() tras cada publish best effort o subir MTU (UCLIENT_CUSTOM_TRANSPORT_MTU=1400 recompilando el cliente) ⇒ ×2,7–×N; medio (requiere recompilar libs PIC y pasar G2/G3)",
+    "como_se_mediria_en_hardware": "Q4-C con QoS BEST_EFFORT: barrer frecuencia con tamaño fijo hasta que `ros2 topic hz` deje de seguir a la frecuencia pedida; contar ERR_BUSY devueltos por publish() en GDScript."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Techo teórico RELIABLE: ventana de 8 KiB / RTT efectivo cuantizado al frame",
+    "evidencia": "El fiable admite escribir mientras seq ≤ last_acknown + history (16 huecos de 512 B; varios mensajes pequeños comparten hueco). El agente responde con un ACKNACK por CADA mensaje recibido en stream fiable (Processor.cpp, rama master; versión exacta de la imagen microros/micro-ros-agent:jazzy sin comprobar), y el cliente solo lo procesa en el siguiente poll(). RTT_ef ≈ ceil(RTT/16,7 ms)·16,7 ms. Techo ≈ 16×500 B / RTT_ef: RTT 1,5 ms → 8 KB/frame ≈ 480 KB/s (~3,8 Mbit/s, ya por encima del FTP 'lejos' 0,55 MB/s, así que la WiFi manda); RTT 50 ms → ≈ 120–160 KB/s; RTT 190 ms → ≈ 40 KB/s. Por encima, el excedente cae al best effort (+30 KB/s, sin garantía) y sube reliable_full. Es coherente con G6: con historial 4 a 20 Hz se llenaba (4 huecos × 1 msg/hueco si cada publish va en frame distinto ⇒ 4 frames = 200 ms ≥ RTT irregular).",
+    "fuentes": [
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_reliable_stream.c:54-100",
+      "https://github.com/eProsima/Micro-XRCE-DDS-Agent/blob/master/src/cpp/processor/Processor.cpp (líneas 108-133: ACKNACK tras cada mensaje fiable; 663-690: ACKNACK a HEARTBEAT)",
+      "https://micro-xrce-dds.readthedocs.io/en/latest/agent.html (agente: historial fiable 16, HEARTBEAT 200 ms por defecto)",
+      "godot/ros2_vita/xrce_transport.cpp:132-136",
+      "docs/06-bitacora-estado.md:249-250"
+    ],
+    "confianza": "[I]",
+    "coste_estimado": "Medir: bajo. Mejorar: historial 32/64 (2 líneas, +8–24 KiB RAM) o MTU 1400 (×2,8 por hueco, recompilar cliente); poll() 2 veces por frame o en hilo propio (alto: rompe el diseño de un hilo)",
+    "como_se_mediria_en_hardware": "Q4-C con QoS RELIABLE: el punto de rodilla es cuando reliable_full empieza a crecer; anotar RTT (ping-pong) en ese momento y comprobar RTT_ef·throughput ≈ 8 KB."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Riesgo: HEARTBEAT del cliente 'deslizante' con poll a 60 Hz + fragmentación bloqueante",
+    "evidencia": "uxr_update_output_stream_heartbeat_timestamp reprograma next_heartbeat = ahora + 100 ms en CADA llamada mientras haya datos sin confirmar (también en upstream master). Con poll() cada 16,7 ms el plazo nunca vence ⇒ el cliente no envía HEARTBEAT mientras el juego vaya a >10 FPS. La recuperación de pérdidas depende entonces de que el agente mande ACKNACK con nack_bitmap al recibir el SIGUIENTE mensaje fiable: si se pierde el último de una ráfaga y no hay más tráfico fiable, el hueco queda ocupado hasta la siguiente publicación (hipótesis a verificar). Fragmentación: un mensaje > 488 B usa uxr_prepare_output_stream_fragmented con _flush = uxr_run_session_time(10), que BLOQUEA el hilo principal mientras espera ACK para liberar huecos: una imagen mono8 160×120 (≈19,2 kB ≈ 39 fragmentos > 16 huecos) congelaría ≥2 RTT por frame (hipótesis). En recepción, cualquier mensaje > MAX_RX 16 KiB se descarta (p. ej. esa misma imagen si se suscribe).",
+    "fuentes": [
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_reliable_stream.c:195-220",
+      "https://raw.githubusercontent.com/eProsima/Micro-XRCE-DDS-Client/master/src/c/core/session/stream/output_reliable_stream.c (misma lógica)",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:687-730",
+      "godot/ros2_vita/xrce_transport.cpp:137",
+      "godot/ros2_vita/xrce_transport.cpp:246-249",
+      "godot/ros2_vita/xrce_transport.cpp:411-417",
+      "docs/13-infraestructura-desarrollo-vita.md:122-129"
+    ],
+    "confianza": "[V] código; [I] efecto en hardware",
+    "coste_estimado": "Verificar: bajo (captura). Arreglo: uxr_run_session_time(0) no basta; opciones: llamar write_submessage_heartbeat vía uxr_run_session_until_confirm_delivery ocasional, o publicar fragmentados en un hilo — medio",
+    "como_se_mediria_en_hardware": "`docker/vita-ros.sh sniff` (tcpdump en la estación) durante Q4-C: contar datagramas Vita→PC cuyo byte 4 del payload UDP sea 0x0b (HEARTBEAT) frente a 0x07 (WRITE_DATA) y PC→Vita con 0x0a (ACKNACK). Si HEARTBEAT=0 con pérdidas >0 se confirma. Para fragmentación: publicar String de 2/4/8/16 kB y medir Engine.get_frames_per_second() y el tiempo de publish() con Time.get_ticks_usec()."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q4 · Microbenchmark ejecutable (A: FTP/ping · B: UDP crudo · C: barrido XRCE)",
+    "evidencia": "A — línea base sin código (fish, PC): `set VITA 192.168.1.94` ; `dd if=/dev/urandom of=/tmp/w1-20M.bin bs=1M count=20` ; `curl -sS -T /tmp/w1-20M.bin ftp://$VITA:1337/ux0:/data/w1-20M.bin -w 'subida %{speed_upload} B/s\\n'` ; `curl -sS -o /dev/null ftp://$VITA:1337/ux0:/data/w1-20M.bin -w 'bajada %{speed_download} B/s\\n'` ; `ping -c 200 -i 0.2 $VITA | tail -2` y `ping -c 30 -i 1 $VITA | tail -2` (si la media a 1 s ≫ a 0,2 s ⇒ power-save). Repetir a 1 m y a la distancia de uso. B — UDP crudo: el FTP es TCP, no sirve de techo UDP. Reto para el usuario: homebrew C mínimo (CMake de vita-app) sobre modules/net-udp que envíe datagramas de 64/256/512/1400 B con [seq u32][t_us u64] a tasa creciente, y modo eco; en el PC `socat -u UDP-RECV:9000 -` no cuenta pérdidas ⇒ script python de ~30 líneas que cuente seq perdidos/desordenados y devuelva eco para RTT. (Godot PacketPeerUDP en el port: sin verificar [?], por el muro UID_RL_OVERFLOW.) C — barrido XRCE (app Godot godot/w1-netbench, reto): publicar std_msgs/String (CDR = 4+N+1 B; está en schema.rsch; Float32MultiArray NO está, habría que regenerarlo con tools/gen_msg_schema.py; Float64MultiArray sí) con N ∈ {64,256,480,1024,4096} y f ∈ {10,30,60,120*,240*} Hz (*varios publish por frame), en RELIABLE y BEST_EFFORT, 20 s por punto; los 12 primeros caracteres = seq. Pintar cada segundo get_transport_info() (write_bytes/s, writes/s, reliable_full) y contar ERR_BUSY. RTT: topic /w1/ping → el PC lo devuelve en /w1/pong (relay python o `ros2 run topic_tools relay` si está en la imagen [?]); la Vita resta Time.get_ticks_usec() del seq. En el PC (fish): `docker/vita-ros.sh up` ; `docker compose -f docker/docker-compose.yml exec station bash -lc 'source /opt/ros/jazzy/setup.bash; ros2 topic hz /w1/data --window 200'` ; idem con `ros2 topic bw /w1/data` ; `docker/vita-ros.sh sniff $VITA > /tmp/w1-sniff.txt` en otra terminal ; `docker/vita-ros.sh logs agent`. Resultado: tabla N×f×QoS con msg/s recibidos (hz), B/s (bw), pérdida = 1 − recibidos/publicados, RTT p50/p95, reliable_full/s y FPS. Criterio de parada de cada fila: hz < 95 % de f o FPS < 55.",
+    "fuentes": [
+      "tools/deploy-vpk-ftp.sh:26-49",
+      "docker/vita-ros.sh:30-47",
+      "docker/vita-ros.sh:66-70",
+      "docker/Dockerfile:20",
+      "godot/g7-imu/main.gd:125",
+      "godot/g7-imu/ros/schema.rsch (tipos listados con strings)",
+      "tools/gen_msg_schema.py:12",
+      "docs/06-bitacora-estado.md:275-279"
+    ],
+    "confianza": "[V] comandos y herramientas existentes; [I] diseño del experimento",
+    "coste_estimado": "A: 15 min. B: 1–2 h (reto C + script python). C: 2–3 h (reto GDScript, sin tocar el módulo).",
+    "como_se_mediria_en_hardware": "Es el propio procedimiento; predicción a contrastar: BE se satura ≈30 KB/s (≈60 msg/s de 480 B), RELIABLE ≈ 8 KB/RTT_ef (120–480 KB/s según distancia), UDP crudo ≥1,6 MB/s cerca del router."
+  }
+]

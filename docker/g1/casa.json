@@ -1,0 +1,42 @@
+{
+  "nombre": "casa_g1",
+  "descripcion": "Casa de una planta de 10 x 8 m generada para el proyecto G1 (salón, cocina, dormitorio, baño y recibidor). Marco de ROS: x hacia el este, y hacia el norte, metros. El robot empieza en el salón.",
+  "altura_muro": 2.4,
+  "grosor_muro": 0.12,
+  "inicio_robot": [2.5, 2.5, 0.0],
+  "estancias": [
+    {"nombre": "salon",      "rect": [0.0, 0.0, 5.0, 5.0],  "color": [0.55, 0.45, 0.35]},
+    {"nombre": "cocina",     "rect": [0.0, 5.0, 5.0, 8.0],  "color": [0.70, 0.70, 0.66]},
+    {"nombre": "dormitorio", "rect": [5.0, 3.0, 10.0, 8.0], "color": [0.45, 0.50, 0.62]},
+    {"nombre": "bano",       "rect": [7.5, 0.0, 10.0, 3.0], "color": [0.62, 0.72, 0.75]},
+    {"nombre": "recibidor",  "rect": [5.0, 0.0, 7.5, 3.0],  "color": [0.50, 0.46, 0.42]}
+  ],
+  "muros": [
+    {"de": [0, 0],    "a": [10, 0],  "huecos": [[5.6, 6.6]]},
+    {"de": [10, 0],   "a": [10, 8]},
+    {"de": [10, 8],   "a": [0, 8]},
+    {"de": [0, 8],    "a": [0, 0]},
+    {"de": [0, 5],    "a": [5, 5],   "huecos": [[2.8, 4.6]]},
+    {"de": [5, 0],    "a": [5, 8],   "huecos": [[1.0, 2.0]]},
+    {"de": [5, 3],    "a": [10, 3],  "huecos": [[0.8, 1.8]]},
+    {"de": [7.5, 0],  "a": [7.5, 3], "huecos": [[1.0, 2.0]]}
+  ],
+  "muebles": [
+    {"nombre": "sofa",          "centro": [0.55, 2.5],  "tam": [0.9, 2.2, 0.8],   "yaw": 0,    "color": [0.25, 0.32, 0.45]},
+    {"nombre": "mesa_baja",     "centro": [1.8, 2.5],   "tam": [0.6, 1.1, 0.4],   "yaw": 0,    "color": [0.42, 0.30, 0.20]},
+    {"nombre": "mueble_tv",     "centro": [4.7, 3.4],   "tam": [0.45, 1.6, 0.55], "yaw": 0,    "color": [0.20, 0.20, 0.22]},
+    {"nombre": "tele",          "centro": [4.75, 3.4],  "tam": [0.08, 1.2, 0.7],  "yaw": 0,    "color": [0.05, 0.05, 0.06], "z": 0.55},
+    {"nombre": "estanteria",    "centro": [2.2, 0.25],  "tam": [1.6, 0.35, 1.8],  "yaw": 0,    "color": [0.48, 0.35, 0.24]},
+    {"nombre": "encimera",      "centro": [2.5, 7.7],   "tam": [4.6, 0.6, 0.9],   "yaw": 0,    "color": [0.80, 0.80, 0.78]},
+    {"nombre": "nevera",        "centro": [0.4, 6.2],   "tam": [0.7, 0.7, 1.8],   "yaw": 0,    "color": [0.88, 0.88, 0.90]},
+    {"nombre": "mesa_cocina",   "centro": [2.6, 6.3],   "tam": [1.2, 0.8, 0.75],  "yaw": 0,    "color": [0.60, 0.45, 0.30]},
+    {"nombre": "cama",          "centro": [8.9, 6.4],   "tam": [2.0, 1.6, 0.55],  "yaw": 0,    "color": [0.85, 0.85, 0.92]},
+    {"nombre": "mesilla",       "centro": [9.7, 5.2],   "tam": [0.45, 0.45, 0.55],"yaw": 0,    "color": [0.48, 0.35, 0.24]},
+    {"nombre": "armario",       "centro": [6.0, 7.65],  "tam": [1.8, 0.6, 2.1],   "yaw": 0,    "color": [0.55, 0.42, 0.30]},
+    {"nombre": "escritorio",    "centro": [5.45, 4.6],  "tam": [0.7, 1.3, 0.75],  "yaw": 0,    "color": [0.70, 0.62, 0.50]},
+    {"nombre": "ducha",         "centro": [9.45, 0.55], "tam": [1.0, 1.0, 0.15],  "yaw": 0,    "color": [0.90, 0.92, 0.95]},
+    {"nombre": "lavabo",        "centro": [8.0, 2.7],   "tam": [0.6, 0.45, 0.85], "yaw": 0,    "color": [0.92, 0.92, 0.95]},
+    {"nombre": "inodoro",       "centro": [9.7, 2.3],   "tam": [0.4, 0.6, 0.45],  "yaw": 0,    "color": [0.95, 0.95, 0.97]},
+    {"nombre": "zapatero",      "centro": [7.2, 0.3],   "tam": [0.5, 0.35, 1.0],  "yaw": 0,    "color": [0.40, 0.33, 0.28]}
+  ]
+}

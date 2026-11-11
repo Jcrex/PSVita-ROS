@@ -1,0 +1,329 @@
+{
+  "revisor": "revisor-escéptico (opus, aislado)",
+  "fecha": "2026-11-11",
+  "veredictos": [
+    {
+      "workshop": "W1-vita-sdk",
+      "afirmacion": "(a) WorkerThreadPool forzado a 0 hilos en la Vita, sea cual sea max_threads, y el motor arranca con --single-threaded-scene",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Bajo #ifdef VITA_ENABLED (definido en detect.py:187) init() pone p_thread_count = 0 tras un abort UNDEF en std::mutex::lock. El cargador del motor pasa --single-threaded-scene en args[]. El check de platform.gd (max_threads en [1,2]) es papel mojado: el valor se ignora.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/core/object/worker_thread_pool.cpp:848-857",
+        "toolchains/godot4-vita/engine/platform/vita/detect.py:187",
+        "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:116-122",
+        "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/platform.gd:147-148",
+        "godot/g7-imu/project.godot:41"
+      ]
+    },
+    {
+      "workshop": "W1-vita-sdk",
+      "afirmacion": "(a) Conclusión «1 núcleo para todo; solo el mezclador de audio es un hilo aparte»",
+      "veredicto": "ALTERNATIVA",
+      "motivo": "[V] Es el comportamiento por defecto, pero no estructural: (1) existe además el hilo del resolvedor IP, creado siempre en IP::IP() (dormido en semáforo); (2) physics/3d/run_on_separate_thread no lo anula el port y crearía otro hilo (mismo shim pthread que rompió el pool) [?]; (3) con CapUnlocker el mezclador se va a CPU3 (máscara SYSTEM), así que los núcleos USER_1/USER_2 quedan ociosos y podrían alojar un hilo nativo sceKernelCreateThread (p. ej. XRCE) fuera del pool de Godot [I]. Mejor formulación: «toda la lógica del motor en un hilo; 2 núcleos de usuario libres para hilos nativos propios».",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/core/io/ip.cpp:340-346",
+        "toolchains/godot4-vita/engine/modules/godot_physics_3d/register_types.cpp:43-50",
+        "toolchains/godot4-vita/engine/platform/vita/audio_driver_vita.cpp:138-145",
+        "toolchains/godot4-vita/engine/platform/vita/loader/main.c:175-182"
+      ]
+    },
+    {
+      "workshop": "W1-vita-sdk",
+      "afirmacion": "(b) 3 núcleos de usuario (USER_0..2); CPU3 = SYSTEM solo con CapUnlocker",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] en cabeceras: USER_ALL = USER_0|1|2, SYSTEM 0x80000 «system-reserved core». El loader sondea CapUnlocker moviendo su hilo a SYSTEM. Que la máscara falle sin plugin es [?] (por medir).",
+      "fuentes": [
+        "toolchains/vitasdk/arm-vita-eabi/include/psp2/kernel/cpu.h:15-21",
+        "toolchains/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/thread.h:34-39",
+        "toolchains/godot4-vita/engine/platform/vita/loader/main.c:67-75"
+      ]
+    },
+    {
+      "workshop": "W1-vita-sdk",
+      "afirmacion": "(b) Heap de newlib del loader = 256 MiB; los 96 MiB de godot_vita*.cpp no tienen efecto",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] valor 256 MiB en main.c:36. Ojo: el comentario de main.c:31 dice «192 MiB» (deriva comentario/código). Que el símbolo de 96 MiB dentro de libgodot.so no actúe es [I] coherente con so_loader (malloc lo resuelve el loader), no medido.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/loader/main.c:31-36",
+        "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:65",
+        "toolchains/godot4-vita/engine/platform/vita/godot_vita.cpp:65"
+      ]
+    },
+    {
+      "workshop": "W1-vita-sdk",
+      "afirmacion": "(b) Texturas en CDRAM con tope de 64 MiB, RGBA4444 por defecto y reserva redondeada a 256 KiB",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] vita_gxm_texture_create rechaza si texture_bytes supera 64 MiB; vita_texture_allocation_bytes redondea a 262144. El tope es un presupuesto software del puente; que vita2d no caiga a RAM de usuario cuando falte CDRAM es [?] (vita2d tiene ruta de respaldo según versión).",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:122-128",
+        "toolchains/godot4-vita/engine/platform/vita/loader/texture_format.h:14-16"
+      ]
+    },
+    {
+      "workshop": "W1-vita-sdk",
+      "afirmacion": "(c) NEON activo pero plantilla con -Os sin -ffast-math",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] detect.py añade -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -ftree-vectorize siempre; con optimize=size solo -Os; -O3 -ffast-math solo con optimize=speed. build-godot-template.sh fija optimize=size.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/detect.py:147-152",
+        "toolchains/godot4-vita/engine/platform/vita/detect.py:166-173",
+        "tools/build-godot-template.sh:74"
+      ]
+    },
+    {
+      "workshop": "W1-red-xrce",
+      "afirmacion": "(d) MTU 512, 1 stream de cada tipo, historial fiable 16×512 (salida y entrada), un único búfer best effort de 512 B",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] config.h de xrce-vita-pic (el que usa SCsub en Vita) y constantes de xrce_transport.cpp.",
+      "fuentes": [
+        "vita-app/third_party/xrce-vita-pic/include/uxr/client/config.h:41-60",
+        "godot/ros2_vita/SCsub:32-33",
+        "godot/ros2_vita/xrce_transport.cpp:132-140",
+        "godot/ros2_vita/xrce_transport.cpp:181-184",
+        "godot/ros2_vita/xrce_transport.cpp:299-302"
+      ]
+    },
+    {
+      "workshop": "W1-red-xrce",
+      "afirmacion": "(d) Techo best effort ≈30 KB/s (un datagrama de 512 B por frame)",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] mecanismo: el búfer BE solo admite writer+size ≤ 512 y se vacía en uxr_flash_output_streams, llamado por uxr_run_session_time desde poll(), conectado a process_frame. Cifra [I]: proporcional a los FPS reales (a 30 FPS, 15 KB/s). Además el fiable desborda al mismo búfer BE.",
+      "fuentes": [
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_best_effort_stream.c:36-51",
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:321-339",
+        "godot/ros2_vita/ros_runtime.cpp:436-484",
+        "godot/ros2_vita/xrce_transport.cpp:418-426"
+      ]
+    },
+    {
+      "workshop": "W1-red-xrce",
+      "afirmacion": "(d) «En recepción, cualquier mensaje > MAX_RX 16 KiB se descarta» (implícito: hasta 16 KiB llega)",
+      "veredicto": "DESAFÍO",
+      "motivo": "[V] El umbral que manda no es MAX_RX. Fiable: el stream de entrada solo acepta fragmentos con seq ≤ last_handled+history (16) y reensambla dentro de esos huecos de 512 B ⇒ techo ≈ 16×(512−cabeceras) ≈ 7,5 KiB (W4 lo dice bien). Best effort: la suscripción usa best_effort_in, sin fragmentación ⇒ techo ≈ 490 B. Un mensaje de 8–16 KiB no llega nunca, aunque MAX_RX lo admita.",
+      "fuentes": [
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/input_reliable_stream.c:64-92",
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/input_reliable_stream.c:185-210",
+        "godot/ros2_vita/xrce_transport.cpp:137",
+        "godot/ros2_vita/xrce_transport.cpp:235-236",
+        "godot/ros2_vita/xrce_transport.cpp:384"
+      ]
+    },
+    {
+      "workshop": "W1-red-xrce",
+      "afirmacion": "(d) El cliente nunca envía HEARTBEAT con poll a 60 Hz (plazo deslizante de 100 ms)",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] uxr_update_output_stream_heartbeat_timestamp reprograma next = ahora+100 ms en cada llamada con datos sin confirmar; con llamadas cada <100 ms nunca vence. Se envía solo tras un tirón >100 ms. Impacto [I]: mitigado porque el agente manda ACKNACK por cada mensaje fiable recibido; el riesgo real es la cola de una ráfaga perdida.",
+      "fuentes": [
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_reliable_stream.c:195-216",
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:687-730",
+        "vita-app/third_party/xrce-vita-pic/include/uxr/client/config.h:49"
+      ]
+    },
+    {
+      "workshop": "W4-portabilidad",
+      "afirmacion": "(e) API_PARITY marca create_tf_broadcaster/RosTfBroadcaster ✅ pero no está implementado",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] register_types.cpp registra solo rclgd, RosMsg, RosQoS, RosNode, RosPublisher, RosSubscriber, RosTimer. RosNode::_bind_methods no tiene create_tf_broadcaster ni create_tf_listener; grep en todo godot/ros2_vita/ solo lo encuentra en API_PARITY.md:35,84. SCsub ni siquiera incluye modules/tf-tree. La tabla de paridad está mal (debería ser ⏳).",
+      "fuentes": [
+        "godot/ros2_vita/register_types.cpp:16-22",
+        "godot/ros2_vita/ros_runtime.cpp:186-197",
+        "godot/ros2_vita/SCsub:24-25",
+        "godot/ros2_vita/API_PARITY.md:35",
+        "godot/ros2_vita/API_PARITY.md:84"
+      ]
+    },
+    {
+      "workshop": "W4-portabilidad",
+      "afirmacion": "(e) RosLogger / get_logger no registrado aunque API_PARITY lo marque 🟡",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] No hay get_logger en rclgd::_bind_methods ni en RosNode::_bind_methods; API_PARITY.md:20,39 lo da como parcial.",
+      "fuentes": [
+        "godot/ros2_vita/ros_runtime.cpp:344-353",
+        "godot/ros2_vita/ros_runtime.cpp:186-197",
+        "godot/ros2_vita/API_PARITY.md:20",
+        "godot/ros2_vita/API_PARITY.md:39"
+      ]
+    },
+    {
+      "workshop": "W4-portabilidad",
+      "afirmacion": "RosQoS sin propiedades (solo setters/getters), gdviz asigna qos.reliability = …",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Solo bind_method set_/get_, sin ADD_PROPERTY: la asignación como propiedad falla en GDScript.",
+      "fuentes": [
+        "godot/ros2_vita/ros_runtime.cpp:77-91"
+      ]
+    },
+    {
+      "workshop": "W4-portabilidad",
+      "afirmacion": "Techo de recepción XRCE ≈ 7,5 KiB",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] mecanismo (ver DESAFÍO de W1-red); cifra exacta [I]. Añadir: en suscripciones best effort el techo es ≈490 B.",
+      "fuentes": [
+        "godot/ros2_vita/xrce_transport.cpp:135-137",
+        "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/input_reliable_stream.c:64-65"
+      ]
+    },
+    {
+      "workshop": "W7-motor/W4",
+      "afirmacion": "(f) Render 3D GXM solo dibuja PRIMITIVE_TRIANGLES (líneas/puntos se ignoran)",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] SurfaceInfo.triangles = primitive == TRIANGLES; el bucle de dibujo hace continue si !surface.triangles.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:70",
+        "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:968"
+      ]
+    },
+    {
+      "workshop": "W7-motor/W4",
+      "afirmacion": "(f) MultiMeshInstance3D (y GridMap) no se dibujan",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Solo se candidatan instancias cuyo base es una malla propia (meshes->owns_mesh); una instancia de MultiMesh no pasa. GridMap usa MultiMesh.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:908-912",
+        "toolchains/godot4-vita/engine/modules/gridmap/grid_map.cpp:945"
+      ]
+    },
+    {
+      "workshop": "W7-motor/W4",
+      "afirmacion": "(f) Sin color por vértice: el color es el albedo del material (un color por draw)",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Color = material_props.albedo; vita_gxm_triangles3d recibe un uint32 color por llamada y los vértices texturizados solo llevan xyz/uv; FlatSurface no guarda ARRAY_COLOR.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:35-41",
+        "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:981",
+        "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:377-392"
+      ]
+    },
+    {
+      "workshop": "W7-motor",
+      "afirmacion": "(f) Texturas 3D con filtro POINT",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Ambas rutas 3D (CPU y arena) fuerzan SCE_GXM_TEXTURE_FILTER_POINT; el 2D sí admite LINEAR por lote.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:391",
+        "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:442",
+        "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:76-78"
+      ]
+    },
+    {
+      "workshop": "W7-motor",
+      "afirmacion": "(f) CSG no compilado",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] module_csg_enabled False (manifold no compila).",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/detect.py:84"
+      ]
+    },
+    {
+      "workshop": "W7-motor",
+      "afirmacion": "(g) GodotPhysics3D activo y servidor por defecto",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Solo Jolt se desactiva; godot_physics_3d se registra como default; hay objetos .vita.template_release.arm32.o. Rendimiento [?].",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/detect.py:83",
+        "toolchains/godot4-vita/engine/modules/godot_physics_3d/register_types.cpp:53-58"
+      ]
+    },
+    {
+      "workshop": "W7-motor",
+      "afirmacion": "(g) Scripts exportados como TEXTO ⇒ GDScript se compila en la Vita",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] platform.gd exige get_script_export_mode()==0 y en editor_export_preset.h el 0 es MODE_SCRIPT_TEXT; nm de bin/libgodot_gxm3d.so da 61 símbolos GDScriptCompiler. GDScript.new()+reload() en hardware [I].",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/platform.gd:151",
+        "toolchains/godot4-vita/engine/editor/export/editor_export_preset.h:58-60"
+      ]
+    },
+    {
+      "workshop": "W7-motor",
+      "afirmacion": "(g) load_resource_pack / FileAccess desde ux0:/",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] OS_Unix::initialize_core registra FileAccessUnix/DirAccessUnix; is_absolute_path exige ':/' ⇒ usar 'ux0:/data/…' y no 'ux0:data/…' (el propio cargador usa la forma sin barra solo para --main-pack/--path). DirAccess.get_files en ux0: [?].",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/platform/vita/os_vita.cpp:62-66",
+        "toolchains/godot4-vita/engine/core/string/ustring.cpp:4291-4293",
+        "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:101,110-118"
+      ]
+    },
+    {
+      "workshop": "W5-urdf",
+      "afirmacion": "(h) Godot 4.8 sin importador STL nativo",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] editor/import/3d/ solo tiene collada, obj y escena; no hay módulo stl ni la cadena \".stl\" en el árbol del motor (fuera de bin/). Válido para el árbol del port; el editor oficial 4.8-dev7 del PC [I] mismo resultado.",
+      "fuentes": [
+        "toolchains/godot4-vita/engine/editor/import/3d/",
+        "toolchains/godot4-vita/engine/version.py:3-6"
+      ]
+    },
+    {
+      "workshop": "W5-urdf",
+      "afirmacion": "(h) El addon de la tienda v1.2 siempre crea cuerpos de física",
+      "veredicto": "VERIFICADO",
+      "motivo": "[V] Cada grupo de links fijos es URDFStaticBody3D (static_only_physics) o URDFRigidBody3D; no hay rama Node3D. create_collider_from_visual es desactivable, los cuerpos no.",
+      "fuentes": [
+        "scratchpad:urdf/store/x/addons/godot_urdf/urdf_godot/godot_robot.gd:105-111",
+        "scratchpad:urdf/store/x/addons/godot_urdf/urdf_godot/urdf_physicsbody3d.gd:35-43"
+      ]
+    },
+    {
+      "workshop": "W5-urdf",
+      "afirmacion": "RECOMENDACIÓN: escribir un @tool propio de ~150 líneas reutilizando el parser de gdviz",
+      "veredicto": "ALTERNATIVA",
+      "motivo": "[V] El árbol de trabajo ya contiene tools/urdf2godot/urdf2godot.py (URDF → .tscn conservando nombres de link/joint) y blender_diezmar.py (diezmado STL→OBJ), más godot/g1-unitree. W5 no los menciona: evaluar y extender eso antes de escribir otro conversor (sin versionar aún).",
+      "fuentes": [
+        "tools/urdf2godot/urdf2godot.py:1-6",
+        "tools/urdf2godot/blender_diezmar.py:1-4",
+        "godot/g1-unitree/main.tscn"
+      ]
+    }
+  ],
+  "riesgos": [
+    "R1 [?] El shim pthread/libstdc++ que obligó a forzar 0 hilos puede romper cualquier otro hilo (física en hilo aparte, hilo nativo para XRCE): toda propuesta de paralelismo debe probarse primero en hwprobe E-H8 (worker_thread_pool.cpp:848-857).",
+    "R2 [?] Los techos XRCE (30 KB/s BE, ~7,5 KiB fiable, ~490 B BE de entrada) son de código: en WiFi real la pérdida de paquetes + HEARTBEAT que nunca sale puede dejar huecos fiables ocupados y disparar reliable_full; además el MTU de salida del micro-ROS Agent hacia la Vita no está comprobado (si >512, datagramas descartados).",
+    "R3 [I] Los FPS reales con escena + GDScript interpretado (scripts en texto, -Os sin fast-math, física y 96 rayos de sombra en el mismo hilo) pueden caer por debajo de 60; todos los techos por frame (XRCE, heartbeat, presupuesto 3D) escalan con los FPS.",
+    "R4 [?] Memoria: 256 MiB de heap + 24 MiB de arena + 64 MiB CDRAM son topes de código; el USER_RW real con ATTRIBUTE2=12 (~365 MiB) y el respaldo de vita2d a RAM no están medidos; un URDF tipo G1 (≈383 k triángulos) desbordaría la arena y caería a la ruta CPU (≤3072 vértices por llamada, gxm_bridge.c:378).",
+    "R5 [I] Paridad API rota: scripts escritos para rclgd que usen TF, logger o propiedades de RosQoS fallarán en la Vita aunque API_PARITY.md diga ✅; cualquier plan de portar gdviz/rclgd_sensors depende de P0 aún no escritos."
+  ],
+  "alternativas": [
+    {
+      "workshop": "W1-vita-sdk",
+      "alternativa": "Mover el bombeo XRCE (y decodificación pesada) a un hilo nativo sceKernelCreateThread fijado a USER_1/USER_2 con cola msg-ring, fuera del WorkerThreadPool de Godot",
+      "estado": "no considerada en el post; requiere probar el shim (R1)"
+    },
+    {
+      "workshop": "W1-vita-sdk",
+      "alternativa": "Compilar la plantilla con optimize=speed (-O3 -ffast-math, detect.py:149-150) y medir FPS/tamaño frente a -Os; fast-math puede alterar is_nan/is_inf de Godot",
+      "estado": "mencionada como hecho, sin experimento propuesto"
+    },
+    {
+      "workshop": "W1-red-xrce",
+      "alternativa": "Llamar a poll() más de una vez por frame (o uxr_run_session_time con timeout pequeño tras publicar) y/o añadir 2 búferes best effort para subir el techo de 30 KB/s; o subir RELIABLE_HISTORY a 32 para elevar el techo de recepción a ~15 KiB",
+      "estado": "no considerada"
+    },
+    {
+      "workshop": "W4-portabilidad",
+      "alternativa": "Relay/decimador en el PC (nodo ROS 2 que convierte SensorDataQoS best effort a mensajes pequeños fiables) en vez de ampliar el transporte en la Vita",
+      "estado": "considerada (recomendación c) — correcta"
+    },
+    {
+      "workshop": "W4-portabilidad",
+      "alternativa": "Corregir primero API_PARITY.md (TF ⏳, logger ⏳) antes de implementar P0, para que el estado documentado sea veraz",
+      "estado": "implícita en T-W4-1; debería ser tarea propia inmediata"
+    },
+    {
+      "workshop": "W5-urdf",
+      "alternativa": "Reutilizar tools/urdf2godot (+ blender_diezmar.py) ya presente en el árbol en lugar de un @tool nuevo; o exportar URDF→glTF en el PC",
+      "estado": "no considerada en el post"
+    },
+    {
+      "workshop": "W7-motor",
+      "alternativa": "Para líneas/puntos/color por vértice: generar cintas de triángulos con textura-paleta 1D (filtro POINT ayuda a no mezclar colores) o parchear gxm_bridge para aceptar vita2d_color_vertex con color por vértice",
+      "estado": "lo primero considerado (W4 capa GXM-safe); el parche del puente no"
+    },
+    {
+      "workshop": "W7-motor",
+      "alternativa": "Desactivar los rayos de sombra del render (o separar capas) para liberar el espacio de física al usuario",
+      "estado": "considerada como riesgo, sin opción concreta"
+    }
+  ]
+}

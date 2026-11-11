@@ -1,0 +1,336 @@
+5:> (`scratchpad/ozuba/{gdviz,rclgd_sensors,rclgd_arm_demo}`), sin ejecutar nada.
+14:| `rs:` | clon `rclgd_sensors/addons/rclgd-sensors/` |
+29:| R2 | Solo instancias cuya base es un `Mesh` (`owns_mesh`) | `GXM:912` **[V]**; MultiMesh es `DummyMultiMesh` en el almacenamiento base (`servers/rendering/dummy/storage/mesh_storage.h:56`) **[V]** | `MultiMeshInstance3D` **no se dibuja**: `VizPoseVisuals` (`gv:core/viz_pose_visuals.gd:16-17`) ⇒ TF, Odometry, Path, Pose, PoseArray, PoseWithCovariance, vectores; `CUBE_LIST`/`SPHERE_LIST` (`gv:displays/_marker_base.gd:269-280`); `point_stamped.gd:21-22` |
+32:| R5 | Solo la pantalla principal (sin SubViewport) | `GXM:839-841` **[V]**; ADR 0008 §5 enmienda **[V]** | `gv:ui/viz_main.gd:19-20,98` (vista 3D dentro de `SubViewportContainer`) y `gv:displays/camera.gd:33,73` |
+33:| R6 | Presupuesto de triángulos 60 000 (ajustable 2 000–80 000) y *culling* por distancia >22–40 m | `GXM:858`, `gxm_camera_lod.h:9-17` **[V]** | Mapas grandes o nubes lejanas pueden desaparecer **[I]** |
+36:| R9 | Label3D con *billboard*: no hay ruta específica en GXM | sin coincidencias de billboard en `GXM` salvo los *glows* (`GXM:973`) **[V]** | Etiquetas de TF/marcadores: **[?]** probablemente sin orientación a cámara; alternativa 2D (`Camera3D.unproject_position` + `Label` en `CanvasLayer`) |
+44:| Los lectores *reliable* no casan con escritores *best effort* (regla DDS de QoS) | **[I]** (regla estándar DDS); los drivers de lidar/cámara suelen publicar *SensorDataQoS* best effort ⇒ hace falta *relay* en el PC |
+70:| `viz_property.gd`, `viz_status.gd`, `viz_yaml.gd`, `viz_config.gd`, `viz_cloud_field.gd`, `viz_view_controller.gd`, `viz_tool.gd` | TC | Lógica pura (propiedades, parser YAML/.rviz, rayos de cámara) **[V]** (sin APIs GPU ni rclgd fuera de las ✅); `viz_config` usa `FileAccess` → rutas `user://`/`ux0:` **[I]** | S |
+73:| `viz_pose_visuals.gd` (110) | AD (núcleo) | `MultiMesh` (R2) → hornear N transformadas en **una** `ArrayMesh` por color en CPU (o N `MeshInstance3D` si N ≤ ~50) | M |
+74:| `viz_point_cloud.gd` (351) | C++ / reescribir | Todo el diseño es «blob → textura RF + `VERTEX_ID` en shader» (`:5-16,134-173`) **[V]** ⇒ inviable (R1, R4). Sustituto: puntos decodificados (C) → malla de triángulos (2 por punto, cruz fija o cara a cámara) coloreada por **textura paleta + UV** (R3) | L |
+85:| **`laser_scan.gd`** (68) | AD + C++ | Bucle por rayo con `encode_float` (`:51-63`) **[V]** → coste GDScript (§3); además alimenta `_cloud_display` → `VizPointCloud` (IMP) | M |
+93:| **`_marker_base.gd`** (387) + `marker.gd`, `marker_array.gd` | AD | ARROW/CUBE/SPHERE/CYLINDER (mallas `MeshInstance3D`) TC; LINE_* (`:254-258`, R1); CUBE/SPHERE_LIST por MultiMesh (`:269-280`, R2); POINTS → `VizPointCloud` (`:314`); TEXT → `Label3D` (`:333`, R9); colores por vértice (`:256,357,373`, R3) **[V]**. MarkerArray real suele exceder 7,5 KiB **[I]** | M |
+94:| `pose.gd`, `pose_array.gd`, `pose_with_covariance.gd`, `_vector_pair.gd` (+`accel/twist/wrench_stamped.gd`), `point_stamped.gd`, `axes.gd`, `effort.gd`, `range.gd` | AD | Todos pasan por `VizPoseVisuals`/MultiMesh o colores por vértice (`axes.gd:48-54`, `point_stamped.gd:21-53`) **[V]**; se arreglan solos al adaptar el núcleo (§1.1) | S c/u |
+95:| `_scalar_sensor.gd` + `temperature/illuminance/fluid_pressure/relative_humidity.gd` | AD | `Label3D` *billboard* (R9); mensajes pequeños **[V]** | S |
+97:| **`camera.gd`** (261) | AD (parcial) / IMP (superposición 3D) | Superpone la escena 3D a la imagen con `SubViewport` (`:33,73`) **[V]** (R5) → solo imagen 2D sin superposición | M |
+107:| `tools/measure.gd`, `select.gd`, `interact.gd`, `focus_camera.gd`, `move_camera.gd` | AD | Rayos y cámara puros; `measure.gd` usa línea + Label3D (`:32,77`) **[V]**; `interact` depende de interactive markers (P2) | S |
+108:| `views/orbit.gd`, `fps.gd`, `top_down_ortho.gd`, `xy_orbit.gd`, `third_person_follower.gd` | AD | Matemática de cámara TC; entrada de ratón/rueda → sticks/táctil **[I]**; `orbit.gd` usa `SphereMesh` como foco (malla, OK) | S c/u |
+115:| `gvx:addons/rclgd/gen/*.gd` (≈ 120) | TC (clave) | Clases sombra en **GDScript puro**: `extends RosMsg`, `init("tipo")`, propiedades vía `get_member/set_member` (p. ej. `rclgd_sensors/addons/rclgd/gen/RosSensorMsgsImu.gd:1-20`) **[V]** — todo existe en `RosMsg` de la Vita (`rv:ros_msg.cpp:718-729`) ⇒ **puente gratuito hasta T3.2.4** para `RosXxx.new()` **[I]**; los mensajes *recibidos* siguen siendo `RosMsg` | S |
+119:### 1.4 rclgd_sensors
+123:| `ros_sensor.gd` (100) | AD | Base pura: `RosNode`, `create_publisher` con `RosQoS` por *setters* ✅ (`:68-73`), `create_timer` ✅, pero `create_tf_broadcaster/send_transform` (`:30-32`) **no existen** hoy (§0.3) **[V]** | S (tras P0 TF) |
+125:| `ros_imu/ros_imu.gd` (119) | AD | IMU simulada sobre `RigidBody3D` (`:49-68`) con GodotPhysics (Jolt off, `detect.py:83`) **[V]**; en la Vita real lo natural es `Input.get_accelerometer/gyroscope` (`docs/18:98-100`, ya hecho en `godot/g7-imu`) **[V]** | S |
+126:| `ros_gps/ros_gps.gd` (69) | TC | Ruido gaussiano + NavSatFix (`:36-67`) puros **[V]**; tras P0 TF | S |
+127:| `ros_camera/ros_camera.gd` (194) + `depth_compositor.gd` + `DepthCapture.glsl` | IMP | `SubViewport` + `RenderingDevice` + `Compositor` (`:27,45,76-125`) **[V]** (R5; sin RD) | — |
+128:| `ros_lidar/ros_lidar.gd` (423) + `lidar_compositor.gd` + `LidarFaceCapture.glsl` + `LidarStitch.glsl` | IMP → reemplazar | Cubemap de 6 SubViewports + compute (`:32-162`) **[V]** → sustituto en GDScript con `PhysicsDirectSpaceState3D.intersect_ray` (360 rayos, ~5 Hz) **[I]** | M |
+129:| `ros_fisheye_camera/*` (+`FisheyeStitch.glsl`) | IMP | Igual que cámara **[V]** | — |
+130:| `*_gizmo.gd`, `sensor_gizmo.gd`, `plugin.gd` | PC | Editor (`EditorNode3DGizmoPlugin`) **[I]** | — |
+131:| `Scenes/sensors.tscn` | AD | `WorldEnvironment` con `PanoramaSkyMaterial` EXR 2k + Sponza glTF **[V]** (listado del `.tscn`) → cielo/escena ligeros | M |
+132:| `Scenes/FreeCam/freecam.gd`, `FpsOverlay/fps_overlay.gd` | AD / TC | Cámara libre con ratón → sticks; overlay de FPS 2D TC **[I]** | S |
+138:| `Scenes/arm/arm.gd` (304) | AD (patrón) | Planta: sub `/joint_commands` JointState, pub `/joint_states` 100 Hz, TF 50 Hz (`:25-60,142-148,290-302`) **[V]**; `create_subscriber` (`:145`) es el nombre **antiguo** (ros2_vita solo `create_subscription`) **[V]**; clases sombra `RosSensorMsgsJointState` (`:111,148`) **[V]**; `HingeJoint3D` con motores Jolt (`:13,90,133`) → GodotPhysics o `use_physics=false` (FK) **[I]** | M |
+140:| `addons/rclgd-sensors/*` (copia antigua) | IMP / AD | Versión antigua de la §1.4 (`LidarShader.glsl`, `RenderingDevice`) **[V]** | — |
+154:| `RosNode.new()+init` / `resolve_frame` | `rs:ros_sensor.gd:28-31` | 🟡/✅ | ✅ | — | — | todas |
+158:| `create_timer` | `rs:ros_sensor.gd:58` | ✅ | ✅ | — | — | planta |
+161:| `RosQoS` *setters* + constantes | `rs:ros_sensor.gd:68-72` | 🟡 | ✅ | — | — | planta |
+163:| `create_tf_broadcaster()` + `send_transform(t, child, parent, static[, stamp])` | `rs:ros_sensor.gd:30-32`, `arm:Scenes/arm/arm.gd:190,296` | ✅ | **❌ no registrado** | implementar (`tf2_msgs/TFMessage` en `/tf`,`/tf_static`; 5.º arg `stamp`) | **P0** | planta, sensores |
+169:| Clases tipadas `RosXxx.new()` | `rs:ros_imu/ros_imu.gd:27`, `arm.gd:148` | ⏳ T3.2.4 | ⏳; **puente**: clases sombra GDScript de `gen/` compilan contra `RosMsg` | empaquetar `gen/*.gd` del tipo usado | P1 (puente S) | planta, sensores |
+180:| Mensaje | Bytes en cable | ¿Llega hoy? | (a) GDScript CPU | (b) C en `msg-schema`/módulo dual → `PackedVector3Array`/`Image` | (c) PC pre-decimado | Recomendación |
+182:| LaserScan 360 | ≈ 2,95 KB | solo fiable (fragmentado) y solo si el publicador es fiable (§0.2) **[I]** | bucle `gv:displays/laser_scan.gd:51-63` + cinta de triángulos: 360 × ~15 ops ≈ **5–11 ms** **[I]** → aceptable a 5 Hz, no a 30 | **< 0,2 ms** + construir 720 triángulos ≈ 0,1 ms **[I]** | relay a fiable; o `int16` cm × 180 rayos ≈ 400 B ⇒ cabe en best effort | (c)-relay QoS **+** (b) si se usa > 5 Hz; (a) válido para el primer hito |
+183:| OccupancyGrid 384×384 | 147 KB | **no** (techo ≈ 7,5 KiB) **[V/I]** | LUT 147 456 celdas × ~4 ops ≈ **0,6–1,2 s** **[I]**; el truco `Image L8` sin bucle no sirve porque `int8[]` llega como `PackedInt32Array` (`rv:ros_msg.cpp:476-484`) **[V]** | ≈ 0,5 ms LUT + conversión RGBA8 del motor (`TEX:66`) **[I]**; no resuelve el transporte | mapa reducido (128×128) como `CompressedImage` PNG ≈ 2–6 KB **[I]** → `load_png_from_buffer` (C++) | **(c)** obligatorio; (b) solo si se sube el techo XRCE |
+187:**Nota de arquitectura (ADR 0008 §1):** la lógica de decodificación no va en el C++ de `ros2_vita` sino en un módulo dual (`modules/*`, C + Rust, paridad) **[V]** (`docs/adr/0008-godot-via-modulo-estatico.md:22-25`); `ros2_vita` solo la expone (p. ej. métodos estáticos que devuelvan `PackedVector3Array`/`Image`). En el PC (rclgd) hace falta un *fallback* GDScript con la misma firma para que el script sea portable **[I]**.
+198:| Servicios expuestos | `context` (`VizContext`: `ros_node`, `frames` = `VizFrameManager`, `registry`, `scene_root`, `camera`, `now()`, `topics_of_type()`); `add_property()/add_category()`; `set_status()`; `transform_for(msg)`; helpers `screen_ray/ground_point/pick` en tools | `gv:core/viz_context.gd:23-30,56,89`; `viz_display.gd:171-216`; `viz_tool.gd:94-137` **[V]** |
+206:## 5. rclgd_sensors: lógica pura vs GPU
+210:| `ros_sensor.gd` | ciclo de vida, `_advertise` con QoS, *jitter* inicial, `to_ns`/`write_stamp`, conversiones (`:27-100`) **[V]** | — |
+212:| `ros_imu.gd` | derivada de velocidad, gravedad, sesgos *random walk*, covarianzas (`:49-119`) **[V]** — física GodotPhysics **[I]** | — |
+213:| `ros_gps.gd` | error correlacionado y NavSatFix (`:36-69`) **[V]** | — |
+214:| `ros_camera.gd` | construcción de `Image`/`CameraInfo` (`:161-194`) **[V]** | SubViewport, `RenderingDevice`, `Compositor`, `DepthCapture.glsl` (`:27-125`) |
+215:| `ros_lidar.gd` | empaquetado PointCloud2 y campos (`:404-423`) **[V]** | 6 SubViewports + compute + 2 GLSL (`:32-162`) |
+216:| `ros_fisheye_camera.gd` | mensajes (`:213-240`) | SubViewport + `FisheyeStitch.glsl` |
+234:| rclgd_sensors | `420d4d4f2561cc2971cda261f7a32482cb806ccb` «Gizmos, improvements…» | 2026-10-06 | MIT, © 2024 Miguel Oroz Zubasti **[V]** | 4.7 |
+237:Clones superficiales (1 commit cada uno) **[V]**. Base de paridad: rclgd `4d0a8b3`/`jazzy@fb12a65` (`rv:API_PARITY.md:3-5`) **[V]**; gdviz y rclgd_sensors aún usan clases sombra (`gen/`), anteriores a las clases nativas **[V]**.
+    43 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/ros_init.gd
+   129 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/rclgd.gd
+    79 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/sensor_gizmo.gd
+   100 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_sensor.gd
+    57 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/publish_queue.gd
+    33 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/plugin.gd
+   107 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/Scenes/FreeCam/freecam.gd
+    24 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/Scenes/FpsOverlay/fps_overlay.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsUvCoordinate.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsMeshFile.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsMenuEntry.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsMarkerArray.gd
+    82 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsMarker.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerUpdate.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerPose.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerInit.gd
+    42 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerFeedback.gd
+    38 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerControl.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsInteractiveMarker.gd
+    58 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisualizationMsgsImageMarker.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsVisionInfo.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsVisionClass.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsPose2d.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsPoint2d.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsObjectHypothesisWithPose.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsObjectHypothesis.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsLabelInfo.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsDetection3dArray.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsDetection3d.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsDetection2dArray.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsDetection2d.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsClassification.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsBoundingBox3dArray.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsBoundingBox3d.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsBoundingBox2dArray.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosVisionMsgsBoundingBox2d.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosUniqueIdentifierMsgsUuid.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTypeDescriptionInterfacesTypeSource.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTypeDescriptionInterfacesTypeDescription.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTypeDescriptionInterfacesKeyValue.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTypeDescriptionInterfacesIndividualTypeDescription.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTypeDescriptionInterfacesFieldType.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTypeDescriptionInterfacesField.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTurtlesimPose.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTurtlesimColor.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTrajectoryMsgsMultiDofJointTrajectoryPoint.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTrajectoryMsgsMultiDofJointTrajectory.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTrajectoryMsgsJointTrajectoryPoint.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTrajectoryMsgsJointTrajectory.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTheoraImageTransportPacket.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTf2MsgsTfMessage.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosTf2MsgsTf2Error.gd
+    38 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStereoMsgsDisparityImage.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt8MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt8.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt64MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt64.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt32MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt32.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt16MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsUInt16.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsString.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsMultiArrayLayout.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsMultiArrayDimension.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt8MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt8.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt64MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt64.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt32MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt32.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt16MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsInt16.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsHeader.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsFloat64MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsFloat64.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsFloat32MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsFloat32.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsEmpty.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsColorRgba.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsChar.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsByteMultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsByte.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStdMsgsBool.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStatisticsMsgsStatisticDataType.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStatisticsMsgsStatisticDataPoint.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosStatisticsMsgsMetricsMessage.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosShapeMsgsSolidPrimitive.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosShapeMsgsPlane.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosShapeMsgsMeshTriangle.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosShapeMsgsMesh.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosServiceMsgsServiceEventInfo.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsTimeReference.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsTemperature.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsRelativeHumidity.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsRegionOfInterest.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsRange.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsPointField.gd
+    42 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsPointCloud2.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsPointCloud.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsNavSatStatus.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsNavSatFix.gd
+    46 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsMultiEchoLaserScan.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsMultiDofJointState.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsMagneticField.gd
+    46 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsLaserScan.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsLaserEcho.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsJoyFeedbackArray.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsJoyFeedback.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsJoy.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsJointState.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsImu.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsImage.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsIlluminance.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsFluidPressure.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsCompressedImage.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsChannelFloat32.gd
+    50 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsCameraInfo.gd
+    70 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosSensorMsgsBatteryState.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosgraphMsgsClock.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosbag2InterfacesWriteSplitEvent.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosbag2InterfacesReadSplitEvent.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesWorldReset.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesWorldControl.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesVideoRecord.gd
+    46 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesTrackVisual.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesStringVec.gd
+    42 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesSensorNoise.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesParamVec.gd
+    38 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesMaterialColor.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesLogicalCameraImageModel.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesLogicalCameraImage.gd
+    78 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesLight.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesJointWrench.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesGuiCamera.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesFloat32Array.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesEntityWrench.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesEntityFactory.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesEntity.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesDataframe.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesContacts.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesContact.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRosGzInterfacesAltimeter.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRmwDdsCommonParticipantEntitiesInfo.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRmwDdsCommonNodeEntitiesInfo.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRmwDdsCommonGid.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesSetParametersResult.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesSetLoggerLevelsResult.gd
+    46 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesParameterValue.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesParameterType.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesParameterEventDescriptors.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesParameterEvent.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesParameterDescriptor.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesParameter.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesLoggerLevel.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesLog.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesListParametersResult.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesIntegerRange.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosRclInterfacesFloatingPointRange.gd
+    42 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPendulumMsgsRttestResults.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPendulumMsgsJointState.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPendulumMsgsJointCommand.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPclMsgsVertices.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPclMsgsPolygonMesh.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPclMsgsPointIndices.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosPclMsgsModelCoefficients.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosNavMsgsPath.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosNavMsgsOdometry.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosNavMsgsOccupancyGrid.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosNavMsgsMapMetaData.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosNavMsgsGridCells.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosNavMsgsGoals.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonWheelSpeeds.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonTrack.gd
+    17 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonGate.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonFlatPoseDist.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonEntityList.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonEntity.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonDebugEntityList.gd
+    17 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonDebugEntity.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonCarParameters.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonCarControl.gd
+    38 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonCar.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonBezierCurvePoint.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMirenaCommonBezierCurve.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMapMsgsProjectedMapInfo.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMapMsgsProjectedMap.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMapMsgsPointCloud2Update.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosMapMsgsOccupancyGridUpdate.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosLifecycleMsgsTransitionEvent.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosLifecycleMsgsTransitionDescription.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosLifecycleMsgsTransition.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosLifecycleMsgsState.gd
+    54 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGpsMsgsGpsStatus.gd
+   122 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGpsMsgsGpsFix.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsWrenchStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsWrench.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsVelocityStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsVector3Stamped.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsVector3.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsTwistWithCovarianceStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsTwistWithCovariance.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsTwistStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsTwist.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsTransformStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsTransform.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsQuaternionStamped.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsQuaternion.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPoseWithCovarianceStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPoseWithCovariance.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPoseStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPoseArray.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPose2d.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPose.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPolygonStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPolygonInstanceStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPolygonInstance.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPolygon.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPointStamped.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPoint32.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsPoint.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsInertiaStamped.gd
+    38 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsInertia.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsAccelWithCovarianceStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsAccelWithCovariance.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsAccelStamped.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosGeometryMsgsAccel.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesWString.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt8MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt8.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt64MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt64.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt32MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt32.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt16MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesUInt16.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesString.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesMultiArrayLayout.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesMultiArrayDimension.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt8MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt8.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt64MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt64.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt32MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt32.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt16MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesInt16.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesFloat64MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesFloat64.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesFloat32MultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesFloat32.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesEmpty.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesChar.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesByteMultiArray.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesByte.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosExampleInterfacesBool.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosDiagnosticMsgsKeyValue.gd
+    26 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosDiagnosticMsgsDiagnosticStatus.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosDiagnosticMsgsDiagnosticArray.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosBuiltinInterfacesTime.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosBuiltinInterfacesDuration.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsVelocity.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsPosition.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsNormalized.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsLinearVelocity.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsLinearPosition.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsAngularVelocity.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuatorsAngularPosition.gd
+    22 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActuatorMsgsActuators.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActionlibMsgsGoalStatusArray.gd
+    18 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActionlibMsgsGoalStatus.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActionlibMsgsGoalId.gd
+    10 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActionMsgsGoalStatusArray.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActionMsgsGoalStatus.gd
+    14 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd/gen/RosActionMsgsGoalInfo.gd
+    62 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_lidar/ros_lidar_gizmo.gd
+   423 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_lidar/ros_lidar.gd
+   118 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_lidar/lidar_compositor.gd
+    34 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_imu/ros_imu_gizmo.gd
+   119 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_imu/ros_imu.gd
+    30 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_gps/ros_gps_gizmo.gd
+    69 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_gps/ros_gps.gd
+    65 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_fisheye_camera/ros_fisheye_camera_gizmo.gd
+   427 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_fisheye_camera/ros_fisheye_camera.gd
+    42 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_camera/ros_camera_gizmo.gd
+   194 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_camera/ros_camera.gd
+   117 /tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_camera/depth_compositor.gd
+  7350 total

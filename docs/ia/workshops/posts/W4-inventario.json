@@ -1,0 +1,4603 @@
+{
+  "workshop": "W4",
+  "autor": "inventario (haiku)",
+  "repos": {
+    "gdviz": {
+      "commit": "7d05d35ed23a23a67ed403dbdeb967c009313e2e",
+      "fecha": "2026-08-02 22:50:35 +0000",
+      "licencia": "MIT License",
+      "godot": "4.7.1",
+      "archivos": [
+        {
+          "ruta": "addons/gdviz/core/viz_cloud_field.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_config.gd",
+          "lineas": 141,
+          "rclgd": [],
+          "usa": [
+            "FileAccess"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_context.gd",
+          "lineas": 172,
+          "rclgd": [
+            "RosNode",
+            "create_publisher",
+            "get_topic_names_and_types"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_convert.gd",
+          "lineas": 184,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "from_type"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_display.gd",
+          "lineas": 248,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_frame_manager.gd",
+          "lineas": 199,
+          "rclgd": [
+            "RosNode",
+            "create_tf_listener",
+            "lookup_transform"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_image_codec.gd",
+          "lineas": 259,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_materials.gd",
+          "lineas": 107,
+          "rclgd": [],
+          "usa": [
+            "MultiMesh"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_mesh_loader.gd",
+          "lineas": 476,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": [
+            "FileAccess",
+            "XMLParser"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_point_cloud.gd",
+          "lineas": 351,
+          "rclgd": [],
+          "usa": [
+            "ShaderMaterial",
+            ".gdshader (preload/load)"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_pose_visuals.gd",
+          "lineas": 110,
+          "rclgd": [],
+          "usa": [
+            "MultiMesh"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_property.gd",
+          "lineas": 295,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_registry.gd",
+          "lineas": 257,
+          "rclgd": [],
+          "usa": [
+            "GDScript.new",
+            "reload()",
+            "FileAccess"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_shapes.gd",
+          "lineas": 231,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_status.gd",
+          "lineas": 81,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_tool.gd",
+          "lineas": 147,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_topic_display.gd",
+          "lineas": 183,
+          "rclgd": [
+            "RosMsg",
+            "create_subscription",
+            "RosQoS"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_urdf.gd",
+          "lineas": 298,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": [
+            "XMLParser"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_view_controller.gd",
+          "lineas": 127,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/core/viz_yaml.gd",
+          "lineas": 327,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/_cloud_display.gd",
+          "lineas": 287,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/_marker_base.gd",
+          "lineas": 387,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": [
+            "MultiMesh"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/displays/_scalar_sensor.gd",
+          "lineas": 134,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/_vector_pair.gd",
+          "lineas": 153,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/accel_stamped.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/axes.gd",
+          "lineas": 71,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/camera.gd",
+          "lineas": 261,
+          "rclgd": [
+            "RosMsg",
+            "create_subscription"
+          ],
+          "usa": [
+            "SubViewport"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/displays/depth_cloud.gd",
+          "lineas": 230,
+          "rclgd": [
+            "RosMsg",
+            "create_subscription"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/effort.gd",
+          "lineas": 188,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "create_subscription",
+            "RosQoS"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/fluid_pressure.gd",
+          "lineas": 30,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/grid.gd",
+          "lineas": 122,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/grid_cells.gd",
+          "lineas": 99,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/illuminance.gd",
+          "lineas": 30,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/image.gd",
+          "lineas": 130,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/interactive_markers.gd",
+          "lineas": 674,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "create_publisher",
+            "create_subscription",
+            "create_client",
+            "from_type"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/laser_scan.gd",
+          "lineas": 68,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/map.gd",
+          "lineas": 218,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "create_subscription"
+          ],
+          "usa": [
+            "ShaderMaterial",
+            ".gdshader (preload/load)"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/displays/marker.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/marker_array.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/odometry.gd",
+          "lineas": 213,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/path.gd",
+          "lineas": 164,
+          "rclgd": [
+            "RosMsg",
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/point_cloud.gd",
+          "lineas": 66,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/point_cloud2.gd",
+          "lineas": 27,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/point_stamped.gd",
+          "lineas": 106,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": [
+            "MultiMesh"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/displays/polygon.gd",
+          "lineas": 79,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/pose.gd",
+          "lineas": 109,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/pose_array.gd",
+          "lineas": 120,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/pose_with_covariance.gd",
+          "lineas": 200,
+          "rclgd": [
+            "RosMsg",
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/range.gd",
+          "lineas": 121,
+          "rclgd": [
+            "RosMsg",
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/relative_humidity.gd",
+          "lineas": 30,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/robot_model.gd",
+          "lineas": 248,
+          "rclgd": [
+            "RosMsg",
+            "create_subscription",
+            "RosQoS"
+          ],
+          "usa": [
+            "FileAccess"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/displays/temperature.gd",
+          "lineas": 30,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/tf.gd",
+          "lineas": 217,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/twist_stamped.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/displays/wrench_stamped.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/shaders/occupancy_grid.gdshader",
+          "lineas": 65,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/shaders/point_cloud.gdshader",
+          "lineas": 233,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/_pose_tool.gd",
+          "lineas": 128,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "create_publisher",
+            "from_type"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/focus_camera.gd",
+          "lineas": 43,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/interact.gd",
+          "lineas": 50,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/measure.gd",
+          "lineas": 92,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/move_camera.gd",
+          "lineas": 20,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/publish_point.gd",
+          "lineas": 69,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "create_publisher",
+            "from_type"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/select.gd",
+          "lineas": 62,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/set_goal.gd",
+          "lineas": 31,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/tools/set_initial_pose.gd",
+          "lineas": 59,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_add_display_dialog.gd",
+          "lineas": 175,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_capture.gd",
+          "lineas": 127,
+          "rclgd": [
+            "declare_parameter",
+            "get_parameter"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_color_popup.gd",
+          "lineas": 23,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_displays_panel.gd",
+          "lineas": 427,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_main.gd",
+          "lineas": 616,
+          "rclgd": [
+            "RosNode",
+            "rclgd.",
+            "declare_parameter",
+            "get_parameter"
+          ],
+          "usa": [
+            "SubViewport",
+            "FileAccess"
+          ]
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_pick_popup.gd",
+          "lineas": 93,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_property_rows.gd",
+          "lineas": 243,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_selection_panel.gd",
+          "lineas": 54,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_time_panel.gd",
+          "lineas": 74,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_tool_properties_panel.gd",
+          "lineas": 123,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/ui/viz_views_panel.gd",
+          "lineas": 184,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/views/fps.gd",
+          "lineas": 162,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/views/orbit.gd",
+          "lineas": 199,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/views/third_person_follower.gd",
+          "lineas": 62,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/views/top_down_ortho.gd",
+          "lineas": 136,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/gdviz/views/xy_orbit.gd",
+          "lineas": 47,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosBuiltinInterfacesDuration.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosBuiltinInterfacesTime.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccel.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccelStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccelWithCovariance.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccelWithCovarianceStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsInertia.gd",
+          "lineas": 40,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsInertiaStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoint.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoint32.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPointStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygon.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygonInstance.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygonInstanceStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygonStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPose.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPose2d.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseWithCovariance.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseWithCovarianceStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsQuaternion.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsQuaternionStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTransform.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTransformStamped.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwist.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwistStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwistWithCovariance.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwistWithCovarianceStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVector3.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVector3Stamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVelocityStamped.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVelocityWithCovarianceStamped.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsWrench.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsWrenchStamped.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsOccupancyGridUpdate.gd",
+          "lineas": 32,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsPointCloud2Update.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsProjectedMap.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsProjectedMapInfo.gd",
+          "lineas": 36,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsGoals.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsGridCells.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsMapMetaData.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsOccupancyGrid.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsOdometry.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsPath.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsTrajectory.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsTrajectoryPoint.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsBatteryState.gd",
+          "lineas": 72,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsCameraInfo.gd",
+          "lineas": 52,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsChannelFloat32.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsCompressedImage.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsFluidPressure.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsIlluminance.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsImage.gd",
+          "lineas": 36,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsImu.gd",
+          "lineas": 36,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJointState.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJoy.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJoyFeedback.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJoyFeedbackArray.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsLaserEcho.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsLaserScan.gd",
+          "lineas": 48,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsMagneticField.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsMultiDofJointState.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsMultiEchoLaserScan.gd",
+          "lineas": 48,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsNavSatFix.gd",
+          "lineas": 36,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsNavSatStatus.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsPointCloud.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsPointCloud2.gd",
+          "lineas": 44,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsPointField.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsRange.gd",
+          "lineas": 36,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsRegionOfInterest.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsRelativeHumidity.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsTemperature.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsTimeReference.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsMesh.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsMeshTriangle.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsPlane.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsSolidPrimitive.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsBool.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsByte.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsByteMultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsChar.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsColorRgba.gd",
+          "lineas": 24,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsEmpty.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat32.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat32MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat64.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat64MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsHeader.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt16.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt16MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt32.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt32MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt64.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt64MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt8.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt8MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsMultiArrayDimension.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsMultiArrayLayout.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsString.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt16.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt16MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt32.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt32MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt64.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt64MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt8.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt8MultiArray.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTf2MsgsTf2Error.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTf2MsgsTfMessage.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsImageMarker.gd",
+          "lineas": 60,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarker.gd",
+          "lineas": 36,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerControl.gd",
+          "lineas": 40,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerFeedback.gd",
+          "lineas": 44,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerInit.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerPose.gd",
+          "lineas": 20,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerUpdate.gd",
+          "lineas": 32,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMarker.gd",
+          "lineas": 84,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMarkerArray.gd",
+          "lineas": 12,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMenuEntry.gd",
+          "lineas": 28,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMeshFile.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsUvCoordinate.gd",
+          "lineas": 16,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/plugin.cfg",
+          "lineas": 7,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/rclgd.gd",
+          "lineas": 129,
+          "rclgd": [
+            "RosMsg",
+            "rclgd."
+          ],
+          "usa": [
+            "FileAccess",
+            "XMLParser"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd/ros_init.gd",
+          "lineas": 43,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "examples/gdviz_plugins/battery_display.gd",
+          "lineas": 103,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "examples/gdviz_plugins/publish_twist_tool.gd",
+          "lineas": 71,
+          "rclgd": [
+            "RosMsg",
+            "rclgd.",
+            "create_publisher",
+            "from_type"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "examples/gdviz_plugins/turntable_view.gd",
+          "lineas": 53,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "main.tscn",
+          "lineas": 16,
+          "rclgd": [],
+          "usa": []
+        }
+      ],
+      "tipos_ros": [
+        "builtin_interfaces/msg/Duration",
+        "builtin_interfaces/msg/Time",
+        "example_interfaces/msg/WString",
+        "geometry_msgs/msg/Accel",
+        "geometry_msgs/msg/AccelStamped",
+        "geometry_msgs/msg/AccelWithCovariance",
+        "geometry_msgs/msg/AccelWithCovarianceStamped",
+        "geometry_msgs/msg/Inertia",
+        "geometry_msgs/msg/InertiaStamped",
+        "geometry_msgs/msg/Point",
+        "geometry_msgs/msg/Point32",
+        "geometry_msgs/msg/PointStamped",
+        "geometry_msgs/msg/Polygon",
+        "geometry_msgs/msg/PolygonInstance",
+        "geometry_msgs/msg/PolygonInstanceStamped",
+        "geometry_msgs/msg/PolygonStamped",
+        "geometry_msgs/msg/Pose",
+        "geometry_msgs/msg/Pose2D",
+        "geometry_msgs/msg/PoseArray",
+        "geometry_msgs/msg/PoseStamped",
+        "geometry_msgs/msg/PoseWithCovariance",
+        "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "geometry_msgs/msg/Quaternion",
+        "geometry_msgs/msg/QuaternionStamped",
+        "geometry_msgs/msg/Transform",
+        "geometry_msgs/msg/TransformStamped",
+        "geometry_msgs/msg/Twist",
+        "geometry_msgs/msg/TwistStamped",
+        "geometry_msgs/msg/TwistWithCovariance",
+        "geometry_msgs/msg/TwistWithCovarianceStamped",
+        "geometry_msgs/msg/Vector3",
+        "geometry_msgs/msg/Vector3Stamped",
+        "geometry_msgs/msg/VelocityStamped",
+        "geometry_msgs/msg/VelocityWithCovarianceStamped",
+        "geometry_msgs/msg/Wrench",
+        "geometry_msgs/msg/WrenchStamped",
+        "map_msgs/msg/OccupancyGridUpdate",
+        "map_msgs/msg/PointCloud2Update",
+        "map_msgs/msg/ProjectedMap",
+        "map_msgs/msg/ProjectedMapInfo",
+        "nav_msgs/msg/Goals",
+        "nav_msgs/msg/GridCells",
+        "nav_msgs/msg/MapMetaData",
+        "nav_msgs/msg/OccupancyGrid",
+        "nav_msgs/msg/Odometry",
+        "nav_msgs/msg/Path",
+        "nav_msgs/msg/Trajectory",
+        "nav_msgs/msg/TrajectoryPoint",
+        "sensor_msgs/msg/BatteryState",
+        "sensor_msgs/msg/CameraInfo",
+        "sensor_msgs/msg/ChannelFloat32",
+        "sensor_msgs/msg/CompressedImage",
+        "sensor_msgs/msg/FluidPressure",
+        "sensor_msgs/msg/Illuminance",
+        "sensor_msgs/msg/Image",
+        "sensor_msgs/msg/Imu",
+        "sensor_msgs/msg/JointState",
+        "sensor_msgs/msg/Joy",
+        "sensor_msgs/msg/JoyFeedback",
+        "sensor_msgs/msg/JoyFeedbackArray",
+        "sensor_msgs/msg/LaserEcho",
+        "sensor_msgs/msg/LaserScan",
+        "sensor_msgs/msg/MagneticField",
+        "sensor_msgs/msg/MultiDOFJointState",
+        "sensor_msgs/msg/MultiEchoLaserScan",
+        "sensor_msgs/msg/NavSatFix",
+        "sensor_msgs/msg/NavSatStatus",
+        "sensor_msgs/msg/PointCloud",
+        "sensor_msgs/msg/PointCloud2",
+        "sensor_msgs/msg/PointField",
+        "sensor_msgs/msg/Range",
+        "sensor_msgs/msg/RegionOfInterest",
+        "sensor_msgs/msg/RelativeHumidity",
+        "sensor_msgs/msg/Temperature",
+        "sensor_msgs/msg/TimeReference",
+        "shape_msgs/msg/Mesh",
+        "shape_msgs/msg/MeshTriangle",
+        "shape_msgs/msg/Plane",
+        "shape_msgs/msg/SolidPrimitive",
+        "std_msgs/msg/Bool",
+        "std_msgs/msg/Byte",
+        "std_msgs/msg/ByteMultiArray",
+        "std_msgs/msg/Char",
+        "std_msgs/msg/ColorRGBA",
+        "std_msgs/msg/Empty",
+        "std_msgs/msg/Float32",
+        "std_msgs/msg/Float32MultiArray",
+        "std_msgs/msg/Float64",
+        "std_msgs/msg/Float64MultiArray",
+        "std_msgs/msg/Header",
+        "std_msgs/msg/Int16",
+        "std_msgs/msg/Int16MultiArray",
+        "std_msgs/msg/Int32",
+        "std_msgs/msg/Int32MultiArray",
+        "std_msgs/msg/Int64",
+        "std_msgs/msg/Int64MultiArray",
+        "std_msgs/msg/Int8",
+        "std_msgs/msg/Int8MultiArray",
+        "std_msgs/msg/MultiArrayDimension",
+        "std_msgs/msg/MultiArrayLayout",
+        "std_msgs/msg/String",
+        "std_msgs/msg/UInt16",
+        "std_msgs/msg/UInt16MultiArray",
+        "std_msgs/msg/UInt32",
+        "std_msgs/msg/UInt32MultiArray",
+        "std_msgs/msg/UInt64",
+        "std_msgs/msg/UInt64MultiArray",
+        "std_msgs/msg/UInt8",
+        "std_msgs/msg/UInt8MultiArray",
+        "tf2_msgs/msg/TF2Error",
+        "tf2_msgs/msg/TFMessage",
+        "vision_msgs/msg/VisionClass",
+        "visualization_msgs/msg/ImageMarker",
+        "visualization_msgs/msg/InteractiveMarker",
+        "visualization_msgs/msg/InteractiveMarkerControl",
+        "visualization_msgs/msg/InteractiveMarkerFeedback",
+        "visualization_msgs/msg/InteractiveMarkerInit",
+        "visualization_msgs/msg/InteractiveMarkerPose",
+        "visualization_msgs/msg/InteractiveMarkerUpdate",
+        "visualization_msgs/msg/Marker",
+        "visualization_msgs/msg/MarkerArray",
+        "visualization_msgs/msg/MenuEntry",
+        "visualization_msgs/msg/MeshFile",
+        "visualization_msgs/msg/UVCoordinate",
+        "visualization_msgs/srv/GetInteractiveMarkers"
+      ]
+    },
+    "rclgd_sensors": {
+      "commit": "420d4d4f2561cc2971cda261f7a32482cb806ccb",
+      "fecha": "2026-10-06 22:10:36 +0000",
+      "licencia": "MIT License",
+      "godot": "4.7",
+      "archivos": [
+        {
+          "ruta": "Assets/Textures/Asphalt/Asphalt.tres",
+          "lineas": 32,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "Scenes/FpsOverlay/fps_overlay.gd",
+          "lineas": 24,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "Scenes/FreeCam/freecam.gd",
+          "lineas": 107,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "Scenes/sensors.tscn",
+          "lineas": 130,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/plugin.cfg",
+          "lineas": 7,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/plugin.gd",
+          "lineas": 33,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/publish_queue.gd",
+          "lineas": 57,
+          "rclgd": [],
+          "usa": [
+            "Thread"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_camera/DepthCapture.glsl",
+          "lineas": 37,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_camera/depth_compositor.gd",
+          "lineas": 117,
+          "rclgd": [],
+          "usa": [
+            "RenderingDevice"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_camera/ros_camera.gd",
+          "lineas": 194,
+          "rclgd": [
+            "RosMsg",
+            "send_transform"
+          ],
+          "usa": [
+            "RenderingDevice",
+            "SubViewport"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_camera/ros_camera_gizmo.gd",
+          "lineas": 42,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_fisheye_camera/FisheyeStitch.glsl",
+          "lineas": 168,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_fisheye_camera/ros_fisheye_camera.gd",
+          "lineas": 427,
+          "rclgd": [
+            "RosMsg",
+            "send_transform"
+          ],
+          "usa": [
+            "RenderingDevice",
+            "SubViewport"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_fisheye_camera/ros_fisheye_camera_gizmo.gd",
+          "lineas": 65,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_gps/ros_gps.gd",
+          "lineas": 69,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_gps/ros_gps_gizmo.gd",
+          "lineas": 30,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_imu/ros_imu.gd",
+          "lineas": 119,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_imu/ros_imu_gizmo.gd",
+          "lineas": 34,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/LidarFaceCapture.glsl",
+          "lineas": 71,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/LidarStitch.glsl",
+          "lineas": 200,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/lidar_compositor.gd",
+          "lineas": 118,
+          "rclgd": [],
+          "usa": [
+            "RenderingDevice"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/ros_lidar.gd",
+          "lineas": 423,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": [
+            "RenderingDevice",
+            "SubViewport"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/ros_lidar_gizmo.gd",
+          "lineas": 62,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_sensor.gd",
+          "lineas": 100,
+          "rclgd": [
+            "RosNode",
+            "RosMsg",
+            "create_publisher",
+            "create_tf_broadcaster",
+            "create_timer",
+            "RosQoS",
+            "send_transform"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/sensor_gizmo.gd",
+          "lineas": 79,
+          "rclgd": [],
+          "usa": [
+            "FileAccess"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActionMsgsGoalInfo.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActionMsgsGoalStatus.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActionMsgsGoalStatusArray.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActionlibMsgsGoalId.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActionlibMsgsGoalStatus.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActionlibMsgsGoalStatusArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuators.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsAngularPosition.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsAngularVelocity.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsLinearPosition.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsLinearVelocity.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsNormalized.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsPosition.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosActuatorMsgsActuatorsVelocity.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosBuiltinInterfacesDuration.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosBuiltinInterfacesTime.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosDiagnosticMsgsDiagnosticArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosDiagnosticMsgsDiagnosticStatus.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosDiagnosticMsgsKeyValue.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesBool.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesByte.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesByteMultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesChar.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesEmpty.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesFloat32.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesFloat32MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesFloat64.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesFloat64MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt16.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt16MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt32.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt32MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt64.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt64MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt8.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesInt8MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesMultiArrayDimension.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesMultiArrayLayout.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesString.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt16.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt16MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt32.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt32MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt64.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt64MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt8.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesUInt8MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosExampleInterfacesWString.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccel.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccelStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccelWithCovariance.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsAccelWithCovarianceStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsInertia.gd",
+          "lineas": 38,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsInertiaStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoint.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoint32.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPointStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygon.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygonInstance.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygonInstanceStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPolygonStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPose.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPose2d.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseWithCovariance.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsPoseWithCovarianceStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsQuaternion.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsQuaternionStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTransform.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTransformStamped.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwist.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwistStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwistWithCovariance.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsTwistWithCovarianceStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVector3.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVector3Stamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsVelocityStamped.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsWrench.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGeometryMsgsWrenchStamped.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGpsMsgsGpsFix.gd",
+          "lineas": 122,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosGpsMsgsGpsStatus.gd",
+          "lineas": 54,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosLifecycleMsgsState.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosLifecycleMsgsTransition.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosLifecycleMsgsTransitionDescription.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosLifecycleMsgsTransitionEvent.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsOccupancyGridUpdate.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsPointCloud2Update.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsProjectedMap.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMapMsgsProjectedMapInfo.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonBezierCurve.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonBezierCurvePoint.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonCar.gd",
+          "lineas": 38,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonCarControl.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonCarParameters.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonDebugEntity.gd",
+          "lineas": 17,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonDebugEntityList.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonEntity.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonEntityList.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonFlatPoseDist.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonGate.gd",
+          "lineas": 17,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonTrack.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosMirenaCommonWheelSpeeds.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsGoals.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsGridCells.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsMapMetaData.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsOccupancyGrid.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsOdometry.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosNavMsgsPath.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPclMsgsModelCoefficients.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPclMsgsPointIndices.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPclMsgsPolygonMesh.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPclMsgsVertices.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPendulumMsgsJointCommand.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPendulumMsgsJointState.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosPendulumMsgsRttestResults.gd",
+          "lineas": 42,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesFloatingPointRange.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesIntegerRange.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesListParametersResult.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesLog.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesLoggerLevel.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesParameter.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesParameterDescriptor.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesParameterEvent.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesParameterEventDescriptors.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesParameterType.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesParameterValue.gd",
+          "lineas": 46,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesSetLoggerLevelsResult.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRclInterfacesSetParametersResult.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRmwDdsCommonGid.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRmwDdsCommonNodeEntitiesInfo.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRmwDdsCommonParticipantEntitiesInfo.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesAltimeter.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesContact.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesContacts.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesDataframe.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesEntity.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesEntityFactory.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesEntityWrench.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesFloat32Array.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesGuiCamera.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesJointWrench.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesLight.gd",
+          "lineas": 78,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesLogicalCameraImage.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesLogicalCameraImageModel.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesMaterialColor.gd",
+          "lineas": 38,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesParamVec.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesSensorNoise.gd",
+          "lineas": 42,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesStringVec.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesTrackVisual.gd",
+          "lineas": 46,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesVideoRecord.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesWorldControl.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosGzInterfacesWorldReset.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosbag2InterfacesReadSplitEvent.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosbag2InterfacesWriteSplitEvent.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosRosgraphMsgsClock.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsBatteryState.gd",
+          "lineas": 70,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsCameraInfo.gd",
+          "lineas": 50,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsChannelFloat32.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsCompressedImage.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsFluidPressure.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsIlluminance.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsImage.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsImu.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJointState.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJoy.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJoyFeedback.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsJoyFeedbackArray.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsLaserEcho.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsLaserScan.gd",
+          "lineas": 46,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsMagneticField.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsMultiDofJointState.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsMultiEchoLaserScan.gd",
+          "lineas": 46,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsNavSatFix.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsNavSatStatus.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsPointCloud.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsPointCloud2.gd",
+          "lineas": 42,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsPointField.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsRange.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsRegionOfInterest.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsRelativeHumidity.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsTemperature.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosSensorMsgsTimeReference.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosServiceMsgsServiceEventInfo.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsMesh.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsMeshTriangle.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsPlane.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosShapeMsgsSolidPrimitive.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStatisticsMsgsMetricsMessage.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStatisticsMsgsStatisticDataPoint.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStatisticsMsgsStatisticDataType.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsBool.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsByte.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsByteMultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsChar.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsColorRgba.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsEmpty.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat32.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat32MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat64.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsFloat64MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsHeader.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt16.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt16MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt32.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt32MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt64.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt64MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt8.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsInt8MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsMultiArrayDimension.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsMultiArrayLayout.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsString.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt16.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt16MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt32.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt32MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt64.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt64MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt8.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStdMsgsUInt8MultiArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosStereoMsgsDisparityImage.gd",
+          "lineas": 38,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTf2MsgsTf2Error.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTf2MsgsTfMessage.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTheoraImageTransportPacket.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTrajectoryMsgsJointTrajectory.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTrajectoryMsgsJointTrajectoryPoint.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTrajectoryMsgsMultiDofJointTrajectory.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTrajectoryMsgsMultiDofJointTrajectoryPoint.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTurtlesimColor.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTurtlesimPose.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTypeDescriptionInterfacesField.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTypeDescriptionInterfacesFieldType.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTypeDescriptionInterfacesIndividualTypeDescription.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTypeDescriptionInterfacesKeyValue.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTypeDescriptionInterfacesTypeDescription.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosTypeDescriptionInterfacesTypeSource.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosUniqueIdentifierMsgsUuid.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsBoundingBox2d.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsBoundingBox2dArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsBoundingBox3d.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsBoundingBox3dArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsClassification.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsDetection2d.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsDetection2dArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsDetection3d.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsDetection3dArray.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsLabelInfo.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsObjectHypothesis.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsObjectHypothesisWithPose.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsPoint2d.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsPose2d.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsVisionClass.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisionMsgsVisionInfo.gd",
+          "lineas": 22,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsImageMarker.gd",
+          "lineas": 58,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarker.gd",
+          "lineas": 34,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerControl.gd",
+          "lineas": 38,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerFeedback.gd",
+          "lineas": 42,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerInit.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerPose.gd",
+          "lineas": 18,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsInteractiveMarkerUpdate.gd",
+          "lineas": 30,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMarker.gd",
+          "lineas": 82,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMarkerArray.gd",
+          "lineas": 10,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMenuEntry.gd",
+          "lineas": 26,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsMeshFile.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/gen/RosVisualizationMsgsUvCoordinate.gd",
+          "lineas": 14,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/plugin.cfg",
+          "lineas": 7,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/rclgd.gd",
+          "lineas": 129,
+          "rclgd": [
+            "RosMsg",
+            "rclgd."
+          ],
+          "usa": [
+            "FileAccess",
+            "XMLParser"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd/ros_init.gd",
+          "lineas": 43,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        }
+      ],
+      "tipos_ros": [
+        "action_msgs/msg/GoalInfo",
+        "action_msgs/msg/GoalStatus",
+        "action_msgs/msg/GoalStatusArray",
+        "actionlib_msgs/msg/GoalID",
+        "actionlib_msgs/msg/GoalStatus",
+        "actionlib_msgs/msg/GoalStatusArray",
+        "actuator_msgs/msg/Actuators",
+        "actuator_msgs/msg/ActuatorsAngularPosition",
+        "actuator_msgs/msg/ActuatorsAngularVelocity",
+        "actuator_msgs/msg/ActuatorsLinearPosition",
+        "actuator_msgs/msg/ActuatorsLinearVelocity",
+        "actuator_msgs/msg/ActuatorsNormalized",
+        "actuator_msgs/msg/ActuatorsPosition",
+        "actuator_msgs/msg/ActuatorsVelocity",
+        "builtin_interfaces/msg/Duration",
+        "builtin_interfaces/msg/Time",
+        "diagnostic_msgs/msg/DiagnosticArray",
+        "diagnostic_msgs/msg/DiagnosticStatus",
+        "diagnostic_msgs/msg/KeyValue",
+        "example_interfaces/msg/Bool",
+        "example_interfaces/msg/Byte",
+        "example_interfaces/msg/ByteMultiArray",
+        "example_interfaces/msg/Char",
+        "example_interfaces/msg/Empty",
+        "example_interfaces/msg/Float32",
+        "example_interfaces/msg/Float32MultiArray",
+        "example_interfaces/msg/Float64",
+        "example_interfaces/msg/Float64MultiArray",
+        "example_interfaces/msg/Int16",
+        "example_interfaces/msg/Int16MultiArray",
+        "example_interfaces/msg/Int32",
+        "example_interfaces/msg/Int32MultiArray",
+        "example_interfaces/msg/Int64",
+        "example_interfaces/msg/Int64MultiArray",
+        "example_interfaces/msg/Int8",
+        "example_interfaces/msg/Int8MultiArray",
+        "example_interfaces/msg/MultiArrayDimension",
+        "example_interfaces/msg/MultiArrayLayout",
+        "example_interfaces/msg/String",
+        "example_interfaces/msg/UInt16",
+        "example_interfaces/msg/UInt16MultiArray",
+        "example_interfaces/msg/UInt32",
+        "example_interfaces/msg/UInt32MultiArray",
+        "example_interfaces/msg/UInt64",
+        "example_interfaces/msg/UInt64MultiArray",
+        "example_interfaces/msg/UInt8",
+        "example_interfaces/msg/UInt8MultiArray",
+        "example_interfaces/msg/WString",
+        "geometry_msgs/msg/Accel",
+        "geometry_msgs/msg/AccelStamped",
+        "geometry_msgs/msg/AccelWithCovariance",
+        "geometry_msgs/msg/AccelWithCovarianceStamped",
+        "geometry_msgs/msg/Inertia",
+        "geometry_msgs/msg/InertiaStamped",
+        "geometry_msgs/msg/Point",
+        "geometry_msgs/msg/Point32",
+        "geometry_msgs/msg/PointStamped",
+        "geometry_msgs/msg/Polygon",
+        "geometry_msgs/msg/PolygonInstance",
+        "geometry_msgs/msg/PolygonInstanceStamped",
+        "geometry_msgs/msg/PolygonStamped",
+        "geometry_msgs/msg/Pose",
+        "geometry_msgs/msg/Pose2D",
+        "geometry_msgs/msg/PoseArray",
+        "geometry_msgs/msg/PoseStamped",
+        "geometry_msgs/msg/PoseWithCovariance",
+        "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "geometry_msgs/msg/Quaternion",
+        "geometry_msgs/msg/QuaternionStamped",
+        "geometry_msgs/msg/Transform",
+        "geometry_msgs/msg/TransformStamped",
+        "geometry_msgs/msg/Twist",
+        "geometry_msgs/msg/TwistStamped",
+        "geometry_msgs/msg/TwistWithCovariance",
+        "geometry_msgs/msg/TwistWithCovarianceStamped",
+        "geometry_msgs/msg/Vector3",
+        "geometry_msgs/msg/Vector3Stamped",
+        "geometry_msgs/msg/VelocityStamped",
+        "geometry_msgs/msg/Wrench",
+        "geometry_msgs/msg/WrenchStamped",
+        "gps_msgs/msg/GPSFix",
+        "gps_msgs/msg/GPSStatus",
+        "lifecycle_msgs/msg/State",
+        "lifecycle_msgs/msg/Transition",
+        "lifecycle_msgs/msg/TransitionDescription",
+        "lifecycle_msgs/msg/TransitionEvent",
+        "map_msgs/msg/OccupancyGridUpdate",
+        "map_msgs/msg/PointCloud2Update",
+        "map_msgs/msg/ProjectedMap",
+        "map_msgs/msg/ProjectedMapInfo",
+        "mirena_common/msg/BezierCurve",
+        "mirena_common/msg/BezierCurvePoint",
+        "mirena_common/msg/Car",
+        "mirena_common/msg/CarControl",
+        "mirena_common/msg/CarParameters",
+        "mirena_common/msg/DebugEntity",
+        "mirena_common/msg/DebugEntityList",
+        "mirena_common/msg/Entity",
+        "mirena_common/msg/EntityList",
+        "mirena_common/msg/FlatPoseDist",
+        "mirena_common/msg/Gate",
+        "mirena_common/msg/Track",
+        "mirena_common/msg/WheelSpeeds",
+        "nav_msgs/msg/Goals",
+        "nav_msgs/msg/GridCells",
+        "nav_msgs/msg/MapMetaData",
+        "nav_msgs/msg/OccupancyGrid",
+        "nav_msgs/msg/Odometry",
+        "nav_msgs/msg/Path",
+        "pcl_msgs/msg/ModelCoefficients",
+        "pcl_msgs/msg/PointIndices",
+        "pcl_msgs/msg/PolygonMesh",
+        "pcl_msgs/msg/Vertices",
+        "pendulum_msgs/msg/JointCommand",
+        "pendulum_msgs/msg/JointState",
+        "pendulum_msgs/msg/RttestResults",
+        "rcl_interfaces/msg/FloatingPointRange",
+        "rcl_interfaces/msg/IntegerRange",
+        "rcl_interfaces/msg/ListParametersResult",
+        "rcl_interfaces/msg/Log",
+        "rcl_interfaces/msg/LoggerLevel",
+        "rcl_interfaces/msg/Parameter",
+        "rcl_interfaces/msg/ParameterDescriptor",
+        "rcl_interfaces/msg/ParameterEvent",
+        "rcl_interfaces/msg/ParameterEventDescriptors",
+        "rcl_interfaces/msg/ParameterType",
+        "rcl_interfaces/msg/ParameterValue",
+        "rcl_interfaces/msg/SetLoggerLevelsResult",
+        "rcl_interfaces/msg/SetParametersResult",
+        "rmw_dds_common/msg/Gid",
+        "rmw_dds_common/msg/NodeEntitiesInfo",
+        "rmw_dds_common/msg/ParticipantEntitiesInfo",
+        "ros_gz_interfaces/msg/Altimeter",
+        "ros_gz_interfaces/msg/Contact",
+        "ros_gz_interfaces/msg/Contacts",
+        "ros_gz_interfaces/msg/Dataframe",
+        "ros_gz_interfaces/msg/Entity",
+        "ros_gz_interfaces/msg/EntityFactory",
+        "ros_gz_interfaces/msg/EntityWrench",
+        "ros_gz_interfaces/msg/Float32Array",
+        "ros_gz_interfaces/msg/GuiCamera",
+        "ros_gz_interfaces/msg/JointWrench",
+        "ros_gz_interfaces/msg/Light",
+        "ros_gz_interfaces/msg/LogicalCameraImage",
+        "ros_gz_interfaces/msg/LogicalCameraImageModel",
+        "ros_gz_interfaces/msg/MaterialColor",
+        "ros_gz_interfaces/msg/ParamVec",
+        "ros_gz_interfaces/msg/SensorNoise",
+        "ros_gz_interfaces/msg/StringVec",
+        "ros_gz_interfaces/msg/TrackVisual",
+        "ros_gz_interfaces/msg/VideoRecord",
+        "ros_gz_interfaces/msg/WorldControl",
+        "ros_gz_interfaces/msg/WorldReset",
+        "rosbag2_interfaces/msg/ReadSplitEvent",
+        "rosbag2_interfaces/msg/WriteSplitEvent",
+        "rosgraph_msgs/msg/Clock",
+        "sensor_msgs/msg/BatteryState",
+        "sensor_msgs/msg/CameraInfo",
+        "sensor_msgs/msg/ChannelFloat32",
+        "sensor_msgs/msg/CompressedImage",
+        "sensor_msgs/msg/FluidPressure",
+        "sensor_msgs/msg/Illuminance",
+        "sensor_msgs/msg/Image",
+        "sensor_msgs/msg/Imu",
+        "sensor_msgs/msg/JointState",
+        "sensor_msgs/msg/Joy",
+        "sensor_msgs/msg/JoyFeedback",
+        "sensor_msgs/msg/JoyFeedbackArray",
+        "sensor_msgs/msg/LaserEcho",
+        "sensor_msgs/msg/LaserScan",
+        "sensor_msgs/msg/MagneticField",
+        "sensor_msgs/msg/MultiDOFJointState",
+        "sensor_msgs/msg/MultiEchoLaserScan",
+        "sensor_msgs/msg/NavSatFix",
+        "sensor_msgs/msg/NavSatStatus",
+        "sensor_msgs/msg/PointCloud",
+        "sensor_msgs/msg/PointCloud2",
+        "sensor_msgs/msg/PointField",
+        "sensor_msgs/msg/Range",
+        "sensor_msgs/msg/RegionOfInterest",
+        "sensor_msgs/msg/RelativeHumidity",
+        "sensor_msgs/msg/Temperature",
+        "sensor_msgs/msg/TimeReference",
+        "service_msgs/msg/ServiceEventInfo",
+        "shape_msgs/msg/Mesh",
+        "shape_msgs/msg/MeshTriangle",
+        "shape_msgs/msg/Plane",
+        "shape_msgs/msg/SolidPrimitive",
+        "statistics_msgs/msg/MetricsMessage",
+        "statistics_msgs/msg/StatisticDataPoint",
+        "statistics_msgs/msg/StatisticDataType",
+        "std_msgs/msg/Bool",
+        "std_msgs/msg/Byte",
+        "std_msgs/msg/ByteMultiArray",
+        "std_msgs/msg/Char",
+        "std_msgs/msg/ColorRGBA",
+        "std_msgs/msg/Empty",
+        "std_msgs/msg/Float32",
+        "std_msgs/msg/Float32MultiArray",
+        "std_msgs/msg/Float64",
+        "std_msgs/msg/Float64MultiArray",
+        "std_msgs/msg/Header",
+        "std_msgs/msg/Int16",
+        "std_msgs/msg/Int16MultiArray",
+        "std_msgs/msg/Int32",
+        "std_msgs/msg/Int32MultiArray",
+        "std_msgs/msg/Int64",
+        "std_msgs/msg/Int64MultiArray",
+        "std_msgs/msg/Int8",
+        "std_msgs/msg/Int8MultiArray",
+        "std_msgs/msg/MultiArrayDimension",
+        "std_msgs/msg/MultiArrayLayout",
+        "std_msgs/msg/String",
+        "std_msgs/msg/UInt16",
+        "std_msgs/msg/UInt16MultiArray",
+        "std_msgs/msg/UInt32",
+        "std_msgs/msg/UInt32MultiArray",
+        "std_msgs/msg/UInt64",
+        "std_msgs/msg/UInt64MultiArray",
+        "std_msgs/msg/UInt8",
+        "std_msgs/msg/UInt8MultiArray",
+        "stereo_msgs/msg/DisparityImage",
+        "tf2_msgs/msg/TF2Error",
+        "tf2_msgs/msg/TFMessage",
+        "theora_image_transport/msg/Packet",
+        "trajectory_msgs/msg/JointTrajectory",
+        "trajectory_msgs/msg/JointTrajectoryPoint",
+        "trajectory_msgs/msg/MultiDOFJointTrajectory",
+        "trajectory_msgs/msg/MultiDOFJointTrajectoryPoint",
+        "turtlesim/msg/Color",
+        "turtlesim/msg/Pose",
+        "type_description_interfaces/msg/Field",
+        "type_description_interfaces/msg/FieldType",
+        "type_description_interfaces/msg/IndividualTypeDescription",
+        "type_description_interfaces/msg/KeyValue",
+        "type_description_interfaces/msg/TypeDescription",
+        "type_description_interfaces/msg/TypeSource",
+        "unique_identifier_msgs/msg/UUID",
+        "vision_msgs/msg/BoundingBox2D",
+        "vision_msgs/msg/BoundingBox2DArray",
+        "vision_msgs/msg/BoundingBox3D",
+        "vision_msgs/msg/BoundingBox3DArray",
+        "vision_msgs/msg/Classification",
+        "vision_msgs/msg/Detection2D",
+        "vision_msgs/msg/Detection2DArray",
+        "vision_msgs/msg/Detection3D",
+        "vision_msgs/msg/Detection3DArray",
+        "vision_msgs/msg/LabelInfo",
+        "vision_msgs/msg/ObjectHypothesis",
+        "vision_msgs/msg/ObjectHypothesisWithPose",
+        "vision_msgs/msg/Point2D",
+        "vision_msgs/msg/Pose2D",
+        "vision_msgs/msg/VisionClass",
+        "vision_msgs/msg/VisionInfo",
+        "visualization_msgs/msg/ImageMarker",
+        "visualization_msgs/msg/InteractiveMarker",
+        "visualization_msgs/msg/InteractiveMarkerControl",
+        "visualization_msgs/msg/InteractiveMarkerFeedback",
+        "visualization_msgs/msg/InteractiveMarkerInit",
+        "visualization_msgs/msg/InteractiveMarkerPose",
+        "visualization_msgs/msg/InteractiveMarkerUpdate",
+        "visualization_msgs/msg/Marker",
+        "visualization_msgs/msg/MarkerArray",
+        "visualization_msgs/msg/MenuEntry",
+        "visualization_msgs/msg/MeshFile",
+        "visualization_msgs/msg/UVCoordinate"
+      ]
+    },
+    "rclgd_arm_demo": {
+      "commit": "e6c9713d75e226ed47857bd8fefbcb989f642981",
+      "fecha": "2026-06-16 15:39:57 +0000",
+      "licencia": "ausente",
+      "godot": "4.6",
+      "archivos": [
+        {
+          "ruta": "Assets/Textures/Asphalt/Asphalt.tres",
+          "lineas": 32,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "Scenes/arm/arm.gd",
+          "lineas": 304,
+          "rclgd": [
+            "RosNode",
+            "RosMsg",
+            "create_publisher",
+            "create_subscriber",
+            "create_tf_broadcaster",
+            "send_transform"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "Scenes/arm/arm.tscn",
+          "lineas": 134,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "Scenes/sim/SimEnv.tscn",
+          "lineas": 125,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/freecam_3D/freecam.gd",
+          "lineas": 146,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/freecam_3D/plugin.cfg",
+          "lineas": 7,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/freecam_3D/plugin.gd",
+          "lineas": 17,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_camera/ros_camera.gd",
+          "lineas": 131,
+          "rclgd": [
+            "RosNode",
+            "RosMsg",
+            "create_publisher",
+            "create_tf_broadcaster",
+            "create_timer",
+            "send_transform"
+          ],
+          "usa": [
+            "RenderingDevice",
+            "SubViewport"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_gps/ros_gps.gd",
+          "lineas": 88,
+          "rclgd": [
+            "RosNode",
+            "create_publisher",
+            "create_tf_broadcaster",
+            "create_timer",
+            "send_transform"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_imu/ros_imu.gd",
+          "lineas": 123,
+          "rclgd": [
+            "RosNode",
+            "create_publisher",
+            "create_tf_broadcaster",
+            "create_timer",
+            "send_transform"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/LidarShader.glsl",
+          "lineas": 81,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/lidar_compositor.gd",
+          "lineas": 197,
+          "rclgd": [],
+          "usa": [
+            "RenderingDevice"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd-sensors/ros_lidar/ros_lidar.gd",
+          "lineas": 142,
+          "rclgd": [
+            "RosNode",
+            "RosMsg",
+            "create_publisher",
+            "create_tf_broadcaster",
+            "create_timer",
+            "send_transform"
+          ],
+          "usa": [
+            "RenderingDevice",
+            "SubViewport"
+          ]
+        },
+        {
+          "ruta": "addons/rclgd/plugin.cfg",
+          "lineas": 7,
+          "rclgd": [],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/rclgd.gd",
+          "lineas": 50,
+          "rclgd": [
+            "RosMsg"
+          ],
+          "usa": []
+        },
+        {
+          "ruta": "addons/rclgd/ros_init.gd",
+          "lineas": 22,
+          "rclgd": [
+            "rclgd."
+          ],
+          "usa": []
+        }
+      ],
+      "tipos_ros": [
+        "sensor_msgs/msg/CameraInfo",
+        "sensor_msgs/msg/Image",
+        "sensor_msgs/msg/Imu",
+        "sensor_msgs/msg/JointState",
+        "sensor_msgs/msg/NavSatFix",
+        "sensor_msgs/msg/PointCloud2",
+        "trajectory_msgs/msg/JointTrajectory"
+      ]
+    }
+  },
+  "dudas": [
+    "[?] rclgd_arm_demo: no hay archivo LICENSE en la raíz; revisar README o cabeceras antes de asumir licencia.",
+    "[?] El campo 'godot' toma la primera versión de config/features; puede no coincidir con la versión de edición exacta.",
+    "[?] Tipos ROS: búsqueda por regex sobre todo el texto del repo (incluye README y comentarios); puede contar menciones no usadas en código."
+  ]
+}
