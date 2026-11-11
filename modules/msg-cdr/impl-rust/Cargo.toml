@@ -1,0 +1,19 @@
+# Cargo.toml — crate Rust del módulo `msg-cdr` (estructura igual que mem-pool;
+# la explicación larga de rlib/standalone/panic está allí).
+[package]
+name = "msg_cdr_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[features]
+default = ["standalone"]
+standalone = []
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

@@ -1,0 +1,32 @@
+; Proyecto mínimo de la puerta G4 (docs/18 §8): arranca en la Vita, inicia rclgd con el
+; transporte loopback y hace un pub/sub de geometry_msgs/msg/Twist. Se exporta con
+; tools/export-vita-vpk.sh (que añade el addon psvita y la plantilla sobre una copia).
+config_version=5
+
+[application]
+
+config/name="ros2_vita G4 smoke"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.8", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=544
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/psvita/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+
+[ros]
+
+schema_path="res://ros/schema.rsch"
+
+[threading]
+
+worker_pool/max_threads=2

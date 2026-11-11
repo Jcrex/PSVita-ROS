@@ -1,0 +1,10 @@
+header.stamp.sec=1
+header.stamp.nanosec=1
+header.frame_id="gps"
+status.status=0
+status.service=1
+latitude=42.8125
+longitude=-1.6457999999999999
+altitude=450.5
+position_covariance=[9]#6ee325165125e084
+position_covariance_type=2

@@ -1,0 +1,9 @@
+layout.dim=[2]
+layout.dim[0].label="rows"
+layout.dim[0].size=2
+layout.dim[0].stride=6
+layout.dim[1].label="cols"
+layout.dim[1].size=3
+layout.dim[1].stride=3
+layout.data_offset=0
+data=[6]#6009db03884514b4

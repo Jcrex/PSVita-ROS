@@ -1,0 +1,6 @@
+# Caché de imports del editor (se regenera sola)
+.import/
+# Template compilado por scripts/build-vita-template.sh (artefacto binario)
+build/
+# Capturas de video del editor (no son documentación del repo)
+videos/

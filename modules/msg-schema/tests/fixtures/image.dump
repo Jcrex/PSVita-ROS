@@ -1,0 +1,9 @@
+header.stamp.sec=7
+header.stamp.nanosec=8
+header.frame_id="camera"
+height=4
+width=5
+encoding="rgba8"
+is_bigendian=0
+step=20
+data=[80]#8122fe0087da70b5

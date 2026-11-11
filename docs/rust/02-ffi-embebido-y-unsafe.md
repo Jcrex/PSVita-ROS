@@ -111,8 +111,8 @@ cambia.
 
 `microros_transport_rust` depende de `net_udp_rust` (dependencia de ruta) y
 llama a sus funciones como Rust normal — aunque sean `extern "C"`. El
-binario "todo Rust" se forma con el crate paraguas que re-exporta los tres
-módulos (`pub use`) para que el linker conserve sus símbolos `no_mangle`.
+binario "todo Rust" se forma con el crate paraguas que re-exporta los ocho
+módulos (`pub use`, `vita-app/rust-modules/src/lib.rs:13-20`) para que el linker conserve sus símbolos `no_mangle`.
 Regla aprendida: **un binario, un staticlib de Rust** (cada `.a` arrastra
 su copia de `core`; dos copias = símbolos duplicados).
 

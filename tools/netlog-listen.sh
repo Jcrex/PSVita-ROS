@@ -6,8 +6,13 @@
 #   tools/netlog-listen.sh [puerto] [archivo_de_salida]
 #
 # Debe correr en la máquina cuya IP quedó "baked-in" como NETLOG_IP al
-# compilar el .vpk (por defecto la laptop, 192.168.1.108 — ver
-# vita-app/CMakeLists.txt). La Vita debe estar en la misma red WiFi.
+# compilar el .vpk (ver vita-app/CMakeLists.txt). La Vita debe estar en la
+# misma red WiFi.
+#
+# Filtro de ruido: al 9999 también llegan paquetes binarios de otros
+# dispositivos (el enchufe TP-Link Kasa hace broadcast cada ~25 s). Misma
+# regla que web/scripts/netlog-parser.mjs: quitar controles y descartar la
+# línea si menos del 70 % de sus bytes son ASCII imprimible.
 set -euo pipefail
 
 PORT="${1:-9999}"
@@ -29,7 +34,15 @@ listen() {
     fi
 }
 
-listen | while IFS= read -r line; do
+# LC_ALL=C: las expansiones ${...} cuentan bytes, no caracteres UTF-8.
+listen | LC_ALL=C bash -c '
+while IFS= read -r line; do
+    line="${line//[$'"'"'\x01'"'"'-$'"'"'\x08'"'"'$'"'"'\x0b'"'"'-$'"'"'\x1f'"'"'$'"'"'\x7f'"'"']/}"
+    [ -z "$line" ] && continue
+    asc="${line//[^ -~]/}"
+    (( ${#asc} * 100 < ${#line} * 70 )) && continue
+    printf "%s\n" "$line"
+done' | while IFS= read -r line; do
     ts="$(date '+%H:%M:%S')"
     case "$line" in
         *FATAL*) color="\033[31m" ;;                 # rojo: fallo

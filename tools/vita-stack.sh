@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # vita-stack.sh — arranca/para, con un solo comando, todo lo necesario para
 # una sesión en vivo Vita <-> ROS2 (estilo ~/Documentos/IR2134/DOCKER/rmf.sh,
-# pero para las piezas de ESTE proyecto). Antes había que acordarse a mano
+# pero para las piezas de ESTE proyecto). Desde 2026-10-30 el contenedor ROS2 por
+# defecto es la estación propia del repo (docker/, vita_station + vita_agent);
+# el de IR2134 sigue valiendo con ROS2_DOCKER_DIR=~/Documentos/IR2134/DOCKER
+# ROS2_CONTENEDOR=rmf_unified AGENT_NOMBRE=microros-agent. Antes había que acordarse a mano
 # de: el contenedor ROS2 (rmf_unified), el micro-ROS agent (un `docker run`
 # aparte), el bridge zenoh (REST para el dashboard) y la web — cada uno en
 # su terminal, y era fácil dejarse alguno.
@@ -17,8 +20,8 @@
 #   tools/vita-stack.sh netlog           # primer plano: escucha el netlog UDP
 #
 # Variables de entorno (override si tu setup difiere):
-#   ROS2_DOCKER_DIR (def. ~/Documentos/IR2134/DOCKER), ROS2_CONTENEDOR (def. rmf_unified),
-#   AGENT_IMAGEN (def. microros/micro-ros-agent:jazzy), AGENT_NOMBRE (def. microros-agent),
+#   ROS2_DOCKER_DIR (def. <repo>/docker), ROS2_CONTENEDOR (def. vita_station),
+#   AGENT_IMAGEN (def. microros/micro-ros-agent:jazzy), AGENT_NOMBRE (def. vita_agent),
 #   AGENT_PUERTO (def. 8888), ZENOH_REST_PUERTO (def. 8000), NETLOG_PUERTO (def. 9999)
 set -euo pipefail
 
@@ -27,10 +30,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-ROS2_DOCKER_DIR="${ROS2_DOCKER_DIR:-$HOME/Documentos/IR2134/DOCKER}"
-ROS2_CONTENEDOR="${ROS2_CONTENEDOR:-rmf_unified}"
+ROS2_DOCKER_DIR="${ROS2_DOCKER_DIR:-$REPO_ROOT/docker}"
+ROS2_CONTENEDOR="${ROS2_CONTENEDOR:-vita_station}"
 AGENT_IMAGEN="${AGENT_IMAGEN:-microros/micro-ros-agent:jazzy}"
-AGENT_NOMBRE="${AGENT_NOMBRE:-microros-agent}"
+AGENT_NOMBRE="${AGENT_NOMBRE:-vita_agent}"
 AGENT_PUERTO="${AGENT_PUERTO:-8888}"
 ZENOH_REST_PUERTO="${ZENOH_REST_PUERTO:-8000}"
 NETLOG_PUERTO="${NETLOG_PUERTO:-9999}"
@@ -43,17 +46,24 @@ header() {
 
 contenedor_arriba() { docker ps --format '{{.Names}}' | grep -qx "$1"; }
 
-# ---------------- ros2 (rmf_unified — proyecto externo IR2134) ----------------
+# ---------------- ros2 (estación docker/ del repo, o rmf_unified de IR2134) ----
+# Script de ayuda del contenedor: docker/vita-ros.sh (propio) o rmf.sh (IR2134).
+ros2_script() {
+    if [ -x "$ROS2_DOCKER_DIR/vita-ros.sh" ]; then echo "vita-ros.sh"
+    elif [ -x "$ROS2_DOCKER_DIR/rmf.sh" ]; then echo "rmf.sh"
+    fi
+}
 ros2_up() {
     if contenedor_arriba "$ROS2_CONTENEDOR"; then
         echo -e "${GREEN}[✓]${NC} ros2 ($ROS2_CONTENEDOR) ya está arriba"; return 0
     fi
-    if [ ! -x "$ROS2_DOCKER_DIR/rmf.sh" ]; then
-        echo -e "${RED}[✗]${NC} No encuentro $ROS2_DOCKER_DIR/rmf.sh (ajusta ROS2_DOCKER_DIR)."; return 1
+    local sc; sc="$(ros2_script)"
+    if [ -z "$sc" ]; then
+        echo -e "${RED}[✗]${NC} No encuentro vita-ros.sh ni rmf.sh en $ROS2_DOCKER_DIR (ajusta ROS2_DOCKER_DIR)."; return 1
     fi
-    (cd "$ROS2_DOCKER_DIR" && ./rmf.sh up)
+    (cd "$ROS2_DOCKER_DIR" && ./"$sc" up)
 }
-ros2_down() { (cd "$ROS2_DOCKER_DIR" && ./rmf.sh down); }
+ros2_down() { (cd "$ROS2_DOCKER_DIR" && ./"$(ros2_script)" down); }
 ros2_status() {
     contenedor_arriba "$ROS2_CONTENEDOR" \
         && echo -e "${GREEN}[✓]${NC} ros2 ($ROS2_CONTENEDOR): arriba" \
@@ -65,9 +75,13 @@ agent_up() {
     if contenedor_arriba "$AGENT_NOMBRE"; then
         echo -e "${GREEN}[✓]${NC} agent ya está arriba"; return 0
     fi
-    docker rm -f "$AGENT_NOMBRE" >/dev/null 2>&1 || true
-    docker run -d --name "$AGENT_NOMBRE" --net=host --ipc=host \
-        "$AGENT_IMAGEN" udp4 --port "$AGENT_PUERTO" -v6 >/dev/null
+    if [ "$(ros2_script)" = "vita-ros.sh" ] && [ "$AGENT_NOMBRE" = "vita_agent" ]; then
+        (cd "$ROS2_DOCKER_DIR" && AGENT_PORT="$AGENT_PUERTO" ./vita-ros.sh agent >/dev/null)  # servicio del compose
+    else
+        docker rm -f "$AGENT_NOMBRE" >/dev/null 2>&1 || true
+        docker run -d --name "$AGENT_NOMBRE" --net=host --ipc=host \
+            "$AGENT_IMAGEN" udp4 --port "$AGENT_PUERTO" -v6 >/dev/null
+    fi
     echo -e "${GREEN}[✓]${NC} agent arriba (UDP :$AGENT_PUERTO). Logs: tools/vita-stack.sh agent logs"
 }
 agent_down() {
@@ -82,9 +96,8 @@ agent_status() {
         || echo -e "${YELLOW}[ ]${NC} agent: parado"
 }
 
-# ---------------- bridge (zenoh-bridge-ros2dds dentro de rmf_unified) --------
-# Ya viene instalado en la imagen de rmf_unified (ver su Dockerfile, sección
-# "Instalar Zenoh y Zenoh Bridge"). Se lanza con --rest-http-port para que
+# ---------------- bridge (zenoh-bridge-ros2dds dentro del contenedor ROS2) ----
+# Ya viene instalado en la estación (docker/Dockerfile) y en rmf_unified. Se lanza con --rest-http-port para que
 # el dashboard web (web/src/lib/ros2bridge.ts, ZENOH_REST_URL) pueda leer el
 # grafo de topics por HTTP en vez de "docker exec" desde la propia web.
 bridge_up() {
@@ -146,7 +159,7 @@ Uso: tools/vita-stack.sh <comando>
   down            Para agent + bridge + web (ros2 se deja, por si lo usas para otra cosa)
   status          Resumen de qué está arriba
 
-  ros2   up|down|status       Contenedor ROS2 ($ROS2_CONTENEDOR, delega en $ROS2_DOCKER_DIR/rmf.sh)
+  ros2   up|down|status       Contenedor ROS2 ($ROS2_CONTENEDOR, delega en $ROS2_DOCKER_DIR/$(ros2_script))
   agent  up|down|logs|status  micro-ROS agent (XRCE-DDS <-> ROS2, UDP :$AGENT_PUERTO)
   bridge up|down|logs|status  zenoh-bridge-ros2dds dentro de $ROS2_CONTENEDOR (REST :$ZENOH_REST_PUERTO)
   web    up|down|logs|status  Web del proyecto (docker compose en web/)

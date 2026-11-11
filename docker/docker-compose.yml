@@ -1,0 +1,54 @@
+# =============================================================================
+# Estación ROS 2 de PSVita-ROS — se maneja con ./vita-ros.sh (docker/README.md)
+# =============================================================================
+# Dos servicios en la red del host (la Vita habla UDP con el agente; DDS necesita la red real):
+#   agent    agente micro-ROS (XRCE-DDS, UDP 8888) — la Vita se conecta aquí
+#   station  ROS 2 Jazzy: monitor de la Vita, puente Zenoh, turtlesim, TurtleBot3/Gazebo, RViz2
+# GPU NVIDIA opcional: docker-compose.nvidia.yml (vita-ros.sh la añade si detecta el runtime).
+# =============================================================================
+x-ros-env: &ros-env
+  ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+  # SUBNET y no LOCALHOST: con LOCALHOST no se ven los topics entre contenedores/máquinas
+  # (lección de la bitácora, 2026-07-10). El puente Zenoh es la vía para cruzar a otra red.
+  ROS_AUTOMATIC_DISCOVERY_RANGE: ${ROS_AUTOMATIC_DISCOVERY_RANGE:-SUBNET}
+
+services:
+  agent:
+    image: microros/micro-ros-agent:jazzy
+    container_name: vita_agent
+    network_mode: host
+    ipc: host            # obligatorio: Fast DDS usa memoria compartida entre procesos del mismo host
+    environment: *ros-env
+    command: ["udp4", "--port", "${AGENT_PORT:-8888}", "-v${AGENT_VERBOSE:-4}"]
+    restart: unless-stopped
+
+  station:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: psvita-ros-station:jazzy
+    container_name: vita_station
+    hostname: vita-station
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    environment:
+      <<: *ros-env
+      DISPLAY: ${DISPLAY:-:0}
+      QT_QPA_PLATFORM: xcb
+      XDG_RUNTIME_DIR: /tmp/runtime-root
+      GZ_IP: 127.0.0.1
+      TURTLEBOT3_MODEL: burger
+      VITA_IP: ${VITA_IP:-}
+    volumes:
+      - ./scripts:/scripts:ro
+      - ${VITA_WS_PATH:-./ws}:/ws:rw            # workspace colcon para futuras ampliaciones
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY:-~/.Xauthority}:/root/.Xauthority:ro
+    devices:
+      - /dev/dri:/dev/dri
+    cap_add:
+      - NET_RAW          # tcpdump / captura de los paquetes de la Vita
+      - NET_ADMIN
+    command: bash
