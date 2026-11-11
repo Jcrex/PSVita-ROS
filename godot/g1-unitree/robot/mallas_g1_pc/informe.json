@@ -1,0 +1,186 @@
+{
+ "urdf": "/tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/d90a8c2e-dd6b-4dea-8c32-fe21a8477ad2/scratchpad/unitree/rl_gym/resources/robots/g1_description/g1_29dof_rev_1_0.urdf",
+ "escena": "godot/g1-unitree/robot/g1_pc.tscn",
+ "links": 39,
+ "joints": 38,
+ "movibles": 29,
+ "triangulos_original": 393252,
+ "triangulos_escena": 60633,
+ "mallas": [
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/pelvis_0.obj",
+   "antes": 21216,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/pelvis_contour_link_0.obj",
+   "antes": 36102,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_hip_pitch_link_0.obj",
+   "antes": 3629,
+   "despues": 1481
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_hip_roll_link_0.obj",
+   "antes": 3842,
+   "despues": 1544
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_hip_yaw_link_0.obj",
+   "antes": 5924,
+   "despues": 2138
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_knee_link_0.obj",
+   "antes": 17096,
+   "despues": 4736
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_ankle_pitch_link_0.obj",
+   "antes": 1422,
+   "despues": 733
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_ankle_roll_link_0.obj",
+   "antes": 13066,
+   "despues": 3871
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_hip_pitch_link_0.obj",
+   "antes": 3622,
+   "despues": 1478
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_hip_roll_link_0.obj",
+   "antes": 3852,
+   "despues": 1548
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_hip_yaw_link_0.obj",
+   "antes": 5924,
+   "despues": 2138
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_knee_link_0.obj",
+   "antes": 17044,
+   "despues": 4724
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_ankle_pitch_link_0.obj",
+   "antes": 1422,
+   "despues": 732
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_ankle_roll_link_0.obj",
+   "antes": 13074,
+   "despues": 3873
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/waist_yaw_link_0.obj",
+   "antes": 12398,
+   "despues": 3720
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/waist_roll_link_0.obj",
+   "antes": 1716,
+   "despues": 844
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/torso_link_0.obj",
+   "antes": 51403,
+   "despues": 10815
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/logo_link_0.obj",
+   "antes": 4866,
+   "despues": 1844
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/head_link_0.obj",
+   "antes": 18654,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_shoulder_pitch_link_0.obj",
+   "antes": 3534,
+   "despues": 1451
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_shoulder_roll_link_0.obj",
+   "antes": 8001,
+   "despues": 2679
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_shoulder_yaw_link_0.obj",
+   "antes": 4982,
+   "despues": 1878
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_elbow_link_0.obj",
+   "antes": 1774,
+   "despues": 864
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_wrist_roll_link_0.obj",
+   "antes": 7122,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_wrist_pitch_link_0.obj",
+   "antes": 1718,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_wrist_yaw_link_0.obj",
+   "antes": 6372,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/left_rubber_hand_0.obj",
+   "antes": 45748,
+   "despues": 58
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_shoulder_pitch_link_0.obj",
+   "antes": 3534,
+   "despues": 1451
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_shoulder_roll_link_0.obj",
+   "antes": 8033,
+   "despues": 2687
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_shoulder_yaw_link_0.obj",
+   "antes": 4998,
+   "despues": 1882
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_elbow_link_0.obj",
+   "antes": 1774,
+   "despues": 864
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_wrist_roll_link_0.obj",
+   "antes": 7120,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_wrist_pitch_link_0.obj",
+   "antes": 1590,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_wrist_yaw_link_0.obj",
+   "antes": 6828,
+   "despues": 60
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/g1-unitree/robot/mallas_g1_pc/right_rubber_hand_0.obj",
+   "antes": 43852,
+   "despues": 60
+  }
+ ]
+}

@@ -45,6 +45,7 @@ La IP que muestra `up` es la que va en `ros/agent_ip` del proyecto Godot (p. ej.
 | `topics` / `echo [topic]` | `ros2 topic list -t` / `ros2 topic echo` |
 | `sim` | turtlesim con `/turtle1/cmd_vel` remapeado a `/cmd_vel` (ligero, sin GPU) + `scripts/turtle_odom.py`, que publica su pose como `/odom` (relativa al inicio) para la HMI de la Vita |
 | `sim-tb3` | TurtleBot3 Burger en Gazebo Harmonic (mundo vacío). En Jazzy su `/cmd_vel` es `TwistStamped`; la imagen lo cambia a `Twist` (lo que publica la Vita) en los YAML del puente de Gazebo. GUI: validar en el PC |
+| `g1` / `g1-build` / `g1-clips` | Unitree G1 (proyecto `godot/g1-unitree`): imagen `psvita-ros-g1sim:jazzy` (`docker/g1/`, encima de la estación) con MuJoCo y la política de marcha oficial de `unitree_rl_gym`, en la casa de `docker/g1/casa.json`. `/cmd_vel` → `/g1/estado` (best effort, 25 Hz) + `/joint_states`, `/odom`, `/tf`. `g1-clips` regenera los clips de marcha |
 | `rviz` / `rqt` / `teleop` | RViz2, `rqt_graph`, `teleop_twist_keyboard` (para probar sin la Vita) |
 | `bridge-server` | Puente Zenoh escuchando en TCP 7447 |
 | `bridge-client <IP>` | Puente Zenoh conectando al `bridge-server` |

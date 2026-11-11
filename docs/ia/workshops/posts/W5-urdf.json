@@ -1,0 +1,149 @@
+[
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "Procedencia y hashes de lo analizado",
+  "evidencia": "Prefijos: `store:` = zip descargado de https://store.godotengine.org/asset/brean/godot-urdf/download/7330/ (32 330 B, sha256 9a70211ada5e24a61d6b5b3741fcd77262078441b5a9cda16efb3d64587dd07e, fecha interna 2026-10-17). La ficha ya no es v1.0: el selector muestra v1.2 (por defecto, marcada 'unstable'), v1.1 y v1.0 [V página]. El contenido es idéntico byte a byte a `addons/godot_urdf` del tag v1.2 de codeberg.org/brean/godot_urdf (diff -rq vacío) [V], aunque `plugin.cfg:5` sigue diciendo version=\"1.0\" [V]. `upstream:` = askarkg12/godot_urdf @5708be4 (2025-04-22) [V]. `gdviz:` = Ozuba/gdviz @7d05d35 (2026-08-02, MIT) [V]. Codeberg main va 19 commits por delante de v1.2 (último c3f1710, 2026-11-02, 'add marker and fix naming') [V]. Primer clon de Codeberg dio 504; el segundo funcionó.",
+  "fuentes": [
+   "https://store.godotengine.org/asset/brean/godot-urdf/",
+   "https://codeberg.org/brean/godot_urdf",
+   "https://github.com/askarkg12/godot_urdf",
+   "https://github.com/Ozuba/gdviz"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "0 (ya hecho)",
+  "como_se_mediria_en_hardware": "n/a"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P1 — Qué añade la tienda (v1.2) frente al upstream",
+  "evidencia": "Upstream = 9 .gd/≈450 líneas; solo EditorImportPlugin (`upstream:godot_urdf/urdf_importer.gd:3`), parser con DOM externo `XML.parse_file` (`upstream:godot_urdf/urdf_parser.gd:120`) de un addon godot_xml **no incluido** y STL vía addon stl_importer tampoco incluido (`upstream:.gitignore:1-3`, `godot_urdf_demo/project.godot:19`) [V]. Nodo por link `URDF_Link_Node3D` con `value` que rota (`upstream:godot_urdf/node_link.gd:13-25`) [V].\nTienda v1.2 (≈1 900 líneas, 25 .gd) reescribe todo: (a) parser en streaming con `XMLParser` nativo (`store:addons/godot_urdf/urdf_parser.gd:39-55`, `urdf_data/*.gd`) sin dependencias; (b) modelo de datos `Resource` (URDFRobot/Link/Joint/Inertial/Visual) con FK `link_fk()` (`urdf_data/urdf_robot.gd:69-84`); (c) conversión de ejes ROS→Godot correcta con RPY ZYX (`urdf_transformations.gd:3-34`) frente al Euler mal hecho del upstream (`upstream:godot_urdf/urdf_parser.gd:159-165`); (d) física: RigidBody3D/StaticBody3D por grupo de links fijos, HingeJoint3D con motor y controlador P, Generic6DOFJoint3D (`urdf_godot/*.gd`); (e) materiales globales por nombre (`urdf_robot.gd:120-122`); (f) loader en escena `urdf_loader.gd` con botón; (g) dock con árbol del URDF y panel de sliders (`urdf_dock.gd`, `ui/urdf_joint_panel.gd`); (h) `package://`→carpeta configurable (`urdf_geometry_factory.gd:5-13`); (i) colisión convexa desde malla (`:190-202`).",
+  "fuentes": [
+   "store:addons/godot_urdf/urdf_parser.gd:39",
+   "store:addons/godot_urdf/urdf_transformations.gd:3",
+   "store:addons/godot_urdf/urdf_data/urdf_robot.gd:69",
+   "upstream:godot_urdf/urdf_parser.gd:120",
+   "upstream:.gitignore:1"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "n/a",
+  "como_se_mediria_en_hardware": "n/a"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P2 — Tabla de soporte URDF (tienda v1.2 / upstream / gdviz)",
+  "evidencia": "| Característica | Tienda v1.2 | Upstream | gdviz viz_urdf.gd |\n|---|---|---|---|\n| revolute | Funciona: HingeJoint3D+límites (`urdf_godot/urdf_hinge_joint3d.gd:37-41`), FK `urdf_robot.gd:79-80` | Funciona (solo visual, nodo jerárquico `node_link.gd:18-21`) | Parsea tipo/eje (`viz_urdf.gd:98-110`); pose desde TF, sin FK |\n| continuous | Funciona: hinge sin límite, modo VELOCITY (`hinge:42-45`) | Falta (warning `urdf_parser.gd:114-115`) | Igual que revolute (parsea) |\n| prismatic | Completar: FK sí (`urdf_robot.gd:81-83`), física NO: 6DOF con todo bloqueado (`urdf_6dof_joint3d.gd:13-23`) | Falta | Parsea, sin FK |\n| fixed | Funciona: fusiona links en un cuerpo (`urdf_robot.gd:47-59`) | Funciona | Funciona (parsea) |\n| floating / planar | Falta: cae en 6DOF bloqueado (`godot_robot.gd:168-173`) | Falta | Parsea el tipo, nada más |\n| límites | Parcial: lower/upper/effort/velocity (`urdf_joint.gd:133-139`); clamp revolute/prismatic (`:42-45`) | Falta | Falta (ignorado a propósito, `viz_urdf.gd:7-9`) |\n| mimic | Falta: 'Unsupported tag in joint' + skip (`urdf_joint.gd:124-127`) | Falta | Falta |\n| box/cylinder/sphere | Funciona (`urdf_geometry_factory.gd:49-86`) | Funciona (ejes de box mal: `urdf_parser.gd:254-258`) | Funciona (`viz_urdf.gd:273-285`) |\n| mesh | Funciona vía `load()` del recurso importado (`geometry_factory:15-21,88-119`) | Copia al proyecto + `load` (`urdf_parser.gd:52-66`) | Funciona: lectura directa en runtime (`viz_mesh_loader.gd:77-90`) |\n| STL | Necesita importador externo: Godot 4.8-dev no trae (sin `stl` en `toolchains/godot4-vita/engine/editor/import`) [V]; README pide 'STLImporter' (codeberg README:46) | Necesita addon stl_importer no incluido | Funciona: parser binario+ASCII propio (`viz_mesh_loader.gd:96-155`) |\n| OBJ / DAE / glTF | Funcionan por importadores nativos de Godot (`editor/import/3d/resource_importer_obj.cpp`, `editor_import_collada.cpp`, `modules/gltf`) [V]; rotación según ext. (`geometry_factory:111-116`) | Idem (si se importan) | OBJ, DAE propios; glTF vía GLTFDocument (`viz_mesh_loader.gd:162,228,420`) |\n| atributo `scale` de mesh | Falta: no se parsea (`urdf_data/urdf_geometry.gd:85-87`; tampoco en main); escala global `opts.scale` por defecto 0.001 (`urdf_importer.gd:27`, `geometry_factory:118-119`) | Falta (0.001 fijo `urdf_parser.gd:64`) | Funciona (`viz_urdf.gd:133,293`) |\n| `package://` | Completar: se quita el prefijo y se cuelga de `package_folder` (pierde el nombre de paquete) (`geometry_factory:9-13`) | Igual, obligatorio (`urdf_parser.gd:270-273`) | Funciona con AMENT_PREFIX_PATH (`viz_mesh_loader.gd:46-74`) — no existe en la Vita |\n| rutas relativas | Solo si `package_folder` vacío (`geometry_factory:12-13`) | Falta | Pasa la ruta tal cual (`viz_mesh_loader.gd:61`) |\n| materiales/colores | Funciona rgba local + global por nombre; sin textura (`geometry_factory:231-242`, `urdf_visual.gd:28-29`) | Solo rgba local (`urdf_parser.gd:276-287`) | Funciona local + global (`viz_urdf.gd:134-143,174-198`) |\n| inercias | Parcial: masa y CoM aplicados (`urdf_rigidbody3d.gd:19-23`), tensor parseado pero no usado (`urdf_inertial.gd:32-40`, TODO `godot_robot.gd:129`) | Falta | Falta (a propósito) |\n| xacro | Falta (issue abierto #13 'Parse xacro') | Falta | Falta (a propósito, `viz_urdf.gd:11-13`) |\n",
+  "fuentes": [
+   "store:addons/godot_urdf/urdf_data/urdf_joint.gd:124",
+   "store:addons/godot_urdf/urdf_godot/urdf_6dof_joint3d.gd:13",
+   "store:addons/godot_urdf/urdf_data/urdf_geometry.gd:85",
+   "upstream:godot_urdf/urdf_parser.gd:99",
+   "gdviz:addons/gdviz/core/viz_urdf.gd:77",
+   "gdviz:addons/gdviz/core/viz_mesh_loader.gd:42",
+   "toolchains/godot4-vita/engine/editor/import/3d/",
+   "https://codeberg.org/brean/godot_urdf/issues/13"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "n/a",
+  "como_se_mediria_en_hardware": "n/a"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P3 — Modos: importación en editor vs carga en runtime",
+  "evidencia": "Tienda: (1) `GodotURDFImporter extends EditorImportPlugin` (`store:addons/godot_urdf/urdf_importer.gd:3`) que guarda `.tscn` con `ResourceSaver.save` (`:78`) y crea carpeta con `DirAccess.make_dir_recursive_absolute` (`:60`); el plugin usa `EditorPlugin`, `add_import_plugin`, `add_control_to_dock`, `EditorInterface.get_selection()` (`godot_urdf.gd:2-17`) y el dock `EditorInterface.get_editor_theme()/edit_resource()` (`urdf_dock.gd:83,107`) → nada de esto existe en una plantilla de exportación [V clases editor-only, documentación Godot]. Bug: las opciones `static_physics` y `collider_from_visual` se leen (`urdf_importer.gd:68-71`) pero no se declaran en `_get_import_options` (`:17-31`) → no configurables desde el dock Import [V]. (2) `urdf_loader.gd` (@tool, Node3D): solo carga al pulsar `@export_tool_button` (`urdf_loader.gd:9`); no hay `_ready` que cargue → en runtime hay que llamar `_load_urdf()` a mano [V]; usa `get_tree().edited_scene_root` como owner (`:45`, null en runtime → nodos sin owner, inofensivo) [I]. Sus mallas dependen de `load()` de recursos importados (`urdf_geometry_factory.gd:19`) → en runtime solo funciona con mallas ya importadas dentro del .pck; no lee STL crudos [V]. Upstream: solo modo importación, y además `as_node3d(source_file, options)` copia mallas al proyecto durante la importación (`upstream:godot_urdf/urdf_parser.gd:56-62`) [V]. gdviz: solo runtime (RefCounted, `viz_urdf.gd:2`; `open_buffer` sobre el texto de /robot_description `:63`), sin APIs de editor; pero `resolve_uri` hace `ProjectSettings.globalize_path` para res:// (`viz_mesh_loader.gd:59`), que en un juego exportado no apunta dentro del .pck [I, comprobar], y usa `rclgd.ros_to_godot_*` (`viz_urdf.gd:216-217`), que ros2_vita expone en `godot/ros2_vita/ros_runtime.h:198-200` [V existencia; I accesibilidad como singleton].",
+  "fuentes": [
+   "store:addons/godot_urdf/urdf_importer.gd:3",
+   "store:addons/godot_urdf/godot_urdf.gd:2",
+   "store:addons/godot_urdf/urdf_loader.gd:9",
+   "store:addons/godot_urdf/urdf_loader.gd:45",
+   "gdviz:addons/gdviz/core/viz_mesh_loader.gd:59",
+   "godot/ros2_vita/ros_runtime.h:198",
+   "https://docs.godotengine.org/en/stable/classes/class_editorimportplugin.html"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "Patrón recomendado: importar/hornear en editor 4.7/4.8 del PC y exportar solo la .tscn + .res; 0 h extra si se usa la importación tal cual",
+  "como_se_mediria_en_hardware": "Exportar .vpk con la .tscn importada y verificar en el log que no hay errores 'class not found' de EditorPlugin/EditorInterface; medir tiempo de carga de la escena"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P4 — Dependencia de física y modo solo visual/cinemático",
+  "evidencia": "Tienda: cada grupo de links fijos genera `URDFRigidBody3D` o, con `static_only_physics`, `URDFStaticBody3D` (`store:addons/godot_urdf/urdf_godot/godot_robot.gd:105-111`) [V]. No hay modo 'sin cuerpos': las mallas cuelgan siempre de un PhysicsBody3D y se crean CollisionShape3D (incluso convexas desde malla si falta <collision>, `urdf_physicsbody3d.gd:35-43`, desactivable con `create_collider_from_visual=false`) [V]. Los joints Hinge/6DOF se crean también entre StaticBody3D (`godot_robot.gd:162-175`) [V]. El posado cinemático `_pose_bodies_from_values()` existe pero solo se llama en el editor (`godot_robot.gd:27-31`); en runtime manda `_physics_process` con motores (`:226-240`) [V]. → Para Vita: static_only + collider_from_visual=false + borrar joints + un script de ~20 líneas que en `_process` haga `body.transform = urdf_robot.link_fk(root)` para cada grupo (función pública, `urdf_robot.gd:69`) [I]. Aun así quedan 30 StaticBody3D y shapes registradas en el servidor de física [I]. gdviz y upstream (visual) no dependen de física (upstream sí crea CharacterBody3D por colisión, `upstream:godot_urdf/urdf_parser.gd:70-76`) [V].",
+  "fuentes": [
+   "store:addons/godot_urdf/urdf_godot/godot_robot.gd:105",
+   "store:addons/godot_urdf/urdf_godot/godot_robot.gd:27",
+   "store:addons/godot_urdf/urdf_godot/urdf_physicsbody3d.gd:35",
+   "store:addons/godot_urdf/urdf_data/urdf_robot.gd:69",
+   "upstream:godot_urdf/urdf_parser.gd:70"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "Adaptador cinemático sobre la tienda: 2–4 h; o post-proceso en editor que sustituya cuerpos por Node3D: 4–6 h [I]",
+  "como_se_mediria_en_hardware": "FPS y tiempo de frame (Monitor de Godot / netlog) con el robot (a) RigidBody+motores, (b) StaticBody+FK, (c) Node3D puros; mismos 29 joints moviéndose a 30 Hz desde /joint_states"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P5 — ¿Se conservan los nombres de link/joint como nombres de nodo?",
+  "evidencia": "Tienda v1.2: el cuerpo toma `link.name` (`store:addons/godot_urdf/urdf_godot/urdf_physicsbody3d.gd:11,25`), pero `update_link` se llama también para cada link fijo fusionado (`godot_robot.gd:121-127`) y renombra el cuerpo con el nombre del último fijo → bug de nombres [V código; corregido en Codeberg main 'bugfixes for naming bodies' ca9f4d3 que usa `add_link_shapes`, `urdf_godot/godot_robot.gd:133` de main] [V]. Los links fijos no tienen nodo propio (fusionados) y la jerarquía URDF se aplana: todos los cuerpos y joints son hijos directos del robot (`urdf_parser.gd:20-23` comentario, `godot_robot.gd:62-147`) [V]. Joints: nodo `\"joint_\"+joint.name` (`urdf_hinge_joint3d.gd:33`, `urdf_6dof_joint3d.gd:10`) y `_find_joint` empareja por ese nombre (`godot_robot.gd:242-246`); fixed no crea nodo [V]. Para /joint_states basta con `urdf_robot.joints[i].name` (recurso), no hace falta nodo [I]; para TF por frame faltan los frames fijos (p. ej. imu_in_pelvis, d435_link del G1) [V por diseño]. Upstream: nodo por link con su nombre y jerarquía padre→hijo (`upstream:godot_urdf/urdf_parser.gd:13,99-107`) [V]. gdviz: `\"link_\"+link_name` en RobotModel (`gdviz:addons/gdviz/displays/robot_model.gd:153-154`) y todos los links, también fijos [V].",
+  "fuentes": [
+   "store:addons/godot_urdf/urdf_godot/urdf_physicsbody3d.gd:25",
+   "store:addons/godot_urdf/urdf_godot/godot_robot.gd:121",
+   "store:addons/godot_urdf/urdf_godot/urdf_hinge_joint3d.gd:33",
+   "https://codeberg.org/brean/godot_urdf/commit/ca9f4d3",
+   "upstream:godot_urdf/urdf_parser.gd:99",
+   "gdviz:addons/gdviz/displays/robot_model.gd:153"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "Usar main (no v1.2) o parchear 1 línea; mapa nombre→nodo para TF de fijos: 1–2 h [I]",
+  "como_se_mediria_en_hardware": "Publicar /joint_states con un solo joint moviéndose (ros2 topic pub) y comprobar en la Vita que se mueve el link correcto; listar nodos en el log"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P6 — Licencias y mantenimiento",
+  "evidencia": "Tienda/brean: BSD-3-Clause, copyright 2026 Andreas Bresser (`store:addons/godot_urdf/LICENSE:3`) declarando base askarkg12 (ficha). Activo: 40 commits, tags v1.0 (2026-05-05), v1.1, v1.2 (2026-10-17), último commit 2026-11-02; 22 issues en Codeberg, abiertas #22 (valores del inspector), #13 (xacro), #6, #4 (export URDF), #1 [V API Codeberg]. Estado 'unstable' en la tienda [V]. Upstream askarkg12: BSD-3 2024 (`upstream:LICENSE:3`), último push 2025-04-22, 7 estrellas, 2 issues abiertas; la #5 es de brean anunciando el fork (2026-02-20) → abandonado [V API GitHub]. gdviz: MIT 2026 Miguel Oroz Zubasti, último commit 2026-08-02, 0 issues [V]. Los tres son compatibles con el repo; BSD-3/MIT exigen conservar el aviso de copyright si se copia código [V texto de licencias]. Dependencias de STL: godot-stl-io (MIT) citado antes por brean (commit 7a2eb85) [V].",
+  "fuentes": [
+   "store:addons/godot_urdf/LICENSE",
+   "https://codeberg.org/brean/godot_urdf/issues",
+   "https://github.com/askarkg12/godot_urdf/issues/5",
+   "gdviz:LICENSE"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "0",
+  "como_se_mediria_en_hardware": "n/a"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "P7 — Caso Unitree G1 (g1_29dof.urdf)",
+  "evidencia": "Hechos del URDF (unitree_ros master, sha256 e1dc8936…be31): 40 links, 29 revolute + 10 fixed, sin mimic ni xacro; floating_base comentado; 61 <mesh> todas `meshes/*.STL` (ruta RELATIVA, extensión en MAYÚSCULAS, sin package://, sin atributo scale); 8 esferas y 4 cilindros de colisión; materiales globales 'dark'/'white' referenciados por nombre; etiqueta extra `<mujoco>` [V parseo con python]. 36 STL visuales únicos = 19,1 MB; ≈383 k triángulos instanciados si son binarios [I: (bytes-84)/50].\nTienda v1.2: sí lo importaría (la ficha dice 'tested with a modified version of the Unitree G1' [V]) si: hay importador STL instalado (Godot 4.8 no trae) [V]; `scale=1.0` (por defecto 0.001 en importador y loader → robot 1000× pequeño) [V]; `package_folder` apuntando a la carpeta que contiene `meshes/` o vacío para resolver relativo al .urdf (`urdf_geometry_factory.gd:10-13`) [V]; `.STL` → `to_lower()` aplica la rotación STL (`:111-113`) [V]; `<mujoco>` se salta con warning (`urdf_robot.gd:111-114`) [V]. Queda nombre de cuerpo erróneo en v1.2 (P5) [V]. Upstream: no — sin godot_xml/stl_importer no compila, exige package_folder y copia STL [V]. gdviz: parsea y lee los STL en runtime [V], pero la ruta relativa 'meshes/x.STL' se pasa tal cual a FileAccess (`viz_mesh_loader.gd:61`) y no se resuelve contra el .urdf → falla salvo que se reescriba [V]; además posa por TF, así que en la Vita necesita /tf de robot_state_publisher o FK propia [V]. Para la Vita en cualquier caso falta: decimar mallas (383 k tris es muy superior a lo validado en G7c) [I], y FK desde /joint_states.",
+  "fuentes": [
+   "https://github.com/unitreerobotics/unitree_ros/blob/master/robots/g1_description/g1_29dof.urdf",
+   "store:addons/godot_urdf/urdf_geometry_factory.gd:10",
+   "store:addons/godot_urdf/urdf_importer.gd:27",
+   "gdviz:addons/gdviz/core/viz_mesh_loader.gd:61",
+   "https://store.godotengine.org/asset/brean/godot-urdf/"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "Tienda+G1 en editor PC: 1–2 h (instalar importador STL, opciones); decimación de 36 mallas (Blender/meshoptimizer offline): 2–4 h [I]",
+  "como_se_mediria_en_hardware": "Exportar el G1 a .vpk con mallas al 100 %, 25 % y 10 % de triángulos; medir FPS, RAM libre y tiempo de carga; validar posición correcta comparando con RViz en el PC con el mismo /joint_states"
+ },
+ {
+  "workshop": "W5",
+  "autor": "investigador-urdf (opus)",
+  "candidato": "RECOMENDACIÓN — Hornear en el editor del PC, runtime visual-cinemático propio en la Vita",
+  "evidencia": "1) No llevar a la Vita el modo física ni el plugin: usar godot_urdf (Codeberg main, no v1.2 por el bug de nombres) SOLO en el editor 4.7/4.8 del PC como importador, con `static_only_physics`, `create_collider_from_visual=false`, `scale=1` y un importador STL; o, mejor, un @tool propio de ~150 líneas que reutilice el parser de gdviz (`viz_urdf.gd`, MIT, sin dependencias de física, conserva todos los links y lee `scale`) y su lector STL (`viz_mesh_loader.gd:96-155`) para generar una .tscn jerárquica de Node3D con nombres de link URDF + ArrayMesh .res decimados [I]. 2) En runtime (ros2_vita): script de FK que aplica /joint_states por nombre de joint (como `link_fk`, `urdf_robot.gd:69-84`) o /tf por nombre de frame [I]. 3) Reglas a completar en cualquier opción: mimic, prismatic, `package://` → res:// por paquete, rutas relativas al .urdf, xacro fuera (expandir con `xacro` en el PC) [V tabla].",
+  "fuentes": [
+   "store:addons/godot_urdf/urdf_data/urdf_robot.gd:69",
+   "gdviz:addons/gdviz/core/viz_urdf.gd:55",
+   "gdviz:addons/gdviz/core/viz_mesh_loader.gd:96",
+   "https://codeberg.org/brean/godot_urdf"
+  ],
+  "confianza": "[I]",
+  "coste_estimado": "Baker @tool + FK runtime: 1–2 días; adaptar tienda (static+FK): 0,5–1 día; decimación G1: 2–4 h",
+  "como_se_mediria_en_hardware": "FPS ≥30 con el G1 decimado en la Vita, latencia /joint_states→pantalla (timestamp en netlog), tiempo de carga de escena y memoria libre antes/después"
+ }
+]
