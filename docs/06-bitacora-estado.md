@@ -1,24 +1,557 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-07-10 (PC: **ETAPA A del plan de los
-Objetivos 3/4 EJECUTADA** — auditoría de portabilidad de rviz2 con
-compilaciones reales: rviz2 nativo NO portable, ADR 0006 activa el Plan B
-mini-rviz con vitaGL; docs/04 rellenado con la evidencia. Ver bloque
-2026-07-10. Antes, 2026-07-07: **OBJETIVO 2 CERRADO —
-confirmado por el usuario en hardware real**: la app teleop instalada en
-la Vita publica `/cmd_vel` y controla robots según el mapeo de
-`docs/09-objetivo2-control-robot.md`. En la misma sesión: `.vpk` subido
-por FTP y verificado, y **arranca la planificación de los Objetivos 3 y
-4** — guía completa de desarrollo por etapas en
-`docs/10-plan-objetivos-3-4.md`. La Fase 1 sigue COMPLETA; la fase web
-sigue con su primer hito alcanzado)
+**Última actualización:** 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
+El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
 
 ---
 
-## Dónde nos quedamos (resumen de 1 minuto)
+## 2026-11-01 (PC, cierre de la sesión) — Estado para retomar
+
+- **Hecho hoy (todo en git):** auditoría y limpieza (`bbbfa2d`); G7a IMU calibrada en hardware y G7b visor 3D en
+  el PC (`34a25d9`); investigación del flujo con Godot, sin MCP (`3ddb572`); G7c, el 3D en la propia Vita a
+  59 FPS con `/vita/imu` a 30 Hz (commit de esta entrada).
+- **Cómo retomar (elige el usuario):**
+  1. **F1 — `deviceQuat` de Sony:** exponer `SceMotionState.deviceQuat` (`psp2/motion.h:46`) desde el motor
+     (`display_server_vita.cpp:263`) o el módulo `ros2_vita`; publicarlo en `orientation` de `/vita/imu`
+     (quitar `SIN_ORIENTACION`) y compararlo con F2. Requiere recompilar la plantilla (`tools/build-godot-template.sh`,
+     puerta G3) y explicar antes el cambio en C++ (modo aprendizaje).
+  2. **Reto 3 de la lección 08:** `/vita/joy` (`sensor_msgs/Joy`), escrito por el usuario.
+  3. **Panel trasero** (C++) y **ADR de la cámara**.
+- **Pendientes de lectura para el usuario:** lección 10 (F2 y las 4 preguntas); `filtro.gd` de `g7-imu`.
+- **Aprendido:** el 3D GXM del port solo dibuja en la pantalla principal (sin SubViewport); el 2D se pinta
+  encima del 3D; los logs del motor se leen por FTP (`ux0:data/gxm3d/godot_stderr.log`, líneas `gxm2d-perf`
+  = FPS y `gxm3d` = triángulos e instancias).
+- Estación docker: puede quedar encendida (`docker/vita-ros.sh down` para apagarla).
+
+---
+
+## 2026-11-01 (PC, noche) — **G7c VERDE**: primer 3D de Godot 4 en la Vita (`g7-imu`)
+
+- **Resultado en hardware (usuario + log del motor `ux0:data/gxm3d/godot_stderr.log`):** el modelo se ve y
+  gira bien con la IMU; **58,8–59,5 FPS** (`gxm2d-perf`), ~17 ms/fotograma (render ≈ 11,6 ms, `vita-prof`),
+  20 instancias 3D, 5 574 triángulos (presupuesto 60 000), 1 luz; sin el aviso de SubViewport ni otros nuevos.
+  `/vita/imu` sigue a **30 Hz** con el 3D en marcha (usuario).
+- Lo de abajo es cómo se llegó.
+
+- **Decisiones del usuario:** G7c dentro de `g7-imu`; filtro **F2** (Basis) ahora y **F1** (`deviceQuat` de
+  Sony, recompilar motor) más adelante; nivel a 1/4 (80 px) abajo a la izquierda; modelo del tamaño del nivel;
+  textos de muestra en `Estado`/`Datos`; el círculo debe verse en el editor.
+- **Hecho (Claude):** O1 HUD a 10 Hz; O2 `ejes` como `Basis` (`_ejes_a_basis`); O3 `msg_imu` reutilizado;
+  O4 nivel con aceleración ROS suavizada (`1 − exp(−dt/τ)`), canica, umbral de redibujo y `@tool`.
+  Escena: `Vista3D` (SubViewportContainer 80×80 en 740,230) → `Mundo3D` → cámara ortográfica (size 2.4),
+  luz, entorno del color del fondo, `Vita` (modelo copiado de g7b + ejes). FPS en el HUD. Círculo = reiniciar.
+  `filtro.gd` (F2) **escrito por Claude a petición del usuario** (queda como ejercicio de lectura); probado
+  sin ventana: inclinación quieta exacta, 1 rad de yaw exacto, demo 10 s con error máx. de pitch 0,16°, vertical
+  sin bloqueo de cardán. `.vpk` subido a `ux0:/g7-imu.vpk` (sha256 e10a71da…). Lección `docs/tutorial/10-godot-3d-en-la-vita.md`.
+- **Comprobado en el PC:** scripts compilan; escena carga; cámara y encuadre (modelo de 7 a 78 px en 80);
+  `_ejes_a_basis` igual que antes (pruebas con `y,-x,z` y `-z,x,-y`); captura con el demo correcta.
+- **Primera prueba en la Vita: el recuadro 3D salió VACÍO** (el nivel y la canica, bien). Causa en el port:
+  el 3D GXM solo dibuja en la pantalla principal; los SubViewport se ignoran
+  (`toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:839-840`, «offscreen 3D viewports
+  are not implemented»; `GXM_BACKEND.md:47`). El Círculo sí reiniciaba (= `JOY_BUTTON_B`, `joypad_vita.cpp:42`),
+  pero no se veía. **Arreglo (plan B):** escena 3D en la raíz, sin `Fondo` (el 2D tapa al 3D; el fondo pasa a
+  `default_clear_color`), y `Marco3D` (`marco_3d.gd`, `@tool`, borde solo en el editor) con el rectángulo que el
+  usuario compuso (400,51 → 935,501); `_encuadrar_3d()` ajusta `size`/`h_offset`/`v_offset` de la cámara
+  ortográfica para que el modelo caiga en él. Probado en el PC (captura con el demo) y en la Vita (`.vpk` a56a3e20…).
+- **Falta:** exportar y medir FPS y Hz **en la Vita**
+  (riesgo: 3D y SubViewport experimentales en el port; plan B: cámara con `h_offset` sin SubViewport).
+
+---
+
+## 2026-11-01 (PC, cierre) — Estado para retomar: G7a verde, G7b hecho, siguiente G7c
+
+- **Commits (del usuario):** `34a25d9` feat(godot4): G7a verde y G7b; `3ddb572` docs(ia): investigación del
+  flujo de trabajo con Godot. Detalle de la sesión en el bloque de abajo.
+- **Siguiente hito — G7c: el modelo 3D y su animación en la propia Vita**, dentro de `godot/g7-imu`, con
+  el filtro local (sin ROS de ida y vuelta) y el **nivel de burbuja abajo a la izquierda y más pequeño**
+  (≈150 px en 16,352) para dejar la mitad derecha al 3D. Guion completo (decisiones D1–D5, maquetación,
+  riesgos, pasos): `docs/ia/guion-g7c-3d-en-la-vita.md`.
+- **Riesgo:** es el primer 3D de Godot 4 en la Vita; el renderizador GXM 3D del port es experimental
+  (`docs/18:51`). Tratarlo como puerta: medir FPS y que `/vita/imu` siga a ~30 Hz.
+- **Cómo retomar:** (1) explicar D1–D5 y que el usuario decida; (2) él compone la escena en el editor
+  (`$G --editor --path godot/g7-imu`); (3) reto: copiar y entender el giro de `g7b-imu3d/main.gd:107-115`;
+  (4) demo en el PC, export, deploy, medir; (5) lección 10. Pendientes menores: reto 3 (`/vita/joy`) y
+  reto del nivel (paso bajo). Dudas de la lección 09 respondidas en la propia lección.
+
+---
+
+## 2026-11-01 (PC, tarde) — G7b: visor 3D de la IMU (suscriptor + filtro)
+
+- El usuario confirma que `/vita/imu` llega bien desde la Vita (retos 1–2 de la lección 08 aún sin anotar).
+- **Nuevo `godot/g7b-imu3d/`** (decisión del usuario: ros2_vita en el PC, filtro complementario, el
+  filtro lo escribe él). Visor 3D (al principio una píldora, luego el modelo de la Vita) con ejes REP-103 de colores; `main.gd` se suscribe a `/vita/imu` con
+  QoS **BEST_EFFORT** (un suscriptor *reliable* no casa con el publicador), calcula `dt` con `header.stamp`
+  y convierte la orientación de ROS a Godot (`ROS_A_GODOT`). `filtro.gd` = reto (cuerpo vacío con pistas).
+  Probado con el demo y con la Vita real.
+- Arreglo en el demo de `g7-imu`: el giro simulado iba en x y la aceleración simulaba cabeceo (eje y).
+- Lección `docs/tutorial/09-godot-visor-3d-imu.md`.
+- **Investigación «cómo trabajar con Godot» (3 subagentes):** corto `docs/informes/05-flujo-trabajo-godot.md`,
+  largo con fuentes `docs/ia/investigacion-flujo-godot-2026-11-01.md`. **Decisión del usuario: no instalar MCP
+  por ahora.** Pendiente de decidir: hábitos (re-guardar `.tscn`, versionar `*.uid`, avisos = error), LSP del
+  editor vía `socat` y, si acaso, probar `hi-godot/godot-ai` en un proyecto desechable. El usuario ya re-guardó
+  `g7b-imu3d/main.tscn` en el editor (uids añadidos).
+- **Modelo 3D de la Vita** (`g7b-imu3d/assets/PSVita/PSVita.blend`, EricWalker, CC-BY 3.0 → `CREDITOS.md`).
+  Opción del usuario: importar el `.blend` directamente (Godot llama a Blender 5.2.3). Hecho: ajuste del editor
+  `filesystem/import/blender/blender_path = "/usr/bin/blender"` (`~/.config/godot/editor_settings-4.8.tres`, fuera
+  del repo; el portátil no tiene Blender); en `PSVita.blend.import` sin cámaras ni luces. **Trampa:** el aviso
+  «Blender no configurado» del editor, si se elige desactivar, escribe `[filesystem] import/blender/enabled=false`
+  en `project.godot` y Godot deja de ver los `.blend` (sin error). Quitado. Importa 17 mallas (~3000 polígonos),
+  caja ≈ 9,8 × 4,4 × 0,57, de pie (pantalla hacia ±Z de Godot): colocar bajo `Vita` con escala 0,2 y rotación
+  X = -90°. Lo coloca el usuario en el editor.
+- **Calibración de la IMU en hardware (retos 1–2 de la lección 08, datos del usuario en
+  `godot/g7b-imu3d/datos-test*.md`, sin versionar):** unidades confirmadas (acelerómetro en g, |a| ≈ 0,985;
+  giroscopio en rad/s). Ejes de Sony: x hacia la derecha, y hacia los gatillos, z saliendo de la pantalla, y el
+  acelerómetro da la **gravedad** (z ≈ −1 g con la pantalla arriba), no la reacción. Arreglo sin código:
+  `escala_acel = -G` y `ejes = "y,-x,z"` (pruebas A: giro.z > 0 al girar antihorario; B: giro.x > 0 al levantar
+  los gatillos). El giroscopio da 0.0 exacto en reposo: zona muerta de sceMotion (hipótesis:
+  `sceMotionSetDeadband`). Lección aprendida: describir posturas por cruceta, botones y gatillos, no por
+  «izquierda». Aplicado en `g7-imu/main.gd` (valores del usuario; comentarios, lista `ejes` y demo de Claude:
+  el demo ahora inventa datos en ejes de Sony y pasa por la misma conversión). `.vpk` exportado y subido a
+  `ux0:/g7-imu.vpk` (sha256 80c7d43a…). **El usuario lo instaló y funciona: G7a verde** (unidades y ejes).
+- Cierre de G7b: píldora quitada (la sustituye el modelo), `datos-test*.md` borrados (resumen arriba y en la
+  lección 08), `filtro.gd` limpio, lecciones 08–09 al día. Siguiente: reto 3 (`/vita/joy`), panel trasero,
+  ADR de la cámara; opcional: publicar `deviceQuat` de sceMotion en `orientation` para comparar con el filtro.
+- **Cómo retomar:** el usuario prueba el visor con el demo y escribe `filtro.gd`; revisión guiada y commit
+  (`feat(godot4): G7b — visor 3D de la IMU`).
+
+---
+
+## 2026-11-01 (PC) — Auditoría de la flota + lotes 0–3 aplicados
+
+- **Auditoría (7 agentes, solo lectura):** limpieza A/B, optimización A/B, mapa de Rust, DB-TSDF
+  (código y viabilidad). Largos en `docs/ia/auditoria/` (índice `README.md` con los lotes); cortos
+  para el usuario en `docs/informes/`.
+- **Aplicado (aprobado por el usuario):**
+  - Lote 0: `.godot/` en `.gitignore`; `auditoria/` anclado a la raíz (`/auditoria/`): antes ignoraba
+    también `docs/ia/auditoria/`.
+  - Lote 1: borrados `web/localhost:4321`, `mcp/.gitkeep`, `skills/.gitkeep`,
+    `godot35/imagenes/rover-iberus.jpeg.import`, `godot35/UI/UIIcons_2.zip`.
+  - Lote 2: `docs/superpowers/` → `archivo/docs/superpowers/` (plan y spec del tutorial copiados a
+    `docs/ia/`). Nueva carpeta `archivo/` (conserva la ruta original).
+  - Lote 3: docs y marcadores al día (docs/19, ADR 0008, 03, 10, 11, 14, 15, 20, rust/00–02,
+    tutorial/00, READMEs, `09-guia-pruebas-stack` → `23-`); skills `vita-*` al flujo Godot 4;
+    `tools/vita-doctor.sh` (rutas XRCE y `.vpk`), `tools/netlog-listen.sh` (filtro Kasa),
+    `tools/run-parity-tests.sh` (usa el nightly de `toolchains/` solo). Paridad 16/16 verde.
+- **Web en pausa (decisión del usuario):** posible reestructuración o abandono ahora que Godot es el
+  producto principal. No se añaden colecciones para `docs/informes/` ni `archivo/`.
+- **Pendiente de decisión:** lote 2b (archivar `vita-app/` y `godot/godot35/`), lote 4 (7 bugs) y
+  lote 5 (optimizaciones), candidatos a retos del usuario.
+- **G7a — bola del nivel «a saltos»:** causa encontrada. `display_server_vita.cpp:270` usa
+  `basicOrientation`, que solo vale -1/0/1 (`psp2/motion.h:123-124`). `/vita/imu` no se ve afectado.
+  Arreglo propuesto como reto (filtro paso bajo de la aceleración): `docs/ia/guion-leccion-08-imu.md`.
+- **Cómo retomar:** (1) auditoría guiada del `git diff` y commit de la limpieza; (2) medir la IMU quieta
+  (`ros2 topic echo /vita/imu --field linear_acceleration`) y cerrar unidades/ejes; (3) reto del nivel;
+  (4) commit de G7a. DB-TSDF: objetivo a largo plazo, etapas T0–T8 en `docs/ia/auditoria/04b-*`.
+
+---
+
+## 2026-10-31 (PC, cierre de la sesión) — G7a en la Vita + estado para retomar
+
+- **Resultado en hardware (usuario):** instaló `g7-imu.vpk` y la app funciona en la Vita. El agente lo
+  confirma: sesión desde `192.168.1.94` a las 22:06 (clave `0x3E80E8AC`) y *datawriter* de `/vita/imu`
+  creado. El usuario también ejecutó el proyecto desde el **editor con interfaz** (`.gui`), sin problemas.
+- **Sin confirmar todavía** (lección 08, retos 1–2): unidades del sensor (`|a|` ≈ 1 ⇒ g) y ejes REP-103.
+  Hasta entonces, los valores por defecto `escala_acel = 9.80665`, `escala_giro = 1.0` y `ejes = x,y,z`
+  son hipótesis. **G7a no se da por verde hasta cerrarlos.**
+- **Aviso del editor:** al cerrar el editor, el juego lanzado con F5 siguió vivo (proceso huérfano
+  `...editor.x86_64.gui --remote-debug ...`). Se cerró a mano. Si pasa otra vez: `pkill -f g7-imu`.
+- **Sin commit:** con el método nuevo, el commit va tras revisar juntos el `git diff` (lista P10). Cambios
+  sin versionar: `godot/g7-imu/`, `docs/tutorial/00,07,08`, `docs/ia/`, `CLAUDE.md`, `docs/06`, `docs/18`,
+  `godot/README.md`.
+- **Cómo retomar:**
+  1. Revisar el diff y hacer el commit de G7a (`feat(godot4): G7a — IMU de la Vita en /vita/imu`).
+  2. Retos 1–2 en la Vita: apuntar `|a|` en reposo y la cadena `ejes`, y fijarlos en `main.gd`.
+  3. Reto 3: lo escribe el usuario (`/vita/joy`).
+  4. Después: panel trasero (C++) y ADR de la cámara.
+- Estación docker: queda encendida (`docker/vita-ros.sh down` para apagarla).
+
+---
+
+## 2026-10-31 (PC) — G7a: IMU en Godot 4 + cambio a «modo aprendizaje»
+
+- **Cambio de método (decisión del usuario):** a partir de aquí el usuario quiere aprender a continuar el
+  proyecto solo, auditar el código y poder explicarlo en detalle. Nueva **ruta completa de aprendizaje**
+  `docs/tutorial/07-ruta-completa-de-aprendizaje.md`: 11 pistas, método de trabajo, lista de auditoría y
+  autoevaluación. Reglas para Claude en `CLAUDE.md` («Working method: learning mode»): explicar antes de
+  programar, dejar un reto de código al usuario, dar los comandos en vez de ejecutarlos, auditoría guiada
+  antes del commit y una lección por hito.
+- **G7a — IMU (`godot/g7-imu/`):** `Input.get_accelerometer/gyroscope/gravity` → `sensor_msgs/Imu` en
+  `/vita/imu` (best effort, depth 5, 30 Hz). Parámetros `hz`, `topic`, `frame_id`, `escala_acel`
+  (9.80665, hipótesis: el sensor da g), `escala_giro` (1.0, hipótesis: rad/s) y `ejes` (reordenación a
+  REP-103). Sin orientación: `orientation_covariance[0] = -1` (REP-145). Tara del giroscopio con △,
+  pausa con ✕, HUD con valores crudos y ROS y nivel de burbuja (`nivel.gd`). El esquema `.rsch` es el
+  de G6 (ya trae `Imu` y `Joy`).
+  - **Probado en host** contra el agente de la estación: `/vita/imu` a 29,98 Hz, `BEST_EFFORT`,
+    |a| ≈ 9,8; con `-p hz:=50` sale a unos 50 Hz y `-p ejes:=-z,y,x` reordena bien.
+  - **Falta (hardware, lo hace el usuario: lección 08, retos 1–2):** confirmar las unidades
+    (`SceMotionState` no las documenta) y los ejes de la Vita, y fijar los valores por defecto.
+- **Editor con interfaz:** el editor 4.8-dev7 de host era solo `--headless` (`x11=no ...`). Se compila
+  uno con ventana y `ros2_vita` como `bin/godot.linuxbsd.editor.x86_64.gui` (`extra_suffix=gui`; no pisa
+  el de exportar). Receta en la lección 08 §3.
+- **Lección nueva:** `docs/tutorial/08-godot-imu-primer-sensor.md` (G7a, versión corta).
+- **Dos documentaciones (decisión del usuario):** para el usuario, ≤ 500 palabras por documento o
+  explicación (`docs/tutorial/` y el chat). Para Claude, `docs/ia/` (guiones largos de 07 y 08, guía 00
+  original; fuera de la web a propósito). Reglas en `docs/ia/README.md` y `CLAUDE.md`.
+- **Siguiente:** el usuario prueba G7a en la Vita (retos 1–2) y escribe el reto 4 (`/vita/joy`).
+  Luego, panel trasero (parche C++ en `display_server_vita.cpp`) y el ADR de la cámara.
+  Los estados de `docs/19` §3 están desactualizados (T5.2, T3.3.4, T6.1 ya hechos): revisarlos.
+
+---
+
+## 2026-10-30 (PC, cierre de la sesión) — Estado para retomar
+
+- **Rama:** `ccr-44e2db2a-mr6xqr`, pusheada (G1–G6 verdes). `main` sin tocar: fusionar cuando el usuario lo decida.
+- **Puertas Godot 4 (docs/18 §8):** G1–G6 **VERDES**, G4–G6 en hardware. **Siguiente: G7** (IMU → `sensor_msgs/Imu`,
+  panel trasero, decisión sobre la cámara).
+- **Arranque de una sesión con la Vita (PC):**
+  1. `docker/vita-ros.sh up` (agente UDP 8888 + estación) y, si hace falta robot, `docker/vita-ros.sh sim`.
+  2. Cambios en `godot/ros2_vita` ⇒ editor de host (`GODOT_VERSION_STATUS=dev7 scons platform=linuxbsd target=editor
+     custom_modules=$REPO/godot/ros2_vita x11=no wayland=no vulkan=no opengl3=no`, ~15 s incremental) para probar en
+     host, y plantilla de la Vita: `bash -c 'source tools/env-devpc.sh && VITAGL_ROOT=$PWD/toolchains/vitagl-src
+     tools/build-godot-template.sh'` (~2 min incremental; debe decir `PASS … 694 imports`).
+  3. `tools/export-vita-vpk.sh godot/<proyecto> build/<proyecto>.vpk` → `tools/deploy-vpk-ftp.sh build/<x>.vpk 192.168.1.94`
+     (FTP de VitaShell activo; la Vita cerca del router).
+  4. Prueba en host sin la Vita: copia del proyecto sin la línea del plugin y
+     `godot --headless --path <copia> -- -p agent_ip:=127.0.0.1` (en `g6-hmi`, añadir `demo`).
+- **Diagnóstico en la Vita:** pantalla roja con `rclgd.get_transport_info()`; logs por FTP en
+  `ux0:data/gxm3d/godot_stderr.log` (motor) y `ux0:data/logs/godot_loader.log` (cargador, con la línea
+  `[ros2_vita] early net: …`).
+- **Entorno del PC (gitignorado, no rehacer):** `toolchains/godot4-vita/engine` con el parche del cargador aplicado
+  (red temprana + 13 entradas de red en la tabla); editor de host 4.8-dev7 con XRCE en `engine/bin/`; plantilla C con
+  XRCE en `toolchains/godot4-vita/out/`; libs XRCE en `vita-app/third_party/xrce-vita-{pic,host}`; imagen docker
+  `psvita-ros-station:jazzy`.
+- **Datos de red:** Vita en `192.168.1.94` (FTP 1337), PC `192.168.1.65` (ethernet; llega a la Vita por el router;
+  ufw permite 192.168.1.0/24). La WiFi de la Vita va lenta lejos del router (subida de 22 MB: 20–150 s).
+- **Pendiente sin bloqueo:** probar `sim-tb3` (Gazebo) y RViz en la estación; puente Zenoh PC ↔ laptop; acceso remoto
+  (`docs/22`); variante Rust de la plantilla con XRCE (para hardware se usa la C).
+
+---
+
+## 2026-10-30 (PC, 4.ª parte) — Puerta G6 VERDE en hardware: HMI piloto
+
+**Resultado (confirmado por el usuario):** con `godot/g6-hmi` en la Vita se controla turtlesim (estación
+`docker/vita-ros.sh sim`, ventana en el escritorio del PC). En la Vita aparecen el robot (flecha), su rastro y la pose
+**sincronizados con la tortuga**; el retardo «apenas se nota». Medido en el PC: `/cmd_vel` de la Vita a **19,5 Hz**
+(objetivo 20) y `/odom` a **62,5 Hz** (720 B por mensaje, llega troceado en 2 datagramas).
+
+**La app:** mapeo de docs/09 (stick izquierdo avanzar/girar, cruceta, L/R giro fijo 0,5 rad/s, △/✕ escala ±0,5 hasta
+stop, ○ borra el rastro; sin lateral porque los robots de prueba son diferenciales). Vista cenital centrada en el robot:
+rejilla de 1 m, rastro (600 puntos), línea verde con el comando, panel con conexión, Hz de `/odom`, velocidad y pose.
+En el host, `-- demo` conduce en círculo sin mandos (prueba automática).
+
+**Fallos encontrados en el host antes del hardware (arreglados en `xrce_transport.cpp`):**
+1. **Se perdía todo `/odom`:** un mensaje reconstruido de fragmentos **no es contiguo** (cada trozo sigue en su hueco del
+   stream y microcdr salta con su callback). Copiar con `ucdr_deserialize_array_uint8_t`, no con `ub->iterator`.
+2. **«stream fiable lleno»** a 20 Hz: 4 huecos se llenaban antes de que llegara la confirmación. Ahora 16 huecos de
+   512 B y, si aun así se llena, la publicación sale por el stream *best effort* (la QoS DDS no cambia).
+3. **Clave de cliente fija:** una prueba en el PC echó a la Vita de su sesión (misma clave `0xCAFE0005`). Ahora es
+   distinta en cada arranque (`-p client_key:=N` para fijarla).
+4. turtlesim no publica `/odom` ⇒ `docker/scripts/turtle_odom.py` (pose relativa al inicio), lanzado por `vita-ros.sh sim`.
+
+**Siguiente paso exacto: G7** — sensores de la Vita publicados en ROS 2: IMU (`Input.get_accelerometer/gyroscope`
+→ `sensor_msgs/Imu`), panel trasero táctil, y decidir la cámara (docs/18 §8). Pendiente sin bloqueo: probar
+`sim-tb3` (Gazebo) y RViz en la estación, y el puente Zenoh entre PC y laptop.
+
+---
+
+## 2026-10-30 (PC, 3.ª parte) — Puerta G5 VERDE en hardware + estación docker propia
+
+**Resultado:** `godot/g5-xrce` en la Vita → el agente (estación `docker/`, en el PC por ethernet) registra la
+sesión desde `192.168.1.94`, `ros2 topic echo /vita_hello` recibe «hola desde ros2_vita #N» y `/cmd_vel` llega a
+**10,1 Hz**. Primera vez que Godot 4 + `ros2_vita` publica en ROS 2 desde la Vita.
+
+**Qué se hizo:**
+1. **`XrceTransport`** (`godot/ros2_vita/xrce_transport.*`): sesión micro-ROS sobre `microros-transport`/`net-udp`,
+   entidades por XML (topic + datawriter/datareader por endpoint, QoS → XML de Fast DDS), streams fiable y best
+   effort, fragmentación en el fiable. **Un solo hilo:** `RosTransport::poll()` cada frame con
+   `uxr_run_session_time(0)`. `rclgd.get_transport_info()` devuelve contadores y códigos de red (diagnóstico).
+2. **Pruebas en host antes del hardware:** `XRCE_HOST=1 build-xrce-client-vita.sh` → `xrce-vita-host`; el SCsub
+   activa XRCE si encuentra las libs. Agente en docker + `ros2 topic echo`: verde. Lección: **`--ipc=host` en todos
+   los contenedores** o Fast DDS descubre los topics pero no pasan datos (memoria compartida).
+3. **El muro de hardware:** dentro de Godot, `sceNetInit`/`sceNetCtlInit` devolvían **`0x8002450D` =
+   `SCE_KERNEL_ERROR_UID_RL_OVERFLOW`** (el motor ya agotó el cupo de objetos del kernel del proceso). Arreglo: el
+   parche del cargador (`godot/loader-patches/0001`) **inicia la red al principio de `main()`** (sysmodule NET +
+   `sceNetInit` con pool estático de 1 MiB + `sceNetCtlInit`, como la Fase 1); `net_udp_init` la encuentra hecha.
+   Diagnóstico que lo destapó: callbacks propios con contadores + `sceNetCtlInet*` (2 entradas más en la tabla del
+   cargador; 694 imports). Los logs del motor se leen por FTP: `ux0:data/gxm3d/godot_stderr.log` y
+   `ux0:data/logs/godot_loader.log`.
+4. **Hipótesis descartada:** «el PC por ethernet no llega a la Vita». Llega por el router (FTP, XRCE). El capturador
+   en la tarjeta del PC y el cortafuegos (ufw permite 192.168.1.0/24) lo confirmaron.
+5. **Estación `docker/`** (petición del usuario): agente oficial (`vita_agent`) + `vita_station` (ROS 2 Jazzy
+   desktop, `zenoh-bridge-ros2dds`, turtlesim, TurtleBot3/Gazebo con `/cmd_vel` en `Twist`, `tcpdump`) y
+   `scripts/vita_monitor.py`; se maneja con `docker/vita-ros.sh`. `tools/vita-stack.sh` la usa por defecto.
+6. `tools/deploy-vpk-ftp.sh` (verifica sha256) y `tools/export-vita-vpk.sh` en uso; WiFi lenta = subida de 22 MB
+   en 20–150 s.
+
+**Confirmado por el usuario:** la pantalla pasa a **verde** — llega `/pc_hello` publicado por el monitor de la
+estación ⇒ **ida y vuelta en hardware** (Vita → ROS 2 y ROS 2 → Vita). GUI de la
+estación (turtlesim/Gazebo/RViz) y puente Zenoh entre dos equipos: sin probar.
+
+**Siguiente paso exacto: G6 (HMI piloto)** — teleop `/cmd_vel` con los mandos + `/odom` en pantalla, contra
+`docker/vita-ros.sh sim` (turtlesim) o `sim-tb3`.
+
+---
+
+## 2026-10-30 (PC, 2.ª sesión, cont.) — Puerta G4 VERDE en hardware
+
+**Resultado:** `g4-smoke.vpk` instalado en la Vita → **fondo verde y «G4 OK»**. Primera vez que Godot 4 con
+`ros2_vita` corre en la Vita: loader + `libgodot.so` (variante C) arrancan, `rclgd.init` en *loopback*,
+`RosMsg` serializa/deserializa `Twist`, timers y callbacks en el hilo principal funcionan.
+
+**Lecciones del despliegue (FTP de VitaShell):**
+- El FTP puede quedarse **congelado** (acepta TCP pero no manda el `220`): cancelar y reactivar con `Select`.
+- Una subida de 22 MB llegó **cortada (~2 MB)** aunque `curl` no dio error y el listado mostraba el tamaño
+  completo ⇒ nuevo `tools/deploy-vpk-ftp.sh` (descarga de vuelta y compara sha256, reintenta).
+- **WiFi:** lejos del router ~0,55 MB/s y ping 55–190 ms; cerca del router ~1,6 MB/s y ping mínimo 1,5 ms
+  (la media sigue irregular, 40–60 ms: probablemente el ahorro de energía de la WiFi de la Vita en reposo,
+  sin confirmar). **Para G5 tener la Vita cerca del router.**
+
+**Siguiente paso exacto: G5** — `XrceTransport` en `godot/ros2_vita/ros_runtime.cpp` (hoy devuelve
+`ERR_UNAVAILABLE`) + red en el motor (docs/18 §4.3: exportar `sceNet*` en la tabla del loader o sockets POSIX),
+enlazar las libs PIC de G2, repetir `verify_runtime.py`, y comprobar que un `std_msgs/String` llega a
+`ros2 topic echo` con el agente en la laptop.
+
+---
+
+## 2026-10-30 (PC, 2.ª sesión) — G4 preparada: editor 4.8-dev7 y primer `.vpk` de Godot 4
+
+**Qué se hizo.**
+1. **Editor 4.8-dev7 de host:** mismo árbol y opciones que G1, con `GODOT_VERSION_STATUS=dev7` y
+   `custom_modules=<repo>/godot/ros2_vita` (headless: `x11=no wayland=no vulkan=no opengl3=no`). El cambio de
+   versión recompila casi todo (~7 min con 14 hilos). `--version` → `4.8.dev7.custom_build.d1a5f291b`.
+   Las pruebas de host de G1 siguen verdes con él (294/0).
+2. **Proyecto mínimo `godot/g4-smoke/`:** `rclgd.init(["-p","transport:=loopback"])` (en la Vita el transporte por
+   defecto es `xrce`, aún no implementado) + pub/sub de `geometry_msgs/msg/Twist` con un timer de 0,5 s.
+   Fondo **verde** = OK, **rojo** = fallo (no depende de que la fuente se vea). Ejecutado en host: «G4 OK».
+3. **`tools/export-vita-vpk.sh <proyecto> [salida.vpk]`:** copia el proyecto a un temporal, le añade el addon
+   `psvita` y `out/vita_release.zip` (variante C) en la ruta por defecto del addon, `--import` y
+   `--export-release "PS Vita"` en headless. Resultado: **`build/g4-smoke.vpk` (22 MB)**, con `game_data/`
+   dentro del VPK (`data/separate_folder=false`: un solo archivo que instalar). `include_filter="ros/*.rsch"` es
+   necesario: Godot no exporta archivos que no son recursos.
+
+**Siguiente paso exacto (con la Vita):** instalar `build/g4-smoke.vpk` (FTP o modo USB de VitaShell, skill
+`vita-deploy-logs`) y lanzar «ROS2 Vita G4» (TITLE_ID `RVGD40004`). Fondo verde + «G4 OK: …» ⇒ G4 VERDE.
+Si se cierra o queda en negro: probable fallo del loader/kubridge o de memoria (no de `ros2_vita`); el runtime
+necesita kubridge instalado (requisito del port). Después, **G5**: `XrceTransport` + red en el motor.
+
+---
+
+## 2026-10-30 (PC, cierre) — Estado para retomar
+
+- **Rama:** `ccr-44e2db2a-mr6xqr`, pusheada a `origin` (incluye G1, G2 y G3). `main` no se ha tocado.
+- **Entorno del PC tras esta sesión** (todo en `toolchains/`, gitignorado; no hay que rehacerlo):
+  `toolchains/vitagl-src` (VitaGL parcheado + `libvitaGL.a`), `toolchains/pcre2` (fuente y build),
+  `toolchains/godot4-vita/out/` (plantilla **C**: `vita_release.zip`, `godot_loader.vpk`, `libgodot.so`,
+  `runtime-validation.json`), `toolchains/godot4-vita/out-rust/` (plantilla Rust), logs `build-g3*.log`.
+  En el VitaSDK se instalaron `libwebp zstd bzip2 kubridge`, `libpcre2-32.a` y el `dlfcn.h` nuevo.
+  OJO: `engine/bin/libgodot_gxm3d.so` es ahora el de la variante **Rust** (último build); el `.so` C bueno está en
+  `out/libgodot.so` (y una copia sin strip en `toolchains/godot4-vita/libgodot_gxm3d.c.so`).
+- **Permisos de Claude Code en el PC:** el modo automático bloquea compilar código descargado. Están permitidos
+  `Bash(scons:*)`, `Bash(make:*)` y `Bash(tools/build-pcre2-vita.sh:*)` (este, con confirmación). El comando tiene
+  que **empezar** por ese prefijo: sin `source … &&` delante. Por eso `build-pcre2-vita.sh` carga `env-devpc.sh` solo.
+- **Para G4 no hace falta recompilar la plantilla.** Empezar por el editor 4.8-dev7 (paso 1 del bloque de abajo).
+- **Pendiente sin bloqueo:** acceso remoto (`docs/22`) sigue sin aplicar; fusionar la rama en `main` cuando el
+  usuario lo decida.
+
+---
+
+## 2026-10-30 (PC) — Puerta G3 VERDE
+
+**Qué se hizo.** `VITAGL_ROOT=$PWD/toolchains/vitagl-src tools/build-godot-template.sh` completa entero:
+`verify_runtime.py` → **PASS: ELF layout, relocations, main and 681 imports supported by the loader**;
+`toolchains/godot4-vita/out/vita_release.zip` (23,5 MB) + `godot_loader.vpk` (23 MB). `RosNode`/`RosMsg`/
+`RosPublisher`/`RosSubscriber` están en el `.so`. Variante Rust (`RUST_PIC_LIB=…`, salida `out-rust/`): también
+**PASS** (650 imports, 23,7 MB). Detalle y lista de prerrequisitos en **`docs/18` §4.5** (no reabrir).
+
+**Muros que aparecieron y cómo se resolvieron:**
+1. VitaGL del port: clonado del repo **oficial** (`Rinnegatamante/vitaGL`, el commit `df63ce8` está ahí) en
+   `toolchains/vitagl-src`, parche del port aplicado, `make` con las opciones de `dependency.json`.
+2. `custom_modules=<repo>/godot` metía también `godot/godot35/modules/microros` (SCons de Godot 4 busca recursivo)
+   → el script apunta ahora a `godot/ros2_vita`.
+3. Librerías del SDK: `vdpm libwebp zstd bzip2 kubridge`; **`pcre2-32` no existe en vitasdk** →
+   `tools/build-pcre2-vita.sh` (nuevo; **sin PIC**, si no `Invalid relocation type 25!` en el eboot del loader).
+4. `RTLD_NEXT` no estaba en el stub `dlfcn.h` de 3.5 → `godot/vitasdk-stubs/dlfcn.h` (nuevo, superconjunto),
+   lo instala `build-godot-template.sh`.
+5. CMake no reenlaza el loader si cambia una lib del SDK → borrar `out/loader/godot_loader`.
+6. **Bug real de G2:** `tools/build-rust-pic.sh` no exportaba `RUSTFLAGS` ⇒ el staticlib Rust **no era PIC**
+   (1399 MOVW/MOVT_ABS). Arreglado con `export` y el script ahora falla si quedan relocaciones absolutas.
+   Las libs C y XRCE PIC estaban bien.
+
+**Ojo para G4–G5:**
+- El `.so` aún **no** importa `sceNet*` ni lleva `uxr_*`: `ros2_vita` solo tiene el transporte *loopback*. Las libs PIC
+  de G2 entran con `XrceTransport` (G5); entonces hay que repetir `verify_runtime.py`.
+- Con Rust, `compiler_builtins` define dentro del `.so` 31 símbolos (`__aeabi_*`, `floor`, `sqrt`, …) que el motor
+  usa en vez de los del loader ⇒ **para hardware se usa la variante C**.
+- El exportador `psvita` exige `engine.status == "dev7"` y nuestro editor de host de G1 dice `4.8.dev`
+  (`version.py` tiene `status = "dev"`) ⇒ **lo rechazaría**.
+
+**Siguiente paso exacto (PC): G4.**
+1. Editor 4.8-dev7 (T5.1.2): o bien el oficial `Godot_v4.8-dev7_linux.x86_64` (releases de godotengine/godot-builds),
+   o bien recompilar el de host con `GODOT_VERSION_STATUS=dev7 scons platform=linuxbsd target=editor
+   custom_modules=$REPO/godot/ros2_vita …` (mismo árbol que G1; el `custom_modules` ya no puede ser `godot/`).
+2. Proyecto mínimo de G4 (copia de `godot/test/project` o uno nuevo): script con `rclgd.init` en loopback + `RosMsg`
+   que escriba `rclgd.ok()` en pantalla; ajustes Vita (960×544, Compatibility, T5.2.4).
+3. Exportar con el addon `psvita` (`platform/vita/editor/addons/psvita`) usando
+   `toolchains/godot4-vita/out/vita_release.zip` como *Custom Template* → `.vpk` → Vita (FTP o modo USB de VitaShell).
+
+---
+
+## 2026-10-29 (PC, cierre) — Pausa: el usuario deja el PC; plan de acceso remoto
+
+El usuario se va a estudiar y no estará en la red de casa. Para seguir desde la laptop se dejó escrita la
+recomendación en **`docs/22-acceso-remoto-pc.md`**: Tailscale + SSH con claves + tmux (+ Sunshine/Moonlight
+para el escritorio, `claude remote-control` para Claude Code). **Aún sin aplicar**: falta instalar Tailscale y
+tmux (`sudo`) y probarlo desde fuera de la red. Estado del proyecto al pausar: **G1 y G2 verdes**, siguiente
+**G3** (ver el bloque de G2 justo debajo); lanzarlo dentro de tmux.
+
+---
+
+## 2026-10-29 (PC, 2.ª sesión, cont.) — Puerta G2 VERDE
+
+**Qué se hizo.** Todo lo que entrará en `libgodot.so` se compiló como **PIC** para la Vita y se comparó con la
+tabla de imports del loader (parche `godot/loader-patches/0001` ya aplicado al clon de G1):
+
+```bash
+source tools/env-devpc.sh
+XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh   # → vita-app/third_party/xrce-vita-pic/
+tools/build-c-pic.sh                                    # → toolchains/pic/libvita_modules_c_pic.a (NUEVO)
+tools/build-rust-pic.sh                                 # → toolchains/pic/rust-target/.../libvita_modules_rust.a
+tools/check-vita-imports.py --dynlib toolchains/godot4-vita/engine/platform/vita/loader/default_dynlib.c \
+    --nm $VITASDK/bin/arm-vita-eabi-nm <las 4 .a>
+```
+
+Resultado: **0 imports ausentes** en las cuatro bibliotecas y **0 TLS**. Control: con la tabla sin parchear,
+C y Rust piden exactamente los 11 `sceNet*`/`sceSysmodule*` ⇒ el parche es necesario y suficiente.
+`sincosf`/`bcmp` no aparecen en ARM (solo en el host). Detalle y tamaños en `docs/18` §4.1.
+
+**Cambios de scripts:**
+- `build-xrce-client-vita.sh`: modo `XRCE_PIC=1` con prefijo y carpetas de build propios; la variante sin PIC
+  de `vita-app` no se toca (la relocación 25 rompe `vita-elf-create`, pero en el `.so` la valida
+  `verify_runtime.py`).
+- `build-rust-pic.sh`: `--target-dir toolchains/pic/rust-target`; antes habría **sobrescrito** el staticlib
+  estático de `vita-app` (misma ruta).
+- `build-godot-template.sh`: reutiliza el clon y no reaplica el parche si ya está (antes fallaba en G3).
+
+**Siguiente paso exacto (PC): G3.** Requiere el VitaGL del port: clonar VitaGL (fork *nosplash*) en el commit de
+`platform/vita/vitagl/dependency.json`, aplicar `vitagl-vita-port.patch` y compilar con
+`make NO_SPLASHSCREEN=1 NO_DEBUG=0 HAVE_GLSL_UBOS=1 HAVE_GLSL_TEXTURE_SIZE=1 HAVE_SHARK_LOG=1 LOG_ERRORS=2`
+(o `platform/vita/tools/build_ubo_probe.py`); luego
+`VITAGL_ROOT=<vitagl> tools/build-godot-template.sh` hasta `verify_runtime.py` PASS (≈1–2 h). Vigilar
+duplicados `compiler_builtins`/`libgcc` si se enlaza la variante Rust (`RUST_PIC_LIB=`).
+
+---
+
+## 2026-10-29 (PC, 2.ª sesión) — Puerta G1 VERDE
+
+**Qué se hizo.** `godot4-vita` clonado en `toolchains/godot4-vita/engine` (gitignorado; la misma ruta que
+usa `tools/build-godot-template.sh`) y fijado en `d1a5f29`. Compilado el motor de host con el módulo:
+
+```bash
+cd toolchains/godot4-vita/engine
+scons -j14 platform=linuxbsd target=editor custom_modules=$REPO/godot x11=no wayland=no vulkan=no opengl3=no
+godot/test/run_host_tests.sh toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+```
+
+Resultado: **294 comprobaciones, 0 fallos** (round-trip CDR bit a bit de los 24 fixtures, propiedades
+anidadas, valores inválidos, pub/sub loopback, timers, parámetros, ejes). La primera compilación
+completa del motor llevó ~20 min (13:34→13:57, intentos fallidos incluidos, 16 hilos); luego es incremental (~12 s).
+
+**Arreglos que pidió el primer compilado** (el código nunca se había compilado):
+- Godot 4.8 renombró `core/object/callable_method_pointer.h` → `core/object/callable_mp.h`.
+- `ros_runtime.cpp` necesitaba `core/object/class_db.h` (`ClassDB`, `D_METHOD`, `DEFVAL`).
+- El virtual de Godot 4 es `_to_string()`, no `to_string()`.
+- `RosMsg::_set` devolvía `false` al **rechazar** un valor: para Godot 4 eso es «propiedad inexistente»
+  y lanza un `SCRIPT ERROR` que aborta la función de GDScript (se saltaban 2 comprobaciones sin contar
+  como fallo). Ahora devuelve `true` + `ERR_PRINT` y conserva el valor previo.
+- Godot interpreta los literales `const char*` como **Latin-1**: los mensajes de error van en ASCII
+  (sin tildes) o salen como `estÃ¡`. Los comentarios sí llevan tildes.
+- `runner.gd`: `var x := msg.campo` no compila (propiedad dinámica sin tipo) → `var x = ...`.
+
+**Por qué no se usa el Godot de rclgd para G1** (pregunta del usuario): rclgd descarga el binario oficial
+`4.7.1-stable` y se carga como GDExtension; `ros2_vita` es un módulo **en árbol** (la Vita no carga
+librerías) y solo existe si se compila el motor con él, y G1 debe validar contra el mismo código que irá
+a la Vita (godot4-vita, 4.8-dev7). El Godot de rclgd sirve para el desarrollo en PC (A3) y para el spike
+R-G (G1', T3.1.3).
+
+**Permisos:** el modo automático bloquea `scons` sobre el repo ajeno; el usuario añadió la regla local
+`Bash(scons:*)` con `/permissions`.
+
+**Siguiente paso exacto (PC, O1 de `docs/19`):**
+1. **G2:** compilar el cliente XRCE ARM (`vita-app/scripts/build-xrce-client-vita.sh`) y los módulos en
+   PIC; `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
+2. **G3:** `tools/build-godot-template.sh` (reutiliza `toolchains/godot4-vita/engine`) hasta
+   `verify_runtime.py` PASS.
+3. En paralelo: compilar rclgd (`godot/rclgd`) y el editor 4.8-dev7 Linux (M18).
+
+---
+
+## 2026-10-29 (PC) — Fusión de `godot-migration` + siguiente paso exacto
+
+**Qué pasó.** Había dos líneas de Godot que no se conocían entre sí:
+- `godot-migration` (PC, julio): **Godot 3.5** (`godot-vita`), módulo `microros` del motor, escena
+  teleop; **G1–G3 en hardware** (el teleop en Godot publicó `/cmd_vel`).
+- `ccr-44e2db2a-mr6xqr` (sesión en la nube, octubre): **Godot 4** (`godot4-vita`), ADR 0008, docs/17–19,
+  `msg-schema`, módulo `ros2_vita` con la API de `rclgd` (sin compilar), skills de IA.
+
+**Decisión del usuario:** fusionar `godot-migration` **teniendo en cuenta que nos mudamos a Godot 4**.
+Cómo quedó:
+- El proyecto 3.5 entero se movió de la raíz de `godot/` a **`godot/godot35/`** (histórico, sigue
+  compilable: `build-vita-template.sh`, `uninstall-godot.sh` y el `SCsub` de `microros` ya usan las rutas
+  nuevas). `godot/` queda para Godot 4 (`ros2_vita/`, `test/`, `loader-patches/`).
+- `docs/12-migracion-godot.md` → **`docs/20-godot35-migracion-historico.md`** y
+  `docs/13-plan-implementacion-godot.md` → **`docs/21-godot35-plan-implementacion-historico.md`**
+  (chocaban en número con `docs/12`/`13` de Godot 4). **En los bloques de julio de abajo:**
+  «docs/12 §Requisitos del .vpk/Prerrequisitos» = `docs/20`; «docs/13» = `docs/21`;
+  `godot/<ruta>` (proyecto 3.5) = `godot/godot35/<ruta>`.
+- Los hitos G1–G4 de la rama 3.5 **no son** las puertas G0–G7 de `docs/18` §8. El G4 de 3.5
+  (variante Rust del template) **no se hará**: la variante Rust sigue en Godot 4 (`docs/19` T8.x).
+- `godot/rclgd/`: clon de `Ozuba/rclgd` (rama `jazzy`, `GODOT_VERSION 4.7.1`) puesto por el usuario;
+  trae el Godot 4.7.1 de desarrollo (D4 de `docs/19`). **No se versiona** (`.gitignore`, `.dockerignore`).
+- Web: colecciones `tutorial` (de la rama 3.5) y `skills` conviven; `godot/godot35/README.md` publicado.
+
+**Lecciones de 3.5 que valen para Godot 4** (no reabrir): TITLE_ID de 9 caracteres en mayúsculas;
+imágenes `sce_sys` PNG 8-bit (icon0 128×128, bg 840×500, startup 280×158); el **input reliable
+stream** es obligatorio o la sesión XRCE crashea con el agente arriba; la escena
+`godot/godot35/scenes/teleop/teleop.gd` es la referencia funcional para la HMI piloto (T6.1).
+
+**Estado del PC (`tools/vita-doctor.sh`, 2026-10-29):** VitaSDK, gcc 15.2, Rust nightly, cargo-vita,
+scons, cmake, vitaGL, vita2d y docker OK. Faltan: cliente XRCE ARM en esta copia
+(`vita-app/scripts/build-xrce-client-vita.sh`), clon de `godot4-vita`, compilar/instalar rclgd, y el
+contenedor `robotnik_dev` (en el PC solo hay `rmf_unified` y `microros-agent`).
+
+**Hecho después en la misma sesión:**
+- Skills instaladas con `tools/install-skills.sh` (los enlaces antiguos de `~/.claude/skills` apuntaban
+  a `/home/jcrex/skills`, inexistente). `--check` → «Todo correcto». Falta reiniciar Claude Code.
+- **rclgd cambió:** `jazzy` pasó de `aeb82b3` a `fb12a65` (2026-10-28) y **ya incluye las clases tipadas
+  nativas** (antes rama `feature/native-msg-classes`, ya borrada): sin clases sombra, sin plugin, sin
+  `RosMsg.gen_editor_support`; tipos desde `depend`/`exec_depend`/`build_depend` de `res://package.xml`,
+  fijados al cargar; `package.xml` en el filtro de exportación. Sigue siendo 3.0.0 + «Forthcoming»: el
+  **apt 3.0.0 aún usa clases sombra**.
+- **Skill `rclgd` actualizada** a `jazzy@fb12a65`: referencia de la API regenerada (cambian `RosMsg`,
+  `RosNode.create_publisher/subscription`, `rclgd`), `mensajes-y-tipos.md` reescrito (nativas como
+  sistema actual, migración desde 3.0.0, cómo saber qué versión hay), `versiones.md`, `tooling.md`,
+  `errores-comunes.md` (5 síntomas nuevos), `SKILL.md` (regla 9 y esqueleto con clases tipadas) y
+  batería de evaluación (18 casos).
+- Puente con la Vita: `API_PARITY.md` y skill `ros2-vita-godot` — en la Vita las clases `RosXxx` **aún
+  no existen** (T3.2.4); **regla de scripts portables**: tipos por texto, `RosMsg.from_type`, anotaciones
+  `RosMsg`. `docs/19`: R-N pasa a «adoptar», T3.2.3 (clases sombra) descartada, T11.1.6 hecha.
+
+**Siguiente paso exacto (PC, oleada O1 de `docs/19`):**
+1. Reiniciar Claude Code para cargar las skills.
+2. **G1:** clonar `godot4-vita` @ `d1a5f29`, compilar `platform=linuxbsd custom_modules=<repo>/godot`
+   y pasar `godot/test/run_host_tests.sh`.
+3. **G2:** cliente XRCE + módulos en PIC; `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
+4. **G3:** `tools/build-godot-template.sh` hasta `verify_runtime.py` PASS.
+5. En paralelo: compilar rclgd (`godot/rclgd`, colcon en un contenedor Jazzy) y comprobar
+   `ros2 rclgd editor` (4.7.1); conseguir/compilar el editor 4.8-dev7 Linux (M18).
+
+---
+
+## Dónde nos quedamos (resumen de 1 minuto) — HISTÓRICO (2026-06, Fase 0/1; el estado actual está en el primer bloque)
 
 La **Fase 0 (fundación)** está completa y la **Fase 1 (topics ROS2) tiene
 todo el código escrito y verificado hasta donde la laptop permite**:
@@ -168,8 +701,8 @@ sesión en vivo.
   quedan en terminal, es una decisión explícita — ver spec). Brainstorm →
   spec → plan → implementación con `subagent-driven-development` (7
   tareas, revisión por tarea + revisión final de toda la rama):
-  - Spec: `docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
-  - Plan: `docs/superpowers/plans/2026-07-01-dashboard-logs-vita.md`.
+  - Spec: `archivo/docs/superpowers/specs/2026-07-01-dashboard-logs-vita-design.md`.
+  - Plan: `archivo/docs/superpowers/plans/2026-07-01-dashboard-logs-vita.md`.
   - Arquitectura: `web/scripts/netlog-ingester.mjs` (proceso Node nuevo,
     UDP :9999 → SQLite, mismo `web/data/app.db`) + 4 endpoints Astro
     (`/api/monitor/sessions`, `/session/[id]`, `/status`, `/stream` SSE)
@@ -271,7 +804,7 @@ desarrollo, el ingestor del monitor va aparte: `pnpm dev` (terminal 1) +
 - `rust/00-02`: serie de aprendizaje de Rust ligada al código del repo
   (herramientas, lenguaje, FFI/no_std/unsafe + glosario C↔Rust).
 - `guias-vita/`: 7 guías homebrew con frontmatter (las consume la web).
-- `superpowers/`: specs y planes de brainstorming (Fase 0; dashboard
+- `superpowers/` (hoy en `archivo/docs/superpowers/`): specs y planes de brainstorming (Fase 0; dashboard
   `/monitor` 2026-07-02).
 
 ### `tools/` y `skills/`
@@ -654,6 +1187,71 @@ cd web && pnpm build                      # o: docker compose up -d --build
      (sobrescribe "Vita ROS2 Hello" con "Vita ROS2 Teleop" v02.00) y
      hacer la verificación en vivo del punto siguiente.
 
+- **(2026-07-13, en el PC + hardware) `godot-migration` — G3: EL TELEOP EN
+  GODOT FUNCIONA EN HARDWARE, publica `/cmd_vel` (migración C COMPLETA,
+  confirmado por el usuario).** Camino de export→instalar→conectar, con tres
+  lecciones pagadas (todas documentadas en docs/12 §"Requisitos del .vpk de
+  Godot"): (1) instalar daba `0xF0030000` por TITLE_ID inválido — el editor
+  precompilado de 2022 usa el campo `Title` como TITLE_ID e IGNORA `Title Id`;
+  debe ser 9 chars MAYÚS alfanumérico sin símbolos (se usó `PSVITAROS`, que no
+  choca con el `VROS00001` nativo). (2) Luego `0x8010113D` por imágenes
+  `sce_sys` mal: `icon0.png` tiene que ser 128×128 8-bit colormap (era 64×64
+  RGBA) y el `template.xml` de livearea (embebido en el editor) reclamaba
+  `bg.png`/`startup.png` ausentes → se generaron placeholders 8-bit
+  (`godot/vita_{icon128,bg,startup}.png`, imagemagick) y se conectaron en el
+  preset. (3) Ya instalada y con la escena teleop respondiendo a mandos, al
+  Conectar crasheaba (`C2-…`, core dump) SOLO con el agente arriba: **bug del
+  port** — el módulo creaba el stream reliable de salida pero NO el de entrada
+  (`main.c:201` sí lo crea); sin él, al responder el agente el cliente XRCE
+  deref-a un input stream inexistente. Arreglado con `input_stream_buf` +
+  `uxr_create_input_reliable_stream` en `connect_agent()`. Además el
+  `build-vita-template.sh` ahora limpia `bin/vita_template` antes de `scons`
+  (el `Copy` del fork falla en rebuilds con "File exists"). Detalle del
+  exportador: ignora el export path y escribe `<Title>.vpk` en la raíz.
+  **SIGUIENTE (G4):** variante Rust del template (staticlib paraguas).
+
+- **(2026-07-13, en el PC) `godot-migration` — G2 (el template custom
+  COMPILA en el PC):** `build-vita-template.sh c` produce el engine godot-vita
+  entero con el módulo `microros` dentro (7,5 min) → `vita_release.zip` (19 MB,
+  `eboot.bin` + `.suprx` PowerVR + `microros` registrado vía
+  `register_microros_types()`), instalado como template en
+  `~/.local/share/godot/templates/3.5.rc5/`. Cadena de obstáculos resuelta,
+  todos con la MISMA raíz de siempre (la Vita es newlib, no Linux, y sin
+  carga dinámica): (1) entorno — hay que `source tools/env-devpc.fish` (VitaSDK
+  y toolchains vendorizados en `toolchains/`, no en el sistema) + `pacman -S
+  scons zip`; (2) `EGL/egl.h` → falta el driver **PVR_PSP2 v3.9**, instalado
+  con `vita-makepkg`+`vdpm` desde `../Godot/vita-packages-extra/pvr_psp2`; (3)
+  Bullet `clew.c` usa `dlopen` → **patch versionado** `godot/patches/bullet-vita-no-clew.patch`
+  que lo excluye (Godot no usa clew; la física corre entera en CPU, la GPU/OpenCL
+  es imposible en el PowerVR de todos modos); (4) `ogg/ogg.h` y códecs →
+  `vdpm libjpeg-turbo freetype libogg libvorbis libtheora opus`; (5) el driver
+  GLES2 stock de Godot hace `#include <dlfcn.h>` (llamadas muertas, solo
+  Android/iOS) → **stub versionado** `godot/vitasdk-stubs/dlfcn.h`. Los pasos
+  4-5 los aplica el build script solo, idempotente. Nuevo: `uninstall-godot.sh`
+  para revertirlo todo limpio (`patch -R`, `vdpm -u` —respeta ficheros
+  compartidos—, template, build). **Siguiente paso exacto (G3):** exportar el
+  `.vpk` desde el editor (Proyecto → Exportar → PlayStation Vita) y validar en
+  hardware que el singleton `MicroROS` aparece en GDScript y que la sesión XRCE
+  controla el robot real. Ver docs/12 §"Prerrequisitos del VitaSDK".
+
+- **(2026-07-13, en la laptop) Branch `godot-migration` — G1 (esqueleto
+  Godot) COMPLETO:** existe un fork de Godot 3.5-rc5 con plataforma Vita
+  nativa ya probado por el usuario en su consola (editor x11 +
+  `vita_template_3.5.rc5.tpz`), y se decidió replicar la app teleop en
+  Godot **sin reescribir nada de C/Rust** (diseño: docs/12; plan:
+  docs/13). Clave técnica: en la Vita no hay GDNative
+  (`platform/vita/detect.py` del fork lo deshabilita), así que el código
+  nativo entra como **módulo custom del engine** vía `custom_modules=`
+  — `godot/modules/microros/` linkea los módulos duales + XRCE v2.4.3 +
+  el glue de `vita-app/src/` y expone el singleton `MicroROS` a
+  GDScript. En la branch quedaron: el proyecto Godot versionado, el
+  módulo completo (validar en el PC), la escena teleop con stub (corre
+  en el editor de la laptop en modo SIMULADO), el script
+  `godot/scripts/build-vita-template.sh` (PC) y el README publicado en
+  la web. **Siguiente paso exacto:** en el PC, `git pull`, correr
+  `godot/scripts/build-vita-template.sh` (Tarea 7 de docs/13), exportar
+  el `.vpk` y verificar en hardware (Tarea 8).
+
 - **(2026-07-10, en el PC) ETAPA A del plan de Objetivos 3/4 EJECUTADA —
   la respuesta al Objetivo 3, con evidencia real:** siguiendo
   `docs/10-plan-objetivos-3-4.md` §4 (antes se verificó que TODAS las
@@ -845,3 +1443,161 @@ cd web && pnpm build                      # o: docker compose up -d --build
   el font8x8). Nota técnica para C1: las imágenes se cargan con libpng
   directo a textura GL (vita2d_load_PNG_file ya no existe en el
   proyecto; libpng+zlib quedaron instaladas en B1).
+
+- **(2026-10-27, en la laptop, sin Vita) Investigación web + infraestructura
+  de desarrollo (Godot, Rust nativo, optimización micro-ROS).** El usuario
+  pidió investigar en la web el funcionamiento interno de la pila y cómo
+  desarrollar apps nativas con Godot que usen ROS2, y dejar preparada la
+  infraestructura que no necesite hardware. Resultado:
+  - `docs/12-investigacion-godot-ros2-vita.md`: estado del arte con fuentes y
+    marcas [V]/[I]/[?]. Hallazgos: existen dos ports de Godot (3.5
+    `godot-vita`, GLES2/PVR_PSP2; 4.x `godot4-vita`, GXM nativo, editor solo
+    Windows); **ninguno soporta GDExtension** y Rust no tiene enlace
+    dinámico en la Vita → la integración debe ser un **módulo C++ estático**.
+    La plantilla oficial 3.5 viene sin sockets, pero ROS usa `sceNet` vía
+    `net-udp`, así que no le afecta. Godot y vitaGL no pueden compartir el
+    GPU (ADR 0007) → dos apps separadas con capa ROS compartida.
+  - `docs/adr/0008-godot-via-modulo-estatico.md` (Propuesto).
+  - `docs/13-infraestructura-desarrollo-vita.md`: mapa maestro, plan de
+    medición XRCE (experimento E1), catálogo de librerías, diseño del
+    Objetivo 5 con las APIs reales de `camera.h`/`motion.h`, y la lista
+    de pendientes por dependencia (PC / Vita / decisión del usuario).
+  - **Módulo dual nuevo `modules/msg-ring/`** (cola SPSC red→render/Godot):
+    paridad C/Rust verde, estrés de 2 hilos (2 M de mensajes) y
+    ThreadSanitizer sin avisos. **Falta validar en la Cortex-A9** (el orden
+    de memoria ARM no se prueba en x86). Serie Rust: `docs/rust/03`.
+  - `godot/` (esqueleto del módulo `ros2_vita` + `tools/build-godot-template.sh`)
+    — **sin compilar**; `tools/vita-doctor.sh` (probado en la laptop).
+  - Web: `msg-ring` en /comparador, `godot/README.md` en la sección de
+    código, `COPY godot/` en el Dockerfile, fase nueva en `fases.ts`.
+  - **Muros encontrados:** desde esta sesión no se pudo leer
+    forum.godotengine.org, doc.rust-lang.org, micro.ros.org,
+    docs.vitasdk.org, rclgd.readthedocs.io ni wololo.net (DNS bloqueado);
+    se usaron GitHub y el resumen del buscador. Los datos afectados
+    quedaron como [?] y entran en la lista de pendientes (docs/12 §8).
+  - **Siguiente paso exacto (PC):** `tools/vita-doctor.sh`; leer rclgd (P1) y
+    fijar commit de `godot-vita` (P2); implementar Etapa D (`viz-math`,
+    `msg-cdr` con fixtures de `robotnik_dev`, `tf-tree`) y cross-compilar
+    `msg-ring`. **Con la Vita:** experimento E1 y estrés ARM de `msg-ring`.
+
+- **(2026-10-27, 2.ª sesión, en la laptop, sin Vita) Hardware de la Vita,
+  Rust nativo, módulos de la Etapa D y lista de páginas bloqueadas.**
+  - `docs/14-hardware-vita-memoria-hilos-optimizacion.md`: CPU/memoria/hilos/GPU
+    con fuentes de código (vita-headers, newlib de VitaSDK, vitaGL, spec del
+    target Rust). Hallazgos verificados: heap de newlib = **un memblock de
+    128 MiB** sobrescribible con `_newlib_heap_size_user`; tipos de memblock y
+    sus valores; `SceKernelThreadInfo` expone `currentCpuId`/`lastExecutedCpuId`
+    (permite medir núcleos); afinidad en bits 16–19; el planificador ve 4 CPUs;
+    tabla de **256 hilos** en newlib; defaults de GXM (parameter buffer 16 MiB,
+    tile 32×32, alineaciones). Sigue **sin confirmar**: qué núcleos puede usar
+    un homebrew, L2, ancho de banda → experimentos E-H1…E-H6.
+  - **`tools/hwprobe/`** (sonda en C, sin compilar): mide relojes, núcleos,
+    ancho de banda por tipo de memblock y heap máximo; salida por netlog.
+  - `docs/15-rust-nativo-y-optimizacion-vita.md` + `docs/rust/04`: modos de uso
+    de Rust (A módulos+C, B app Rust, C mixta), spec del target, perfil de
+    compilación recomendado (a validar), memoria e hilos desde Rust.
+    **Pregunta abierta:** el SDK/entorno Rust propio de pruebas anteriores del
+    usuario no está en el repo; hay que incorporarlo o describirlo.
+  - **Etapa D1–D3 hecha en host** (docs/10 §7): `viz-math` (valores esperados a
+    mano), `msg-cdr` (fixtures de `rosbags`/Jazzy en `tests/fixtures/`, recortes
+    byte a byte y fuzz de 28 000 mutaciones con hash idéntico en C y Rust; ASan/UBSan
+    limpios) y `tf-tree` (lookup, ciclos, tabla llena). Entran al crate paraguas
+    (`vita-app/rust-modules`): compila y enlaza en host sin duplicados.
+    **No integrados todavía en `main.c`** (D4) y **sin cross-compilar**.
+    El fuzz encontró una divergencia real (estado parcial ante errores) que se corrigió.
+  - Godot 3.5/4: `godot_compat.h` + tabla de plan por versión en `godot/README.md`.
+  - `docs/16-paginas-pendientes-de-leer.md`: URLs no accesibles desde esta sesión,
+    con prioridad y qué extraer de cada una (las inferidas van con †).
+  - **Siguiente paso exacto (PC):** (1) `tools/vita-doctor.sh`; (2) leer las
+    páginas prioridad A de docs/16; (3) cross-compilar `msg-ring`/`viz-math`/
+    `msg-cdr`/`tf-tree` y `hwprobe`; (4) cruzar fixtures con `rclpy` en
+    `robotnik_dev`; (5) D4: suscripciones `/tf` y `/joint_states` en `main.c`.
+    **Con la Vita:** correr `hwprobe` (con y sin `EXTENDED_MEMORY`) y pegar la salida
+    en docs/14 §9.
+
+- **(2026-10-27, 3.ª sesión, ROSCon, laptop) Estudio a fondo de `rclgd` y
+  `roomba_ws` + módulo `msg-schema`.** El usuario asistió a la presentación de
+  Godot con ROS2 nativo en ROSCon. Se clonaron (solo lectura) y leyeron los dos
+  repositorios completos (rclgd `4d0a8b3`, roomba_ws `8332acb`).
+  - **`docs/17-rclgd-estado-del-arte-godot-ros2.md`**: arquitectura (GDExtension
+    sobre `rclcpp` + `ros_babel_fish`; executor en hilo propio; callbacks al hilo
+    principal salvo servicios), `RosMsg` dinámico con clases sombra GDScript,
+    TF y ejes, QoS, tooling (`build_type rclgd`, colcon, CLI, autoload), los
+    patrones del taller (robot, sensores, HMI) y la matriz de reutilización para
+    la Vita.
+  - **Hallazgos que corrigen documentos previos:** rclgd **sí está mantenido**
+    (v3.0.0, 4 distros con CI); exige **Godot 4.7** y su API usa `Callable`/`await`
+    ⇒ no corre en Godot 3.5. **ADR 0008 revisado:** recomienda Godot 4
+    (`godot4-vita`) primero para apps 2D/HMI; decisión final pendiente del usuario.
+    P1 (API de rclgd) cerrado → `godot/ros2_vita/API_PARITY.md`.
+  - **`modules/msg-schema/`** (8.º módulo dual): codec CDR genérico guiado por
+    esquema = el sustituto de babel_fish en la Vita. Esquemas generados en el PC
+    (`tools/gen_msg_schema.py`, rosbags/Jazzy). Verificado en host: 24 tipos
+    reales, decode idéntico al volcado canónico del objeto Python, encode bit a
+    bit, recortes, esquemas inválidos y fuzz de payloads y esquemas con hash
+    idéntico C/Rust; ASan/UBSan limpios. Serie Rust `05`.
+  - **Pendiente (PC/Vita):** cross-compilar, medir el coste por mensaje, integrar
+    `msg-schema` en el módulo Godot y probar `godot4-vita` con un `.pck` mínimo.
+  - **Preguntas al usuario (docs/17 §10):** ¿Godot 4 primero?, ¿hay Windows para
+    el editor de `godot4-vita`?, ¿HMI de teleop con cámara como piloto?
+
+- **(2026-10-27, 4.ª sesión, laptop) Prioridad: migración a Godot 4.** El
+  usuario decidió pasar a `godot4-vita` (Godot 4.8-dev7) y pidió una
+  investigación extensiva de qué migrar, sabiendo que el SDK de Rust para la
+  Vita **no depende de Godot**.
+  - **`docs/18-migracion-a-godot4.md`**: estado real de godot4-vita (3 rutas de
+    render), internals (loader PIC, tabla de imports, relocaciones, TLS), matriz
+    de consumidores Rust y reglas de enlace, análisis de clausura de imports,
+    opciones de red (A: backend sceNet en `net-udp`, recomendada; B: init en el
+    motor), tabla 3.5→4.x, sesgo de versión 4.7.1↔4.8-dev7, puertas G0–G7,
+    riesgos R1–R9 y backlog M1–M17. ADR 0008 **Aceptado** (decisión 5 = Godot 4).
+  - **Hallazgos:** el motor no importa `sceNet*` ni inicializa red; faltan en la
+    tabla del loader `sincosf`, `bcmp` y 11 funciones `sce*` de red (parche
+    validado con `git apply --check`: `godot/loader-patches/`); XRCE/CDR tienen 0
+    imports sin resolver; Rust debe ir PIC + `core` solamente; `texture_2d_update`
+    recrea la textura (coste para cámara); el exportador exige el editor 4.8-dev7.
+  - **Código:** `godot/ros2_vita/` reescrito a módulo en árbol de Godot 4
+    (`RosMsg` sobre `msg-schema`, `RosNode`, pub/sub/timer, parámetros, singleton
+    `rclgd`, `LoopbackTransport`, `XrceTransport` stub); `godot/test/` (pruebas
+    GDScript, round-trip de los 24 fixtures); `tools/check-vita-imports.py`,
+    `tools/build-rust-pic.sh`, `tools/build-godot-template.sh` y `vita-doctor.sh`
+    actualizados. **Todo sin compilar ni ejecutar.**
+  - **Bloqueado por el entorno:** no se pudo compilar el motor aquí (la ejecución
+    de SCons/código del repo ajeno no se autorizó); queda como puerta **G1** en
+    el PC.
+  - **Siguiente paso exacto (PC):** `tools/vita-doctor.sh` → `tools/build-godot-template.sh`
+    (G1) → compilar `godot/test` con un Godot de host (`godot/test/run_host_tests.sh`) →
+    `tools/check-vita-imports.py --nm arm-vita-eabi-nm`.
+  - **Preguntas abiertas:** ¿Windows/addon para el editor 4.8-dev7?; ¿red por A o B?;
+    ¿política de fork/parches hacia godot4-vita?
+  - **Respuestas del usuario (misma sesión):** solo Linux (CachyOS); **fork de godot4-vita anotado como
+    tarea (M19) pero priorizando el entorno compatible** (parches mínimos, proponibles a upstream); rclgd
+    **trae su propio Godot 4.7.1** (verificado en su `CMakeLists.txt`), que no sirve para exportar a Vita
+    (el exportador exige 4.8-dev7) ⇒ nueva tarea M18: editor 4.8-dev7 Linux para exportar. La elección
+    de red **A vs B** queda abierta con la comparación detallada en docs/18 §4.3.
+  - **Red: opción A elegida** por el usuario tras la explicación. **Plan multiagente** en
+    `docs/19-plan-multiagente-migracion-godot4.md`: mapa jerárquico (11 ramas 0–10, 95 tareas con dueño,
+    máquina, puerta y estado), ramas de ataque (upstream y técnicas), 15 agentes (A0–A13 y A7b) con propiedad de
+    ficheros, oleadas O0–O4, protocolo y briefs listos para usar. Hallazgos de ramas: rclgd
+    `feature/native-msg-classes` (clases tipadas nativas, *breaking*), `jazzy` = nuestra rama;
+    godot4-vita `release/v0.1` = `main` en código; posible rama R-G (GDExtension estática vía
+    `load_extension_from_function`) como spike. Nueva puerta **H1** (XRCE en host contra el agente, sin Vita).
+  - **Siguiente paso exacto:** lanzar la oleada **O0** en el portátil (A1, A5, A6, A7, A8, A11, A12);
+    en el PC, la O1 empezando por A2 (G1) y A3 (editor 4.8-dev7).
+  - **Escuadra K y skills de IA (misma sesión):** a petición del usuario, 6 agentes especialistas en
+    rclgd (K1–K6) añadidos al plan (docs/19 §4, rama 11 del mapa, briefs, puertas E1/E2) y **tres skills
+    nuevas** en `skills/`: `rclgd` (reglas, API de las 17 clases generada de los XML oficiales con
+    `scripts/xml_to_md.py`, conceptos, tooling, tipos, versiones, errores, batería de 15 preguntas para
+    una IA limpia y `scripts/rclgd-docs.sh` — probado aquí: clona la rama `jazzy`, indexa, lee, busca y
+    regenera), `godot4-ros-scripting` (patrones de roomba_ws + esencial de Godot 4 + 4 plantillas `.gd`
+    sin ejecutar) y `ros2-vita-godot`. readthedocs no es accesible desde la sesión cloud: se usó la
+    fuente de GitHub (mismo contenido; docs idénticas en `jazzy`/`rolling`). Sección web «Skills de IA».
+  - **Pendiente:** pasar la batería E1 con un subagente sin contexto; E2 (plantillas en el editor de
+    rclgd) en el PC; `dump_api.gd` sin ejecutar.
+
+- **(2026-10-29, laptop/cloud) Instalador de skills.** `tools/install-skills.sh` (enlaza o copia
+  todas las carpetas de `skills/` con `SKILL.md` en `~/.claude/skills/` o `.claude/skills/`, valida el
+  frontmatter YAML y `name`, `--check`/`--uninstall`; probado aquí en un destino temporal, incluido un
+  caso de YAML roto) y **`skills/INSTALAR.md`**: pasos para que Claude Code del PC instale, verifique y
+  active las skills e informe. **Siguiente paso (PC):** decirle a Claude Code «lee skills/INSTALAR.md e
+  instala las skills», reiniciarlo y seguir con la oleada O1 (docs/19).

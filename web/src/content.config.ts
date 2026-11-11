@@ -41,16 +41,34 @@ const rust = defineCollection({
   loader: glob({ pattern: '*.md', base: '../docs/rust' }),
 });
 
+// docs/tutorial/*.md — el tutorial práctico C/Rust sobre el código real
+const tutorial = defineCollection({
+  loader: glob({ pattern: '*.md', base: '../docs/tutorial' }),
+});
+
 // READMEs técnicos del código (módulos, app, MCP)
 const codigo = defineCollection({
   loader: glob({
     pattern: [
       'modules/*/README.md',
       'vita-app/README.md',
+      'godot/README.md',
+      'godot/godot35/README.md',
+      'tools/*/README.md',
       'mcp/*/README.md',
+      'docker/README.md',
     ],
     base: '..',
   }),
 });
 
-export const collections = { guias, fundacion, adrs, rust, codigo };
+// skills/*/ — skills de IA (Claude Code) del proyecto: SKILL.md + referencias.
+// El frontmatter (name, description) es el de las skills; no se valida aquí.
+const skills = defineCollection({
+  loader: glob({
+    pattern: ['INSTALAR.md', '*/SKILL.md', '*/references/*.md', '*/references/api/*.md', '*/evals/*.md'],
+    base: '../skills',
+  }),
+});
+
+export const collections = { guias, fundacion, adrs, rust, tutorial, codigo, skills };

@@ -1,0 +1,36 @@
+; Proyecto de la puerta G5 (docs/18 §8): ros2_vita con el transporte XRCE (micro-ROS por WiFi/UDP).
+; Publica std_msgs/String en /vita_hello (1 Hz) y Twist en /cmd_vel (10 Hz), y se suscribe a /pc_hello.
+; El agente micro-ROS corre en el PC (192.168.1.65): docker run --net=host microros/micro-ros-agent:jazzy udp4 --port 8888
+; Se exporta con tools/export-vita-vpk.sh godot/g5-xrce.
+config_version=5
+
+[application]
+
+config/name="ros2_vita G5 xrce"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.8", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=544
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/psvita/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+
+[ros]
+
+schema_path="res://ros/schema.rsch"
+agent_ip="192.168.1.65"
+agent_port=8888
+domain_id=0
+
+[threading]
+
+worker_pool/max_threads=2

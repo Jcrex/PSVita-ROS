@@ -183,15 +183,12 @@ Las skills del proyecto automatizan los workflows más repetitivos del desarroll
 
 ### Cómo copiarlas a la configuración de Claude Code del PC
 
-Las skills están en el directorio `skills/` del repositorio del proyecto. Una vez sincronizado el repositorio al PC (mediante `tools/sync-to-devpc.sh`), copiar el directorio de cada skill al directorio de skills de Claude Code:
+Las skills están en el directorio `skills/` del repositorio del proyecto (una carpeta por skill con su `SKILL.md`).
 
-```bash
-# Asumiendo que Claude Code usa ~/.claude/skills/ para skills de proyecto
-# (verificar la ruta exacta con la documentación de Claude Code)
-cp -r skills/vita-dual-module   ~/.claude/skills/
-cp -r skills/vita-build-package ~/.claude/skills/
-cp -r skills/vita-deploy-logs   ~/.claude/skills/
-```
+**Desde 2026-10-29 hay instalador:** `tools/install-skills.sh` (enlaces simbólicos en
+`~/.claude/skills/`, detecta todas las skills, valida el frontmatter; `--check`, `--copy`,
+`--project`, `--uninstall`). Instrucciones paso a paso, pensadas para que Claude Code las ejecute:
+**`skills/INSTALAR.md`** (basta con decirle «lee skills/INSTALAR.md e instala las skills»).
 
 Reiniciar Claude Code para que detecte las nuevas skills.
 

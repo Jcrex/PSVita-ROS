@@ -1,0 +1,19 @@
+# Cargo.toml — crate Rust del módulo `msg-ring` (misma estructura que mem-pool;
+# los comentarios largos sobre rlib/standalone/panic están allí).
+[package]
+name = "msg_ring_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[features]
+default = ["standalone"]
+standalone = []
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

@@ -65,5 +65,5 @@ errcode NULL tolerado.
 ## Estado
 
 - [x] Paridad C/Rust verificada en host (laptop).
-- [ ] Compilación cruzada Vita — en el PC.
-- [ ] Sesión XRCE real contra micro-ROS Agent — la incógnita dura, en hardware.
+- [x] Compilación cruzada Vita — en el PC (Fase 1; PIC en G2, 2026-10-29).
+- [x] Sesión XRCE real contra micro-ROS Agent — en hardware (Fase 1, 2026-07-01; G5/G6 en Godot 4, 2026-10-30).

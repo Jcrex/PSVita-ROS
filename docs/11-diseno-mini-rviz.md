@@ -1,7 +1,7 @@
 # 11 — Diseño del mini-rviz (Plan B de los Objetivos 3 y 4)
 
-**Fecha:** 2026-07-10 · **Estado:** diseño aprobado — implementación en curso
-(etapas B–E de `docs/10-plan-objetivos-3-4.md`)
+**Fecha:** 2026-07-10 · **Estado:** diseño aprobado — implementación **en pausa desde 2026-10-27**
+(etapas B–E de `docs/10-plan-objetivos-3-4.md`): prioridad Godot 4 (ADR 0008); el 3D sigue en `vita-app/` (ADR 0008 §5)
 
 Este es el diseño fino del visualizador propio que activa el ADR 0006:
 rviz2 nativo no es portable (evidencia en `docs/04`), así que la Vita
