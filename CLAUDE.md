@@ -93,25 +93,20 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   docs folder or category, add a collection + section for it (and a COPY
   line in `web/Dockerfile` if it's a new top-level path).
 
-## Working method: learning mode (since 2026-10-31, user decision)
+## Working method: autonomous research + implementation (since 2026-11-11, user decision)
 
-The user wants to continue the project on their own, audit code and explain it in detail —
-not just validate what Claude writes. Full method and curriculum:
-`docs/tutorial/07-ruta-completa-de-aprendizaje.md`. In every milestone:
+**Learning mode is PAUSED** (it was active 2026-10-31 → 2026-11-11; method kept in
+`docs/tutorial/07-ruta-completa-de-aprendizaje.md` for when it resumes). The user's learning is slower than
+the research, so: **keep researching and implementing autonomously**, run the commands yourself (docker,
+`ros2`, builds, exports), and only stop for irreversible decisions or contradictions with an accepted ADR.
+When the user explicitly asks to learn something, generate the guide/lesson then.
 
-- **Explain before coding**: plan in plain Spanish (what, why, alternatives); the user decides.
-- **Leave the user a real coding task** (a "reto" in the lesson) instead of writing everything.
-- **Give commands, don't run them** (docker, `ros2`, build, export, deploy): explain each part;
-  run them yourself only if the user asks.
-- **Guided audit before commit**: walk the `git diff` with the P10 checklist and ask the user what
-  each part does.
-- **Every milestone leaves a lesson** in `docs/tutorial/` (like `08-godot-imu-primer-sensor.md`),
-  with "comprueba que lo has entendido" questions and a progress table.
-- Cite `file:line` or official docs for every claim; mark guesses as hypotheses.
-- **Two documentations.** For the user: chat explanations, `docs/tutorial/` and `docs/informes/` docs are
-  **≤ 500 words each** (check with `wc -w`): direct, tables and commands, no padding. For Claude:
-  `docs/ia/` (detailed teaching scripts and `docs/ia/auditoria/`, not on the web) + the technical docs `docs/00–23`.
-  Rules: `docs/ia/README.md`.
+- **Reports: long only.** Write the full technical docs (`docs/24+`, `docs/ia/`, ADRs). Do NOT write the
+  short ≤ 500-word versions in `docs/informes/` unless the user asks for one.
+- Research stage 2026-11 ("estación robótica", LT1–LT8): multi-agent workshops, board and logs in
+  `docs/ia/workshops/` (method in its README).
+- Cite `file:line` or official docs for every claim; mark guesses as hypotheses ([V]/[I]/[?]).
+- Hardware tests still need the user (the Vita is in their hands): give exact commands and the green criterion.
 - **Shells:** the user runs **fish** on the PC CachyOS (this machine) and **zsh** elsewhere. Commands
   given to the user for the PC must be fish-valid (`set VAR valor`, not `VAR=valor` alone; no
   `export`, `$(...)` → `(...)`); for the laptop, zsh. Scripts with a shebang (`tools/*.sh`) are fine.

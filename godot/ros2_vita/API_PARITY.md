@@ -17,7 +17,7 @@
 | `init(args: PackedStringArray)` / `shutdown()` / `ok()` | ✅ | `args` incluye `-p agent_ip:=...` (IP/puerto del agente, no hay *discovery* DDS) |
 | señal `ros_ready` | ✅ | tras `uxr_create_session` correcto |
 | `godot_to_ros_vector/quat`, `ros_to_godot_vector/quat` | ✅ | `ros=(-g.z,-g.x,g.y)`; triviales, sin dependencias |
-| `get_logger(name)`, `set_logger_level`, `get_logger_effective_level`, `get_logging_severity_from_string` | 🟡 | consola/netlog; `/rosout` ⏳ |
+| `get_logger(name)`, `set_logger_level`, `get_logger_effective_level`, `get_logging_severity_from_string` | ⏳ | sin registrar (corrección 2026-11-11); objetivo: consola/netlog, `/rosout` después |
 | `use_sim_time`, `publish_sim_time` | ⏳ | `/clock` sin prioridad |
 
 ## `RosNode` (RefCounted)
@@ -32,11 +32,11 @@
 | `create_client(srv, type, qos)` + `await req.completed` | ⏳ | DDS-RPC del cliente XRCE **[?]** |
 | `create_service(...)` | ⏳ | callback en hilo de red; misma regla que rclgd |
 | `create_action_client/server` | ⏳ | no están en el cliente XRCE |
-| `create_tf_broadcaster()` → `send_transform(t, child, parent, static)` | ✅ | publica `tf2_msgs/TFMessage` en `/tf` y `/tf_static` |
-| `create_tf_listener(cache)` → `lookup_transform`, `can_transform`, `get_frame_names`... | 🟡 | `tf-tree`: **último valor, sin historial ni timeout**; `time` se ignora |
+| `create_tf_broadcaster()` → `send_transform(t, child, parent, static)` | ⏳ | objetivo: publicar `tf2_msgs/TFMessage` en `/tf` y `/tf_static`. **Corregido 2026-11-11** (revisión de la oleada 1, `docs/ia/workshops/posts/revision-oleada1.json`): no existe en `godot/ros2_vita/` (`register_types.cpp` no lo registra y el SCsub no compila `tf-tree`); estaba marcado ✅ por error. Tarea P0. Ojo: un TFMessage grande (G1 ≈ 4,8 KB) solo cabe en fiable fragmentado (W2) |
+| `create_tf_listener(cache)` → `lookup_transform`, `can_transform`, `get_frame_names`... | ⏳ | diseño: `tf-tree` (último valor, sin historial ni timeout; `time` se ignora). Sin implementar en el módulo (misma corrección del 2026-11-11) |
 | `declare_parameter / get_parameter / set_parameter` + señal `parameter_changed` | 🟡 | **solo locales**; sin servicios `/param` |
 | `get_topic_names_and_types()`, `count_publishers/subscribers` | ❌ | sin API de grafo en XRCE |
-| `get_logger()` | 🟡 | ver arriba |
+| `get_logger()` | ⏳ | no registrado (corrección 2026-11-11); hoy solo `print`/netlog |
 
 ## `RosMsg` (RefCounted) y clases tipadas
 | rclgd | Vita | Nota |
@@ -81,8 +81,8 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
 | `RosTimer` (`cancel/reset/is_canceled/is_ready/get_remaining_time`) | ✅ | |
 | `RosClient`, `RosRequest`, `RosService` | ⏳ | |
 | `RosActionClient`, `RosGoalHandle`, `RosActionServer`, `RosServerGoalHandle` | ⏳ | |
-| `RosTfBroadcaster`, `RosTfListener` | ✅ / 🟡 | ver arriba |
-| `RosLogger` (debug/info/warning/error/fatal, filtros `once`/`throttle`/`skip_first`, `get_child`) | 🟡 | sin `/rosout` al principio |
+| `RosTfBroadcaster`, `RosTfListener` | ⏳ / ⏳ | ver arriba (corrección 2026-11-11) |
+| `RosLogger` (debug/info/warning/error/fatal, filtros `once`/`throttle`/`skip_first`, `get_child`) | ⏳ | sin registrar (corrección 2026-11-11) |
 
 ## Reglas de hilos (idénticas a rclgd)
 - Suscripciones, timers y acciones: **hilo principal**.

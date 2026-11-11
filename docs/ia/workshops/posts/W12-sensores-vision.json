@@ -1,0 +1,151 @@
+[
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "LT5 tabla sensor → dónde corre (Vita / PC rclgd / ambos con el mismo script)",
+  "evidencia": "IMU simulada (ruido blanco, deriva random walk, LPF, covarianzas): AMBOS. ros_imu.gd es lógica pura sobre PhysicsServer3D.body_get_direct_state + get_velocity_at_local_position (rs:ros_imu/ros_imu.gd:49-94) [V]; GodotPhysics3D activo en la Vita (W7) [V]; Imu 316 B CDR ⇒ BE (W2) [V]; en la Vita 50 Hz, no 100 (60 ticks físicos y 1 núcleo) [I]. GPS simulado (error correlacionado + NavSatFix): AMBOS; rs:ros_gps/ros_gps.gd:47-69 son unas 15 operaciones por fix [V]; NavSatFix ≈ 130 B [I cálculo CDR] ⇒ BE. Odometría de ruedas: AMBOS (integración cinemática pura); Odometry 724 B > 488 ⇒ en la Vita publicar /vita/pose2d Float32[6] 40 B BE y que el relay la convierta (W2) [V tamaños]. Motores diferenciales (cmd_vel → v_izq/v_der → cuerpo): AMBOS si es cinemático (CharacterBody3D/transform); RigidBody3D + HingeJoint3D por rueda solo PC o medir antes (joints compilados según W7, coste [?]). LiDAR 2D por rayos: AMBOS con presupuesto distinto (180 rayos/10 Hz en la Vita, ver post de rayos); el ros_lidar.gd de rclgd_sensors NO sirve en la Vita: 6 SubViewports + compute + GLSL (W4 §5, rs:ros_lidar/ros_lidar.gd:32-162) [V]. LiDAR 3D: SOLO PC (16×360 = 5760 rayos/barrido ⇒ 57 600 rayos/s a 10 Hz; PointCloud2 5000 pts 80 KB, imposible en XRCE según W2) [V tamaños, I coste]. Cámara RGB / profundidad / ojo de pez: SOLO PC (SubViewport, RenderingDevice, Compositor, DepthCapture.glsl: rs:ros_camera/ros_camera.gd:27-125) [V]; el port no dibuja 3D fuera de la pantalla principal ('offscreen 3D viewports are not implemented', W7) [V] y Image 160×120 mono = 19 KB CDR (W2) [V].",
+  "fuentes": [
+   "scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_imu/ros_imu.gd:49-119",
+   "scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_gps/ros_gps.gd:36-69",
+   "scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_lidar/ros_lidar.gd:32-162",
+   "scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_camera/ros_camera.gd:27-125",
+   "docs/ia/workshops/posts/W4-matriz-borrador.md:206-216",
+   "docs/ia/workshops/posts/W2-xrce.json",
+   "docs/ia/workshops/posts/W7-motor.json"
+  ],
+  "confianza": "alta para la clasificación; media para las tasas de la Vita",
+  "coste_estimado": "S (tabla) — los portes concretos: IMU/GPS S, odometría/motores S, LiDAR 2D M",
+  "como_se_mediria_en_hardware": "G-W12-2 y G-W12-3 (ver post de gates)"
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "LiDAR 2D por PhysicsDirectSpaceState3D.intersect_ray: estimación de rayos/fotograma en 1 núcleo a 444 MHz",
+  "evidencia": "Base medida: g7c corre a ~17 ms/fotograma con render ≈ 11,6 ms (docs/06-bitacora-estado.md:56) [V] ⇒ a 60 FPS quedan ~0 ms; a 30 FPS (33,3 ms) quedan ~15 ms. El render ya gasta hasta 96 rayos de sombra/fotograma (rendering/vita/shadow_rays, toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:869; intersect_ray en :550) [V], pero solo con luces omni/spot y colisionadores StaticBody3D (W7) [V]: con luz direccional o shadow_rays=0 ese coste desaparece. Estimación por rayo [I, sin datos de hardware]: núcleo GodotSpace3D (BVH + estrecho, escena de 20–100 cajas) ~20–50 µs a 444 MHz (1–3 µs en escritorio × 10–20 por reloj/IPC del A9); llamada desde GDScript con PhysicsRayQueryParameters3D reutilizado + Dictionary de resultado: +30–80 µs ⇒ 50–130 µs/rayo. Presupuesto de 4 ms ⇒ 30–80 rayos/fotograma ⇒ a 30 FPS 900–2400 rayos/s ⇒ 180 rayos a 10 Hz (1800 rayos/s) CABE en el extremo optimista; 360 a 10 Hz no. Diseño: repartir el barrido entre fotogramas (60 rayos/fotograma × 3 fotogramas = 1 barrido de 180), colisionadores del LiDAR en una capa propia (collision_mask), rango corto (≤ 8 m). Mejora: helper C++ en ros2_vita scan(space_rid, origin, basis, n, fov, range, mask) → PackedFloat32Array, sin Dictionary por rayo ⇒ esperable 2–3× [I]. Alternativa sin física: DDA sobre rejilla de ocupación 2D en C, ~2–5 µs/rayo [I].",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:529-550",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:869",
+   "docs/06-bitacora-estado.md:56",
+   "docs/ia/workshops/posts/W1-vita-sdk.json (P1b: 1 núcleo efectivo, P4: 444 MHz)"
+  ],
+  "confianza": "baja (cifras por rayo inferidas); alta en el método",
+  "coste_estimado": "S (benchmark) + M (helper C++ batch)",
+  "como_se_mediria_en_hardware": "Proyecto w12-raybench (reto del usuario): escena con 20/100 StaticBody3D, luz direccional, shadow_rays 0 y 96; bucle de N∈{16,32,64,128,256} rayos/fotograma con 3 variantes (GDScript intersect_ray con query reutilizada; N RayCast3D + force_raycast_update; helper C++ cuando exista); Time.get_ticks_usec() alrededor del bucle; publica /w12/bench Float32MultiArray [variante, N, us_total, us_por_rayo, fps] a 2 Hz; cruzar con [vita-prof] physics3d/process y [gxm2d-perf] fps en godot_stderr.log. Verde: µs/rayo medido para las 3 variantes y N_max con FPS ≥ 30 sostenido 60 s."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "«El mismo script» en PC (rclgd + rclgd_sensors) y Vita (ros2_vita): capa de compatibilidad + degradación",
+  "evidencia": "Detección [V]: OS_Vita::has_feature devuelve true para 'vita' (toolchains/godot4-vita/engine/platform/vita/os_vita.cpp:178). Diferencias que el script debe tapar: (1) clases tipadas RosSensorMsgsImu/NavSatFix no existen en la Vita: usar fábrica Msg.make(tipo) que en PC hace ClassDB.instantiate('RosSensorMsgsImu') y en la Vita RosMsg.new()+init('sensor_msgs/msg/Imu') (ros_msg.cpp:723) [V]; (2) create_tf_broadcaster no está registrado en ros2_vita (W4 T-W4-1, P0) [V] ⇒ comprobar node.has_method('create_tf_broadcaster') y si falta publicar TF estático por relay o saltar; (3) PublishQueue usa Thread+Mutex+Semaphore (rs:publish_queue.gd:12-14) [V]; en la Vita WorkerThreadPool está forzado a 0 y XRCE se bombea en el hilo principal (W1 P1b) ⇒ publicar en línea; (4) RosQoS: setters existen en ambos (ros_runtime.cpp:78-85) [V]; (5) create_timer existe en ambos (ros_runtime.cpp:193) [V]; (6) tasas: const HZ = 50 if OS.has_feature('vita') else 100. Patrón: base RosSensorPortable extends Node3D con _advertise/_publish/_stamp compatibles; subclases ros_imu/gps/odom/lidar2d comunes; los sensores de GPU (cámara, LiDAR 3D) se marcan con un guard 'if OS.has_feature(\"vita\"): queue_free(); push_warning(...)' para que la misma escena cargue en ambos. Licencia rclgd_sensors MIT © 2024 Miguel Oroz Zubasti (W4 §7) [V] ⇒ se puede derivar citando.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/os_vita.cpp:178",
+   "godot/ros2_vita/ros_msg.cpp:723-729",
+   "godot/ros2_vita/ros_runtime.cpp:78-85,187-197",
+   "scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/publish_queue.gd:1-57",
+   "scratchpad/ozuba/rclgd_sensors/addons/rclgd-sensors/ros_sensor.gd:27-79",
+   "docs/ia/workshops/posts/W4-matriz-borrador.md:154-169"
+  ],
+  "confianza": "alta",
+  "coste_estimado": "M (base portable + 4 sensores), depende de T-W4-1 para TF",
+  "como_se_mediria_en_hardware": "G-W12-2: el mismo .gd (diff vacío) corre en Godot escritorio con rclgd y en la Vita; ros2 topic hz de /sim/imu y /sim/gps dentro de ±10 % del objetivo en ambos."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "Sensores reales de la Vita como fuente ROS (IMU, cámaras, panel trasero, GPS, micrófono)",
+  "evidencia": "IMU: HECHO en G7 (Input.get_accelerometer/gyroscope/gravity alimentados por sceMotionGetState, toolchains/godot4-vita/engine/platform/vita/display_server_vita.cpp:262-271; godot/g7-imu/main.gd:236-238) [V]; Imu 316 B BE a 30 Hz, 59 FPS [V docs/06:37]. Panel táctil trasero: el port solo muestrea SCE_TOUCH_PORT_FRONT (display_server_vita.cpp:107,178) [V], pero sceTouchSetSamplingState/sceTouchPeek ya están en la tabla del loader (loader/default_dynlib.c:1282-1284) [V] ⇒ un helper C en ros2_vita puede leer el puerto BACK sin parchear el loader [I]. Publicaría Float32MultiArray [n, x1,y1,…x4,y4] ≤ 52 B BE a 30–60 Hz (trackpad de teleop); coste despreciable. Cámaras frontal/trasera: sceCameraOpen/Start/Read existen en VitaSDK (psp2/camera.h:251-288; libSceCamera_stub.a) con 160×120…640×480, YUV/ARGB, hasta 120 fps en QVGA (camera.h:56-87) [V]; NO hay ninguna entrada sceCamera* en default_dynlib.c (grep 0) [V] ⇒ hace falta parche del loader (como 0001-ros2-vita-imports.patch) + helper C. Godot CameraServer/CameraFeed no se compila para la Vita (modules/camera/config.py: solo macos/windows/linuxbsd/android/ios) [V]. Publicaría CompressedImage 160×120 (codificada con sceJpegEnc por hardware, psp2/jpegenc.h, o libjpeg-turbo ya enlazado) troceada ≤ 470 B BE y reensamblada por el relay; 10 Hz × ~3 KB = 30 KB/s [I]. GPS: _sceGpsOpen/_sceGpsGetData declarados (psp2/gps.h:23-33) [V]; solo modelos 3G (PCH-1100); qué modelo tiene el usuario y si el homebrew puede usarlo sin el servicio de localización: [?]. NavSatFix ~130 B BE a 1 Hz. Micrófono: sceAudioInOpenPort/Input (psp2/audioin.h:52-57) [V], no está en la tabla del loader (grep 0) [V]; sceAudioInInput bloquea ⇒ hilo C propio; publicaría nivel RMS Float32 (barato) o PCM 16 kHz mono = 32 KB/s en trozos de 240 muestras (480 B) [I].",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/display_server_vita.cpp:105-112,177-178,262-271",
+   "toolchains/godot4-vita/engine/platform/vita/loader/default_dynlib.c:1276-1284",
+   "toolchains/vitasdk/arm-vita-eabi/include/psp2/camera.h:56-288",
+   "toolchains/vitasdk/arm-vita-eabi/include/psp2/gps.h:23-33",
+   "toolchains/vitasdk/arm-vita-eabi/include/psp2/audioin.h:52-61",
+   "toolchains/godot4-vita/engine/modules/camera/config.py",
+   "godot/loader-patches/0001-ros2-vita-imports.patch",
+   "godot/g7-imu/main.gd:236-238"
+  ],
+  "confianza": "alta en disponibilidad de API; media en costes",
+  "coste_estimado": "panel trasero S; cámara M–L (parche loader + C + relay); micrófono M; GPS [?]",
+  "como_se_mediria_en_hardware": "G-W12-6 (cámara) y G-W12-7 (panel trasero): ver post de gates."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "LT7 recepción de imagen: CompressedImage JPEG troceada vía relay frente a Image cruda pequeña",
+  "evidencia": "Límites XRCE (W2) [V]: BE ≤ 488 B CDR; fiable RX reensambla hasta ≈ 7,5 KiB; Image 160×120 mono = 19 248 B ⇒ imposible directa; JPEG 320×240 q50 6–12 KB [I]. Opciones: (a) relay → /vita/camara_trozo UInt8MultiArray [frame_id u16, idx u8, total u8, datos ≤ 460 B] BE; la Vita concatena en PackedByteArray y descarta el fotograma si falta un trozo; 160×120 q40 ≈ 2–4 KB = 5–9 trozos [I]; (b) CompressedImage 160×120 fiable entero (< 7,5 KiB) — más simple pero el reensamblado fiable reenvía y puede atascar; (c) Image cruda 80×60 mono = 4,8 KB fiable o 4 trozos BE, sin decodificador. Recomendación: (a) para color, (c) como modo degradado/diagnóstico. Ancho de banda 10 Hz × 3 KB = 30 KB/s, dentro de los ~100 KB/s del plan W2 [I].",
+  "fuentes": [
+   "docs/ia/workshops/posts/W2-xrce.json"
+  ],
+  "confianza": "media",
+  "coste_estimado": "M (relay en docker/ + ensamblador GDScript)",
+  "como_se_mediria_en_hardware": "G-W12-4: % de fotogramas completos ≥ 90 % durante 120 s a 10 Hz, contado en la Vita y publicado en /w12/img_stats."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "Decodificación JPEG en la Vita: Image.load_jpg_from_buffer (libjpeg-turbo) frente a sceJpeg por hardware",
+  "evidencia": "[V] libjpeg-turbo está enlazado en libgodot.so (símbolos tj3Decompress8, tj3DecompressHeader, jpeg_CreateDecompress con arm-vita-eabi-nm -D toolchains/godot4-vita/out/libgodot.so) y el módulo jpg está en el árbol (modules/jpg/SCsub:11-46) ⇒ Image.load_jpg_from_buffer debería funcionar [I: no probado en hardware]. Coste estimado [I]: libjpeg-turbo sin SIMD (Godot compila su copia sin NEON) ~20–40 ciclos/píxel ⇒ 160×120 ≈ 1–2 ms, 320×240 ≈ 3,5–7 ms a 444 MHz; más conversión a RGBA8 y ImageTexture.update(), que recrea la textura GPU entera (W7: texture_2d_update → texture_2d_initialize) ≈ 1–3 ms ⇒ 320×240 a 10 Hz ≈ 5–10 % de CPU. Alternativa hardware: sceJpegInitMJpeg/sceJpegDecodeMJpegYCbCr/sceJpegMJpegCsc (psp2/jpeg.h:40-60, libSceJpeg_stub.a) [V], no están en la tabla del loader [V grep 0]; descarga la CPU pero exige parche del loader, buffers alineados y módulo C [I]; requisitos de memoria (phycont/CDRAM) [?].",
+  "fuentes": [
+   "toolchains/godot4-vita/out/libgodot.so (nm -D)",
+   "toolchains/godot4-vita/engine/modules/jpg/SCsub:11-46",
+   "toolchains/vitasdk/arm-vita-eabi/include/psp2/jpeg.h:40-60",
+   "docs/ia/workshops/posts/W7-motor.json (texturas)"
+  ],
+  "confianza": "media (símbolos verificados; tiempos inferidos)",
+  "coste_estimado": "S para probar libjpeg-turbo; M–L para sceJpeg",
+  "como_se_mediria_en_hardware": "En w12-img: Time.get_ticks_usec() alrededor de load_jpg_from_buffer y de ImageTexture.update por separado; 3 tamaños (80×60, 160×120, 320×240) × q{40,70}; publicar p50/p95 en /w12/img_stats. Verde: 160×120 p95 ≤ 5 ms total y FPS ≥ 30."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "Overlays vision_msgs/Detection2DArray: tamaño CDR y formato compacto en el relay; dibujo 2D",
+  "evidencia": "Cálculo CDR [I, por la definición Jazzy de vision_msgs 4.x]: Detection2D = Header (~28 B) + results[] con ObjectHypothesisWithPose (class_id string ~12 + score f64 + PoseWithCovariance 7×8+36×8 = 344) + BoundingBox2D (Pose2D 3×f64 + size_x/size_y 2×f64 = 40) + id string ⇒ ~450 B por detección con 1 hipótesis ⇒ 10 detecciones ≈ 4,5 KB (solo fiable), > 16 imposible. Formato compacto: /vita/detecciones Float32MultiArray [stamp_frame, n, (clase, score, cx, cy, w, h)×n] normalizado 0–1 ⇒ 16+4·(2+6n) ≤ 488 ⇒ n ≤ 19 BE (o Int16 ⇒ ~38); nombres de clase una vez en /vita/clases fiable TRANSIENT_LOCAL (soportado, W2). Dibujo: draw_rect(filled=false) + draw_string validados en hardware (W7, g6-hmi/main.gd, g7-imu/nivel.gd) [V]; 20 cajas ≈ 40 primitivas, coste despreciable [I]. Sincronía: el relay incluye el frame_id de la imagen a la que corresponden.",
+  "fuentes": [
+   "docs/ia/workshops/posts/W2-xrce.json",
+   "docs/ia/workshops/posts/W7-motor.json (2D draw_*)",
+   "https://github.com/ros-perception/vision_msgs/tree/ros2/vision_msgs/msg"
+  ],
+  "confianza": "media",
+  "coste_estimado": "S (relay) + S (nodo de overlay en GDScript)",
+  "como_se_mediria_en_hardware": "G-W12-5: 20 cajas a 10 Hz sin bajar más del 5 % los FPS; latencia PC→dibujo < 150 ms (el relay pone su reloj en el mensaje y la Vita lo devuelve en /w12/eco)."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "Inferencia en la propia Vita: qué cabe",
+  "evidencia": "Detector de color (umbral HSV + centroide/caja) sobre 160×120 en C: 19 200 px × ~10 ciclos ≈ 0,2 Mciclos ⇒ < 1 ms [I]; en GDScript con Image.get_pixel serían ~19 k llamadas × 2–5 µs = 40–100 ms ⇒ PROHIBIDO por píxel en GDScript [I]. ArUco/AprilTag (umbral adaptativo + contornos + cuadriláteros + bits) 320×240: 2–5 ms en x86 ⇒ 30–80 ms en A9 a 444 MHz [I] ⇒ 5–10 Hz en un hilo C propio fijado a USER_1 (3 núcleos de usuario, W1 P1a) [I]; apriltag (BSD) es C puro y portable [?coste real]. Red minúscula int8 (p. ej. clasificador persona/no-persona 96×96, ~7–15 MMAC): NEON int8 realista 0,2–0,4 GMAC/s ⇒ 20–80 ms; con kernels escalares de referencia (TFLite Micro) 3–10× peor [?]; detectores tipo SSD/YOLO-nano (≥ 100 MMAC) no caben a tasa útil [I]. NEON solo se aprovecha con intrínsecas en el módulo C/Rust (W1 P3a/P3b: -Os sin fast-math, Godot sin SIMD) [V].",
+  "fuentes": [
+   "docs/ia/workshops/posts/W1-vita-sdk.json (P1a, P3a, P3b)",
+   "https://github.com/AprilRobotics/apriltag"
+  ],
+  "confianza": "baja (sin medidas en hardware)",
+  "coste_estimado": "color S–M (C dual); ArUco/AprilTag L; red int8 L+ [?]",
+  "como_se_mediria_en_hardware": "Bench en C (hwprobe o módulo) sobre imagen fija en ux0:: tiempo por fotograma 160×120 y 320×240 con sceKernelGetProcessTimeWide; verde color ≤ 2 ms; AprilTag registrar ms y decidir."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "Alternativas registradas",
+  "evidencia": "A1 (recomendada): inferencia en el PC (YOLO/ArUco en el relay o nodo aparte) y a la Vita solo cajas compactas + JPEG 160×120 [I]: la Vita es pantalla/HMI, coste CPU mínimo. A2: Vita como cámara (sceCamera) → PC infiere → cajas de vuelta (bucle completo, latencia 2 saltos WiFi [?]). A3: detector de color en la Vita en C para demos sin PC. A4: simulación completa (física + LiDAR 3D + cámaras) en Godot escritorio con rclgd_sensors y la Vita solo como mando/visor (patrón planta en PC). A5: LiDAR 2D sin física por DDA sobre rejilla en C. A6: sceJpeg hardware si libjpeg-turbo supera 5 ms. A7: Image cruda mono 80×60 sin JPEG como modo degradado. Rechazadas: Image/PointCloud2 sin adaptar (W2), SubViewport/RenderingDevice en la Vita (W7), CameraServer de Godot (módulo no compila para la Vita).",
+  "fuentes": [
+   "docs/ia/workshops/posts/W2-xrce.json",
+   "docs/ia/workshops/posts/W7-motor.json",
+   "toolchains/godot4-vita/engine/modules/camera/config.py"
+  ],
+  "confianza": "media",
+  "coste_estimado": "—",
+  "como_se_mediria_en_hardware": "Cada alternativa entra por su gate (G-W12-1…8)."
+ },
+ {
+  "workshop": "W12",
+  "autor": "investigador-sensores-vision (opus)",
+  "candidato": "Gates de hardware propuestas (criterio de verde medible)",
+  "evidencia": "G-W12-1 raybench: µs/rayo de 3 variantes y N_max con FPS ≥ 30 sostenido 60 s (con shadow_rays 0 y 96). G-W12-2 sensores portables: mismo .gd en PC y Vita; /sim/imu 50 Hz y /sim/gps 10 Hz con ros2 topic hz ±10 %; FPS ≥ 55 en la escena g7c. G-W12-3 LiDAR 2D: 180 rayos a 10 Hz → /vita/scan_compacto Int16 (384 B BE) → relay → LaserScan visible en RViz; hz ≥ 9,5 y FPS ≥ 30. G-W12-4 imagen: JPEG 160×120 troceado a 10 Hz, ≥ 90 % de fotogramas completos en 120 s, decodificación p95 ≤ 5 ms. G-W12-5 overlays: 20 cajas a 10 Hz, caída de FPS ≤ 5 %, latencia < 150 ms. G-W12-6 cámara de la Vita: helper C + parche loader; ros2 topic hz /vita/camara/compressed ≥ 10 en el PC tras el relay. G-W12-7 panel trasero: /vita/touch_trasero a 30 Hz, 4 dedos, coordenadas en rango. G-W12-8 visión local: detector de color en C ≤ 2 ms por 160×120.",
+  "fuentes": [
+   "este post (síntesis)"
+  ],
+  "confianza": "alta en criterios",
+  "coste_estimado": "8 gates; G-W12-1/2/7 S, 3/4/5 M, 6/8 M–L",
+  "como_se_mediria_en_hardware": "Logs: [gxm2d-perf] fps y [vita-prof] en godot_stderr.log (W7) + topics /w12/* vistos con docker/vita-ros.sh echo / hz."
+ }
+]
