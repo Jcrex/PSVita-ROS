@@ -54,6 +54,16 @@ case "${1:-help}" in
     sim-tb3)
         # TurtleBot3 Burger en Gazebo Harmonic (mundo vacío). Ver README: tipo de /cmd_vel.
         run "ros2 launch turtlebot3_gazebo empty_world.launch.py" ;;
+    g1-build) header; "${COMPOSE[@]}" --profile g1 build g1sim ;;
+    g1)
+        # Unitree G1 en la casa (godot/g1-unitree, modo «ros»): /cmd_vel → política oficial → /g1/estado.
+        header; "${COMPOSE[@]}" up -d agent
+        echo -e "${GREEN}[✓]${NC} G1 en MuJoCo (Ctrl+C para parar). La Vita/Godot: modo «ros» con agente $(ip_pc)"
+        "${COMPOSE[@]}" --profile g1 run --rm --name vita_g1sim g1sim ;;
+    g1-clips)
+        # Regenera los clips de marcha de la política oficial para el modo «marcha» de Godot.
+        "${COMPOSE[@]}" --profile g1 run --rm --user "$(id -u):$(id -g)" -v "$SCRIPT_DIR/../godot/g1-unitree/anim:/salida" \
+            g1sim python3 /opt/g1/g1_sim.py --grabar /salida/g1_marcha.json ;;
     rviz)    run "rviz2" ;;
     rqt)     run "rqt_graph" ;;
     teleop)  run "ros2 run teleop_twist_keyboard teleop_twist_keyboard" ;;
@@ -91,6 +101,7 @@ Uso: docker/vita-ros.sh <comando>
   topics | echo [topic]
   sim                 turtlesim obedeciendo /cmd_vel + su pose como /odom (ligero)
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
+  g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
   bridge-client <IP>  puente Zenoh: conectar al servidor (otro equipo)

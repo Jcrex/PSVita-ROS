@@ -1,0 +1,272 @@
+[
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Restricción de render real del 3D GXM: solo triángulos, solo MeshInstance3D, color = albedo del material",
+    "evidencia": "[V] El backend salta superficies no PRIMITIVE_TRIANGLES (GXM:70,968), solo dibuja instancias con owns_mesh (GXM:912; MultiMesh es DummyMultiMesh) y el color sale de albedo×luz + textura; el aplanado solo guarda xyz+uv, sin ARRAY_COLOR (GXM:77-90,725-733,1010-1011). [I] Por tanto en gdviz son invisibles o monocromos: VizShapes.lines/line_strip, VizPoseVisuals (MultiMesh), CUBE/SPHERE_LIST, ejes RGB y marcadores con colors[]. Es más restrictivo que 'sin shaders propios'.",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:70",
+      "rasterizer_scene_gxm_vita.inc:912",
+      "rasterizer_scene_gxm_vita.inc:968",
+      "rasterizer_scene_gxm_vita.inc:1010",
+      "gdviz/addons/gdviz/core/viz_shapes.gd:146",
+      "gdviz/addons/gdviz/core/viz_pose_visuals.gd:16",
+      "gdviz/addons/gdviz/core/viz_materials.gd:62"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "S (verificación) / M (adaptación, ver post capa GXM-safe)",
+    "como_se_mediria_en_hardware": "Escena de prueba en la Vita con: ArrayMesh PRIMITIVE_LINES, MultiMeshInstance3D de 10 cubos, BoxMesh con vertex_color_use_as_albedo y Label3D billboard; captura de pantalla + línea [gxm3d] (GXM:1251) para ver submitted_triangles por caso."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Capa 'GXM-safe' en GDScript para el núcleo de gdviz (viz_shapes, viz_materials, viz_pose_visuals)",
+    "evidencia": "[V] Casi todos los displays priorizados (TF, Odometry, Path, Pose*, Marker, Axes, PointStamped) pasan por tres archivos del núcleo. [I] Reemplazar líneas por cintas/prismas de triángulos, MultiMesh por una ArrayMesh horneada por color (o N MeshInstance3D si N<=~50), y color por vértice por una superficie por color o textura-paleta + UV (texture_albedo sí se lee, GXM:725) arregla en bloque ~20 displays sin tocar cada uno.",
+    "fuentes": [
+      "gdviz/addons/gdviz/core/viz_shapes.gd:137-160",
+      "gdviz/addons/gdviz/core/viz_materials.gd:56-85",
+      "gdviz/addons/gdviz/core/viz_pose_visuals.gd:84",
+      "gdviz/addons/gdviz/displays/tf.gd:23",
+      "gdviz/addons/gdviz/displays/path.gd:154",
+      "gdviz/addons/gdviz/displays/_marker_base.gd:254-280"
+    ],
+    "confianza": "media",
+    "coste_estimado": "M",
+    "como_se_mediria_en_hardware": "TF de 20 frames + Path de 200 poses + 50 marcadores: FPS y submitted_triangles/invalidations/arena_kb del log [gxm3d]; objetivo >=30 FPS junto al modelo de G7c (5 574 tri)."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Discrepancia: ros2_vita no registra TF ni RosLogger aunque API_PARITY.md los marca ✅/🟡 → P0 RosTfBroadcaster",
+    "evidencia": "[V] register_types.cpp:16-22 solo registra rclgd, RosMsg, RosQoS, RosNode, RosPublisher, RosSubscriber, RosTimer; RosNode no tiene create_tf_* (ros_runtime.cpp:186-198); tf-tree no se enlaza. API_PARITY.md:35 dice ✅. [V] rclgd_sensors (ros_sensor.gd:30-32) y arm_demo (arm.gd:144,190,296) dependen de send_transform, también con 5.º argumento stamp. [I] Bloquea la línea 'Vita como planta/sensores'.",
+    "fuentes": [
+      "godot/ros2_vita/register_types.cpp:16",
+      "godot/ros2_vita/ros_runtime.cpp:186",
+      "godot/ros2_vita/API_PARITY.md:35",
+      "rclgd_sensors/addons/rclgd-sensors/ros_sensor.gd:30",
+      "rclgd_arm_demo/Scenes/arm/arm.gd:296"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "M",
+    "como_se_mediria_en_hardware": "ros2 topic echo /tf y /tf_static desde la estación docker mientras la Vita llama send_transform a 30 Hz; ros2 run tf2_ros tf2_echo; contar get_dropped() y huecos de secuencia."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "P0 RosTfListener + ampliación de tf-tree (enumerar frames, padre, último sello, error)",
+    "evidencia": "[V] VizFrameManager usa create_tf_listener, get_frame_names, frame_exists, get_frame_parent, get_frame_latest_time, lookup_transform(t,s[,stamp]) y get_last_error (viz_frame_manager.gd:65-179); todos los displays transforman por ahí. [V] tf_tree.h no ofrece enumeración, padre ni sello y tiene tope de 32 frames (tf_tree.h:10-12,54-80). [I] Implementar en el módulo dual (C+Rust, paridad) y exponer en ros2_vita; en gdviz forzar lookup_mode LATEST porque no hay historial.",
+    "fuentes": [
+      "gdviz/addons/gdviz/core/viz_frame_manager.gd:65",
+      "gdviz/addons/gdviz/core/viz_frame_manager.gd:167",
+      "modules/tf-tree/include/tf_tree.h:54",
+      "godot/ros2_vita/API_PARITY.md:36"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "L",
+    "como_se_mediria_en_hardware": "TurtleBot3 simulado en la estación (vita-ros.sh sim) → display TF en la Vita: comparar posiciones con tf2_echo del PC; medir µs por lookup_transform (Time.get_ticks_usec) con 20 frames."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "P0 propiedades en RosQoS (gdviz asigna qos.durability/reliability/history como propiedades)",
+    "evidencia": "[V] ros2_vita RosQoS solo tiene set_/get_ y constantes, sin ADD_PROPERTY (ros_runtime.cpp:77-91). [V] gdviz usa sintaxis de propiedad en viz_topic_display.gd:103-105, robot_model.gd:94-95 y effort.gd:72; rclgd_sensors usa setters (ros_sensor.gd:68-72). [I] En la Vita la asignación por propiedad falla en tiempo de ejecución; arreglo trivial.",
+    "fuentes": [
+      "godot/ros2_vita/ros_runtime.cpp:77",
+      "gdviz/addons/gdviz/core/viz_topic_display.gd:103",
+      "gdviz/addons/gdviz/displays/robot_model.gd:94"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "S",
+    "como_se_mediria_en_hardware": "Prueba GDScript en godot/test (host) y en la Vita: var q := RosQoS.new(); q.durability = RosQoS.TRANSIENT_LOCAL; assert(q.get_durability() == RosQoS.TRANSIENT_LOCAL)."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Techo de recepción XRCE ≈ 7,5 KiB: OccupancyGrid, PointCloud2, URDF y MarkerArray grandes no llegan",
+    "evidencia": "[V] Stream fiable de entrada = 16 huecos × 512 B (xrce_transport.cpp:135-136,182,300) y MAX_RX 16 KiB (:137); best effort ≤ ~490 B (API_PARITY.md:102-103). [I] OccupancyGrid 384² = 147 KB, PointCloud2 2 000 pts ≥ 32 KB y robot_description típico (decenas de KB) superan el techo; LaserScan 360 (~2,95 KB) y Odometry (~720 B) solo por fiable. [I] Además un lector fiable no casa con un escritor best effort (SensorDataQoS) → hace falta relay en el PC.",
+    "fuentes": [
+      "godot/ros2_vita/xrce_transport.cpp:135",
+      "godot/ros2_vita/xrce_transport.cpp:182",
+      "godot/ros2_vita/API_PARITY.md:102"
+    ],
+    "confianza": "media",
+    "coste_estimado": "M (relay en el PC) / L (subir el techo XRCE)",
+    "como_se_mediria_en_hardware": "Publicar desde la estación std_msgs/UInt8MultiArray de 2, 4, 6, 7, 8, 12 KB en fiable y ver en qué tamaño la Vita deja de recibir (contador topic_dropped de g_diag y get_dropped())."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Decodificación sin shaders: recomendación (c) PC pre-decimado + (b) C en módulo dual; (a) GDScript solo para LaserScan a baja frecuencia",
+    "evidencia": "[I] Coste por mensaje (supuesto 1–2 µs/op GDScript a 333–444 MHz, no medido): LaserScan 360 (a) 5–11 ms, (b) <0,2 ms; OccupancyGrid 384² (a) 0,6–1,2 s, (b) ~0,5 ms, pero no llega por transporte → (c) PNG 128×128 ~2–6 KB vía CompressedImage + load_png_from_buffer (C++); PointCloud2 2 000 pts (a) 60–120 ms, (b) 0,2–0,5 ms, transporte → (c) ≤1 000 pts xyz int16 ~6 KB. [V] int8[] llega como PackedInt32Array (ros_msg.cpp:476-484), así que el atajo Image L8 sin bucle no aplica. [V] ADR 0008 §1: la lógica va en modules/* dual, ros2_vita solo la expone.",
+    "fuentes": [
+      "gdviz/addons/gdviz/displays/laser_scan.gd:51",
+      "gdviz/addons/gdviz/displays/map.gd:166",
+      "gdviz/addons/gdviz/core/viz_point_cloud.gd:134",
+      "godot/ros2_vita/ros_msg.cpp:476",
+      "docs/adr/0008-godot-via-modulo-estatico.md:22"
+    ],
+    "confianza": "media",
+    "coste_estimado": "M (relay) + M–L (decodificadores C/Rust con paridad)",
+    "como_se_mediria_en_hardware": "Microbenchmark en la Vita: bucle GDScript de 10 000 iteraciones con encode_float/cos/sin → µs/op; luego tiempo por mensaje de laser_scan.gd con 360 rayos y de la versión C, con Time.get_ticks_usec, a 5 y 10 Hz, midiendo FPS."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "VizPointCloud y los dos .gdshader son imposibles; sustituir por malla de triángulos con textura-paleta",
+    "evidencia": "[V] viz_point_cloud.gd sube el blob como textura RF y el shader indexa por VERTEX_ID sobre PRIMITIVE_POINTS (viz_point_cloud.gd:5-16,153,173); map.gd usa ShaderMaterial + occupancy_grid.gdshader (map.gd:27-30). [V] GXM no ejecuta shaders ni dibuja puntos (GXM:755-762,968). [I] Sustituto: 2 triángulos por punto (cruz fija) coloreados por UV sobre una textura 256×1 arcoíris; mapa como textura RGBA en un quad StandardMaterial3D. 2 000 pts = 4 000 tri ≪ presupuesto 60 000 (GXM:858).",
+    "fuentes": [
+      "gdviz/addons/gdviz/core/viz_point_cloud.gd:173",
+      "gdviz/addons/gdviz/shaders/point_cloud.gdshader",
+      "gdviz/addons/gdviz/shaders/occupancy_grid.gdshader",
+      "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:858"
+    ],
+    "confianza": "media",
+    "coste_estimado": "L",
+    "como_se_mediria_en_hardware": "Nube sintética de 500/1 000/2 000 puntos regenerada a 5 Hz: FPS, invalidations y arena_kb del log [gxm3d]; vigilar reset_gpu_geometry (GXM:208-213)."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Riesgo: mallas dinámicas por mensaje invalidan caché y llenan el arena GPU",
+    "evidencia": "[V] Cada mesh_add_surface/mesh_clear llama invalidate_mesh; el espacio del arena de una malla descartada solo se recupera cuando el arena se llena, y entonces se reconstruye toda la geometría residente (GXM:184-213). [I] Scan, path y nube regenerados a 5–10 Hz pueden provocar reconstrucciones globales periódicas (tirones). Mitigar: reutilizar un buffer de tamaño fijo o actualizar a baja frecuencia.",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:184",
+      "rasterizer_scene_gxm_vita.inc:208"
+    ],
+    "confianza": "media",
+    "coste_estimado": "S (medir) / M (mitigar)",
+    "como_se_mediria_en_hardware": "Regenerar una ArrayMesh de 1 000 tri a 10 Hz durante 5 min y registrar arena_kb, invalidations y picos de cpu_submit_us/build_us del log [gxm3d]."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Puente para clases tipadas antes de T3.2.4: clases sombra GDScript de addons/rclgd/gen",
+    "evidencia": "[V] gdviz y rclgd_sensors traen gen/*.gd en GDScript puro: extends RosMsg, init('tipo') y propiedades por get_member/set_member (rclgd_sensors/addons/rclgd/gen/RosSensorMsgsImu.gd:1-20). [V] RosMsg de ros2_vita tiene init/get_member/set_member (ros_msg.cpp:718-729). [I] Empaquetarlas hace compilar RosSensorMsgsImu.new() o RosSensorMsgsJointState en la Vita sin esperar a T3.2.4; los mensajes recibidos siguen siendo RosMsg, así que las anotaciones de callback deben ser RosMsg. Nota: API_PARITY.md:65 descarta implementar gen_editor_support, pero no impide enviar los .gd ya generados.",
+    "fuentes": [
+      "rclgd_sensors/addons/rclgd/gen/RosSensorMsgsImu.gd:1",
+      "godot/ros2_vita/ros_msg.cpp:718",
+      "godot/ros2_vita/API_PARITY.md:65",
+      "rclgd_arm_demo/Scenes/arm/arm.gd:148"
+    ],
+    "confianza": "media",
+    "coste_estimado": "S",
+    "como_se_mediria_en_hardware": "Exportar g7-imu con RosSensorMsgsImu.gd de gen/ y publicar con _msg := RosSensorMsgsImu.new(); verificar con ros2 topic echo /vita/imu."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Sin API de grafo: get_topic_names_and_types y count_publishers de gdviz",
+    "evidencia": "[V] VizContext sondea get_topic_names_and_types cada 1 s (viz_context.gd:21,81) y VizTopicDisplay usa count_publishers (viz_topic_display.gd:170); ambos ❌ en XRCE (API_PARITY.md:38). [I] Sustituir por lista de topics de la config .rviz o por un topic std_msgs/String (JSON) que publique el relay del PC; count_publishers → estado 'desconocido'.",
+    "fuentes": [
+      "gdviz/addons/gdviz/core/viz_context.gd:81",
+      "gdviz/addons/gdviz/core/viz_topic_display.gd:170",
+      "godot/ros2_vita/API_PARITY.md:38"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "S (lado app) / M (relay)",
+    "como_se_mediria_en_hardware": "Display 'Add by topic' en la Vita con el relay publicando /vita/graph a 1 Hz: latencia hasta que aparece un topic nuevo."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "now() crea un RosMsg por llamada y gdviz lo llama varias veces por fotograma",
+    "evidencia": "[V] RosNode::now construye un builtin_interfaces/Time con from_type y set_member por llamada (ros_runtime.cpp:291-298) y usa reloj local Unix. [V] gdviz llama context.now() en process (viz_context.gd:59,72) y de nuevo en displays (_marker_base.gd:73,124; _cloud_display.gd:104,147). [I] Cachear ros_time por fotograma en VizContext y sincronizar con el agente (uxr_synchronize_session) para que los sellos casen con los del PC.",
+    "fuentes": [
+      "godot/ros2_vita/ros_runtime.cpp:291",
+      "gdviz/addons/gdviz/core/viz_context.gd:59",
+      "gdviz/addons/gdviz/displays/_marker_base.gd:124"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "S",
+    "como_se_mediria_en_hardware": "µs por now() en la Vita (1 000 llamadas); diferencia de reloj Vita-PC comparando header.stamp publicado con la hora de recepción en la estación."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "set_goal portable casi tal cual; adaptar flecha y entrada táctil",
+    "evidencia": "[V] set_goal.gd solo define tipo PoseStamped, topic /goal_pose y color sobre _pose_tool.gd; publica con create_publisher(topic,type) y RosMsg.from_type, ambos ✅ (_pose_tool.gd:103-121). [V] La flecha de arrastre es VizShapes.lines (_pose_tool.gd:92-94), invisible en GXM. [?] La emulación ratón-desde-táctil del display server de la Vita no está verificada; alternativa: stick + botón. [I] PoseStamped ~80 B cabe en best effort.",
+    "fuentes": [
+      "gdviz/addons/gdviz/tools/set_goal.gd",
+      "gdviz/addons/gdviz/tools/_pose_tool.gd:47",
+      "gdviz/addons/gdviz/tools/_pose_tool.gd:92"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "S",
+    "como_se_mediria_en_hardware": "Con Nav2+TB3 simulados en la estación: tocar el suelo en la Vita y verificar /goal_pose con ros2 topic echo y que Nav2 acepta la meta."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "UI de gdviz: la vista 3D vive en SubViewport → reestructurar viz_main a viewport raíz + CanvasLayer",
+    "evidencia": "[V] viz_main.gd:19-20,98 crea SubViewport/SubViewportContainer para la escena 3D; GXM solo pinta la pantalla principal (GXM:839-841). [V] camera.gd:33,73 superpone 3D sobre la imagen con otro SubViewport. [I] La UI de escritorio (árbol de displays, diálogos FileDialog ACCESS_FILESYSTEM viz_main.gd:196-197) debe reducirse para 960×544 y táctil.",
+    "fuentes": [
+      "gdviz/addons/gdviz/ui/viz_main.gd:19",
+      "gdviz/addons/gdviz/displays/camera.gd:33",
+      "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:839"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "L",
+    "como_se_mediria_en_hardware": "Escena mínima: 3D en el viewport raíz + panel CanvasLayer con 5 displays; FPS y tiempo de dibujado de canvas."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Contrato de plugins de gdviz (descripción)",
+    "evidencia": "[V] Plugin = .gd que extiende VizDisplay/VizTopicDisplay/VizTool/VizViewController; tipo inferido por get_base_script()/get_global_name() (viz_registry.gd:169-181); obligatorio viz_name(); estáticos viz_category/description/aliases/message_types/shortcut/is_transient/icon; ganchos _viz_setup/_viz_update/_viz_reset/_viz_message/_viz_input...; recibe context (ros_node, frames, registry, scene_root, camera, now()). Carga: built-ins con load(); externos de <ament>/share/<pkg>/gdviz_plugins, $GDVIZ_PLUGIN_PATH, user://plugins con GDScript.new(), source_code, resource_path y reload() (viz_registry.gd:65-143); sin class_name, _*.gd = base compartida, id paquete/Nombre, duplicados rechazados. Viabilidad en la Vita: fuera de este post.",
+    "fuentes": [
+      "gdviz/addons/gdviz/core/viz_registry.gd:17",
+      "gdviz/addons/gdviz/core/viz_registry.gd:134",
+      "gdviz/addons/gdviz/core/viz_display.gd:47",
+      "gdviz/addons/gdviz/core/viz_tool.gd:29",
+      "gdviz/README.md:40"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "—",
+    "como_se_mediria_en_hardware": "(otro workshop) cargar examples/gdviz_plugins/battery_display.gd desde user://plugins en la Vita y comprobar load_errors."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "rclgd_sensors: IMU, GPS, ros_sensor y publish_queue portables; cámara, lidar y fisheye imposibles (lidar → raycast)",
+    "evidencia": "[V] Puros: ros_sensor.gd (QoS por setters, timers, conversiones), publish_queue.gd (Thread/Mutex/Semaphore), ros_imu.gd (derivada de velocidad de RigidBody3D, sesgos), ros_gps.gd (ruido correlacionado). [V] GPU: ros_camera/ros_lidar/ros_fisheye usan SubViewport + RenderingDevice + Compositor + GLSL (ros_camera.gd:27-125; ros_lidar.gd:32-162). [V] Jolt off (detect.py:83) → GodotPhysics [I]. [I] Lidar sustituible por intersect_ray (360 rayos a ~5 Hz). Todos necesitan el P0 TF broadcaster.",
+    "fuentes": [
+      "rclgd_sensors/addons/rclgd-sensors/ros_sensor.gd:27",
+      "rclgd_sensors/addons/rclgd-sensors/publish_queue.gd:1",
+      "rclgd_sensors/addons/rclgd-sensors/ros_imu/ros_imu.gd:49",
+      "rclgd_sensors/addons/rclgd-sensors/ros_lidar/ros_lidar.gd:109",
+      "toolchains/godot4-vita/engine/platform/vita/detect.py:83"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "S (IMU/GPS) / M (lidar por raycast)",
+    "como_se_mediria_en_hardware": "Lidar raycast de 360 rayos en la Vita: ms por barrido con Time.get_ticks_usec y FPS; IMU simulada vs real (Input.get_accelerometer) en ros2 topic hz."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "rclgd_arm_demo: patrón planta-en-Godot + controlador en PC; solo estudio por licencia no clara",
+    "evidencia": "[V] Godot es la planta (sub /joint_commands JointState, pub /joint_states 100 Hz, TF 50 Hz con HingeJoint3D + servo) y move.py (rclpy) el controlador con interfaz JointTrajectory compatible con MoveIt (README.md:9-40; arm.gd:1-60). [V] Usa create_subscriber, nombre antiguo (arm.gd:145). [V] Sin LICENSE y el README no menciona licencia; solo package.xml:5 declara MIT sin texto ni titular → solo estudiar el patrón. [I] En la Vita: JointState 6 ejes ~400 B best effort; TF 6 transformadas ~660 B → fiable; bajar a 30 Hz.",
+    "fuentes": [
+      "rclgd_arm_demo/README.md:9",
+      "rclgd_arm_demo/Scenes/arm/arm.gd:145",
+      "rclgd_arm_demo/package.xml:5"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "M (reimplementación propia del patrón)",
+    "como_se_mediria_en_hardware": "Planta mínima propia (2 articulaciones) en la Vita con controlador rclpy en la estación: latencia de lazo cerrado (stamp comando→feedback) y jitter a 30 Hz."
+  },
+  {
+    "workshop": "W4",
+    "autor": "investigador-portabilidad (opus)",
+    "candidato": "Licencias y commits estudiados",
+    "evidencia": "[V] gdviz 7d05d35 (2026-08-02) MIT © 2026 Miguel Oroz Zubasti; rclgd_sensors 420d4d4 (2026-10-06) MIT © 2024 Miguel Oroz Zubasti; rclgd_arm_demo e6c9713 (2026-06-16) sin LICENSE (package.xml dice MIT). Clones de 1 commit. gdviz/rclgd_sensors usan aún clases sombra (anteriores a las clases nativas de rclgd jazzy ≥ 2026-10-28, API_PARITY.md:51-65).",
+    "fuentes": [
+      "gdviz/LICENSE:1",
+      "rclgd_sensors/LICENSE:1",
+      "rclgd_arm_demo/package.xml:5",
+      "docs/ia/workshops/posts/W4-inventario.json"
+    ],
+    "confianza": "alta",
+    "coste_estimado": "—",
+    "como_se_mediria_en_hardware": "—"
+  }
+]

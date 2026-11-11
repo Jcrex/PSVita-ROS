@@ -56,4 +56,4 @@ if [[ ! -s "$OUT" ]]; then
     exit 1
 fi
 echo "Hecho: $OUT ($(du -h "$OUT" | cut -f1)), sha256 $(sha256sum "$OUT" | cut -c1-16)…"
-unzip -l "$OUT" | tail -n +4 | head -n -2 | awk '{print "  " $4}' | grep -v '/$' | head -40
+unzip -l "$OUT" | tail -n +4 | head -n -2 | awk '{print "  " $4}' | grep -v '/$' | head -40 || true   # SIGPIPE de head con pipefail = 141 aunque el .vpk esté bien

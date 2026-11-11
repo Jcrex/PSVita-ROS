@@ -1,0 +1,307 @@
+---
+title: "DB-TSDF en la PS Vita: ¿se puede?"
+description: "Viabilidad de llevar el mapeo LiDAR DB-TSDF (UPO) a la Vita: presupuesto, arquitecturas y etapas."
+fecha: 2026-11-01
+---
+
+# DB-TSDF en la PS Vita: ¿se puede?
+
+DB-TSDF hace un mapa 3D de vóxeles con un LiDAR y solo usa CPU. Cada punto actualiza un cubo
+de K³ vóxeles con un AND de máscaras (`tsdf3d_16.hpp:230-246`). No lanza rayos, así que el coste es
+**puntos × K³**. Licencia MIT. Detalle: `docs/ia/auditoria/04b-dbtsdf-viabilidad-vita.md`.
+
+## Cifras (hipótesis, sin medir)
+
+| Recurso | Paper/repo | Vita |
+|---|---|---|
+| CPU | i7 de 16 hilos: 155 ms por scan de 65 k puntos | unas 150× más lenta |
+| Memoria | ~2,4 GB | ~64 MB para el mapa |
+| Red | VLP-16 en crudo: 480 KB por scan | `ros2_vita` acepta ≤ 16 KB por mensaje (MTU 512) |
+
+En la Vita: 3 000 puntos reducidos con K=5 cuestan 10–50 ms. Un LaserScan del TurtleBot3, unos 3 ms.
+
+## Arquitecturas
+
+| | La Vita… | CPU | Red | Veredicto |
+|---|---|---|---|---|
+| **A** | mapea todo | ✗ (segundos) | ✗ | descartada |
+| **B** | solo dibuja el mapa del PC | ~0 | poca | primer escalón |
+| **C** | integra una nube reducida en un volumen local | 10–50 ms | 0,5–3 Mbps | **objetivo** |
+
+**Recomendación:** empezar por B y luego pasar a C, primero en **2D con el LaserScan** del TurtleBot3.
+El PC reduce la nube, la pasa a `odom` y la manda en trozos de ≤ 490 B (*best effort*).
+La vista será cenital 2D, porque el 3D de Godot en la Vita es experimental (docs/18:51).
+
+## Etapas
+
+| Puerta | Dónde | Prueba |
+|---|---|---|
+| T0 | docker | Original como **oráculo** (1 hilo) |
+| T1 | host | Medir el original con K=5/7/21: el paper dice 21 y el repo usa 5–7 |
+| T2 | laptop | `modules/tsdf-local` dual C+Rust, con paridad y comparado con el oráculo |
+| **T3** | **Vita** | **Microbenchmark: ms por scan con 1–3 hilos a 333/444 MHz.** Decide si seguir con C |
+| T4–T5 | PC + Vita | Nodo troceador; contar trozos perdidos |
+| T6 | Vita | Arquitectura B |
+| T7–T8 | Vita | C en 2D, después en 2,5D/3D con un hilo propio de mapeo |
+
+## Aprender antes
+
+Hay que entender PointCloud2 frente a LaserScan, qué es un TSDF, las máscaras de bits y `popcount`,
+el búfer circular de `grid_16.hpp`, los ciclos y las cachés, la fragmentación XRCE y las carreras entre hilos.
+
+## Comprueba que lo has entendido
+
+1. ¿Por qué el coste depende de los puntos y de K, pero no de la resolución?
+2. ¿Por qué se mandan trozos *best effort* y no un mensaje fiable grande?
+3. A 0,10 m, ¿cuántos bytes ocupa una celda de 1 m³? (Cada vóxel ocupa 4 B.)
+
+
+Entonces como ya esta finalizado esa fase, empezaremos por una nueva, pero esta vez ya dejamos de testear con ROS en la psvita porque confirmamos las exportaciones exitosas de modelos 3D, topics y comunicación bidireccional, ahora toca avanzar con temas mas serios y utiles en el mundo de la robotica, como lo son controlar robots moviles (como usar nav2, cmd_vel, SLAM, vision artificial y teleoperación), estudiar la implementación y exportación de Rviz2 o similar para monitorizar ros2, control de robots manipuladores con MoveIt2, importación y simulación de URDF de robots, simulación de lidares, sensores, camaras y motores en Godot, gestion y control de drones con ROS, y que sea abierto para poder ir implementando mas programas a medida que se termina cada desarrollo. Para ello haras una busqueda en profundidad de como poder implementar todo estos objetivos dentro de la psvita, y para poder avanzar correctamente se hara por fases:
+1. La psvita recibira todos los topics y calculos provenientes de la pc y tambien se encargara de enviar los topics de teleoperación hechos por los controles.
+2. La psvita recibira todos los topics, calculara algunos datos de forma nativa y dejara los mas pesados que lo ejecute la pc, y tambien se encargara de enviar los topics de teleoperación hechos por los controles.
+3. La psvita se estudiara poder implementar un maping con dbtsdf pero en vez de ser de 16bits como viene de base, el algoritmo permite reducirlo a 8 o 4 bits, por lo que estudiar las versiones reducidas e ir escalando poco a poco el algoritmo, permitiendo tener todos los escalados e ir en la propia aplicación cambiando entre bits (si es necesario se reinicia el mapping).
+4. La psvita recibira todos los topics y calculara los datos de forma nativa mientras transmite topics de teleoperación.
+
+Para la investigación implementar dinamics workshops 
+
+
+## 0. Tu papel
+
+Eres el **orquestador de investigación** del proyecto PSVita-ROS y corres en **Claude Opus 5.5 con esfuerzo alto**. Delegas lo más difícil a subagentes **Claude Fable 5.2** y la investigación ligera a **Claude Haiku 5.5**, según el apartado 4.6. No escribes código de producción en esta etapa: produces **conocimiento verificable y decisiones de arquitectura** que luego se implementarán por fases. Trabajas en español, con terminología técnica en inglés cuando sea la habitual (topic, QoS, costmap, URDF…).
+
+Tu salida final es un conjunto de documentos en `docs/` y ADRs en el formato del repo, más un backlog de puertas (gates) G7+ ejecutables en hardware.
+
+---
+
+## 1. Contexto que debes cargar ANTES de investigar
+
+Lee en este orden y resume en 15 líneas lo que entiendes antes de lanzar ningún subagente:
+
+1. `CLAUDE.md` (roles de cada máquina, reglas del repo).
+2. `README.md` y `docs/06-bitacora-estado.md` (estado vivo).
+3. `docs/12-investigacion-godot-ros2-vita.md`, `docs/17-rclgd-estado-del-arte-godot-ros2.md`, `docs/18-migracion-a-godot4.md`, `docs/19-*` y el ADR 0008.
+4. `godot/ros2_vita/API_PARITY.md`, `modules/msg-schema/README.md`, `docker/README.md`.
+
+Hechos de partida (verifícalos contra el repo; si algo ha cambiado, manda el repo):
+
+- Hardware: PS Vita 1000 — ARM Cortex-A9 (MPCore), 512 MB RAM, GPU PowerVR SGX543MP4+, sin Linux. **No asumas** cuántos núcleos están disponibles para una app de usuario, ni la RAM real utilizable, ni si NEON/VFP está habilitado en la toolchain: es tarea de investigación.
+- Pila: Godot 4 (`godot4-vita`) + módulo C++ estático `ros2_vita` con la API de `rclgd` → `msg-schema` (CDR guiado por esquema) → cliente micro-XRCE-DDS → `net-udp` (sceNet) → WiFi UDP 8888 → micro-ROS Agent (Docker, ROS 2 Jazzy) en el PC.
+- Sin GDExtension en la Vita; sin acciones en el cliente XRCE; `tf` sin historial; un único `RosNode` por proceso; parámetros solo locales.
+- Fase anterior CERRADA: topics bidireccionales, teleop `/cmd_vel`, `/odom`, exportación de modelos 3D, HMI en hardware (G1–G6). **Ya no se investiga "si ROS funciona en la Vita".**
+- Estación Docker: agente, RViz2, rqt, TurtleBot3 + Gazebo Harmonic, puente Zenoh (pendiente).
+
+---
+
+## 1b. Base de partida: el ecosistema `rclgd` de Ozuba (OBLIGATORIO)
+
+El autor de `rclgd` (Miguel Oroz Zubasti, GitHub `Ozuba`) tiene tres proyectos que **son la base de implementación** de esta etapa. No partimos de cero: la pregunta de cada LT es **cómo portar, recortar o sustituir** lo que ya existe para que corra en `godot4-vita` sobre `ros2_vita`. Clónalos en solo lectura (`git clone --depth 1`) y estúdialos a nivel de código. No te quedes en el README.
+
+|Repo|Qué es (verificado 2026-11-11)|Uso en esta etapa|
+|---|---|---|
+|[`Ozuba/gdviz`](https://github.com/Ozuba/gdviz)|Visualizador 3D compatible con RViz2 sobre rclgd. Godot 4.7.1 (Forward+), MIT. Abre `.rviz` sin cambios. 31 displays (TF, RobotModel, LaserScan, PointCloud2, Map, Path, Marker/MarkerArray, InteractiveMarkers, Image, Camera, Odometry, Pose*, Wrench…), 8 herramientas (incl. `set_goal`, `set_initial_pose`, `publish_point`, `measure`) y 5 cámaras (orbit, fps, top-down ortho…). Unas 12 450 líneas de GDScript. Las nubes de puntos, la profundidad y el OccupancyGrid se decodifican en la GPU con `.gdshader` propios, y la nube tiene un camino de reempaquetado en CPU. `viz_urdf.gd` lee URDF (no xacro). `viz_mesh_loader.gd` parsea STL, OBJ, DAE y glTF en GDScript. Hay plugins `.gd` que se compilan **en tiempo de ejecución** (`GDScript.new()` + `reload()`) desde `gdviz_plugins/`|**LT2** (mini-RViz en la Vita), **LT4** (URDF), **LT1** (metas de Nav2 con `set_goal`), **LT8** (su sistema de plugins es el modelo de arquitectura abierta)|
+|[`Ozuba/rclgd_sensors`](https://github.com/Ozuba/rclgd_sensors)|Sensores simulados en Godot que publican en ROS 2: LiDAR 360 por GPU (compositor y `.glsl` de compute), cámara RGBA y de profundidad, ojo de pez, IMU y GPS, con gizmos de editor y una `publish_queue.gd`. Godot 4.7, MIT|**LT5** (simulación). Ojo: el LiDAR y las cámaras dependen de `RenderingDevice`/compute, que no existe en la Vita|
+|[`Ozuba/rclgd_arm_demo`](https://github.com/Ozuba/rclgd_arm_demo)|UR5e de 6 GDL con Godot como planta. Usa motores `HingeJoint3D` de Jolt (con un modo cinemático `use_physics=false`), se suscribe a `/joint_commands`, publica `/joint_states` y emite el árbol TF completo con `create_tf_broadcaster()`. Un `move.py` hace de controlador y expone `/arm_controller/joint_trajectory` (la misma interfaz por topic que `joint_trajectory_controller`), así que MoveIt 2 lo maneja sin cambios. Godot 4.6. **No tiene archivo LICENSE**|**LT3** (MoveIt 2), **LT4** (URDF/TF), patrón de "planta en Godot + controlador en el PC"|
+
+### Restricciones de la Vita contra las que hay que contrastar cada repo
+
+Vienen del propio repo (`docs/12`, `docs/18`, ADR 0008). Compruébalas, no las supongas:
+
+- `godot4-vita` 4.8-dev7: la ruta validada es **GXM 2D**. El 3D GXM es experimental: skinning en CPU, iluminación por vértice, **sin shaders propios** (canvas/spatial shaders no se renderizan), **sin SubViewport** y solo dibuja en la pantalla principal. Hito G7c: 59 FPS con unos 5 600 triángulos.
+- No hay GDExtension, `RenderingDevice` ni compute shaders. `websocket` y `mbedtls` están desactivados.
+- Unos 365 MiB de RAM de usuario (`ATTRIBUTE2=12`) y 64 MiB de texturas. GDScript corre a 333–444 MHz.
+- La API de los tres repos es la de `rclgd` (4.6/4.7.x). Nuestro runtime es 4.8-dev7 con `ros2_vita`, que tiene paridad parcial (`API_PARITY.md`: sin acciones, `tf` sin historial y un solo `RosNode`).
+
+### Tareas específicas sobre estos repos
+
+1. **Matriz de portabilidad archivo por archivo** (`docs/2X-portabilidad-ozuba.md`). Clasifica cada `.gd`, `.gdshader`, `.glsl` y `.tscn` en una de estas categorías: `Tal cual` / `Adaptar` (qué cambia) / `Reemplazar por C++ en ros2_vita o msg-schema` / `Solo PC` / `Imposible`. Añade el motivo y una estimación de coste. Prioriza `gdviz/addons/gdviz/core` y los displays que pide la Fase 1 (TF, RobotModel, LaserScan, Map, Path, Marker, Odometry, CompressedImage).
+2. **API**: lista cada llamada de `rclgd` que usan los tres repos (por ejemplo `create_subscriber`, `create_publisher`, `create_tf_broadcaster`, `RosMsg`, `lookup` de TF) y crúzala con `API_PARITY.md`. Lo que falte se convierte en tarea de `ros2_vita` con prioridad.
+3. **Decodificación sin shaders**: gdviz decodifica nubes y mapas en GPU con shaders propios, que en la Vita no existen. Evalúa tres caminos: su reempaquetado en CPU (GDScript, probablemente lento), decodificar en C dentro de `msg-schema`/`ros2_vita` y entregar `PackedVector3Array` o `Image` ya listos, o pedir al PC los datos predecimados (Fase 1). Para OccupancyGrid, valora convertir a `Image` en C y dibujarlo como textura 2D (ruta GXM validada).
+4. **Rendimiento y UI**: la interfaz de gdviz es de escritorio (paneles, diálogos, ratón). Diseña una variante para 960×544 con sticks, botones y táctil, y decide qué displays van en 3D GXM y cuáles en 2D (por ejemplo, mapa y LaserScan en vista cenital 2D, que es lo validado).
+5. **Plugins en tiempo de ejecución**: comprueba si la plantilla de `godot4-vita` incluye el compilador de GDScript y si se puede cargar un `.gd` o `.pck` desde `ux0:` en caliente. Si sí, el sistema de plugins de gdviz es directamente el diseño de la **LT8**.
+6. **URDF y mallas**: `viz_urdf.gd` y `viz_mesh_loader.gd` parsean en GDScript. Propón preprocesar en el PC (xacro → URDF → escena `.tscn`/glTF decimado dentro del `.pck`) y medir el presupuesto de triángulos por robot (el UR5e de la demo es el caso de prueba).
+7. **Sensores**: separa lo que es lógica pura (IMU con ruido y deriva, GPS, `publish_queue`) de lo que depende de la GPU (LiDAR, cámaras). Lo primero puede correr en la Vita. Lo segundo se queda en Godot de escritorio, o en la Vita se sustituye por rayos de física (`RayCast3D` o `PhysicsDirectSpaceState3D`) con un número de rayos medido.
+8. **Brazo**: comprueba si `godot4-vita` incluye Jolt o física 3D utilizable. Si no, usa el modo cinemático. Para la Vita, el caso útil es como **monitor y mando**: se suscribe a `/joint_states` y TF, dibuja el UR5e y publica trayectorias o comandos de MoveIt Servo. El papel de planta se queda en el PC.
+9. **Licencias**: `gdviz` y `rclgd_sensors` son MIT (conserva el aviso de copyright si se copia código). `rclgd_arm_demo` **no declara licencia**, así que por defecto no se puede copiar su código. Solo se puede estudiar el patrón, o pedir licencia al autor. Recógelo en el ADR correspondiente.
+10. **Versiones**: fija los commits estudiados (gdviz `2026-08-02`, rclgd_sensors `2026-10-06`, rclgd_arm_demo `2026-06-16` o posteriores) y documenta el salto de 4.6/4.7 a 4.8-dev7.
+
+---
+
+## 1c. Importador de URDF de la Godot Asset Store (OBLIGATORIO)
+
+Ya existe un addon publicado en la tienda oficial de assets de Godot para importar URDF: **[Godot URDF Addon — `brean/godot-urdf`](https://store.godotengine.org/asset/brean/godot-urdf/)**. Hay que **añadirlo al proyecto y estudiarlo** para decidir cómo integrarlo en nuestro Godot (editor 4.7.1 del PC → exportación con 4.8-dev7 → Vita). Es candidato a ser la vía principal de la **LT4**, junto a `viz_urdf.gd` de gdviz o en lugar de él.
+
+Datos de partida (comprobados el 2026-11-11; verifícalos al descargarlo):
+
+- Ficha de la tienda: v1.0, Godot 4+, licencia **BSD-3**, basado en [`askarkg12/godot_urdf`](https://github.com/askarkg12/godot_urdf). No enlaza su propio repositorio ni da fecha de actualización.
+- Según la ficha: parsea el URDF y genera los nodos del robot con visuales y colisiones. Se puede arrastrar el `.urdf` a la escena o poner `urdf_loader.gd` en un `Node3D` para construirlo como hijos. Las colisiones van como `CollisionShape3D` dentro de `RigidBody3D` y las articulaciones como `Generic6DOFJoint3D`. Trae un dock que muestra el XML como árbol y un controlador W/A/S/D para robots con ruedas (diferencial).
+- Upstream (`askarkg12/godot_urdf`, último commit 2025-04-22, demo en Godot 4.4): unas 456 líneas de GDScript puro (sin GDExtension). Es un `EditorImportPlugin` que **importa en el editor** y guarda una escena. Primitivas box/cylinder. `node_link.gd` solo modela articulaciones `REVOLUTE` y `FIXED`. No encontré soporte de mallas externas (STL/DAE) ni de xacro: hay que confirmarlo en la versión de la tienda, que parece más avanzada (colisiones, física, loader en tiempo de ejecución).
+
+Tareas:
+
+1. Descargar la versión de la tienda (desde el editor o la web) y **compararla con el upstream** para saber qué añade. Fijar versión y hash del paquete.
+2. Inventario de funciones de URDF: tipos de articulación (revolute, continuous, prismatic, fixed, floating, planar), límites, `mimic`, geometrías (box, cylinder, sphere, mesh), formatos de malla, resolución de `package://`, materiales y colores, inercias, xacro. Para cada cosa, indica si funciona, falta o hay que completarla.
+3. **Dos modos de uso y cuál sirve en la Vita**:
+    - _Importación en el editor del PC_ → escena `.tscn`/`.scn` dentro del `.pck`. La Vita no parsea XML y solo carga la escena. Es lo más probable para la Vita.
+    - _Carga en tiempo de ejecución_ (`urdf_loader.gd`). Mide el coste de parsear en GDScript a 333–444 MHz y decide si merece la pena (p. ej. recibir `/robot_description` y montar el robot en la Vita).
+4. **Física**: `RigidBody3D` y `Generic6DOFJoint3D` dependen de la física 3D. Comprueba qué motor de física incluye `godot4-vita` y si rinde. Si no, define un modo **solo visual/cinemático** (sin cuerpos rígidos) que mueva las articulaciones desde `/joint_states`.
+5. **Compatibilidad con ROS**: los nombres de link y joint deben coincidir con el URDF para aplicar `/joint_states` y publicar o consumir TF (como en `rclgd_arm_demo`). Diseña la capa que conecta la escena generada con `ros2_vita` (suscriptor de `JointState`, `tf`).
+6. **Comparativa con `viz_urdf.gd` de gdviz**: funciones, rendimiento, licencia (BSD-3 frente a MIT), facilidad de mantenimiento. Decide en un ADR qué se usa: uno, otro, o este addon para importar en el editor y gdviz para visualizar.
+7. Prueba con el **UR5e** (mallas DAE/STL, que hay que convertir o decimar si el addon no las carga) y con un robot móvil diferencial (TurtleBot3) para su controlador W/A/S/D. Criterio: FPS y triángulos en el 3D GXM de la Vita.
+8. Si el addon tiene carencias, plantea contribuir los arreglos upstream en vez de mantener un fork.
+
+---
+
+## 2. Objetivo de la nueva etapa
+
+Convertir la Vita en una **estación robótica útil y extensible**, cubriendo estas líneas de trabajo (LT). Cada una se investiga en las 4 fases del apartado 3.
+
+|LT|Tema|Preguntas mínimas|
+|---|---|---|
+|LT1|Robots móviles|Teleop avanzado, `cmd_vel` con _deadman_/rampas, envío de metas a Nav2 sin acciones XRCE (¿`/goal_pose`? ¿servicio puente en el PC?), visualización de costmaps/paths, SLAM (slam_toolbox, Cartographer)|
+|LT2|Monitorización tipo RViz2 (base: **gdviz**)|Qué subconjunto de RViz2 es viable en Godot-Vita: TF, Marker/MarkerArray, LaserScan, PointCloud2 decimada, OccupancyGrid, Path, Image/CompressedImage, RobotModel. Presupuesto de draw calls/vértices en la SGX543|
+|LT3|Manipuladores (MoveIt 2) (base: **rclgd_arm_demo**)|Teleop cartesiano con MoveIt Servo (Twist/Jog por topic), selección de poses objetivo, visualización de la trayectoria planificada; planificación siempre en el PC al principio|
+|LT4|URDF en Godot (base: addon **godot-urdf** de la Asset Store, apartado 1c, más `viz_urdf.gd` y `viz_mesh_loader.gd` de gdviz)|Parseo de URDF/xacro (¿en el PC → escena `.tscn`/`.pck`, o en la Vita?), mallas (STL/DAE → glTF), `joint_states` → transformaciones, límites del port 4.x en 3D|
+|LT5|Simulación en Godot (base: **rclgd_sensors**)|LiDAR 2D/3D, cámaras, IMU, motores/ruedas: ¿qué tiene sentido simular **en la Vita** y qué en Godot de escritorio con `rclgd`/`rclgd-sensors`? Mismo script en ambos|
+|LT6|Drones|Control y monitorización vía ROS 2: PX4 y ArduPilot usan (verificar) un puente uXRCE-DDS propio — evaluar si la Vita puede hablar con él directamente o vía el agente del PC; modos offboard, _failsafes_, geofence en la HMI|
+|LT7|Visión artificial|Recepción de imagen comprimida, overlays de detecciones (vision_msgs), qué inferencia mínima cabe en la Vita (si alguna)|
+|LT8|Arquitectura abierta (base: plugins en tiempo de ejecución de gdviz)|Sistema de "apps/plugins" dentro de la app Godot para añadir nuevas herramientas sin recompilar la plantilla: escenas `.pck` cargables, registro de tipos de mensaje, contrato de plugin|
+
+---
+
+## 3. Fases (aplican a cada LT)
+
+Para cada LT y fase entrega: viabilidad (Sí / Parcial / No / Por medir), dependencias, presupuesto de CPU/RAM/ancho de banda estimado, riesgos y la prueba en hardware que lo confirmaría.
+
+**Fase 1 — Vita como terminal.** El PC calcula todo; la Vita recibe topics ya procesados (decimados, comprimidos, en el marco correcto) y publica la teleoperación desde los controles físicos (sticks, botones, panel táctil trasero, IMU). Pregunta clave: ¿qué nodos "adaptadores" hacen falta en el PC para que XRCE por WiFi aguante cada tipo de mensaje?
+
+**Fase 2 — Cálculo repartido.** La Vita calcula en nativo lo ligero (p. ej. TF local, decimación, proyección de LaserScan a 2D, odometría integrada, ensamblado de mapas por deltas, filtros de visualización) y deja lo pesado al PC. Entrega una tabla "tarea → coste estimado en Cortex-A9 → dónde ejecutarla" con criterio explícito de corte.
+
+**Fase 3 — Mapeo DB-TSDF reducido en la Vita.**
+
+- Referencia: _DB-TSDF: Directional Bitmask-based TSDF for Efficient Volumetric Mapping_ (Maese, Merino, Caballero — arXiv 2509.20081, ICRA 2026; código en `github.com/robotics-upo/DB-TSDF`).
+- **Primera tarea obligatoria: verificar el formato real del vóxel en el código.** El paper describe una máscara de distancia de 32 bits + 1 bit de signo + contador de 8 bits (8 bytes por vóxel). El planteamiento del proyecto habla de "16 bits de base reducibles a 8 o 4". Resuelve la discrepancia leyendo el repo (no el resumen) y documenta qué significa exactamente "reducir bits": ¿radio del kernel (bits de la máscara = alcance de la distancia L1 truncada), cuantización del contador, empaquetado de varios vóxeles por palabra, o todo a la vez?
+- Diseña la escalera de variantes (p. ej. 32 → 16 → 8 → 4 bits de máscara) y para cada una: alcance de truncamiento en vóxeles, tamaño del kernel direccional resultante, memoria del grid para tamaños de mapa realistas, coste por scan, pérdida de calidad esperada (F-score/Chamfer en los datasets del paper) y si cabe en la RAM/CPU de la Vita.
+- Requisito de producto: **todas las variantes coexisten** y se cambian desde la app en caliente; si el cambio exige reiniciar el mapa, la UI lo avisa y reinicia. Define la interfaz común (header C, implementación dual C/Rust como el resto de módulos).
+- Evalúa la entrada de datos: LiDAR real vía topic, LiDAR simulado en Godot, o nubes pre-grabadas (rosbag en el PC) para benchmark reproducible.
+- Ruta de escalado: empezar por la variante más pequeña en host (PC), luego Vita a baja resolución, luego subir bits/resolución midiendo FPS y latencia.
+
+**Fase 4 — Vita autónoma.** La Vita recibe topics crudos y calcula en nativo todo lo que la fase 3 haya demostrado viable, manteniendo la teleoperación con prioridad (la teleop no puede degradarse por el cálculo: define prioridades de hilos y _watchdog_).
+
+---
+
+## 4. Método de investigación multiagente
+
+Combina los mecanismos siguientes. Todos son obligatorios salvo que justifiques por escrito por qué uno no aplica.
+
+### 4.1 Dynamic Workshops (talleres dinámicos)
+
+Unidad básica de trabajo. Un _workshop_ es una sesión acotada sobre **una pregunta concreta** (p. ej. "¿cabe DB-TSDF de 8 bits a 0.10 m en 512 MB?"). El orquestador:
+
+1. **Compone el equipo dinámicamente** según la pregunta (no un equipo fijo): 2–4 investigadores con perspectivas distintas (p. ej. "experto Vita/homebrew", "experto ROS 2/Nav2", "experto mapeo volumétrico", "experto Godot render"), más los revisores del 4.3.
+2. **Ronda divergente aislada** (ver 4.2): cada investigador busca y propone sin ver a los demás.
+3. **Ronda de integración**: se leen las propuestas en el tablero, se contrastan, se fusionan.
+4. **Cierre**: veredicto, decisiones, preguntas abiertas → nuevos workshops si hace falta. Los workshops se crean, dividen o cancelan según lo que se descubre; no hay plan fijo. Registra cada workshop (pregunta, equipo, duración, veredicto) en `docs/ia/workshops/`.
+
+### 4.2 Aislamiento con tablero compartido (anti-consenso prematuro)
+
+Basado en ArcticSwarm (arXiv 2609.01870, 2026) y en el hallazgo de que topologías de comunicación densas reducen la diversidad colectiva:
+
+- Toda comunicación entre agentes pasa por un **tablero** (blackboard / BBS), nunca por chat libre.
+- En la fase divergente los investigadores **pueden escribir pero no leer** el tablero. Solo en la integración se abre la lectura.
+- Cada post sigue un esquema fijo: `{ workshop, candidato, evidencia, fuentes[], confianza [V]/[I]/[?], coste_estimado, cómo_se_mediría_en_hardware }`.
+- Mantén el tablero como estado estructurado (JSON/Markdown con esquema) y modifícalo con parches validados, al estilo PatchBoard (arXiv 2605.29313), para que todo cambio sea auditable.
+
+### 4.3 Revisión por puertas (Skeptic–Researcher–Judge)
+
+- **Escéptico** (abogado del diablo): busca activamente por qué la propuesta fallaría en la Vita (RAM, hilos, WiFi, limitaciones del port de Godot, licencias).
+- **Revisor dedicado** sin contexto previo del workshop: valida fuentes y cálculos desde cero.
+- **Juez/orquestador**: emite por restricción `VERIFICADO`, `DESAFÍO` o `ALTERNATIVA`.
+- **Puerta de commit**: nada entra en un documento final sin VERIFICADO del revisor y sin **al menos una búsqueda de alternativa** registrada (ArcticSwarm observó que abrir alternativas correlaciona fuertemente con aciertos).
+
+### 4.4 Bucle Plan → Ejecutar → Verificar → Replanificar
+
+Inspirado en VMAO (arXiv 2603.11445): descompón cada LT en un DAG de subpreguntas con dependencias, ejecuta en paralelo lo independiente, y deja que un verificador independiente decida si el conjunto responde la pregunta original o hay que replanificar. **Condiciones de parada** explícitas por workshop: presupuesto de búsquedas/tokens, número máximo de rondas, o "la siguiente respuesta solo puede salir de una medición en hardware" (en ese caso, se cierra como `Por medir` y se genera la prueba).
+
+### 4.5 Extras recomendados
+
+- **Pre-mortem** al inicio de cada fase: "es dentro de 3 meses y la fase falló; ¿por qué?". Los fallos imaginados se convierten en preguntas de workshop.
+- **Matriz de trazabilidad** objetivo × fase × evidencia, para ver huecos de un vistazo.
+- **Experimentos de bolsillo**: cuando una duda se resuelve con un microbenchmark en host (PC) en menos de 30 min, propón el script en vez de seguir especulando.
+- **Diversidad de modelos/fuentes**: usa modelos distintos para investigador y revisor (ver 4.6) y, además, fuentes distintas (paper, código, issues, foros homebrew de la Vita).
+- **Memoria de proyecto**: antes de investigar algo, busca si ya está en `docs/`; no repitas investigación cerrada salvo que tengas evidencia nueva.
+
+### 4.6 Asignación de modelos (OBLIGATORIO)
+
+Cada tarea se asigna a un modelo según su dificultad. Es una regla explícita, no una sugerencia.
+
+|Nivel|Modelo|Esfuerzo|Se encarga de|
+|---|---|---|---|
+|**Difícil**|**Claude Fable 5.2** (subagente; `claude-fable-5-2`)|máximo disponible|Decisiones de arquitectura avanzadas o difíciles y todo lo que acabe en un ADR|
+|**Normal**|**Claude Opus 5.5** (`claude-opus-5-5`)|**alto**|El orquestador y el resto del trabajo de investigación, análisis y redacción|
+|**Ligero**|**Claude Haiku 5.5** (`claude-haiku-5-5`)|bajo|Investigación que no requiere esfuerzo de razonamiento|
+
+**Va a Fable 5.2** (subagente, con el contexto mínimo necesario y la pregunta bien acotada):
+
+- Decisiones con compromisos difíciles o irreversibles: ADRs, reparto Vita/PC de la Fase 2 y criterio de corte, arquitectura de plugins (LT8), capa URDF ↔ `ros2_vita`.
+- Diseño de la escalera de bits de DB-TSDF (Fase 3): encoding, kernels, memoria, calidad.
+- Resolver contradicciones entre fuentes, con un ADR aceptado o entre workshops que no convergen.
+- El papel de **Juez** en la puerta de commit (4.3) cuando el veredicto no es evidente, y el **pre-mortem** de cada fase.
+- Estrategias para lo que la Vita no tiene: acciones sin XRCE, render sin shaders propios, decodificación de nubes y mapas sin GPU.
+
+**Se queda en Opus 5.5 con esfuerzo alto:**
+
+- Orquestar: crear y cerrar workshops, mantener el DAG y el tablero, replanificar.
+- Investigadores de los workshops, escéptico y revisor dedicado.
+- Análisis de código de los repos (gdviz, rclgd_sensors, rclgd_arm_demo, godot-urdf), matrices de portabilidad y paridad de API, presupuestos de CPU, RAM y ancho de banda.
+- Redactar los documentos `docs/2X-*` y el backlog de puertas G7+.
+
+**Va a Haiku 5.5:**
+
+- Recopilar enlaces, READMEs, changelogs, fechas, licencias y versiones.
+- Listar archivos, `grep` y búsquedas literales en repos clonados, inventarios mecánicos (p. ej. qué llamadas a `rclgd` aparecen en cada `.gd`).
+- Comprobar que un enlace o recurso existe, resumir una página concreta, dar formato a tablas.
+- Nunca toma decisiones ni emite veredictos. Si encuentra algo ambiguo, lo devuelve a Opus marcado [?].
+
+**Reglas de uso:**
+
+- **Escala, no saltes**: si una tarea de Haiku resulta tener matices, pasa a Opus; si Opus detecta que la decisión es difícil o irreversible, la delega a Fable. Registra cada escalado en el log del workshop.
+- **Diversidad en la revisión**: el revisor no usa el mismo modelo que el autor. Si el autor es Opus, revisa Fable cuando sea una decisión y otro Opus aislado cuando sea un hecho. Si el autor es Fable, revisa Opus.
+- **Encargos a subagentes autocontenidos**: cada encargo lleva la pregunta, el contexto mínimo (rutas de `docs/` y del código), el formato de salida (esquema del tablero de 4.2) y el criterio de parada. El subagente no hereda la conversación.
+- **Coste**: Fable se reserva para lo difícil. No lo uses para buscar ni para resumir. Anota en el registro de cada workshop qué modelo hizo qué, para poder ajustar el reparto.
+- Si el entorno no ofrece alguno de estos modelos, usa el más cercano en el mismo nivel y documenta la sustitución.
+
+---
+
+## 5. Reglas de evidencia (heredadas del repo)
+
+- Cada afirmación lleva fuente y marca: **[V]** verificado en la fuente · **[I]** inferencia propia · **[?]** no confirmado. Nada se da por cierto en hardware hasta probarlo en la Vita.
+- Prioriza fuentes primarias: código fuente, papers, documentación oficial (ROS 2 Jazzy, Nav2, MoveIt 2, PX4/ArduPilot, eProsima, vitasdk, godot4-vita), issues de GitHub.
+- Ventana temporal: prioriza lo publicado en los **últimos 3 meses** (desde agosto de 2026) y señala explícitamente cuando una fuente sea anterior a 2025.
+- Si un host está bloqueado, márcalo [?] y añádelo a pendientes; no inventes el contenido.
+- No reproduzcas código o texto largo de terceros; resume y enlaza.
+
+---
+
+## 6. Entregables
+
+0. `docs/2X-portabilidad-ozuba.md` — matriz de portabilidad de gdviz, rclgd_sensors y rclgd_arm_demo (apartado 1b), con la tabla de paridad de API y la nota de licencias. 0b. `docs/2X-urdf-godot.md` — estudio del addon `godot-urdf` (tienda frente a upstream, funciones, modos editor/runtime, física en la Vita, comparativa con gdviz) y ADR de la vía de URDF elegida.
+1. `docs/2X-investigacion-estacion-robotica.md` — documento maestro: resumen ejecutivo (1 minuto), matriz LT × fase con viabilidad, presupuestos y riesgos.
+2. Un documento por LT con profundidad suficiente para implementar (`docs/2X-lt1-nav2.md`, …).
+3. `docs/2X-db-tsdf-vita.md` — análisis completo de la Fase 3, incluida la resolución de la discrepancia de bits y el diseño de la interfaz de variantes intercambiables.
+4. ADRs nuevos (formato existente) para cada decisión de arquitectura: adaptadores en el PC, sistema de plugins, estrategia de acciones sin XRCE, presupuesto de render, DB-TSDF.
+5. Backlog de puertas **G7+** en hardware, cada una con: objetivo, prueba, criterio de verde medible (Hz, ms, MB, FPS), y de qué workshop sale.
+6. Registro de workshops en `docs/ia/workshops/` y el tablero final.
+7. Lista de pendientes `[?]` agrupada por "se resuelve en PC" / "se resuelve en la Vita".
+
+---
+
+## 7. Primer paso
+
+1. Carga el contexto del apartado 1 y escribe tu resumen de 15 líneas.
+2. Haz un pre-mortem global.
+3. Propón el DAG inicial de workshops (máx. 12) con su orden y dependencias, empezando por los que bloquean a otros: (a) presupuesto real de hardware de la Vita para una app Godot 4 (núcleos, RAM, NEON, ancho de banda WiFi medido), (b) límites de XRCE por tipo de mensaje, (c) formato real de vóxel de DB-TSDF, (d) matriz de portabilidad de los repos de Ozuba y paridad de API `rclgd` ↔ `ros2_vita` (apartado 1b), (e) prueba mínima de un display de gdviz (TF + RobotModel del UR5e) en el 3D GXM de la Vita, (f) estudio del addon `godot-urdf` de la Asset Store y prueba de importar el UR5e en el editor → escena en la Vita (apartado 1c).
+4. **Detente y muéstrame el DAG antes de lanzar los workshops.** A partir de mi visto bueno, trabaja de forma autónoma hasta los entregables y avísame solo ante decisiones irreversibles o contradicciones con un ADR aceptado. docs/informes/04b-dbtsdf-viabilidad-vita.md | 247 ++++++++++++++++++++++++++++
+ godot/g7-imu/project.godot                  |   3 +-
+ 2 files changed, 248 insertions(+), 2 deletions(-)
+04a-dbtsdf-analisis-codigo.md
+04b-dbtsdf-viabilidad-vita.md

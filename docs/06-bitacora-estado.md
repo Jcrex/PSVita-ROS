@@ -1,11 +1,37 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1). Antes: 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-11-11 (PC) — Nueva etapa «estación robótica» + proyecto **Unitree G1** (fases 1–3 en el PC)
+
+- **Decisiones del usuario:** modo aprendizaje **en pausa** (Claude investiga, implementa y lanza los comandos;
+  guías solo si las pide); **solo informes largos**; web en pausa; **ADR 0008 §5 enmendado**: el 3D general se
+  delega en Godot (G7c lo validó), el código propio solo para optimizaciones concretas.
+- **Proyecto G1** (`godot/g1-unitree/`, README con todo): URDF oficial del G1 (`unitree_rl_gym@276801e`) →
+  `tools/urdf2godot/` (nuevo, genérico: Blender diezma, `.tscn` con nombres URDF) → 12 633 triángulos (Vita) /
+  60 633 (PC). Marcha con el control **oficial** de Unitree: política `motion.pt` en MuJoCo
+  (`docker/g1/g1_sim.py`, imagen `psvita-ros-g1sim:jazzy`, `docker/vita-ros.sh g1`), en modo **marcha** (8 clips
+  grabados, sin red) o **ros** (en vivo: `/cmd_vel` → `/g1/estado` Float32MultiArray 76 B best effort 25 Hz).
+  Casa 10×8 m desde un único `docker/g1/casa.json` → MuJoCo + Godot + mapa PGM. **Probado en el PC** (motor
+  4.8-dev7 host + `ros2_vita` por XRCE contra el agente: ~24 Hz, 60 FPS). `.vpk` en `build/g1-unitree.vpk`.
+- **Investigación multiagente** (`docs/ia/workshops/`, método en su README): oleada 1 hecha (W1 hardware,
+  W4 portabilidad Ozuba, W5 URDF, W7 motor); en curso revisión escéptica, W2 (XRCE por mensaje) y W3 (DB-TSDF, Fable).
+  Hallazgos: **1 núcleo efectivo** en la Vita (WorkerThreadPool = 0); el GXM 3D solo dibuja triángulos (sin
+  líneas, MultiMesh ni color por vértice); posible **TF no registrado** en `ros2_vita` pese a `API_PARITY.md` (verificando).
+- **G1 probado en la Vita (confirmado por el usuario):** 60 FPS y publicación de `/cmd_vel` visible desde
+  la terminal del PC. Los datagramas de `192.168.1.94` llegaban por `enp42s0` al PC
+  (`192.168.1.65:8888/UDP`), pero el agente no respondía. UFW estaba activo y faltaba el permiso de entrada
+  para XRCE. El usuario confirmó la conexión tras aplicar
+  `sudo ufw allow in on enp42s0 from 192.168.1.94 to 192.168.1.65 port 8888 proto udp comment 'PS Vita micro-ROS XRCE'`.
+- **Pendiente de medir en hardware:** frecuencia de `/g1/estado` en modo ros
+  con `docker/vita-ros.sh g1` en el PC (criterios en `godot/g1-unitree/README.md`).
 
 ---
 

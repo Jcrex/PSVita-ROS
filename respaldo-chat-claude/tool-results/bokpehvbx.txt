@@ -1,0 +1,376 @@
+total 268
+drwxr-xr-x 2 jcrex jcrex   4096 nov 11 19:10 .
+drwxr-xr-x 3 jcrex jcrex   4096 nov 11 18:58 ..
+-rw-r--r-- 1 jcrex jcrex  17440 nov 11 19:05 W1-red-xrce.json
+-rw-r--r-- 1 jcrex jcrex  25156 nov 11 19:07 W1-vita-sdk.json
+-rw-r--r-- 1 jcrex jcrex 115648 nov 11 19:00 W4-inventario.json
+-rw-r--r-- 1 jcrex jcrex  32633 nov 11 19:09 W4-matriz-borrador.md
+-rw-r--r-- 1 jcrex jcrex  20898 nov 11 19:10 W4-portabilidad.json
+-rw-r--r-- 1 jcrex jcrex  19508 nov 11 19:05 W5-urdf.json
+-rw-r--r-- 1 jcrex jcrex  18547 nov 11 19:04 W7-motor.json
+ 17440 W1-red-xrce.json
+ 25156 W1-vita-sdk.json
+115648 W4-inventario.json
+ 32633 W4-matriz-borrador.md
+ 20898 W4-portabilidad.json
+ 19508 W5-urdf.json
+ 18547 W7-motor.json
+249830 total
+[
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P1a — Núcleos para una app de usuario: 3 (USER_0..2). El 4.º (CPU3, máscara SCE_KERNEL_CPU_MASK_SYSTEM 0x80000) está reservado al sistema y solo se puede usar con el plugin de kernel CapUnlocker.",
+    "evidencia": "El SDK define SCE_KERNEL_CPU_MASK_USER_0/1/2 = 0x10000/0x20000/0x40000, SYSTEM = 0x80000 (\"system-reserved core\") y USER_ALL = solo los tres de usuario. El loader del port comprueba si existe CapUnlocker intentando mover su propio hilo a la máscara SYSTEM; si falla, considera que no hay plugin. Esto cierra a nivel de cabeceras la hipótesis E-H2 de docs/14 (allí quedaba como [?] «3 de 4»). Falta confirmarlo en hardware: que la máscara SYSTEM falle sin el plugin.",
+    "fuentes": [
+      "toolchains/vitasdk/arm-vita-eabi/include/psp2/kernel/cpu.h:17-23",
+      "toolchains/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/thread.h:36-39",
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:67-75",
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:175-182",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:30-32,166-169"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0 (lectura); confirmar en hardware = 1 ejecución de hwprobe (~15 min)",
+    "como_se_mediria_en_hardware": "hwprobe probe_cores (tools/hwprobe/src/hwprobe.c:100-121): crea un hilo por máscara (1<<n)<<16 y registra rc + currentCpuId. Esperado sin CapUnlocker: núcleos 0-2 OK y el 3 con rc<0 (o reubicado). Además, el loader ya escribe «[capunlocker] mode=… available=… probe_rc=…» en ux0:data/logs/godot_loader.log (main.c:179): se puede leer por FTP sin compilar nada."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P1b — Cómo usa los núcleos Godot en este port: casi todo va en UN hilo (el principal). El WorkerThreadPool queda forzado a 0 hilos en tiempo de ejecución, sea cual sea threading/worker_pool/max_threads; el motor arranca con --single-threaded-scene; el render es «Safe» (hilo principal) y ros2_vita bombea XRCE en el hilo principal una vez por fotograma. Solo el mezclador de audio es un hilo aparte.",
+    "evidencia": "worker_thread_pool.cpp, bajo #ifdef VITA_ENABLED: «forcing zero background WorkerThreadPool threads», p_thread_count = 0 (por un crash con std::mutex en _process_task); las tareas se ejecutan en línea. El valor max_threads=2 que exige el exportador (platform.gd:147) y que tienen g6-hmi/g7-imu solo sirve para pasar la validación. godot_vita_gxm3d.cpp pasa --single-threaded-scene. El modelo de hilos de render por defecto es RENDER_THREAD_SAFE (main.cpp:2708). En xrce_transport.cpp, uxr_run_session_time(&session, 0) se llama una vez por fotograma desde _pump, sin hilo propio. El hilo de audio (AudioDriverVita::start) solo se mueve a CPU3 con el layout «main48» y CapUnlocker; el layout por defecto es «godot3» y no fija afinidad. CORRIGE docs/18:94-95 («WorkerThreadPool limitado a 2»): el valor real es 0. Consecuencia: el presupuesto real es 1 núcleo a 444 MHz para GDScript + física + envío del render + XRCE; la GPU trabaja en asíncrono.",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/core/object/worker_thread_pool.cpp:848-857",
+      "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/platform.gd:147-148",
+      "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/defaults_inspector.gd:20",
+      "toolchains/godot4-vita/engine/platform/vita/UPDATES_2026_10.md:11-15",
+      "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:120",
+      "toolchains/godot4-vita/engine/main/main.cpp:2708",
+      "godot/ros2_vita/xrce_transport.cpp:6,337",
+      "toolchains/godot4-vita/engine/platform/vita/audio_driver_vita.cpp:40-56,128-146",
+      "godot/g7-imu/project.godot:41",
+      "docs/18-migracion-a-godot4.md:94-95"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0 para documentarlo; reactivar workers = cambio en el motor + recompilar plantilla (1–2 h) + prueba de estabilidad, con riesgo de que vuelva el crash",
+    "como_se_mediria_en_hardware": "godot_stderr.log ya debe contener «[vita-worker] forcing zero background WorkerThreadPool threads (requested=2)» (worker_thread_pool.cpp:855): bajarlo por FTP y buscar esa línea. Para la carga del hilo principal: en GDScript, Performance.get_monitor(Performance.TIME_PROCESS) y TIME_PHYSICS_PROCESS cada segundo, publicados por ROS o en el HUD [I: comprobar que esos monitores dan valores en template_release]."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P1c — Afinidad del hilo principal de Godot: no se fija explícitamente. El loader solo fija afinidad a sus hilos temporales (decodificadores de la animación de arranque en USER_1 y USER_2, el hilo de la animación en USER_ALL). En qué núcleo corre el hilo principal del motor: Por medir.",
+    "evidencia": "boot_splash.c: los decodificadores se crean con SCE_KERNEL_CPU_MASK_USER_1/USER_2 y comentario «the loader's main thread keeps core 0 for so_load»; el splash, con USER_ALL. No hay ninguna llamada de afinidad en os_vita.cpp ni en godot_vita_gxm3d.cpp. sceUserMainThreadStackSize = 8 MiB (main.c:41). Cuál es la máscara por defecto del hilo principal: [?].",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/loader/boot_splash.c:176-178,266-267",
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:41",
+      "toolchains/vitasdk/arm-vita-eabi/include/psp2common/kernel/threadmgr.h:114-116,141"
+    ],
+    "confianza": "[?]",
+    "coste_estimado": "Leerlo cuesta 3 líneas de C en el módulo ros2_vita (sceKernelGetThreadInfo); hay que recompilar la plantilla",
+    "como_se_mediria_en_hardware": "Por medir: en hwprobe, al arrancar main(), registrar sceKernelGetThreadCpuAffinityMask(sceKernelGetThreadId()) y info.currentCpuId (homebrew normal). Para Godot: método de diagnóstico en ros2_vita (p. ej. RosRuntime.debug_cpu() → máscara + currentCpuId + changeCpuCount) llamado desde GDScript; changeCpuCount alto = el hilo migra entre núcleos."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P2a — RAM: el .vpk lleva ATTRIBUTE2=12 (memoria ampliada, ~365 MiB USER_RW según el port). El heap de newlib que manda es el del LOADER: 256 MiB en un único memblock. Los 96 MiB declarados en godot_vita*.cpp no tienen efecto en este montaje.",
+    "evidencia": "platform.gd escribe ATTRIBUTE2=12 en param.sfo y los tests del port lo exigen con el mensaje «Extended 365 MiB USER_RW budget». loader/main.c:36 define _newlib_heap_size_user = 256 MiB. newlib (sbrk.c) vive en el eboot del loader y resuelve el símbolo débil al enlazar ESE ejecutable. La definición de 96 MiB está dentro de libgodot.so (godot_vita_gxm3d.cpp:65, bajo #ifdef VITAGL), que se carga después con so_util y no participa en ese enlace [I fuerte]. Este doble valor ya aparece en docs/18:85-87 y en el ROADMAP del port como P1. El comentario de 96 MiB habla del presupuesto de vglInit, que la ruta GXM nativa no usa (ver P2c).",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/platform.gd:180",
+      "toolchains/godot4-vita/engine/platform/vita/tools/tests/test_editor_vpk.py:47",
+      "toolchains/godot4-vita/engine/platform/vita/tools/validate_integrated_editor.py:44",
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:31-36",
+      "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:60-65",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:99-112",
+      "docs/18-migracion-a-godot4.md:85-88"
+    ],
+    "confianza": "[V] valores en código / [I] que 365 MiB sea el total real y que el símbolo del .so no tenga efecto",
+    "coste_estimado": "0",
+    "como_se_mediria_en_hardware": "Leer las líneas «[memory] stage=before_so_load … heap=268435456» de ux0:data/logs/godot_loader.log (loader/main.c:103): heap=268435456 confirma 256 MiB; user_free antes de so_load da el USER_RW libre real con ATTRIBUTE2=12."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P2b — Reparto estimado de la RAM (USER_RW ≈365 MiB): heap de newlib 256 MiB (motor, escena, GDScript, imágenes en CPU) + libgodot.so mapeado ≈48,8 MiB (RX 45,8 + RW 3,0) + arena de mallas 3D 24 MiB (USER_RW_UNCACHE, solo si hay 3D) + pool temporal de vita2d 4 MiB + pila principal 8 MiB + pool de sceNet 1 MiB ⇒ quedan del orden de 20–30 MiB fuera del heap. Lo que queda PARA EL JUEGO es el heap menos lo que ocupa el motor en reposo: Por medir.",
+    "evidencia": "Las cifras salen de readelf -l del libgodot.so de out/ (LOAD RX filesz 0x2bc60b8, RW memsz 0x2f6908) y de gxm_bridge.c (MESH_ARENA_BYTES 24 MiB, vita2d_init_advanced(4 MiB)). El comentario del loader dice que con ATTRIBUTE2=12 y CapUnlocker quedan ~110 MiB de USER_RW antes de mapear el runtime de 46 MiB. Las sumas son inferencia [I]: el reparto real depende de en qué tipo de memblock pide cada cosa vita2d. El juego Buckshot superó un heap de 160 MiB, por eso se subió a 256 MiB.",
+    "fuentes": [
+      "readelf -l toolchains/godot4-vita/out/libgodot.so (ejecutado 2026-11-11)",
+      "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:35,193,403-410",
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:31-41,145",
+      "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:60-65"
+    ],
+    "confianza": "[I]",
+    "coste_estimado": "0 para medirlo (los logs ya existen)",
+    "como_se_mediria_en_hardware": "Bajar por FTP los dos logs tras una sesión de g7-imu: (1) ux0:data/logs/godot_loader.log, líneas [memory] before_so_load/after_so_load/before_engine_main; (2) ux0:data/gxm3d/godot_stderr.log, líneas «[vita-memory] stage=renderer_init|mesh_arena|frame user_free=… cdram_free=… textures=…» (gxm_bridge.c:113, una cada 600 fotogramas). La resta before_so_load → frame da lo que consumen el motor y la escena fuera del heap. Para el heap por dentro: newlib mallinfo() desde ros2_vita [?] o un sondeo con malloc de trozos de 1 MiB (como hwprobe probe_memory) en un build de diagnóstico."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P2c — Memoria de vídeo: el render activo es el GXM nativo (vita2d + gxm_bridge), no vitaGL. Las texturas van a CDRAM con un tope de 64 MiB que impone el puente (de 128 MiB de CDRAM), en RGBA4444 por defecto y con cada reserva redondeada a 256 KiB.",
+    "evidencia": "El CMake del loader activa VITA_GXM2D cuando VITA_GXM3D=ON y mete gxm2d.cfg en el .vpk. display_server_vita.cpp ve gxm2d.cfg, llama a vita_gxm_init y no ejecuta vglInit (GLManagerVita solo es el plan B). El tope de texturas está en gxm_bridge.c:128 (64 MiB). OJO: GXM_BACKEND.md:41 dice 48 MiB; manda el código. No hay expulsión LRU. RGBA4444 = la mitad de bytes que RGBA8888 (make_editor_template.py --rgba4444 en tools/build-godot-template.sh). Las 4 MiB de parameter buffer de vglSetParamBufferSize y el MSAA 4x de gl_manager_vita.cpp NO aplican en esta ruta [I].",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/loader/CMakeLists.txt:121-133",
+      "toolchains/godot4-vita/engine/platform/vita/display_server_vita.cpp:78-100",
+      "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:109-150",
+      "toolchains/godot4-vita/engine/platform/vita/loader/texture_format.h:14",
+      "toolchains/godot4-vita/engine/platform/vita/GXM_BACKEND.md:38-43",
+      "toolchains/godot4-vita/engine/platform/vita/gl_manager_vita.cpp:47-56",
+      "tools/build-godot-template.sh:88-89",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:194-195"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0",
+    "como_se_mediria_en_hardware": "En godot_stderr.log: «textures=» (bytes acumulados) y cdram_free en las líneas [vita-memory]; «[gxm2d] vita2d_init=… texture_format=RGBA4444» confirma el formato. Prueba de estrés: cargar texturas hasta que vita_gxm_texture_create devuelva NULL y ver si el fallo llega a 64 MiB."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P3a — NEON/VFP al compilar: SÍ, en todo. Motor: -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -ftree-vectorize. Nuestro C PIC: los mismos flags. Loader: -O2 con NEON. Rust: target armv7-sony-vita-newlibeabihf con +neon,+vfp3. El gcc de VitaSDK ya usa por defecto armv7-a+simd, neon, hard y thumb (XRCE se compila así, -O3 Release). PERO la plantilla se compila con optimize=size → -Os sin -ffast-math, así que GCC no vectoriza código f32.",
+    "evidencia": "detect.py:166-178 (flags de CPU/FPU) y :148-152 (speed → -O3 -ffast-math; size → -Os). tools/build-godot-template.sh:74 usa optimize=size. tools/build-c-pic.sh:22 copia esos flags con -Os. Las cabeceras del ELF libgodot.so dicen Tag_Advanced_SIMD_arch: NEONv1, Tag_FP_arch: VFPv3, Tag_ABI_VFP_args: VFP registers (readelf -A). `arm-vita-eabi-gcc -Q --help=target` da march=armv7-a+simd, mfpu=neon, mfloat-abi=hard, mthumb. docs/14:61-65 ya midió que sin fast-math LLVM/GCC no generan NEON para f32 (0 instrucciones NEON en viz_math_rust): misma regla aquí.",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/detect.py:146-178",
+      "tools/build-godot-template.sh:74",
+      "tools/build-c-pic.sh:11,22-23",
+      "toolchains/godot4-vita/engine/platform/vita/loader/CMakeLists.txt:35",
+      "toolchains/vitasdk/share/vita.toolchain.cmake:89-92",
+      "vita-app/scripts/build-xrce-client-vita.sh:85-88",
+      "readelf -A toolchains/godot4-vita/out/libgodot.so (2026-11-11)",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:18-21,61-65"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0; cambiar a optimize=speed = recompilar plantilla (1–2 h) y el .so pasa de 46,9 MB a ~66 MB sin strip [I] (libgodot_gxm3d.c.so de 66 MB); más RX mapeado = menos USER_RW",
+    "como_se_mediria_en_hardware": "Ver P5 (E-H7): comparar el tiempo de un bucle f32 escalar contra NEON con intrínsecas en hwprobe. Para el motor: exportar g7-imu con dos plantillas (size y speed) y comparar avg_frame_us de [gxm2d-perf] y TIME_PROCESS."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P3b — ¿Usa Godot SIMD en la Vita? No en su núcleo: core/, servers/, scene/ y drivers/ no contienen arm_neon.h ni __ARM_NEON, así que Vector3/Basis/Transform3D son f32 escalar con VFP. Solo usan NEON algunas bibliotecas de thirdparty (libwebp, zstd/xxhash, thorvg, harfbuzz, mbedtls); embree solo entra en el editor. libmathneon se enlaza para vitaGL, ruta que no está activa.",
+    "evidencia": "grep -rl 'arm_neon.h|__ARM_NEON' en core servers scene drivers modules thirdparty: solo aparecen archivos de thirdparty. Godot 4 no tiene una capa SIMD propia para ARM32 [I: conocimiento del motor de upstream, concuerda con el grep]. Consecuencia: la matemática por fotograma en GDScript (filtro F2, Basis) es escalar; si un cálculo es caro, el sitio para NEON es el módulo C/Rust (viz-math con intrínsecas, docs/ia/auditoria O16–O17), no el motor.",
+    "fuentes": [
+      "grep en toolchains/godot4-vita/engine/{core,servers,scene,drivers,modules,thirdparty} (2026-11-11)",
+      "toolchains/godot4-vita/engine/platform/vita/detect.py:244-253",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:61-65"
+    ],
+    "confianza": "[V] (grep) / [I] (efecto en rendimiento)",
+    "coste_estimado": "0",
+    "como_se_mediria_en_hardware": "Contar instrucciones NEON de cuádruple registro en libgodot.so: arm-vita-eabi-objdump -d … | grep -cE 'v(add|mul|mla)\\.f32\\s+q' (análisis estático; no hace falta hardware)."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P4 — Relojes: SÍ, el port sube la CPU a 444 MHz, el bus a 222, la GPU a 222 y el crossbar a 166, dos veces: en el loader antes de so_load y otra vez en el main() del motor. No se comprueba el código de retorno ni se lee el valor final. Que 444 MHz se mantengan con el WiFi activo (lo necesita XRCE) está Por medir.",
+    "evidencia": "loader/main.c:168-171 y godot_vita_gxm3d.cpp:72-75 llaman a scePowerSet{Arm,Bus,Gpu,GpuXbar}ClockFrequency(444/222/222/166) e ignoran el rc. La API está en power.h:132,197. docs/14:48,66-68 recoge el aviso de la comunidad de que 444 MHz con WiFi activo no es seguro (anecdótico) y propone suponer 333 MHz hasta medir (E-H1).",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:168-171",
+      "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:69-75",
+      "toolchains/vitasdk/arm-vita-eabi/include/psp2/power.h:132,197",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:22-24,48,66-68,268"
+    ],
+    "confianza": "[V] (llamadas) / [?] (efecto con WiFi)",
+    "coste_estimado": "0 medir; registrar el rc = 4 líneas en ros2_vita + recompilar",
+    "como_se_mediria_en_hardware": "(a) hwprobe probe_clocks (hwprobe.c:54-74): set 333/444 → rc, get y tiempo del bucle f32; ejecutarlo DESPUÉS de net_udp_init (WiFi activo, como ya hace main()). (b) Dentro de Godot: exponer scePowerGetArmClockFrequency() en ros2_vita y publicarlo cada pocos segundos durante una teleop, para ver si el firmware lo baja al calentarse o con WiFi."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P5a — Estado de tools/hwprobe: escrito y sin compilar nunca. Cubre E-H1 (relojes + bucle f32), E-H2 (núcleos), E-H3 (ancho de banda por tipo de memblock) y E-H4 (memoria libre + malloc máximo). Le faltan: (1) NEON frente a escalar, (2) paralelismo real (hilos a la vez, no en secuencia), (3) la afinidad del hilo principal, (4) memoria con Godot cargado (esto no se mide con hwprobe, sino con los logs del port). Hay dos problemas de configuración: NETLOG_IP apunta por defecto a la laptop (192.168.1.108) y no al PC (192.168.1.65), y el puerto 9999 recibe ruido del enchufe Kasa.",
+    "evidencia": "hwprobe/README.md:3-4 «SIN COMPILAR NI EJECUTAR». probe_cores lanza y espera cada hilo uno detrás de otro (hwprobe.c:100-121), así que no mide el speedup. float_loop_us usa un volatile escalar (hwprobe.c:44-52): no mide NEON. CMakeLists.txt:17 NETLOG_IP=192.168.1.108. El README usa `source tools/env-devpc.sh` (bash), pero el usuario usa fish → tools/env-devpc.fish. VITA_MKSFOEX_FLAGS existe en vita.cmake:11,362 (CMakeLists.txt:46-48 dejaba eso pendiente de VERIFICAR: verificado). netlog-listen.sh ya filtra el ruido binario.",
+    "fuentes": [
+      "tools/hwprobe/README.md:1-20",
+      "tools/hwprobe/src/hwprobe.c:44-121,169-210",
+      "tools/hwprobe/CMakeLists.txt:17-20,43-48",
+      "toolchains/vitasdk/share/vita.cmake:11,362",
+      "tools/netlog-listen.sh:12-18",
+      "tools/env-devpc.fish"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "Compilar y ejecutar el hwprobe actual: ~20 min. Añadir E-H7/E-H8: ~80 líneas de C (reto para el usuario, modo aprendizaje)",
+    "como_se_mediria_en_hardware": "Fish en el PC (192.168.1.65), terminal 1: `cd ~/Proyectos/PSVita-ROS; source tools/env-devpc.fish; cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake -DNETLOG_IP=192.168.1.65 -DEXTENDED_MEMORY=ON -B tools/hwprobe/build-ext tools/hwprobe; and cmake --build tools/hwprobe/build-ext; and tools/deploy-vpk-ftp.sh tools/hwprobe/build-ext/hwprobe.vpk`. Terminal 2: `tools/netlog-listen.sh 9999 hwprobe-ext.log`. Instalar el .vpk con VitaShell y abrir «Vita HW Probe». Repetir sin -DEXTENDED_MEMORY (en build/) para comparar E-H4/E-H5. Pegar la salida en docs/14 §9."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P5b — Prueba nueva E-H7 (NEON frente a escalar, en ms): añadir a hwprobe probe_neon(). Dos bucles sobre 3 arrays f32 de 64 Ki elementos (256 KiB cada uno; caben en L2, no en L1), y = a*x + y, 200 repeticiones: (1) escalar en una función con __attribute__((optimize(\"no-tree-vectorize\"))); (2) intrínsecas vld1q_f32/vmlaq_f32/vst1q_f32 de <arm_neon.h>. Cronometrar con sceKernelGetProcessTimeWide a 333 y a 444 MHz. Añadir una variante de 4 Ki elementos (en L1) para separar cómputo de memoria.",
+    "evidencia": "VitaSDK compila con -mfpu=neon por defecto (gcc -Q --help=target), así que arm_neon.h se puede usar sin flags extra [V]. Ganancia esperada: 2–4× en L1 y menor si manda la memoria [I: el Cortex-A9 ejecuta NEON f32 en 64 bits por ciclo, conocimiento general de ARM]. Hace falta comprobar el resultado (comparar y, con tolerancia por los denormales a cero de NEON, docs/14:61-65) para que el compilador no elimine el bucle.",
+    "fuentes": [
+      "tools/hwprobe/src/hwprobe.c:44-52",
+      "docs/14-hardware-vita-memoria-hilos-optimizacion.md:51,61-65",
+      "docs/ia/auditoria/02a-optimizacion-modulos.md (O16–O17)"
+    ],
+    "confianza": "[I] (diseño) — resultado: Por medir",
+    "coste_estimado": "~40 líneas de C + 1 ejecución",
+    "como_se_mediria_en_hardware": "Salida esperada por netlog: «[hwprobe] axpy f32 N=65536 x200 @444MHz: escalar=… us neon=… us speedup=…» y lo mismo con N=4096 y a 333 MHz. Criterio: si el speedup en L1 es ≥2×, vale la pena usar intrínsecas en viz-math/filtros; si en L2 es <1,3×, el cuello de botella es la memoria."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P5c — Prueba nueva E-H8 (núcleos usables a la vez y speedup real): lanzar 1, 2, 3 y 4 hilos SIMULTÁNEOS con el mismo trabajo entero (30 M iteraciones), cada uno fijado a USER_0/1/2/SYSTEM; medir el tiempo de pared hasta que acaba el último y leer currentCpuId y changeCpuCount de cada uno. Con 3 núcleos libres, T(3) ≈ T(1); si T(3) ≈ 1,5·T(1), un núcleo lo comparte el sistema (WiFi, shell). Registrar también la máscara del hilo principal (P1c).",
+    "evidencia": "SceKernelThreadInfo trae currentCpuId y lastExecutedCpuId (threadmgr.h:114-116); el planificador maneja 4 CPUs (docs/14:148-150). La versión actual de hwprobe no puede ver la contención porque espera a cada hilo antes de lanzar el siguiente (hwprobe.c:107-111).",
+    "fuentes": [
+      "toolchains/vitasdk/arm-vita-eabi/include/psp2common/kernel/threadmgr.h:114-116",
+      "tools/hwprobe/src/hwprobe.c:100-121",
+      "toolchains/vitasdk/arm-vita-eabi/include/psp2/kernel/cpu.h:17-23"
+    ],
+    "confianza": "[I] (diseño) — resultado: Por medir",
+    "coste_estimado": "~40 líneas de C (lanzar todos con sceKernelStartThread y luego WaitThreadEnd en bucle)",
+    "como_se_mediria_en_hardware": "Salida: «[hwprobe] paralelo n=3 máscaras=USER_0|1|2: pared=… us (n=1: … us) cpus=0,1,2». Ejecutarlo con el WiFi activo (después de net_udp_init) para incluir la carga real de la red."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-vita-sdk (opus)",
+    "candidato": "P5d — RAM libre con Godot cargado: no hace falta compilar nada. Bajar por FTP los logs que el port ya escribe tras ejecutar g7-imu unos 30 s (≥ 1800 fotogramas = 3 líneas «frame»).",
+    "evidencia": "loader/main.c:100-105 registra [memory] user/cdram/phycont libres y el heap en 3 momentos (antes y después de so_load, y antes de main del motor). gxm_bridge.c:109-116,198,203,414 registra [vita-memory] en renderer_init, mesh_arena y cada 600 fotogramas, con los bytes de texturas. La ruta del log del loader es VITA_LOG_ROOT=\"ux0:data\" + /logs/godot_loader.log (CMakeLists.txt:26; main.c:110) [I: el parche 0001 del loader podría cambiarla]. godot_stderr.log está en ux0:data/gxm3d/ (godot_vita_gxm3d.cpp:45,130; bitácora 2026-11-01). Lo que el usuario midió en G7c (59 FPS, 17 ms/fotograma, render ≈11,6 ms) ya está cerrado en docs/06:32-38: no se repite.",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/platform/vita/loader/main.c:100-110,193,208,234",
+      "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:109-116,198,203,414",
+      "toolchains/godot4-vita/engine/platform/vita/loader/CMakeLists.txt:26,51",
+      "toolchains/godot4-vita/engine/platform/vita/godot_vita_gxm3d.cpp:45,130",
+      "docs/06-bitacora-estado.md:24-27,32-38"
+    ],
+    "confianza": "[V] (los logs existen en el código) — valores: Por medir",
+    "coste_estimado": "~5 min",
+    "como_se_mediria_en_hardware": "Fish en el PC con la Vita en 192.168.1.94 y el servidor FTP de VitaShell (puerto 1337) activo: `set VITA 192.168.1.94; curl -s -o /tmp/godot_loader.log ftp://$VITA:1337/ux0:/data/logs/godot_loader.log; curl -s -o /tmp/godot_stderr.log ftp://$VITA:1337/ux0:/data/gxm3d/godot_stderr.log; grep -h -E '\\[memory\\]|\\[vita-memory\\]|\\[vita-worker\\]|\\[capunlocker\\]|gxm2d-perf' /tmp/godot_loader.log /tmp/godot_stderr.log`. Calcular: USER_RW total ≈ user_free(before_so_load) + heap; consumo del runtime = before_so_load − before_engine_main; consumo de la escena fuera del heap = renderer_init − frame; CDRAM usada = 128 MiB − cdram_free."
+  }
+][
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q1 · Ancho de banda WiFi medido en NUESTRO repo (único dato de primera mano)",
+    "evidencia": "FTP de VitaShell (TCP, subida de .vpk): lejos del router ~0,55 MB/s (~4,4 Mbit/s) y ping 55–190 ms; cerca del router ~1,6 MB/s (~12,8 Mbit/s) y ping mínimo 1,5 ms, pero media irregular 40–60 ms (hipótesis del repo: ahorro de energía WiFi de la Vita, sin confirmar). Además, una subida de 22 MB llegó cortada a ~2 MB sin error de curl ⇒ el enlace/servidor FTP no es fiable para medir sin verificar. No hay en el repo ninguna medida de throughput UDP ni XRCE (ni pps, ni pérdida): solo cadencias de aplicación (/cmd_vel ~20 Hz, /vita/imu 30–50 Hz) que funcionan. Fecha del dato: 2026-10-30 (reciente).",
+    "fuentes": [
+      "docs/06-bitacora-estado.md:303-311",
+      "docs/06-bitacora-estado.md:183-189",
+      "docs/06-bitacora-estado.md:1147",
+      "docs/01-hardware-y-plataforma.md:20",
+      "git log -S'0,55 MB/s' → 11d7bba 2026-10-30"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0 (ya medido); repetir con método controlado ~15 min",
+    "como_se_mediria_en_hardware": "Paso 0 del microbenchmark (candidato Q4-A): FTP de 20 MB con curl midiendo %{speed_upload}/%{speed_download} cerca y lejos del router + ping a 0,2 s y a 1 s para separar latencia real de power-save."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q1 · Cifras de la comunidad homebrew (FTP, USB, tarjeta, Moonlight)",
+    "evidencia": "No existe un benchmark sistemático publicado de la WiFi de la Vita. Anécdotas: wiki lazyweb «VitaShell FTP is slow (~30 min/GiB)» ≈ 0,57 MiB/s (coincide con nuestro 'lejos del router'); comentario en wololo (VitaShell 1.5, ENERO 2017, anterior a 2025) «my ftp speed is 1.2–1.6 MB» (coincide con nuestro 'cerca'); el modo USB de VitaShell 10 MB/s lectura / 5 MB/s escritura; la tarjeta de memoria lee 6,3–7,6 MB/s y escribe 4,2–7,3 MB/s (Gameranx, antiguo) ⇒ el FTP (≤1,6 MB/s) NO está limitado por almacenamiento sino por red/pila TCP. vita-moonlight elige por defecto 5 Mbit/s (≤720p30), 10 Mbit/s (60 fps o 1080) y 20 Mbit/s (1080p60) de bajada (src/config.c:339-346; repo sin actividad reciente, pre-2025) — es configuración por defecto, no medida. No encontré cifras de vitacompanion/Adrenaline. Techo físico: 802.11n 1×1 a 20 MHz = 65/72,2 Mbit/s PHY; UDP real típico ≈ 40–50 % del PHY — chip y throughput UDP real de la Vita sin fuente [?].",
+    "fuentes": [
+      "https://github-wiki-see.page/m/superjamie/lazyweb/wiki/Gaming-PS-Vita",
+      "https://wololo.net/2017/01/12/vitashell-updated-1-5-provides-usb-mass-storage-access/ (2017, <2025)",
+      "https://gameranx.com/updates/id/5352/article/just-how-fast-are-the-vita-s-memory-cards-anywar/ (<2025)",
+      "https://raw.githubusercontent.com/xyzz/vita-moonlight/master/src/config.c (líneas 339-346, <2025)",
+      "IEEE 802.11n MCS7 1SS 20 MHz = 65/72,2 Mbit/s (conocimiento general, sin URL)"
+    ],
+    "confianza": "[I]",
+    "coste_estimado": "0",
+    "como_se_mediria_en_hardware": "Igual que Q4-A (FTP) y Q4-B (UDP crudo): solo una medida propia de UDP sostenido da el techo real; esperado entre 1,6 MB/s (FTP medido) y ~4 MB/s (≈35 Mbit/s si la pila sceNet no limita) — hipótesis."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q2 · Pila sceNet tal como la usamos: límites conocidos y desconocidos",
+    "evidencia": "Inicio de red en el CARGADOR (sysmodule NET + sceNetInit con pool estático de 1 MiB + sceNetCtlInit), porque dentro de Godot sceNetInit daba 0x8002450D UID_RL_OVERFLOW; ros2_vita repite el intento con pool de 1 MiB de memalign y net_udp_init acepta la red ya iniciada. Socket UDP 'conectado' (sceNetConnect) → send()/recv(); envío bloqueante sin opciones; recepción no bloqueante con SCE_NET_MSG_DONTWAIT cuando timeout=0 (nuestro caso: uxr_run_session_time(0)), o SCE_NET_SO_RCVTIMEO en µs. Tabla estática de 4 sockets (NET_UDP_MAX_SOCKETS). NO se fija SO_RCVBUF/SO_SNDBUF: tamaño por defecto de los búferes de socket de sceNet desconocido; tampoco hay dato de pps máximo ni de la MTU IP de la interfaz (1500 en Ethernet/WiFi estándar es lo esperable). Como XRCE usa datagramas de ≤512 B no hay fragmentación IP. Latencia: solo el ping medido (1,5 ms mín., 40–60 ms medio).",
+    "fuentes": [
+      "docs/06-bitacora-estado.md:275-279",
+      "godot/ros2_vita/xrce_transport.cpp:92-118",
+      "modules/net-udp/impl-c/net_udp.c:40",
+      "modules/net-udp/impl-c/net_udp.c:107-111",
+      "modules/net-udp/impl-c/net_udp.c:178-186",
+      "modules/net-udp/impl-c/net_udp.c:228-264",
+      "modules/net-udp/include/net_udp.h:31",
+      "modules/microros-transport/impl-c/microros_transport.c:50-83"
+    ],
+    "confianza": "[V] lo que hace el código; [?] búferes por defecto, pps y MTU de sceNet",
+    "coste_estimado": "Bajo: añadir sceNetGetsockopt(SCE_NET_SO_RCVBUF/SNDBUF) a get_transport_info (~10 líneas, reto para el usuario)",
+    "como_se_mediria_en_hardware": "Leer SO_RCVBUF/SO_SNDBUF con sceNetGetsockopt y mostrarlos en el panel de diagnóstico; ráfaga UDP de N datagramas seguidos desde el PC (Q4-B) y contar cuántos recibe la Vita en un frame ⇒ búfer efectivo; pps máximo con datagramas de 64 B en el sentido Vita→PC."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Configuración real de micro-XRCE-DDS en nuestro build",
+    "evidencia": "Cliente eProsima v2.4.3 (2024-03, tag del clon) compilado con perfil CUSTOM_TRANSPORT y defaults de CMake: UXR_CONFIG_CUSTOM_TRANSPORT_MTU=512, 1 stream de cada tipo (MAX_OUTPUT/INPUT_{BEST_EFFORT,RELIABLE}_STREAMS=1), MIN_HEARTBEAT_TIME_INTERVAL=100 ms, 10 intentos de sesión. ros2_vita: stream fiable de salida y de entrada con historial 16 × 512 B (8 KiB cada uno), un único búfer best-effort de 512 B, MAX_RX=16 KiB para mensajes recibidos reensamblados, XRCE_OVERHEAD=24 (conservador: el real es cabecera de mensaje 4 B — session id 0x81, sin client key — + subcabecera 4 B + payload WRITE_DATA 4 B + relleno a 4). Payload máximo por datagrama: 488 B según el código (500 B real). Mayor que eso: solo por el fiable, fragmentado; en best effort devuelve ERR_OUT_OF_MEMORY. Si el fiable está lleno, la publicación cae al best effort y suma diag.reliable_full. Un solo hilo: poll() una vez por frame con uxr_run_session_time(0) ⇒ todo envío y lectura de ACK está cuantizado al frame (~16,7 ms a 60 FPS).",
+    "fuentes": [
+      "vita-app/scripts/build-xrce-client-vita.sh:100-111",
+      "vita-app/third_party/xrce-vita-pic/include/uxr/client/config.h:41-60",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/CMakeLists.txt:53-65",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:171",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session_info_internal.h:29-30",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/submessage_internal.h:28",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/write_access.c:14",
+      "godot/ros2_vita/xrce_transport.cpp:132-140",
+      "godot/ros2_vita/xrce_transport.cpp:181-184",
+      "godot/ros2_vita/xrce_transport.cpp:299-302",
+      "godot/ros2_vita/xrce_transport.cpp:335-339",
+      "godot/ros2_vita/xrce_transport.cpp:406-428"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "0 (lectura)",
+    "como_se_mediria_en_hardware": "Contadores de rclgd.get_transport_info(): writes, write_bytes, reliable_full, read_packets (xrce_transport.cpp:433-455) por segundo durante el barrido de Q4-C."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Techo teórico BEST EFFORT: ~30 KB/s (~240 kbit/s) por el búfer único de 512 B y el flush por frame",
+    "evidencia": "uxr_prepare_best_effort_buffer_to_write solo escribe si writer+relleno+size ≤ 512; si no cabe devuelve false y ros2_vita devuelve ERR_BUSY (mensaje perdido sin reintento). El búfer solo se vacía en uxr_flash_output_streams, llamado desde uxr_run_session_time en poll(), una vez por frame. ⇒ por frame cabe UN datagrama de 512 B, agregando varios mensajes pequeños. A 60 FPS: ≈ 500 B × 60 ≈ 30 KB/s útiles. Mensajes/s según tamaño CDR s (overhead ~8–11 B por submensaje): s=64 → 6/frame ≈ 360 msg/s; s=128 → 3/frame ≈ 180 msg/s; s=250 → 1/frame = 60 msg/s; s=488 → 60 msg/s; s>488 → imposible. Ejemplo: sensor_msgs/Imu (~320 B CDR, hipótesis) a 30 Hz en BE cabe, pero dos topics BE de >250 B a 60 Hz ya no. Si el juego baja a 30 FPS el techo cae a la mitad.",
+    "fuentes": [
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_best_effort_stream.c:34-51",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:321-339",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:597-610",
+      "godot/ros2_vita/xrce_transport.cpp:140",
+      "godot/ros2_vita/xrce_transport.cpp:418-426"
+    ],
+    "confianza": "[V] mecanismo (código); [I] cifras (cálculo, no medido)",
+    "coste_estimado": "Medir: bajo. Mejorar: llamar a uxr_flash_output_streams() tras cada publish best effort o subir MTU (UCLIENT_CUSTOM_TRANSPORT_MTU=1400 recompilando el cliente) ⇒ ×2,7–×N; medio (requiere recompilar libs PIC y pasar G2/G3)",
+    "como_se_mediria_en_hardware": "Q4-C con QoS BEST_EFFORT: barrer frecuencia con tamaño fijo hasta que `ros2 topic hz` deje de seguir a la frecuencia pedida; contar ERR_BUSY devueltos por publish() en GDScript."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Techo teórico RELIABLE: ventana de 8 KiB / RTT efectivo cuantizado al frame",
+    "evidencia": "El fiable admite escribir mientras seq ≤ last_acknown + history (16 huecos de 512 B; varios mensajes pequeños comparten hueco). El agente responde con un ACKNACK por CADA mensaje recibido en stream fiable (Processor.cpp, rama master; versión exacta de la imagen microros/micro-ros-agent:jazzy sin comprobar), y el cliente solo lo procesa en el siguiente poll(). RTT_ef ≈ ceil(RTT/16,7 ms)·16,7 ms. Techo ≈ 16×500 B / RTT_ef: RTT 1,5 ms → 8 KB/frame ≈ 480 KB/s (~3,8 Mbit/s, ya por encima del FTP 'lejos' 0,55 MB/s, así que la WiFi manda); RTT 50 ms → ≈ 120–160 KB/s; RTT 190 ms → ≈ 40 KB/s. Por encima, el excedente cae al best effort (+30 KB/s, sin garantía) y sube reliable_full. Es coherente con G6: con historial 4 a 20 Hz se llenaba (4 huecos × 1 msg/hueco si cada publish va en frame distinto ⇒ 4 frames = 200 ms ≥ RTT irregular).",
+    "fuentes": [
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_reliable_stream.c:54-100",
+      "https://github.com/eProsima/Micro-XRCE-DDS-Agent/blob/master/src/cpp/processor/Processor.cpp (líneas 108-133: ACKNACK tras cada mensaje fiable; 663-690: ACKNACK a HEARTBEAT)",
+      "https://micro-xrce-dds.readthedocs.io/en/latest/agent.html (agente: historial fiable 16, HEARTBEAT 200 ms por defecto)",
+      "godot/ros2_vita/xrce_transport.cpp:132-136",
+      "docs/06-bitacora-estado.md:249-250"
+    ],
+    "confianza": "[I]",
+    "coste_estimado": "Medir: bajo. Mejorar: historial 32/64 (2 líneas, +8–24 KiB RAM) o MTU 1400 (×2,8 por hueco, recompilar cliente); poll() 2 veces por frame o en hilo propio (alto: rompe el diseño de un hilo)",
+    "como_se_mediria_en_hardware": "Q4-C con QoS RELIABLE: el punto de rodilla es cuando reliable_full empieza a crecer; anotar RTT (ping-pong) en ese momento y comprobar RTT_ef·throughput ≈ 8 KB."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q3 · Riesgo: HEARTBEAT del cliente 'deslizante' con poll a 60 Hz + fragmentación bloqueante",
+    "evidencia": "uxr_update_output_stream_heartbeat_timestamp reprograma next_heartbeat = ahora + 100 ms en CADA llamada mientras haya datos sin confirmar (también en upstream master). Con poll() cada 16,7 ms el plazo nunca vence ⇒ el cliente no envía HEARTBEAT mientras el juego vaya a >10 FPS. La recuperación de pérdidas depende entonces de que el agente mande ACKNACK con nack_bitmap al recibir el SIGUIENTE mensaje fiable: si se pierde el último de una ráfaga y no hay más tráfico fiable, el hueco queda ocupado hasta la siguiente publicación (hipótesis a verificar). Fragmentación: un mensaje > 488 B usa uxr_prepare_output_stream_fragmented con _flush = uxr_run_session_time(10), que BLOQUEA el hilo principal mientras espera ACK para liberar huecos: una imagen mono8 160×120 (≈19,2 kB ≈ 39 fragmentos > 16 huecos) congelaría ≥2 RTT por frame (hipótesis). En recepción, cualquier mensaje > MAX_RX 16 KiB se descarta (p. ej. esa misma imagen si se suscribe).",
+    "fuentes": [
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/stream/output_reliable_stream.c:195-220",
+      "https://raw.githubusercontent.com/eProsima/Micro-XRCE-DDS-Client/master/src/c/core/session/stream/output_reliable_stream.c (misma lógica)",
+      "vita-app/third_party/_build/Micro-XRCE-DDS-Client/src/c/core/session/session.c:687-730",
+      "godot/ros2_vita/xrce_transport.cpp:137",
+      "godot/ros2_vita/xrce_transport.cpp:246-249",
+      "godot/ros2_vita/xrce_transport.cpp:411-417",
+      "docs/13-infraestructura-desarrollo-vita.md:122-129"
+    ],
+    "confianza": "[V] código; [I] efecto en hardware",
+    "coste_estimado": "Verificar: bajo (captura). Arreglo: uxr_run_session_time(0) no basta; opciones: llamar write_submessage_heartbeat vía uxr_run_session_until_confirm_delivery ocasional, o publicar fragmentados en un hilo — medio",
+    "como_se_mediria_en_hardware": "`docker/vita-ros.sh sniff` (tcpdump en la estación) durante Q4-C: contar datagramas Vita→PC cuyo byte 4 del payload UDP sea 0x0b (HEARTBEAT) frente a 0x07 (WRITE_DATA) y PC→Vita con 0x0a (ACKNACK). Si HEARTBEAT=0 con pérdidas >0 se confirma. Para fragmentación: publicar String de 2/4/8/16 kB y medir Engine.get_frames_per_second() y el tiempo de publish() con Time.get_ticks_usec()."
+  },
+  {
+    "workshop": "W1",
+    "autor": "investigador-red (opus)",
+    "candidato": "Q4 · Microbenchmark ejecutable (A: FTP/ping · B: UDP crudo · C: barrido XRCE)",
+    "evidencia": "A — línea base sin código (fish, PC): `set VITA 192.168.1.94` ; `dd if=/dev/urandom of=/tmp/w1-20M.bin bs=1M count=20` ; `curl -sS -T /tmp/w1-20M.bin ftp://$VITA:1337/ux0:/data/w1-20M.bin -w 'subida %{speed_upload} B/s\\n'` ; `curl -sS -o /dev/null ftp://$VITA:1337/ux0:/data/w1-20M.bin -w 'bajada %{speed_download} B/s\\n'` ; `ping -c 200 -i 0.2 $VITA | tail -2` y `ping -c 30 -i 1 $VITA | tail -2` (si la media a 1 s ≫ a 0,2 s ⇒ power-save). Repetir a 1 m y a la distancia de uso. B — UDP crudo: el FTP es TCP, no sirve de techo UDP. Reto para el usuario: homebrew C mínimo (CMake de vita-app) sobre modules/net-udp que envíe datagramas de 64/256/512/1400 B con [seq u32][t_us u64] a tasa creciente, y modo eco; en el PC `socat -u UDP-RECV:9000 -` no cuenta pérdidas ⇒ script python de ~30 líneas que cuente seq perdidos/desordenados y devuelva eco para RTT. (Godot PacketPeerUDP en el port: sin verificar [?], por el muro UID_RL_OVERFLOW.) C — barrido XRCE (app Godot godot/w1-netbench, reto): publicar std_msgs/String (CDR = 4+N+1 B; está en schema.rsch; Float32MultiArray NO está, habría que regenerarlo con tools/gen_msg_schema.py; Float64MultiArray sí) con N ∈ {64,256,480,1024,4096} y f ∈ {10,30,60,120*,240*} Hz (*varios publish por frame), en RELIABLE y BEST_EFFORT, 20 s por punto; los 12 primeros caracteres = seq. Pintar cada segundo get_transport_info() (write_bytes/s, writes/s, reliable_full) y contar ERR_BUSY. RTT: topic /w1/ping → el PC lo devuelve en /w1/pong (relay python o `ros2 run topic_tools relay` si está en la imagen [?]); la Vita resta Time.get_ticks_usec() del seq. En el PC (fish): `docker/vita-ros.sh up` ; `docker compose -f docker/docker-compose.yml exec station bash -lc 'source /opt/ros/jazzy/setup.bash; ros2 topic hz /w1/data --window 200'` ; idem con `ros2 topic bw /w1/data` ; `docker/vita-ros.sh sniff $VITA > /tmp/w1-sniff.txt` en otra terminal ; `docker/vita-ros.sh logs agent`. Resultado: tabla N×f×QoS con msg/s recibidos (hz), B/s (bw), pérdida = 1 − recibidos/publicados, RTT p50/p95, reliable_full/s y FPS. Criterio de parada de cada fila: hz < 95 % de f o FPS < 55.",
+    "fuentes": [
+      "tools/deploy-vpk-ftp.sh:26-49",
+      "docker/vita-ros.sh:30-47",
+      "docker/vita-ros.sh:66-70",
+      "docker/Dockerfile:20",
+      "godot/g7-imu/main.gd:125",
+      "godot/g7-imu/ros/schema.rsch (tipos listados con strings)",
+      "tools/gen_msg_schema.py:12",
+      "docs/06-bitacora-estado.md:275-279"
+    ],
+    "confianza": "[V] comandos y herramientas existentes; [I] diseño del experimento",
+    "coste_estimado": "A: 15 min. B: 1–2 h (reto C + script python). C: 2–3 h (reto GDScript, sin tocar el módulo).",
+    "como_se_mediria_en_hardware": "Es el propio procedimiento; predicción a contrastar: BE se satura ≈30 KB/s (≈60 msg/s de 480 B), RELIABLE ≈ 8 KB/RTT_ef (120–480 KB/s según distancia), UDP crudo ≥1,6 MB/s cerca del router."
+  }
+]
