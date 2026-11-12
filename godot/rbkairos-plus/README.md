@@ -8,7 +8,12 @@ Robot omnidireccional con UR10e generado del Xacro oficial. No es un modelo apro
 - UR10e: `/robot/joint_trajectory_controller/joint_trajectory`, `/joint_states` y `controller_state` Jazzy (`reference/feedback/error/output`).
 - Físicos del `rbkairos_plus.urdf.xacro`: VectorNav IMU, dos SICK S300 (270 rayos en PC) y D435 frontal RGB-D.
 - Sensores que el lanzador oficial `spawn_robot.launch.py` también puentea: GPS, cámaras rear/top PTZ y LiDAR 3D superior. Se incluyen como perfil de simulación, no como afirmación de equipamiento físico de serie.
-- Batería, parada de emergencia, TF base y mapa de ocupación.
+- Batería, parada de emergencia, TF base (`/tf` fiable) y mapa de ocupación en `robot_odom`.
+- `/tf_static` con los marcos que **no** están en el URDF de Robotnik (cámaras rear/PTZ y sus ópticos, LiDAR superior,
+  GPS, batería; `"tf_estatico": true` en `robot.json`). Los del Xacro (láseres, IMU, D435 frontal) los da
+  `robot_state_publisher` con el URDF.
+- Compactos VC/1 para la Vita: `/vita/rbkairos/{pose2d, joints, joints_orden, scan_compacto, trasero/scan_compacto,
+  mapa_meta, mapa_tesela}` (mismo formato que `docker/scripts/vita_relay.py`).
 
 El catálogo exacto, QoS y disponibilidad PC/Vita está en `ros/topics.json`. La configuración editable está en `robot.json`.
 

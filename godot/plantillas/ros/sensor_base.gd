@@ -32,7 +32,9 @@ func _ready() -> void:
 		hz = hz_vita
 	if contexto.transporte == "xrce" and hz_xrce > 0.0:
 		hz = minf(hz, hz_xrce)
-	if topic != "" and tipo != "":
+	# Solo se crea el publicador estándar si se va a usar: en la Vita, /odom y /joint_states no se publican y
+	# crearlos eran entidades XRCE de sobra (revisión R4-C4).
+	if topic != "" and tipo != "" and _usa_publicador_estandar():
 		pub = contexto.publicador(topic, tipo, _qos_best_effort())
 	_sensor_listo()
 	set_physics_process(habilitado)
@@ -40,6 +42,10 @@ func _ready() -> void:
 
 func _qos_best_effort() -> bool:
 	return best_effort
+
+
+func _usa_publicador_estandar() -> bool:
+	return true
 
 
 func _sensor_listo() -> void:
@@ -52,9 +58,13 @@ func _physics_process(dt: float) -> void:
 		return
 	_acumulado += dt
 	var periodo := 1.0 / hz
-	if _acumulado + 0.00001 < periodo:
+	if _acumulado < periodo:
 		return
-	_acumulado = fmod(_acumulado, periodo)
+	# Restar el periodo (no fmod + tolerancia): con fmod, el error de coma flotante dejaba el resto justo por
+	# debajo del periodo y se publicaba dos veces seguidas (2–10 Hz salían al doble; revisión R1/R2, 2026-11-12).
+	_acumulado -= periodo
+	if _acumulado > periodo:   # tras un tirón (fotograma lento) no se intenta recuperar con ráfagas
+		_acumulado = 0.0
 	if _listo_para_publicar():
 		_publicar()
 		mensajes_publicados += 1

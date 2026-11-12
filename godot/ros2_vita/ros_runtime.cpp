@@ -291,6 +291,15 @@ Ref<RosTimer> RosNode::create_timer(double p_seconds, const Callable &p_cb) {
 Ref<RosMsg> RosNode::now() {
 	Ref<RosMsg> t = RosMsg::from_type("builtin_interfaces/msg/Time");
 	ERR_FAIL_COND_V_MSG(t.is_null(), t, "RosNode: el esquema no incluye builtin_interfaces/msg/Time.");
+	// Con XRCE, la hora del agente (sincronizada al abrir la sesión): el reloj de la Vita puede ir minutos
+	// por detrás del PC y tf2 descartaría los mensajes por «extrapolation». Si no, el reloj local.
+	rclgd *r = rclgd::get_singleton();
+	int64_t ns = 0;
+	if (r && r->get_transport() && r->get_transport()->epoch_ns(&ns) && ns > 0) {
+		t->set_member("sec", (int64_t)(ns / 1000000000));
+		t->set_member("nanosec", (int64_t)(ns % 1000000000));
+		return t;
+	}
 	double unix_s = OS::get_singleton()->get_unix_time();
 	int64_t sec = (int64_t)unix_s;
 	t->set_member("sec", sec);

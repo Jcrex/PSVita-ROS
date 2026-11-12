@@ -9,6 +9,23 @@ El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un
 
 ---
 
+## 2026-11-12 (PC, noche) — Revisión del trabajo de Kimi e integración de ambas líneas
+
+- **Revisión** (4 revisores Opus aislados, `docs/ia/revision-kimi/`): procedencia y licencias correctas; 3 críticos
+  de comportamiento (frecuencias al doble, `/tf` best effort invisible para tf2, teleop local sin hombre muerto) y
+  la cola XRCE FIFO de Kimi (un mensaje por `poll()`, >1 s de retraso, rompía el hombre muerto).
+- **Arreglado** (plan completo en `docs/ia/revision-kimi/README.md`):
+  - `ros2_vita`: cola best effort «último por publicador», drenaje en bucle con flush en el mismo `poll()`; cola
+    fiable con tope de 32 mensajes / 64 KiB y aviso; `now()` con la hora del agente (`uxr_sync_session`).
+    Sonda con agente real: `be_dropped` 335/273 → **0**, 60 FPS; host 294/0; plantilla Vita `PASS … 694 imports`.
+  - Plantillas (agente Opus, `arreglos-gdscript.md`): críticos, altos (scan fresco, profundidad, montajes del G1,
+    `/tf_static`, odom→pelvis, yaw del dron, mapa), contrato VC/1 (`ros/vc1.gd`, mismos bytes que el relay),
+    G1 de `g1-sensores` con prefijo `g1s`, Unitree (3203, 7101/7102/7105, `/secondary_imu`), doc 29.
+  - `vita_relay` con `prefijo`; `godot/comun` fusionado en `godot/plantillas`; mallas RB-KAIROS+ 43 → 6,2 MB;
+    ajustes del ADR 0011 en los 4 proyectos 3D; docs 27/32; créditos y licencias.
+- **VPK nuevos** (plantilla con las colas y la hora): `build/{g1-unitree,g1-sensores,rbkairos-plus,dron-mapeo}.vpk`.
+  **Siguiente en la Vita:** G1 modo ros (diagnóstico en pantalla) y la sonda de rendimiento en hardware.
+
 ## 2026-11-12 (PC) — Docs 24–28 y 31–32, ADRs 0009–0012, `vita_relay` y minimapa del G1
 
 - **G1 en la Vita (usuario):** modo marcha a 60 FPS estables (commit `ca510f3`). El modo ros **no conectaba**: el

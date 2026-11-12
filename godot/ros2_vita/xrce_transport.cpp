@@ -170,14 +170,28 @@ String history_xml(const Ref<RosQoS> &p_qos) {
 }
 
 class XrceTransport : public RosTransport {
+	// Colas de salida (revisión R1/R4 del 2026-11-12 sobre la versión de Kimi):
+	// - Best effort = «último valor por publicador»: si un topic publica dos veces antes de salir, el viejo se
+	//   reemplaza (cuenta en be_dropped). Así nunca se acumula retraso: el hombre muerto de /cmd_vel recibe el
+	//   dato más reciente, no uno de hace un segundo. Se vacía en bucle en cada poll() (varios mensajes por
+	//   datagrama, flush en el mismo poll), con un tope de BE_MAX_POR_POLL para acotar el fotograma.
+	// - Fiable = FIFO (no se puede descartar sin romper la semántica), vaciada en bucle hasta que el stream se
+	//   llena, con tope de mensajes y de bytes; si descarta, avisa una vez y cuenta en reliable_dropped.
+	struct BeSlot {
+		PackedByteArray data;
+		bool fresh = false;
+	};
 	struct Pending {
 		int id = 0;
 		PackedByteArray data;
 	};
-	static constexpr size_t BE_QUEUE_MAX = 64;
+	static constexpr int BE_MAX_POR_POLL = 32;
 	static constexpr size_t RELIABLE_QUEUE_MAX = 32;
-	List<Pending> pending;
+	static constexpr size_t RELIABLE_QUEUE_BYTES = 64 * 1024;
+	HashMap<int, BeSlot> be_slots;
+	List<int> be_order; // ids con dato fresco, en orden de llegada (sin repetidos)
 	List<Pending> reliable_pending;
+	size_t reliable_bytes = 0;
 
 	struct Endpoint {
 		uxrObjectId entity; // datawriter o datareader
@@ -190,6 +204,7 @@ class XrceTransport : public RosTransport {
 	uxrSession session = {};
 	bool transport_open = false;
 	bool session_open = false;
+	bool time_synced = false;
 
 	uint8_t reliable_out_buf[RELIABLE_SLOT * RELIABLE_HISTORY];
 	uint8_t reliable_in_buf[RELIABLE_SLOT * RELIABLE_HISTORY];
@@ -326,6 +341,11 @@ public:
 			stop();
 			return ERR_CANT_CREATE;
 		}
+		// Sincronizar el reloj con el agente (NTP simplificado de XRCE): now() usará su hora.
+		time_synced = uxr_sync_session(&session, 1000);
+		if (!time_synced) {
+			WARN_PRINT("ros2_vita/xrce: no se pudo sincronizar la hora con el agente; now() usa el reloj local.");
+		}
 		g_diag.step = "sesion abierta";
 		print_line("ros2_vita/xrce: sesion XRCE establecida.");
 		return OK;
@@ -336,6 +356,7 @@ public:
 			uxr_delete_session(&session);
 			session_open = false;
 		}
+		time_synced = false;
 		if (transport_open) {
 			uxr_close_custom_transport(&transport);
 			transport_open = false;
@@ -343,90 +364,116 @@ public:
 		topics.clear();
 		pubs.clear();
 		subs.clear();
-		pending.clear();
+		be_slots.clear();
+		be_order.clear();
 		reliable_pending.clear();
+		reliable_bytes = 0;
 		g_diag.be_pending = 0;
 		g_diag.reliable_pending = 0;
 	}
 
+	bool epoch_ns(int64_t *r_ns) override {
+		if (!session_open || !time_synced) {
+			return false;
+		}
+		*r_ns = uxr_epoch_nanos(&session);
+		return true;
+	}
+
 	void poll() override {
 		if (session_open) {
-			uxr_run_session_time(&session, 0); // no bloquea: envía y vacía lo recibido
-			_publish_pending();
+			uxr_run_session_time(&session, 0); // recibe (no bloquea)
 			_publish_reliable_pending();
+			_publish_pending();
+			uxr_flash_output_streams(&session); // envía en este mismo poll: sin fotograma de retraso
 		}
+	}
+
+	// Prepara un hueco best effort; si el datagrama actual está lleno, lo envía y reintenta una vez.
+	bool _prepare_be(const Endpoint *p_ep, ucdrBuffer *r_ub, uint32_t p_len) {
+		if (uxr_prepare_output_stream(&session, best_effort_out, p_ep->entity, r_ub, p_len) != UXR_INVALID_REQUEST_ID) {
+			return true;
+		}
+		uxr_flash_output_streams(&session);
+		return uxr_prepare_output_stream(&session, best_effort_out, p_ep->entity, r_ub, p_len) != UXR_INVALID_REQUEST_ID;
 	}
 
 	void _publish_pending() {
-		if (pending.is_empty()) {
-			return;
+		int n = 0;
+		while (!be_order.is_empty() && n < BE_MAX_POR_POLL) {
+			int id = be_order.front()->get();
+			BeSlot *slot = be_slots.getptr(id);
+			const Endpoint *ep = pubs.getptr(id);
+			if (!slot || !ep || !slot->fresh) {
+				be_order.pop_front();
+				continue;
+			}
+			ucdrBuffer ub;
+			if (!_prepare_be(ep, &ub, (uint32_t)slot->data.size())) {
+				break; // se reintenta en el siguiente poll (el dato sigue siendo el último)
+			}
+			ucdr_serialize_array_uint8_t(&ub, slot->data.ptr(), slot->data.size());
+			slot->fresh = false;
+			be_order.pop_front();
+			n++;
 		}
-		Pending p = pending.front()->get();
-		const Endpoint *ep = pubs.getptr(p.id);
-		if (!ep) {
-			pending.pop_front();
-			return;
-		}
-		ucdrBuffer ub;
-		if (uxr_prepare_output_stream(&session, best_effort_out, ep->entity, &ub, (uint32_t)p.data.size()) == UXR_INVALID_REQUEST_ID) {
-			return;
-		}
-		pending.pop_front();
-		g_diag.be_pending = pending.size();
-		ucdr_serialize_array_uint8_t(&ub, p.data.ptr(), p.data.size());
+		g_diag.be_pending = be_order.size();
 	}
 
 	void _publish_reliable_pending() {
-		if (reliable_pending.is_empty()) {
-			return;
-		}
-		Pending p = reliable_pending.front()->get();
-		const Endpoint *ep = pubs.getptr(p.id);
-		if (!ep) {
-			reliable_pending.pop_front();
-			g_diag.reliable_pending = reliable_pending.size();
-			return;
-		}
-		ucdrBuffer ub;
-		const bool fits = p.data.size() + XRCE_OVERHEAD <= UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
-		if (fits) {
-			if (uxr_prepare_output_stream(&session, reliable_out, ep->entity, &ub, (uint32_t)p.data.size()) == UXR_INVALID_REQUEST_ID) {
-				g_diag.reliable_full++;
-				return;
+		while (!reliable_pending.is_empty()) {
+			const Pending &p = reliable_pending.front()->get();
+			const Endpoint *ep = pubs.getptr(p.id);
+			if (!ep) {
+				reliable_bytes -= p.data.size();
+				reliable_pending.pop_front();
+				continue;
 			}
-		} else if (uxr_prepare_output_stream_fragmented(&session, reliable_out, ep->entity, &ub, p.data.size(), &XrceTransport::_flush, nullptr) == UXR_INVALID_REQUEST_ID) {
-			g_diag.reliable_full++;
-			return;
+			ucdrBuffer ub;
+			const bool fits = p.data.size() + XRCE_OVERHEAD <= UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
+			uint16_t req = fits ? uxr_prepare_output_stream(&session, reliable_out, ep->entity, &ub, (uint32_t)p.data.size())
+								: uxr_prepare_output_stream_fragmented(&session, reliable_out, ep->entity, &ub, p.data.size(), &XrceTransport::_flush, nullptr);
+			if (req == UXR_INVALID_REQUEST_ID) {
+				g_diag.reliable_full++;
+				break; // stream fiable lleno: se reintenta en el siguiente poll, en orden
+			}
+			ucdr_serialize_array_uint8_t(&ub, p.data.ptr(), p.data.size());
+			reliable_bytes -= p.data.size();
+			reliable_pending.pop_front();
 		}
-		reliable_pending.pop_front();
 		g_diag.reliable_pending = reliable_pending.size();
-		ucdr_serialize_array_uint8_t(&ub, p.data.ptr(), p.data.size());
 	}
 
 	void _enqueue_reliable(int p_id, const uint8_t *p_data, size_t p_len) {
-		if ((size_t)reliable_pending.size() >= RELIABLE_QUEUE_MAX) {
+		while (!reliable_pending.is_empty() &&
+				((size_t)reliable_pending.size() >= RELIABLE_QUEUE_MAX || reliable_bytes + p_len > RELIABLE_QUEUE_BYTES)) {
+			reliable_bytes -= reliable_pending.front()->get().data.size();
 			reliable_pending.pop_front();
 			g_diag.reliable_dropped++;
+			WARN_PRINT_ONCE("ros2_vita/xrce: cola fiable llena; se descartan mensajes fiables antiguos (ver reliable_dropped).");
 		}
 		Pending p;
 		p.id = p_id;
 		p.data.resize(p_len);
 		memcpy(p.data.ptrw(), p_data, p_len);
 		reliable_pending.push_back(p);
+		reliable_bytes += p_len;
 		g_diag.reliable_pending = reliable_pending.size();
 	}
 
 	void _enqueue(int p_id, const uint8_t *p_data, size_t p_len) {
-		if ((size_t)pending.size() >= BE_QUEUE_MAX) {
-			pending.pop_front();
-			g_diag.be_dropped++;
+		BeSlot &slot = be_slots[p_id];
+		if (slot.fresh) {
+			g_diag.be_dropped++; // el anterior no llegó a salir: lo reemplaza el más nuevo
+		} else {
+			be_order.push_back(p_id);
 		}
-		Pending p;
-		p.id = p_id;
-		p.data.resize(p_len);
-		memcpy(p.data.ptrw(), p_data, p_len);
-		pending.push_back(p);
-		g_diag.be_pending = pending.size();
+		if ((size_t)slot.data.size() != p_len) {
+			slot.data.resize(p_len); // mismo tamaño en cada publicación típica: sin realloc
+		}
+		memcpy(slot.data.ptrw(), p_data, p_len);
+		slot.fresh = true;
+		g_diag.be_pending = be_order.size();
 	}
 
 	int advertise(const String &p_topic, const String &p_type, const Ref<RosQoS> &p_qos) override {
@@ -483,6 +530,7 @@ public:
 			uxr_buffer_delete_entity(&session, reliable_out, ep->entity);
 		}
 		pubs.erase(p_id);
+		be_slots.erase(p_id);
 	}
 
 	void unsubscribe(int p_id) override {

@@ -7,12 +7,13 @@
   },
   "perfil_xrce": {
     "camara": "JPEG 160x120 y profundidad 40x30 a 1 Hz; RGB crudo desactivado",
-    "lidar_2d": "2 Hz; 60 rayos BE en Vita y formato compacto",
+    "lidar_2d": "2 Hz; 60 rayos BE en Vita; datos del barrido recién hecho (R2-A1); compacto VC/1",
     "lidar_3d": "8 anillos x 30 azimut a 1 Hz",
     "odometria_y_joints": "5 Hz estándar + 5 Hz compacto + TF 5 Hz",
     "imu": "10 Hz",
     "otros": "GNSS 2 Hz, controlador UR 2 Hz, mapa completo desactivado (teselas)",
-    "colas": "BE 64 y fiable 32 con reintento y contadores de descarte"
+    "colas": "ver ros2_vita/xrce_transport.cpp y docs/30 (la cola BE la rehace el P0 de R1)",
+    "contrato": "VC/1 (docs/ia/revision-kimi/R4-integracion.md §1.6): nombres /vita/rbkairos/{scan_compacto, pose2d, joints, joints_orden, mapa_meta, mapa_tesela}"
   },
   "topics": [
     {"nombre":"/robot/robotnik_base_control/cmd_vel_unstamped","tipo":"geometry_msgs/msg/Twist","direccion":"sub","loopback":"reliable","vita":"reliable"},
@@ -21,16 +22,17 @@
     {"nombre":"/vita/rbkairos/pose2d","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"best effort","vita":"best effort 20 Hz"},
     {"nombre":"/robot/joint_states","tipo":"sensor_msgs/msg/JointState","direccion":"pub","loopback":"reliable 30 Hz","vita":"no; usar joints compacto"},
     {"nombre":"/vita/rbkairos/joints","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"best effort","vita":"best effort 20 Hz"},
+    {"nombre":"/vita/rbkairos/joints_orden","tipo":"std_msgs/msg/String","direccion":"pub","loopback":"reliable latched, al cambiar","vita":"reliable latched, VC/1"},
     {"nombre":"/robot/joint_trajectory_controller/joint_trajectory","tipo":"trajectory_msgs/msg/JointTrajectory","direccion":"sub","loopback":"reliable","vita":"reliable"},
     {"nombre":"/robot/joint_trajectory_controller/controller_state","tipo":"control_msgs/msg/JointTrajectoryControllerState","direccion":"pub","loopback":"reliable 10 Hz","vita":"reliable 5 Hz"},
     {"nombre":"/robot/robotnik_base_hw/emergency_stop","tipo":"std_msgs/msg/Bool","direccion":"sub","loopback":"reliable","vita":"reliable"},
     {"nombre":"/robot/imu/data","tipo":"sensor_msgs/msg/Imu","direccion":"pub","loopback":"best effort 50 Hz","vita":"best effort 30 Hz"},
     {"nombre":"/robot/front_laser/scan","tipo":"sensor_msgs/msg/LaserScan","direccion":"pub","loopback":"reliable, 270 rayos, 15 Hz","vita":"best effort, 60 rayos, 5 Hz"},
     {"nombre":"/robot/rear_laser/scan","tipo":"sensor_msgs/msg/LaserScan","direccion":"pub","loopback":"reliable, 270 rayos, 15 Hz","vita":"best effort, 60 rayos, 5 Hz"},
-    {"nombre":"/vita/rbkairos/front_scan","tipo":"std_msgs/msg/Int16MultiArray","direccion":"pub","loopback":"reliable","vita":"best effort"},
-    {"nombre":"/vita/rbkairos/rear_scan","tipo":"std_msgs/msg/Int16MultiArray","direccion":"pub","loopback":"reliable","vita":"best effort"},
-    {"nombre":"/robot/front_rgbd_camera/color/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable, rgb8 320x240, 5 Hz","vita":"no; relay JPEG"},
-    {"nombre":"/robot/front_rgbd_camera/color/image_raw/compressed","tipo":"sensor_msgs/msg/CompressedImage","direccion":"pub","loopback":"reliable JPEG 5 Hz","vita":"no; relay troceado"},
+    {"nombre":"/vita/rbkairos/scan_compacto","tipo":"std_msgs/msg/Int16MultiArray","direccion":"pub","loopback":"best effort, VC/1 (≤ 180 rayos, 0 = sin dato)","vita":"best effort, VC/1"},
+    {"nombre":"/vita/rbkairos/trasero/scan_compacto","tipo":"std_msgs/msg/Int16MultiArray","direccion":"pub","loopback":"best effort, VC/1 (≤ 180 rayos, 0 = sin dato)","vita":"best effort, VC/1"},
+    {"nombre":"/robot/front_rgbd_camera/color/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable, rgb8 320x240, 5 Hz","vita":"no (no existe relay de imagen ni de nube; pendiente, doc 28 / ADR 0010)"},
+    {"nombre":"/robot/front_rgbd_camera/color/image_raw/compressed","tipo":"sensor_msgs/msg/CompressedImage","direccion":"pub","loopback":"reliable JPEG 5 Hz","vita":"no (no existe relay de imagen ni de nube; pendiente, doc 28 / ADR 0010)"},
     {"nombre":"/robot/front_rgbd_camera/color/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
     {"nombre":"/robot/front_rgbd_camera/depth/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable, 32FC1 80x60, 5 Hz","vita":"no"},
     {"nombre":"/robot/front_rgbd_camera/depth/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
@@ -40,18 +42,20 @@
     {"nombre":"/robot/top_ptz_rgbd_camera/color/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
     {"nombre":"/robot/top_ptz_rgbd_camera/color/image_raw/compressed","tipo":"sensor_msgs/msg/CompressedImage","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
     {"nombre":"/robot/top_ptz_rgbd_camera/color/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
-    {"nombre":"/robot/top_laser/points","tipo":"sensor_msgs/msg/PointCloud2","direccion":"pub","loopback":"reliable, 16 anillos, 5 Hz","vita":"no; usar relay de nube"},
+    {"nombre":"/robot/top_laser/points","tipo":"sensor_msgs/msg/PointCloud2","direccion":"pub","loopback":"reliable, 16 anillos, 5 Hz","vita":"no (no existe relay de imagen ni de nube; pendiente, doc 28 / ADR 0010)"},
     {"nombre":"/robot/gps/fix","tipo":"sensor_msgs/msg/NavSatFix","direccion":"pub","loopback":"best effort 10 Hz","vita":"best effort 5 Hz"},
     {"nombre":"/robot/battery_state","tipo":"sensor_msgs/msg/BatteryState","direccion":"pub","loopback":"best effort 1 Hz","vita":"best effort 0,2 Hz"},
     {"nombre":"/robot/map","tipo":"nav_msgs/msg/OccupancyGrid","direccion":"pub","loopback":"reliable latched 1 Hz","vita":"no; teselas"},
-    {"nombre":"/vita/rbkairos/mapa_meta","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"reliable latched","vita":"reliable latched"},
-    {"nombre":"/vita/rbkairos/mapa_tesela","tipo":"std_msgs/msg/UInt8MultiArray","direccion":"pub","loopback":"best effort","vita":"best effort, 260 B"},
-    {"nombre":"/tf","tipo":"tf2_msgs/msg/TFMessage","direccion":"pub","loopback":"best effort, odom->base","vita":"best effort, odom->base"}
+    {"nombre":"/vita/rbkairos/mapa_meta","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"reliable latched, solo al cambiar","vita":"reliable latched, solo al cambiar"},
+    {"nombre":"/vita/rbkairos/mapa_tesela","tipo":"std_msgs/msg/UInt8MultiArray","direccion":"pub","loopback":"best effort, VC/1 (version = época)","vita":"best effort, 260 B, VC/1"},
+    {"nombre":"/tf","tipo":"tf2_msgs/msg/TFMessage","direccion":"pub","loopback":"reliable, robot_odom->robot_base_footprint","vita":"reliable (R2-C2: tf2 no acepta best effort)"},
+    {"nombre":"/tf_static","tipo":"tf2_msgs/msg/TFMessage","direccion":"pub","loopback":"reliable latched: sensores que no están en el URDF (cámaras rear/PTZ y sus ópticos, LiDAR superior, GPS, batería; R2-A4)","vita":"reliable latched"}
   ],
   "fuera_de_alcance": [
     "FollowJointTrajectory es una acción: ros2_vita no implementa acciones XRCE; usar un puente ROS 2 en PC.",
     "Servicios de parámetros, /robot_description y TF completo del brazo: publicar desde robot_state_publisher en PC con el URDF.",
     "joint_control_command y topics internos del driver hardware no se emulan; la interfaz pública es cmd_vel/odom/joint_states.",
-    "SLAM con scan matching y cierre de bucles: ejecutar slam_toolbox en PC; el mapa local usa odometría conocida."
+    "SLAM con scan matching y cierre de bucles: ejecutar slam_toolbox en PC; el mapa local usa odometría conocida.",
+    "No hay relay de imagen ni de nube hacia la Vita (docker/scripts/vita_relay.py solo tiene scan, pose, joints, mapa y path)."
   ]
 }

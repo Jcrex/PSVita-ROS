@@ -1,4 +1,5 @@
 extends RefCounted
+## (Antes en godot/comun/, fusionado en godot/plantillas/ el 2026-11-12, revisión R4.)
 ## Cliente Godot de los formatos compactos de `docker/scripts/vita_relay.py` (doc 27). Sirve igual en el PC
 ## (rclgd o ros2_vita) y en la Vita: solo usa arrays de RosMsg, Image/ImageTexture y matemáticas.
 ##

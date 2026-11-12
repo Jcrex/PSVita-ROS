@@ -12,6 +12,7 @@ var _flujo: RosMsg
 
 
 func _init() -> void:
+	frame_id = "base_link"   # R2-B13: antes «sensor» si robot.json no lo daba
 	hz = 20.0
 	hz_vita = 10.0
 	hz_xrce = 5.0

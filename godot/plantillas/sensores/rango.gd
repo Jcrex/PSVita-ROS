@@ -37,5 +37,12 @@ func _publicar() -> void:
 		global_position + direccion * rango_max, mascara_colision, excluir)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	_sellar_y_fijar_frame(_msg)
-	_msg.range = clampf(global_position.distance_to(hit.position), rango_min, rango_max) if not hit.is_empty() else rango_max + 1.0
+	# sensor_msgs/Range (Jazzy): +Inf = sin detección en el alcance, −Inf = demasiado cerca (revisión R2-M8:
+	# antes rango_max + 1 y recorte a rango_min, que inventaba un obstáculo pegado).
+	var r := INF
+	if not hit.is_empty():
+		r = global_position.distance_to(hit.position)
+		if r < rango_min:
+			r = -INF
+	_msg.range = r
 	pub.publish(_msg)

@@ -1,6 +1,9 @@
 extends RefCounted
 
 const GRAVEDAD_GODOT := Vector3(0.0, -9.80665, 0.0)
+## Columnas = ejes X, Y, Z de ROS (REP-103) expresados en Godot: X delante (-Z), Y izquierda (-X), Z arriba (+Y).
+## Es la misma matriz que el nodo RosFrame de las escenas de tools/urdf2godot.
+const BASE_ROS_A_GODOT := Basis(Vector3(0.0, 0.0, -1.0), Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0))
 
 
 static func vector_ros(v: Vector3) -> Vector3:
@@ -44,8 +47,26 @@ static func covarianza_6d(lineal: float, angular: float) -> PackedFloat64Array:
 	return c
 
 
+## Única fórmula de yaw de las plantillas (revisión R4 §2: estaba repetida). Cuaternión ROS → yaw ROS.
 static func yaw_de_quat(q: Quaternion) -> float:
-	return atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+	return yaw_de_xyzw(q.x, q.y, q.z, q.w)
+
+
+## Misma fórmula sobre componentes sueltas (p. ej. los floats 3..6 de /g1/estado), igual que
+## `yaw_de_quat` de docker/scripts/vita_relay.py.
+static func yaw_de_xyzw(x: float, y: float, z: float, w: float) -> float:
+	return atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+
+
+## Rotación roll-pitch-yaw de ROS (fija X, luego Y, luego Z; REP-103) como matriz en coordenadas ROS.
+static func rotacion_rpy_ros(roll: float, pitch: float, yaw: float) -> Basis:
+	return Basis(Vector3(0.0, 0.0, 1.0), yaw) * Basis(Vector3(0.0, 1.0, 0.0), pitch) * Basis(Vector3(1.0, 0.0, 0.0), roll)
+
+
+## Base de un nodo-sensor (convención Godot: delante = -Z, arriba = +Y) colgado de un link de URDF horneado
+## (ejes ROS). Sin rpy, los ejes del sensor coinciden con los del link (revisión R2-A3).
+static func base_sensor_en_link(roll: float, pitch: float, yaw: float) -> Basis:
+	return rotacion_rpy_ros(roll, pitch, yaw) * BASE_ROS_A_GODOT.inverse()
 
 
 static func quat_de_yaw(yaw: float) -> Quaternion:

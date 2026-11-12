@@ -40,6 +40,7 @@ var _pitch_cam := 0.5
 var _distancia_cam := 7.0
 var _cenital := false
 var _arrastrando := false
+var _pub_tf_estatico: RosPublisher
 
 
 func _ready() -> void:
@@ -94,6 +95,8 @@ func _crear_robot() -> void:
 	var spawn: Array = config.get("spawn_ros", [0.0, 0.0, 0.0, 0.0])
 	robot.position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
 	robot.rotation.y = spawn[3]
+	if robot.has_method("reiniciar_estado"):
+		robot.reiniciar_estado()   # sin pico de velocidad del origen al spawn en la primera odometría (R2-B5)
 	var clave_visual := "visual_vita" if OS.has_feature("vita") or lod_override == "vita" else "visual_pc"
 	var visual_path: String = config.get(clave_visual, "")
 	if visual_path != "":
@@ -129,7 +132,7 @@ func _crear_sensores() -> void:
 		var sensor = script.new()
 		sensor.name = datos.get("nombre", tipo)
 		for clave in datos:
-			if not ["tipo", "nombre", "padre", "pos_ros", "rpy_ros"].has(clave):
+			if not ["tipo", "nombre", "padre", "pos_ros", "rpy_ros", "link", "tf_estatico"].has(clave):
 				var valor = datos[clave]
 				var anterior = sensor.get(clave)
 				if valor is Array:
@@ -146,20 +149,100 @@ func _crear_sensores() -> void:
 		sensor.robot = robot
 		var pos: Array = datos.get("pos_ros", [0.0, 0.0, 0.0])
 		var rpy: Array = datos.get("rpy_ros", [0.0, 0.0, 0.0])
-		sensor.position = Util.vector_godot(Vector3(pos[0], pos[1], pos[2]))
-		sensor.basis = _base_ros(rpy[0], rpy[1], rpy[2])
 		var padre: Node = robot
-		if datos.has("padre"):
-			padre = sensores.get(datos.padre, robot)
+		var link: Node3D = _buscar_link(datos.get("link", ""))
+		if link != null:
+			# R2-A3: montado en un link del URDF horneado (ejes ROS): pos_ros/rpy_ros son relativos al link y la
+			# base convierte los ejes Godot del sensor a los ejes ROS del link.
+			padre = link
+			sensor.position = Vector3(pos[0], pos[1], pos[2])
+			sensor.basis = Util.base_sensor_en_link(rpy[0], rpy[1], rpy[2])
+		else:
+			sensor.position = Util.vector_godot(Vector3(pos[0], pos[1], pos[2]))
+			sensor.basis = _base_ros(rpy[0], rpy[1], rpy[2])
+			if datos.has("padre"):
+				padre = sensores.get(datos.padre, robot)
 		padre.add_child(sensor)
 		sensores[sensor.name] = sensor
 	if robot.has_method("sensores_listos"):
 		robot.call("sensores_listos", sensores)
+	_publicar_tf_estatico()
+
+
+func _buscar_link(nombre: String) -> Node3D:
+	if nombre == "":
+		return null
+	var modelo := robot.get_node_or_null("Modelo")
+	var link: Node3D = modelo.find_child(nombre, true, false) if modelo != null else null
+	if link == null:
+		push_warning("Link «%s» no encontrado en el modelo; el sensor se monta en el cuerpo" % nombre)
+	return link
+
+
+## R2-A4: /tf_static (fiable + TRANSIENT_LOCAL, una vez) con los marcos que no da ningún URDF:
+##  - "tf_estatico" de robot.json: lista de {padre, hijo, pos_ros, rpy_ros} (p. ej. el marco óptico de la D435);
+##  - sensores con "tf_estatico": true (o todos si "tf_estatico_sensores": true): base → frame_id según
+##    pos_ros/rpy_ros; la cámara añade frame_id → marco óptico (rpy −π/2, 0, −π/2) y el sonar orienta su eje x
+##    al haz, como pide sensor_msgs/Range.
+func _publicar_tf_estatico() -> void:
+	var lista: Array = []
+	for e in config.get("tf_estatico", []):
+		var p: Array = e.get("pos_ros", [0.0, 0.0, 0.0])
+		var r: Array = e.get("rpy_ros", [0.0, 0.0, 0.0])
+		lista.append([e.padre, e.hijo, Vector3(p[0], p[1], p[2]), Util.rotacion_rpy_ros(r[0], r[1], r[2])])
+	var base := _base_frame()
+	var todos: bool = config.get("tf_estatico_sensores", false)
+	var vistos := {}
+	for datos in config.get("sensores", []):
+		if not datos.get("tf_estatico", todos) or datos.has("link") or datos.has("padre"):
+			continue
+		var sensor = sensores.get(datos.get("nombre", datos.get("tipo", "")))
+		# La odometría no es un marco hijo de la base (su frame_id es odom) y "sensor" es el valor por defecto.
+		if sensor == null or sensor.get("frame_id") == null or sensor.get("odom_frame") != null \
+				or sensor.frame_id == "sensor":
+			continue
+		var hijo: String = sensor.frame_id
+		if hijo == "" or hijo == base or vistos.has(hijo):
+			continue
+		vistos[hijo] = true
+		var p: Array = datos.get("pos_ros", [0.0, 0.0, 0.0])
+		var r: Array = datos.get("rpy_ros", [0.0, 0.0, 0.0])
+		var rot := Util.rotacion_rpy_ros(r[0], r[1], r[2])
+		var d = sensor.get("direccion_ros")
+		if d is Vector3 and d.length() > 0.0:
+			var u: Vector3 = d.normalized()
+			rot = rot * Util.rotacion_rpy_ros(0.0, -asin(clampf(u.z, -1.0, 1.0)), atan2(u.y, u.x))
+		lista.append([base, hijo, Vector3(p[0], p[1], p[2]), rot])
+		if sensor.has_method("_optical_frame"):
+			lista.append([hijo, sensor.call("_optical_frame"), Vector3.ZERO,
+				Util.rotacion_rpy_ros(-PI * 0.5, 0.0, -PI * 0.5)])
+	if lista.is_empty():
+		return
+	var transforms: Array = []
+	for e in lista:
+		var t = RosMsg.from_type("geometry_msgs/msg/TransformStamped")
+		robot.contexto.sello(t.header)
+		t.header.frame_id = e[0]
+		t.child_frame_id = e[1]
+		Util.escribir_vector(t.transform.translation, e[2])
+		Util.escribir_quat(t.transform.rotation, e[3].get_rotation_quaternion())
+		transforms.append(t)
+	var msg = RosMsg.from_type("tf2_msgs/msg/TFMessage")
+	msg.transforms = transforms
+	_pub_tf_estatico = robot.contexto.publicador("/tf_static", "tf2_msgs/msg/TFMessage", false, true)
+	_pub_tf_estatico.publish(msg)
+
+
+func _base_frame() -> String:
+	for datos in config.get("sensores", []):
+		if datos.get("tipo", "") == "odometria":
+			return datos.get("base_frame", "base_footprint")
+	return config.get("base_frame", "base_link")
 
 
 func _base_ros(roll: float, pitch: float, yaw: float) -> Basis:
 	var ros := Basis(Vector3(0.0, 0.0, 1.0), yaw) * Basis(Vector3(0.0, 1.0, 0.0), pitch) * Basis(Vector3(1.0, 0.0, 0.0), roll)
-	var c := Basis(Vector3(0.0, 0.0, -1.0), Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0))
+	var c := Util.BASE_ROS_A_GODOT
 	return c * ros * c.inverse()
 
 
@@ -244,13 +327,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 			var spawn: Array = config.spawn_ros
 			robot.global_position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
 			robot.rotation.y = spawn[3]
-			robot.velocity = Vector3.ZERO
+			robot.reiniciar_estado()   # R2-B5
 	if ev is InputEventJoypadButton and ev.pressed:
 		if ev.button_index == JOY_BUTTON_B: _cenital = not _cenital
 		elif ev.button_index == JOY_BUTTON_Y:
 			var spawn: Array = config.spawn_ros
 			robot.global_position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
 			robot.rotation.y = spawn[3]
+			robot.reiniciar_estado()   # R2-B5
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT: _arrastrando = ev.pressed
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP: _distancia_cam = maxf(2.0, _distancia_cam - 0.5)

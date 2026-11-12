@@ -18,7 +18,7 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
   /vita/path_compacto  Float32MultiArray 2 Hz   [n, x0, y0, …] Douglas-Peucker ε 5 cm, ≤ 57 puntos
   /vita/relay_bw       Float32MultiArray 1 Hz   [bytes/s de salida, mensajes/s]
 
-Parámetros: modulos (lista: scan,pose,joints,mapa,path), scan_in, odom_in, joints_in, map_in, path_in,
+Parámetros: prefijo (/vita; contrato VC/1: /vita/<robot>, p. ej. -p prefijo:=/vita/g1), modulos (lista: scan,pose,joints,mapa,path), scan_in, odom_in, joints_in, map_in, path_in,
             max_rayos (180), teselas_por_s (20).
 Uso: docker/vita-ros.sh relay [modulos]   (dentro de la estación; ver docker/README.md)
 """
@@ -136,6 +136,7 @@ def main():
             super().__init__("vita_relay")
             p = self.declare_parameter
             mods = p("modulos", ["scan", "pose", "joints", "mapa", "path"]).value
+            pre = p("prefijo", "/vita").value.rstrip("/")
             self.max_rayos = p("max_rayos", 180).value
             self.teselas_s = p("teselas_por_s", 20).value
             self.bytes = 0
@@ -145,20 +146,20 @@ def main():
                 self.scan = None
                 self.seq = 0
                 self.create_subscription(LaserScan, p("scan_in", "/scan").value, self._on_scan, qos_profile_sensor_data)
-                self.p_scan = self.create_publisher(Int16MultiArray, "/vita/scan_compacto", be)
+                self.p_scan = self.create_publisher(Int16MultiArray, pre + "/scan_compacto", be)
                 self.create_timer(0.1, self._tx_scan)
             if "pose" in mods or "mapa" in mods:
                 self.odom = None
                 self.create_subscription(Odometry, p("odom_in", "/odom").value, self._on_odom, 10)
             if "pose" in mods:
-                self.p_pose = self.create_publisher(Float32MultiArray, "/vita/pose2d", be)
+                self.p_pose = self.create_publisher(Float32MultiArray, pre + "/pose2d", be)
                 self.create_timer(1 / 30, self._tx_pose)
             if "joints" in mods:
                 self.js = None
                 self.orden = []
                 self.create_subscription(JointState, p("joints_in", "/joint_states").value, self._on_js, 10)
-                self.p_js = self.create_publisher(Float32MultiArray, "/vita/joints", be)
-                self.p_orden = self.create_publisher(String, "/vita/joints_orden", latched)
+                self.p_js = self.create_publisher(Float32MultiArray, pre + "/joints", be)
+                self.p_orden = self.create_publisher(String, pre + "/joints_orden", latched)
                 self.create_timer(1 / 25, self._tx_js)
             if "mapa" in mods:
                 self.mapa = None
@@ -167,17 +168,17 @@ def main():
                 self.repaso = 0
                 self.version = 0
                 self.create_subscription(OccupancyGrid, p("map_in", "/map").value, self._on_map, latched)
-                self.p_meta = self.create_publisher(Float32MultiArray, "/vita/mapa_meta", latched)
-                self.p_tes = self.create_publisher(UInt8MultiArray, "/vita/mapa_tesela", be)
+                self.p_meta = self.create_publisher(Float32MultiArray, pre + "/mapa_meta", latched)
+                self.p_tes = self.create_publisher(UInt8MultiArray, pre + "/mapa_tesela", be)
                 self.create_timer(0.05, self._tx_teselas)
             if "path" in mods:
                 self.path = None
                 self.create_subscription(Path, p("path_in", "/plan").value, self._on_path, 10)
-                self.p_path = self.create_publisher(Float32MultiArray, "/vita/path_compacto", be)
+                self.p_path = self.create_publisher(Float32MultiArray, pre + "/path_compacto", be)
                 self.create_timer(0.5, self._tx_path)
-            self.p_bw = self.create_publisher(Float32MultiArray, "/vita/relay_bw", be)
+            self.p_bw = self.create_publisher(Float32MultiArray, pre + "/relay_bw", be)
             self.create_timer(1.0, self._tx_bw)
-            self.get_logger().info(f"vita_relay: módulos {mods}; todas las salidas ≤ {MAX_BE} B")
+            self.get_logger().info(f"vita_relay: módulos {mods} en {pre}/…; todas las salidas ≤ {MAX_BE} B")
 
         def _pub(self, pub, msg, nbytes):
             assert nbytes <= MAX_BE, f"{pub.topic_name}: {nbytes} B > {MAX_BE}"
