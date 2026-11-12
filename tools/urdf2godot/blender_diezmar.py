@@ -56,7 +56,7 @@ def main():
         # Quitar vértices sueltos (si no, el OBJ los exporta igualmente: archivos enormes con pocas caras).
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.delete_loose(use_verts=True, use_edges=False, use_faces=False)
+        bpy.ops.mesh.delete_loose(use_verts=True, use_edges=True, use_faces=False)   # también aristas sueltas («l» en el OBJ, revisión R3)
         bpy.ops.object.mode_set(mode="OBJECT")
         despues = triangulos(obj)
         bpy.ops.wm.obj_export(

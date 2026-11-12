@@ -66,7 +66,8 @@ case "${1:-help}" in
             g1sim python3 /opt/g1/g1_sim.py --grabar /salida/g1_marcha.json ;;
     relay)
         # Adaptador PC → Vita (doc 27): topics grandes → mensajes compactos ≤ 488 B en best effort.
-        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]'" ;;
+        # $2 = módulos, $3 = prefijo de salida (contrato VC/1: /vita/<robot>, p. ej. /vita/g1).
+        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]' -p prefijo:=${3:-/vita}" ;;
     rviz)    run "rviz2" ;;
     rqt)     run "rqt_graph" ;;
     teleop)  run "ros2 run teleop_twist_keyboard teleop_twist_keyboard" ;;
@@ -105,7 +106,7 @@ Uso: docker/vita-ros.sh <comando>
   sim                 turtlesim obedeciendo /cmd_vel + su pose como /odom (ligero)
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
   g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
-  relay [módulos]     vita_relay: scan/pose/joints/mapa/path compactos para la Vita (doc 27)
+  relay [mód] [pref]  vita_relay: scan/pose/joints/mapa/path compactos para la Vita (doc 27)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
   bridge-client <IP>  puente Zenoh: conectar al servidor (otro equipo)

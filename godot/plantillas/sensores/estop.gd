@@ -13,4 +13,5 @@ func _ready() -> void:
 
 
 func _on_estop(msg) -> void:
-	robot.call("fijar_emergencia", msg.data)
+	if robot != null:   # R2-B12
+		robot.call("fijar_emergencia", msg.data)

@@ -32,7 +32,9 @@ func qos(best_effort: bool = true, profundidad: int = 1, latched: bool = false) 
 
 
 func publicador(topic: String, tipo: String, best_effort: bool = true, latched: bool = false) -> RosPublisher:
-	var clave := topic + "|" + tipo
+	# La QoS forma parte de la clave: antes un segundo publicador con otra QoS recibía en silencio la del
+	# primero (revisión R2-B14).
+	var clave := "%s|%s|%s|%s" % [topic, tipo, best_effort, latched]
 	if publicadores.has(clave):
 		return publicadores[clave]
 	var p := nodo.create_publisher(topic, tipo, qos(best_effort, 1, latched))

@@ -33,7 +33,7 @@
 | Best effort (BE) | `len + 24 ≤ 512` ⇒ **≤ 488 B CDR**; si no, `ERR_OUT_OF_MEMORY` | `xrce_transport.cpp:411-415` [V] |
 | Fiable TX | fragmenta con `_flush = uxr_run_session_time(10)` ⇒ **bloquea** el hilo principal | `xrce_transport.cpp:247-249,416` [V] |
 | Fiable RX | historial 16×512 B ⇒ techo ≈ 16×(512−~24) ≈ **7,5–7,8 KiB** reensamblado; `MAX_RX` 16 KiB no es el cuello | `:136-137,182,300` [V]; techo exacto [I] |
-| Fiable lleno al publicar | desvía al BE (`reliable_full++`) | `:418-425` [V] |
+| Fiable lleno al publicar | **ya no** desvía al BE: cola FIFO (32 msg / 64 KiB) que se vacía en bucle en cada `poll()`; descarta los más antiguos y avisa (`reliable_dropped`) | colas revisadas 2026-11-12 [V] |
 | Suscripción BE | `request_data` sobre `best_effort_in` ⇒ el agente no puede fragmentar ahí: mensaje > ~490 B **se pierde** | `:384` [V]; comportamiento del agente [I] |
 | Durabilidad | VOLATILE / TRANSIENT_LOCAL soportadas | `:155-158` [V] |
 | Poll | 1 vez/frame `uxr_run_session_time(0)` | `:337` [V]; que drene todos los datagramas pendientes [I, upstream `session.c`] |
@@ -42,12 +42,15 @@
 Presupuesto de diseño adoptado (conservador): **RX ≤ 100 KB/s en total** y ≤ ~200 datagramas/s, para no
 competir con el render (un solo núcleo). [I]
 
-**Implementado (2026-11-12):** `XrceTransport` copia los mensajes best effort en una cola de 64 y envía uno por
-`poll()`. Si se llena descarta el más antiguo; `rclgd.get_transport_info()` expone `be_pending` y `be_dropped`.
-Esto evita el `ERR_BUSY` al publicar varios sensores en el mismo fotograma. Los fiables tienen otra cola de 32,
-un mensaje por `poll()` y reintento si el stream está lleno (`reliable_pending`/`reliable_dropped`); ya no se desvía
-una publicación fiable al stream best effort. Las plantillas usan QoS fiable en PC para scans completos, JPEG, nubes,
-odometría, JointState y LowState. Suite host 294/0 y prueba XRCE real de las tres plantillas verdes.
+**Colas de salida (2026-11-12, versión de Kimi corregida tras la revisión R1/R4):**
+- **Best effort = último valor por publicador.** Si un topic publica dos veces antes de salir, se reemplaza el viejo
+  (`be_dropped` cuenta los reemplazos). En cada `poll()` se vacía en bucle (hasta 32 mensajes, varios por
+  datagrama) y se envía en el mismo `poll()` con `uxr_flash_output_streams`: sin fotograma de retraso y sin
+  acumular latencia (la FIFO de un mensaje por `poll()` llegaba a >1 s y rompía el hombre muerto).
+- **Fiable = FIFO** de 32 mensajes / 64 KiB, vaciada en bucle hasta que el stream se llena; descarta los más
+  antiguos con aviso (`reliable_dropped`). Ya no se desvía una publicación fiable al stream best effort.
+- Medido en el PC con la sonda de las plantillas (agente real, 10 s): G1 y dron `be_dropped` 335/273 → **0**, 60 FPS;
+  suite host 294/0; plantilla Vita reconstruida (`PASS … 694 imports`). **Validar en hardware.**
 
 ## 1. Tabla por tipo (CDR medido con `rosbags` store ROS2_JAZZY, incluye 4 B de encapsulado) [V]
 

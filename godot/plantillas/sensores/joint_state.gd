@@ -1,12 +1,19 @@
 extends "res://comun/ros/sensor_base.gd"
 
+const VC1 = preload("res://comun/ros/vc1.gd")
+
 @export var nombres := PackedStringArray()
 @export var topic_compacto := ""
 @export var publicar_estandar_en_vita := false
+## VC/1: orden de las juntas del compacto (String «a,b,c», fiable + TRANSIENT_LOCAL). Vacío = topic_compacto
+## + "_orden" (p. ej. /vita/g1s/joints → /vita/g1s/joints_orden). Antes no se publicaba (revisión R4 §1.4).
+@export var topic_orden := ""
 
 var _msg: RosMsg
 var _compacto: RosMsg
 var _pub_compacto: RosPublisher
+var _pub_orden: RosPublisher
+var _orden_publicado := ""
 
 
 func _init() -> void:
@@ -18,6 +25,10 @@ func _init() -> void:
 	best_effort = false
 
 
+func _usa_publicador_estandar() -> bool:
+	return not _en_vita or publicar_estandar_en_vita
+
+
 func _sensor_listo() -> void:
 	if nombres.is_empty() and robot != null and robot.has_method("nombres_joints"):
 		nombres = robot.call("nombres_joints")
@@ -26,6 +37,9 @@ func _sensor_listo() -> void:
 	if topic_compacto != "":
 		_compacto = RosMsg.from_type("std_msgs/msg/Float32MultiArray")
 		_pub_compacto = contexto.publicador(topic_compacto, "std_msgs/msg/Float32MultiArray", true)
+		if topic_orden == "":
+			topic_orden = topic_compacto + "_orden"
+		_pub_orden = contexto.publicador(topic_orden, "std_msgs/msg/String", false, true)
 
 
 func _publicar() -> void:
@@ -35,7 +49,7 @@ func _publicar() -> void:
 	else:
 		posiciones.resize(nombres.size())
 		posiciones.fill(0.0)
-	if not _en_vita or publicar_estandar_en_vita:
+	if pub != null:
 		contexto.sello(_msg.header)
 		_msg.header.frame_id = ""
 		var p64 := PackedFloat64Array()
@@ -45,6 +59,13 @@ func _publicar() -> void:
 		_msg.velocity = PackedFloat64Array()
 		_msg.effort = PackedFloat64Array()
 		pub.publish(_msg)
+	if _pub_orden != null:
+		var orden := VC1.orden_joints(nombres)
+		if orden != _orden_publicado:   # solo al cambiar: es latched
+			var m = RosMsg.from_type("std_msgs/msg/String")
+			m.data = orden
+			_pub_orden.publish(m)
+			_orden_publicado = orden
 	if _pub_compacto != null:
 		_compacto.data = posiciones
 		_pub_compacto.publish(_compacto)

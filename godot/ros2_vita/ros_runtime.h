@@ -64,6 +64,9 @@ public:
 	// Una vez por frame desde rclgd::_pump (hilo principal), antes de entregar lo recibido.
 	// XRCE la usa para atender la sesión sin bloquear; loopback no la necesita.
 	virtual void poll() {}
+	// Hora del agente (época Unix en ns) si el transporte la sincronizó; false = usar el reloj local.
+	// XRCE: uxr_sync_session al abrir la sesión (revisión R2-M7: sellos de la Vita desfasados del PC).
+	virtual bool epoch_ns(int64_t *r_ns) { return false; }
 };
 
 // ---------------------------------------------------------------------------

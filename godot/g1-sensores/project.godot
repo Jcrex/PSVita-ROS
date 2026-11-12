@@ -25,6 +25,12 @@ enabled=PackedStringArray("res://addons/psvita/plugin.cfg")
 
 [rendering]
 
+; ADR 0011 §7: ajustes fijos del render GXM de la Vita (el PC los ignora).
+vita/distance_darkening=false
+vita/shadow_rays=0
+vita/light_flares=false
+vita/triangle_budget=40000
+
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.08, 0.11, 0.15, 1)

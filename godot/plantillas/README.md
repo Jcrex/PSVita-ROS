@@ -22,6 +22,14 @@ Biblioteca compartida por `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/
 | Mundo | `mundo/mundo_base.gd`, `mundo/assets.json` | Bosque, ciudad, parque y casa; colisiones y agentes móviles |
 | Aplicación | `aplicacion_robot.gd` | Lee `robot.json`, crea modelo, sensores, cámara y HUD |
 
+## Contrato de formatos compactos (VC/1)
+
+`ros/vc1.gd` produce los mismos bytes que `docker/scripts/vita_relay.py` (comprobado en `pruebas/runner.gd`) y
+`vita_relay.gd` los decodifica: scan `[seq & 0x7FFF, ang_min_cdeg, inc_cdeg, n, r…]` en cm (0 = sin impacto),
+teselas 32×32 a 2 bit (0 desconocido, 1 libre ≤ 25, 2 ocupado ≥ 65) con `version` = época del mapa, juntas +
+`joints_orden` (fiable + TRANSIENT_LOCAL). Nombres: `/vita/<robot>/…`. El G1 de `g1-sensores` usa el prefijo `g1s`
+para no chocar con `docker/g1/g1_sim.py` (`/g1/estado`, `/odom`, `/tf`).
+
 ## Importar las plantillas en otro robot
 
 1. Copia uno de los tres proyectos y conserva el enlace `comun -> ../plantillas`. El exportador ya lo copia con `cp -rL`.
@@ -40,8 +48,9 @@ Biblioteca compartida por `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/
 - **PC:** cámaras RGB/JPEG y profundidad por rayos, PointCloud2 de 16 anillos, LaserScan completo, OccupancyGrid y mensajes propietarios Unitree.
 - **Vita:** IMU, GNSS, odometría compacta, joints compactos, LaserScan estándar de 60 rayos (296 B con `frame_id=laser`), Range, batería, mapa por teselas y formatos Unitree compactos.
 - **No directo en Vita:** RGB, profundidad, nubes 3D y OccupancyGrid completo. El port no tiene 3D offscreen y XRCE limita BE a 488 B. Usa `docker/scripts/vita_relay.py` para convertirlos en mensajes pequeños.
-- **BE compartido:** `XrceTransport` copia y encola hasta 64 mensajes, envía uno por `poll()` y descarta el más antiguo cuando se llena. Diagnóstico: `rclgd.get_transport_info().be_pending/be_dropped`.
-- **Fiable con backpressure:** otra cola de 32 reintenta un mensaje por `poll()` si el stream está lleno; contadores `reliable_pending/reliable_dropped`.
+- **BE = último valor por publicador** (revisado 2026-11-12): si un topic publica dos veces antes de salir, gana el más nuevo (`be_dropped` cuenta los reemplazos); cada `poll()` vacía la cola en bucle y envía en el mismo fotograma. Diagnóstico: `rclgd.get_transport_info().be_pending/be_dropped`.
+- **Fiable:** FIFO de 32 mensajes / 64 KiB vaciada en bucle; descarta los más antiguos con aviso (`reliable_pending/reliable_dropped/reliable_full`).
+- **Hora:** con XRCE, `now()` usa la hora del agente sincronizada al abrir la sesión (`uxr_sync_session`).
 - **Grandes en PC:** scans completos, JPEG, PointCloud2, Odometry, JointState y LowState usan QoS fiable. En XRCE, las cámaras usan JPEG 160×120 y profundidad 40×30 a 1 Hz; RGB crudo queda opcional y el OccupancyGrid completo se reserva para loopback.
 
 `mapeo_2d.gd` integra un LaserScan con odometría conocida. No es SLAM con scan matching ni cierre de bucles: para eso se usa `slam_toolbox` en PC. Las acciones y los servicios no existen en `ros2_vita`; `JointTrajectory`, `LowCmd` y `unitree_api/Request` sí son topics y funcionan.

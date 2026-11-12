@@ -127,8 +127,10 @@ func _publicar_info(p: RosPublisher, stamp, tam: Vector2i) -> void:
 	info.distortion_model = "plumb_bob"
 	info.d = PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0])
 	var fy := tam.y / (2.0 * tan(deg_to_rad(fov_vertical) / 2.0))
-	var cx := tam.x * 0.5
-	var cy := tam.y * 0.5
+	# Centro óptico en convención OpenCV/ROS (centro del píxel en enteros): (w−1)/2, coherente con los rayos de
+	# profundidad, que pasan por x + 0,5 − w/2 (revisión R2-B2).
+	var cx := (tam.x - 1) * 0.5
+	var cy := (tam.y - 1) * 0.5
 	var k := PackedFloat64Array([fy, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0])
 	var r := PackedFloat64Array([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
 	var proyeccion := PackedFloat64Array([fy, 0.0, cx, 0.0, 0.0, fy, cy, 0.0, 0.0, 0.0, 0.0, 1.0])
@@ -150,7 +152,9 @@ func _publicar_depth(stamp) -> void:
 		excluir.append(robot.get_rid())
 	for y in h:
 		for x in w:
-			var local := Vector3((x + 0.5 - w * 0.5) / fy, (y + 0.5 - h * 0.5) / fy, -1.0)
+			# R2-A2: la fila y de la imagen crece hacia ABAJO y en la cámara de Godot +Y es arriba: sin el signo, la
+			# profundidad salía invertida verticalmente respecto a RGB y CameraInfo.
+			var local := Vector3((x + 0.5 - w * 0.5) / fy, -(y + 0.5 - h * 0.5) / fy, -1.0)
 			var direccion := _camera.global_basis.orthonormalized() * local.normalized()
 			var query := PhysicsRayQueryParameters3D.create(_camera.global_position,
 				_camera.global_position + direccion * far, mascara_profundidad, excluir)

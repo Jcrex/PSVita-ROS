@@ -175,7 +175,7 @@ Notas de coste (todas [I] hasta medir, §6):
 |---|---|---|---|---|
 | RobotModel | `/vita/joints` Float32 ×29 | 132 · 25 | (a) con constantes cacheadas | hoy ≈ 3 ms/mensaje (`get_meta` ×5 por joint, `godot/g1-unitree/robot/urdf_robot.gd:62-73`); cacheado ≈ 0,7 ms |
 | TF | ninguno (cinemática local); frames sueltos: `/vita/tf_compacto` ×7 floats *(pendiente)* | ≤ 464 · 10 | (a) | ≈ 20 µs por frame |
-| LaserScan | `/vita/scan_compacto` Int16 ×184 | 384 · 10 | (a) con tabla de direcciones; (b) cuando exista | hoy ≈ 3 ms (`cos`/`sin` por rayo, `godot/comun/vita_relay.gd:94-107`); tabla ≈ 1,3 ms; C ≈ 0,03 ms |
+| LaserScan | `/vita/scan_compacto` Int16 ×184 | 384 · 10 | (a) con tabla de direcciones; (b) cuando exista | hoy ≈ 3 ms (`cos`/`sin` por rayo, `godot/plantillas/vita_relay.gd:94-107`); tabla ≈ 1,3 ms; C ≈ 0,03 ms |
 | OccupancyGrid | `/vita/mapa_tesela` 2 bit 32×32 + meta | 260 · ≤ 20 | (c) + LUT de 256 entradas y `blit_rect`, o PNG del motor | hoy ≈ 20 ms por tesela (`set_pixel` por celda, `vita_relay.gd:55-66`) = 40 % de CPU a 20 teselas/s; LUT ≈ 1–1,5 ms; PNG ≈ 0,3 ms; C ≈ 0,03 ms |
 | Path | `/vita/path_compacto` ≤ 57 puntos | 476 · 2 | (a) | ≈ 0,4 ms |
 | Marker | `/vita/marcadores` 8 floats *(pendiente)* | ≤ 464 · 5 | (a) | ≈ 1 ms por datagrama (14 marcadores) |
@@ -205,9 +205,9 @@ corte, salvo la nube de más de 78 puntos por mensaje.
 
 | Dónde | Qué pasa | Arreglo |
 |---|---|---|
-| `godot/comun/vita_relay.gd:55-66` | 1 024 `set_pixel` por tesela desde GDScript | LUT byte → 16 B RGBA + `Image.create_from_data` + `blit_rect` (≈ 15× menos [I]) |
-| `godot/comun/vita_relay.gd:72-77` | sube la textura **entera** hasta 4 veces por segundo | sub-texturas de 128×128 y subir solo la sucia (≤ 1 por fotograma) |
-| `godot/comun/vita_relay.gd:94-107` | `cos`/`sin` y `append` por rayo | tabla de direcciones recalculada solo si cambian `ang_min`/`inc`/`n` |
+| `godot/plantillas/vita_relay.gd:55-66` | 1 024 `set_pixel` por tesela desde GDScript | LUT byte → 16 B RGBA + `Image.create_from_data` + `blit_rect` (≈ 15× menos [I]) |
+| `godot/plantillas/vita_relay.gd:72-77` | sube la textura **entera** hasta 4 veces por segundo | sub-texturas de 128×128 y subir solo la sucia (≤ 1 por fotograma) |
+| `godot/plantillas/vita_relay.gd:94-107` | `cos`/`sin` y `append` por rayo | tabla de direcciones recalculada solo si cambian `ang_min`/`inc`/`n` |
 | `godot/g1-unitree/minimapa.gd:33-36` | `queue_redraw()` cada fotograma | redibujar solo cuando cambien pose, path o mapa |
 | `godot/g1-unitree/robot/urdf_robot.gd:62-73` | 5 `get_meta` por joint y por mensaje | cachear origen, eje, límites y tipo en arrays en `_ready` |
 | `godot/g1-unitree/casa/casa.tscn` | 34 instancias (68 *draws* con luz) para ~400 triángulos | hornear la casa en **una** malla con paleta (1 *draw*) desde `docker/g1/casa.py` |

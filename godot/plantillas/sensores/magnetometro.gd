@@ -1,6 +1,9 @@
 extends "res://comun/ros/sensor_base.gd"
 
-@export var campo_local_ut := Vector3(21.0, 0.0, -43.0)
+## Campo terrestre en el marco del mundo ENU (REP-103/105, el mismo del GNSS: x = Este, y = Norte, z = arriba):
+## componente horizontal hacia el Norte (+y) y vertical hacia abajo. Antes (21, 0, −43) ponía el norte en +x y
+## discrepaba 90° del GNSS (revisión R2-M2). Sin declinación.
+@export var campo_local_ut := Vector3(0.0, 21.0, -43.0)
 @export var ruido_ut := 0.1
 
 var _msg: RosMsg

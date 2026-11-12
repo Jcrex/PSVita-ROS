@@ -15,8 +15,13 @@ const MOTORES := [
 	"right_wrist_yaw_joint",
 ]
 
+## R2-M5: mientras lleguen LowCmd, la marcha no pisa las piernas; si dejan de llegar, vuelve la marcha.
+@export var timeout_lowcmd := 0.5
+
 var marcha: RefCounted
 var _modelo: Node3D
+var _pelvis: Node3D
+var _desde_lowcmd := -1.0
 var _nombres := PackedStringArray()
 var _posiciones := PackedFloat32Array()
 
@@ -24,6 +29,7 @@ var _posiciones := PackedFloat32Array()
 func inicializar_modelo(_config: Dictionary) -> void:
 	_modelo = get_node("Modelo")
 	_nombres = _modelo.call("nombres_joints_movibles")
+	_pelvis = _modelo.find_child("pelvis", true, false)
 	_posiciones.resize(_nombres.size())
 	for i in _nombres.size():
 		_posiciones[i] = POSE_DEFECTO.get(_nombres[i], 0.0)
@@ -54,12 +60,33 @@ func _physics_process(dt: float) -> void:
 	var pose: Array = marcha.pose_base()
 	var q_local: Quaternion = Quaternion(Vector3(0.0, 0.0, 1.0), -marcha.yaw) * pose[1]
 	_modelo.call("set_base_pose_ros", Vector3(0.0, 0.0, pose[0].z), q_local)
-	var q_piernas: PackedFloat32Array = marcha.q_joints()
-	for i in mini(marcha.joints.size(), q_piernas.size()):
-		var indice := _nombres.find(marcha.joints[i])
-		if indice >= 0:
-			_posiciones[indice] = q_piernas[i]
+	if _desde_lowcmd >= 0.0:
+		_desde_lowcmd += dt
+		if _desde_lowcmd > timeout_lowcmd:
+			_desde_lowcmd = -1.0
+	if _desde_lowcmd < 0.0:
+		var q_piernas: PackedFloat32Array = marcha.q_joints()
+		for i in mini(marcha.joints.size(), q_piernas.size()):
+			var indice := _nombres.find(marcha.joints[i])
+			if indice >= 0:
+				_posiciones[indice] = q_piernas[i]
 	_modelo.call("set_joints", _nombres, _posiciones)
+
+
+## R2-A5: la odometría y /tf publican odom→pelvis con la pose REAL de la pelvis (~0,79 m y su balanceo), no el
+## origen del CharacterBody3D a la altura de los pies.
+func posicion_base_ros() -> Vector3:
+	if _pelvis == null:
+		return posicion_ros()
+	return Util.vector_ros(_pelvis.global_position)
+
+
+func orientacion_base_ros() -> Quaternion:
+	if _pelvis == null:
+		return orientacion_ros()
+	# La pelvis cuelga de RosFrame (ejes ROS): su base global lleva ejes ROS a Godot; quat_ros(G·C⁻¹) = C⁻¹·G.
+	var g := _pelvis.global_basis.orthonormalized() * Util.BASE_ROS_A_GODOT.inverse()
+	return Util.quat_ros(g.get_rotation_quaternion())
 
 
 func nombres_joints() -> PackedStringArray:
@@ -82,16 +109,9 @@ func fijar_motor(indice: int, q: float) -> void:
 	var i := _nombres.find(MOTORES[indice])
 	if i >= 0:
 		_posiciones[i] = q
+		_desde_lowcmd = 0.0   # modo bajo nivel: la marcha queda en pausa (R2-M5)
 
 
-func sensores_listos(lista: Dictionary) -> void:
-	var montajes := {"d435": "d435_link", "mid360": "mid360_link", "imu_pelvis": "imu_in_pelvis", "imu_torso": "imu_in_torso"}
-	for nombre in montajes:
-		if not lista.has(nombre):
-			continue
-		var link := _modelo.find_child(montajes[nombre], true, false)
-		if link != null:
-			var sensor: Node3D = lista[nombre]
-			sensor.reparent(link, false)
-			sensor.position = Vector3.ZERO
-			sensor.basis = Basis.IDENTITY
+# Los sensores se montan en sus links con el campo «link» de robot.json, que resuelve aplicacion_robot.gd
+# (revisión R2-A3: antes un diccionario fijo dejaba mid360_scan e imu_mid360 a ras de suelo y montaba los demás
+# con la base identidad, es decir, con los ejes Godot del sensor sobre los ejes ROS del link).

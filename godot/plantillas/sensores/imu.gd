@@ -9,6 +9,7 @@ const Util = preload("res://comun/ros/util_ros.gd")
 var _msg: RosMsg
 var _vel_anterior := Vector3.ZERO
 var _primera := true
+var _dt_real := 0.0
 
 
 func _init() -> void:
@@ -28,8 +29,15 @@ func _sensor_listo() -> void:
 	_msg.linear_acceleration_covariance = Util.diagonal(ruido_aceleracion * ruido_aceleracion)
 
 
+func _actualizar_sensor(dt: float) -> void:
+	_dt_real += dt
+
+
 func _publicar() -> void:
-	var dt := 1.0 / hz
+	# R2-M1: derivar con el tiempo REAL desde la última muestra, no con 1/hz (con huecos de 1 y 5 ticks la
+	# aceleración dinámica salía escalada).
+	var dt := maxf(_dt_real, 1e-4)
+	_dt_real = 0.0
 	var velocidad := Vector3.ZERO
 	var angular := Vector3.ZERO
 	if robot != null and robot.has_method("velocidad_lineal_ros"):
@@ -37,7 +45,7 @@ func _publicar() -> void:
 		angular = Util.vector_godot(robot.call("velocidad_angular_ros"))
 	else:
 		velocidad = Vector3.ZERO
-	var aceleracion := Vector3.ZERO
+	var aceleracion := -gravedad   # la primera muestra ya incluye la gravedad (R2-B4)
 	if not _primera:
 		aceleracion = (velocidad - _vel_anterior) / dt - gravedad
 	_primera = false

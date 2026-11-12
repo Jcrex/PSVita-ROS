@@ -9,6 +9,7 @@
   "radio_colision": 0.45,
   "altura_colision": 0.65,
   "altura_objetivo": 0.75,
+  "prefijo_compacto": "/vita/rbkairos",
   "control": {
     "topic_cmd": "/robot/robotnik_base_control/cmd_vel_unstamped",
     "topic_cmd_stamped": "/robot/robotnik_base_control/cmd_vel",
@@ -23,16 +24,16 @@
     {"tipo":"odometria","nombre":"odometria","topic":"/robot/robotnik_base_control/odom","topic_compacto":"/vita/rbkairos/pose2d","odom_frame":"robot_odom","base_frame":"robot_base_footprint","hz":30.0,"hz_vita":20.0},
     {"tipo":"joint_state","nombre":"joints","topic":"/robot/joint_states","topic_compacto":"/vita/rbkairos/joints","hz":30.0,"hz_vita":20.0},
     {"tipo":"imu","nombre":"imu","topic":"/robot/imu/data","frame_id":"robot_imu_link","pos_ros":[0.127,-0.129,0.212],"hz":50.0,"hz_vita":30.0},
-    {"tipo":"lidar_2d","nombre":"front_laser","topic":"/robot/front_laser/scan","topic_compacto":"/vita/rbkairos/front_scan","frame_id":"robot_front_laser_link","pos_ros":[0.2865,-0.20894,0.2973],"rpy_ros":[0.0,-3.14159265,2.35619449],"muestras":270,"muestras_vita":60,"hz":15.0,"hz_vita":5.0},
-    {"tipo":"lidar_2d","nombre":"rear_laser","topic":"/robot/rear_laser/scan","topic_compacto":"/vita/rbkairos/rear_scan","frame_id":"robot_rear_laser_link","pos_ros":[-0.2865,0.20894,0.2973],"rpy_ros":[0.0,-3.14159265,-0.78539816],"muestras":270,"muestras_vita":60,"hz":15.0,"hz_vita":5.0},
-    {"tipo":"camara","nombre":"front_camera","topic":"/robot/front_rgbd_camera/color","frame_id":"robot_front_rgbd_camera_color","optical_frame":"robot_front_rgbd_camera_color_optical_frame","pos_ros":[0.3585,0.0,0.25062],"publicar_profundidad":true,"hz":5.0},
-    {"tipo":"camara","nombre":"rear_camera","topic":"/robot/rear_rgbd_camera/color","frame_id":"robot_rear_rgbd_camera_color","optical_frame":"robot_rear_rgbd_camera_color_optical_frame","pos_ros":[-0.35,0.0,0.45],"rpy_ros":[0.0,0.0,3.14159265],"hz":5.0},
-    {"tipo":"camara","nombre":"top_ptz","topic":"/robot/top_ptz_rgbd_camera/color","frame_id":"robot_top_ptz_rgbd_camera_color","optical_frame":"robot_top_ptz_rgbd_camera_color_optical_frame","pos_ros":[0.0,0.0,1.25],"hz":5.0},
-    {"tipo":"lidar_3d","nombre":"top_lidar","topic":"/robot/top_laser/points","frame_id":"robot_top_laser_link","pos_ros":[0.0,0.0,1.05],"hz":5.0},
-    {"tipo":"gps","nombre":"gps","topic":"/robot/gps/fix","frame_id":"robot_gps_link","pos_ros":[0.0,0.0,0.65],"hz":10.0,"hz_vita":5.0},
-    {"tipo":"bateria","nombre":"bateria","topic":"/robot/battery_state","frame_id":"robot_battery_link","voltaje_nominal":24.0},
+    {"tipo":"lidar_2d","nombre":"front_laser","topic":"/robot/front_laser/scan","topic_compacto":"/vita/rbkairos/scan_compacto","frame_id":"robot_front_laser_link","pos_ros":[0.2865,-0.20894,0.2973],"rpy_ros":[0.0,-3.14159265,2.35619449],"muestras":270,"muestras_vita":60,"hz":15.0,"hz_vita":5.0},
+    {"tipo":"lidar_2d","nombre":"rear_laser","topic":"/robot/rear_laser/scan","topic_compacto":"/vita/rbkairos/trasero/scan_compacto","frame_id":"robot_rear_laser_link","pos_ros":[-0.2865,0.20894,0.2973],"rpy_ros":[0.0,-3.14159265,-0.78539816],"muestras":270,"muestras_vita":60,"hz":15.0,"hz_vita":5.0},
+    {"tipo":"camara","nombre":"front_camera","topic":"/robot/front_rgbd_camera/color","frame_id":"robot_front_rgbd_camera_color_frame","optical_frame":"robot_front_rgbd_camera_color_optical_frame","pos_ros":[0.3585,0.0,0.25062],"publicar_profundidad":true,"hz":5.0},
+    {"tipo":"camara","nombre":"rear_camera","topic":"/robot/rear_rgbd_camera/color","frame_id":"robot_rear_rgbd_camera_color","optical_frame":"robot_rear_rgbd_camera_color_optical_frame","pos_ros":[-0.35,0.0,0.45],"rpy_ros":[0.0,0.0,3.14159265],"tf_estatico":true,"hz":5.0},
+    {"tipo":"camara","nombre":"top_ptz","topic":"/robot/top_ptz_rgbd_camera/color","frame_id":"robot_top_ptz_rgbd_camera_color","optical_frame":"robot_top_ptz_rgbd_camera_color_optical_frame","pos_ros":[0.0,0.0,1.25],"tf_estatico":true,"hz":5.0},
+    {"tipo":"lidar_3d","nombre":"top_lidar","topic":"/robot/top_laser/points","frame_id":"robot_top_laser_link","pos_ros":[0.0,0.0,1.05],"tf_estatico":true,"hz":5.0},
+    {"tipo":"gps","nombre":"gps","topic":"/robot/gps/fix","frame_id":"robot_gps_link","pos_ros":[0.0,0.0,0.65],"tf_estatico":true,"hz":10.0,"hz_vita":5.0},
+    {"tipo":"bateria","nombre":"bateria","topic":"/robot/battery_state","frame_id":"robot_battery_link","tf_estatico":true,"voltaje_nominal":24.0},
     {"tipo":"res://comun/sensores/estado_controlador.gd","nombre":"estado_brazo","topic":"/robot/joint_trajectory_controller/controller_state","hz":10.0,"hz_vita":5.0},
     {"tipo":"res://comun/sensores/estop.gd","nombre":"estop","topic":"/robot/robotnik_base_hw/emergency_stop"},
-    {"tipo":"mapeo_2d","nombre":"mapeo","padre":"front_laser","scan_topic":"/robot/front_laser/scan","map_topic":"/robot/map","topic_meta_compacto":"/vita/rbkairos/mapa_meta","topic_tesela_compacta":"/vita/rbkairos/mapa_tesela","tamano":128,"resolucion":0.25}
+    {"tipo":"mapeo_2d","nombre":"mapeo","padre":"front_laser","scan_topic":"/robot/front_laser/scan","map_topic":"/robot/map","frame_id":"robot_odom","topic_meta_compacto":"/vita/rbkairos/mapa_meta","topic_tesela_compacta":"/vita/rbkairos/mapa_tesela","tamano":128,"resolucion":0.25}
   ]
 }

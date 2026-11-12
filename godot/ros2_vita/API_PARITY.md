@@ -28,7 +28,7 @@
 | `create_publisher(topic, type, qos)` | 🟡 | `type` = `String` ✅ (o script con `ROS_TYPE_NAME`, que rclgd **ya no** acepta); clase nativa o instancia ⏳ (T3.2.4) |
 | `create_subscription(topic, type, callable, qos)` | ✅ | callback en el hilo principal (cola propia `inbox` + `MutexLock` en `ros_runtime.cpp`; `msg-ring` aún sin usar) |
 | `create_timer(seconds, callable)` | ✅ | reloj local (monotónico) |
-| `now()` | 🟡 | `Time` local; sincronización con el agente ⏳ (`uxr_synchronize_session`) |
+| `now()` | ✅ | con XRCE, hora del agente (`uxr_sync_session` al abrir la sesión, 2026-11-12); si falla o en loopback, reloj local |
 | `create_client(srv, type, qos)` + `await req.completed` | ⏳ | DDS-RPC del cliente XRCE **[?]** |
 | `create_service(...)` | ⏳ | callback en hilo de red; misma regla que rclgd |
 | `create_action_client/server` | ⏳ | no están en el cliente XRCE |

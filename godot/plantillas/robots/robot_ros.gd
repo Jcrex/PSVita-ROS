@@ -16,6 +16,9 @@ var orden_objetivo := Vector3.ZERO
 var orden_actual := Vector3.ZERO
 var emergencia := false
 var _desde_cmd := -1.0
+var _timeout_orden := 0.5           # timeout de la orden en curso (timeout_cmd, o la duración de la API 7105)
+var _vel_vertical := 0.0            # caída acumulada (revisión R2-B6)
+var _teleop_local_activo := false   # hombre muerto de la teleop local (revisión R2-C3)
 var _sub_cmd: RosSubscriber
 var _sub_cmd_stamped: RosSubscriber
 var _ultima_posicion := Vector3.ZERO
@@ -46,7 +49,13 @@ func recibir_cmd_stamped(msg) -> void:
 func fijar_emergencia(activa: bool) -> void:
 	emergencia = activa
 	if emergencia:
-		orden_objetivo = Vector3.ZERO
+		_parar_orden()
+
+
+## Pone a cero TODA la orden. Los robots con ejes extra (yaw del dron) lo amplían para que el hombre muerto,
+## el timeout y la emergencia los paren también (revisión R2-A6).
+func _parar_orden() -> void:
+	orden_objetivo = Vector3.ZERO
 
 
 func fijar_orden(orden: Vector3) -> void:
@@ -57,6 +66,14 @@ func fijar_orden(orden: Vector3) -> void:
 			clampf(orden.y, -velocidad_max.y, velocidad_max.y),
 			clampf(orden.z, -velocidad_max.z, velocidad_max.z))
 	_desde_cmd = 0.0
+	_timeout_orden = timeout_cmd
+
+
+## Orden con duración propia (p. ej. `duration` de la API Unitree 7105, revisión R3-2.4); después, a cero.
+func fijar_orden_durante(orden: Vector3, duracion: float) -> void:
+	fijar_orden(orden)
+	if not emergencia and duracion > 0.0:
+		_timeout_orden = duracion
 
 
 func leer_teleop() -> Vector3:
@@ -75,18 +92,30 @@ func leer_teleop() -> Vector3:
 	return orden
 
 
+## Aplica la lectura local; devuelve false si no hay entrada (el dron añade su yaw, revisión R2-A6).
+func _aplicar_teleop_local(local: Vector3) -> bool:
+	if local == Vector3.ZERO:
+		return false
+	orden_objetivo = local
+	return true
+
+
 func _physics_process(dt: float) -> void:
 	if emergencia:
-		orden_objetivo = Vector3.ZERO
+		_parar_orden()
 	if _desde_cmd >= 0.0:
 		_desde_cmd += dt
-		if _desde_cmd > timeout_cmd:
-			orden_objetivo = Vector3.ZERO
-	if aceptar_teleop_local and not emergencia:
-		var local := leer_teleop()
-		if local != Vector3.ZERO:
-			orden_objetivo = local
+		if _desde_cmd > _timeout_orden:
+			_parar_orden()
 			_desde_cmd = -1.0
+	if aceptar_teleop_local and not emergencia:
+		if _aplicar_teleop_local(leer_teleop()):
+			_desde_cmd = -1.0
+			_teleop_local_activo = true
+		elif _teleop_local_activo:
+			# Al soltar el mando, parar: antes el robot seguía con la última velocidad indefinidamente.
+			_parar_orden()
+			_teleop_local_activo = false
 	for i in 3:
 		orden_actual[i] = move_toward(orden_actual[i], orden_objetivo[i], aceleracion_max[i] * dt)
 	_integrar_movimiento(dt)
@@ -101,8 +130,9 @@ func _integrar_movimiento(dt: float) -> void:
 		velocity.y = orden_actual.z
 	else:
 		rotation.y += orden_actual.z * dt
-		if not is_on_floor():
-			velocity.y -= 9.80665 * dt
+		# R2-B6: la velocidad se reconstruye cada tick, así que la caída se guarda aparte para que acumule.
+		_vel_vertical = 0.0 if is_on_floor() else _vel_vertical - 9.80665 * dt
+		velocity.y = _vel_vertical
 	move_and_slide()
 
 
@@ -121,6 +151,28 @@ func posicion_ros() -> Vector3:
 
 func orientacion_ros() -> Quaternion:
 	return Util.quat_ros(global_basis.get_rotation_quaternion())
+
+
+## Pose del marco base que publican la odometría y /tf (base_frame). Por defecto, el origen del cuerpo; el G1 la
+## sobrescribe con la pelvis (revisión R2-A5).
+func posicion_base_ros() -> Vector3:
+	return posicion_ros()
+
+
+func orientacion_base_ros() -> Quaternion:
+	return orientacion_ros()
+
+
+## Tras teletransportar (reinicio R/△): sin esto, Odometry y la IMU veían un pico de decenas de m/s (R2-B5).
+func reiniciar_estado() -> void:
+	velocity = Vector3.ZERO
+	_vel_vertical = 0.0
+	_parar_orden()
+	orden_actual = Vector3.ZERO
+	_ultima_posicion = global_position
+	_yaw_anterior = rotation.y
+	_velocidad_mundo = Vector3.ZERO
+	_velocidad_angular_mundo = Vector3.ZERO
 
 
 func velocidad_lineal_ros() -> Vector3:
