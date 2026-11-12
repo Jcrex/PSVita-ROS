@@ -64,6 +64,9 @@ case "${1:-help}" in
         # Regenera los clips de marcha de la política oficial para el modo «marcha» de Godot.
         "${COMPOSE[@]}" --profile g1 run --rm --user "$(id -u):$(id -g)" -v "$SCRIPT_DIR/../godot/g1-unitree/anim:/salida" \
             g1sim python3 /opt/g1/g1_sim.py --grabar /salida/g1_marcha.json ;;
+    relay)
+        # Adaptador PC → Vita (doc 27): topics grandes → mensajes compactos ≤ 488 B en best effort.
+        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]'" ;;
     rviz)    run "rviz2" ;;
     rqt)     run "rqt_graph" ;;
     teleop)  run "ros2 run teleop_twist_keyboard teleop_twist_keyboard" ;;
@@ -102,6 +105,7 @@ Uso: docker/vita-ros.sh <comando>
   sim                 turtlesim obedeciendo /cmd_vel + su pose como /odom (ligero)
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
   g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
+  relay [módulos]     vita_relay: scan/pose/joints/mapa/path compactos para la Vita (doc 27)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
   bridge-client <IP>  puente Zenoh: conectar al servidor (otro equipo)

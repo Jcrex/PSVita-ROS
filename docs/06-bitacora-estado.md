@@ -1,11 +1,76 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1). Antes: 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE). Antes: 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
+
+---
+
+## 2026-11-12 (PC) — Docs 24–28 y 31–32, ADRs 0009–0012, `vita_relay` y minimapa del G1
+
+- **G1 en la Vita (usuario):** modo marcha a 60 FPS estables (commit `ca510f3`). El modo ros **no conectaba**: el
+  agente no recibió ni un paquete de la Vita (192.168.1.94). La app ahora conecta al arrancar (como G6/G7), muestra
+  el diagnóstico de red (paso, `netctl`, códigos sce) y △ reintenta. **Pendiente de probar en la Vita.**
+- **Docs:** `24-portabilidad-ozuba`, `25-urdf-godot` + **ADR 0009** (URDF horneado en el PC), `27-xrce-limites-y-relay`,
+  `28-sensores-y-vision-vita`. `API_PARITY.md` corregido: **TF y RosLogger no existen** en `ros2_vita` (P0).
+- **`vita_relay`** (`docker/scripts/vita_relay.py`, `docker/vita-ros.sh relay`): scan/pose/joints/mapa por teselas/path
+  compactos ≤ 488 B en best effort; pruebas `docker/scripts/test_vita_relay.py`; en la estación 10/30/25/20 Hz,
+  ~14 KB/s. Cliente Godot común `godot/comun/vita_relay.gd` + minimapa del G1 (probado en el PC).
+- **Incidente:** el editor de host `godot.linuxbsd.editor.x86_64` apareció recompilado sin `GODOT_VERSION_STATUS=dev7`
+  (2026-11-12 17:19) y el exportador lo rechazaba. Causa probable: la sesión paralela de Kimi/Codex, que ese día
+  modificó `godot/ros2_vita/xrce_transport.cpp` y añadió plantillas (docs 29–30). Recompilado con la receta de
+  `godot/README.md` (30 s, incremental, ya con su cambio). **Regla para cualquier agente: compilar el editor de host
+  siempre con `GODOT_VERSION_STATUS=dev7`.**
+- **Workshops:** W3, W8, W9 (Fable) cortados por límites de uso; reanudados. Faltan W10, W11, documento maestro,
+  backlog de gates y lista de [?].
+
+---
+
+## 2026-11-12 (PC, rendimiento) — Cuello de botella de cámaras XRCE corregido; revisión BE abierta
+
+- El usuario detectó 2 FPS. Medición real: 60 FPS sin ROS y loopback, pero 1/2/1 FPS con XRCE en RB/G1/dron.
+  Sin cámaras volvía a 58–60. RGB crudo = 1–2 FPS; profundidad 80×60 = 17; solo JPEG = 60. Causa: fragmentación
+  de imágenes grandes por MTU 512 en el hilo principal, no GPU, modelos ni rayos.
+- Perfiles XRCE: JPEG 160×120 + profundidad 40×30 a 1 Hz; RGB crudo opcional; mapa completo solo loopback;
+  nube 8×30 a 1 Hz; scans 2 Hz; odometría/joints 5 Hz; IMU 10 Hz (G1 3×5). Colas BE 64 y fiable 32 con reintento.
+- Resultado: **60 FPS y 0 errores durante 20 s en los tres proyectos**, suite 294/0 y plantilla `verify_runtime` PASS
+  694 imports. Informe completo: **docs/30-rendimiento-xrce-plantillas.md**.
+- **No cerrado:** la sonda encontró después BE descartados en G1 (335/10 s) y dron (273/10 s), RB 0. Fiables 0 en
+  los tres. Queda documentada la discrepancia temporal por revisar; no se afirma pérdida cero global ni FPS en Vita.
+
+---
+
+## 2026-11-12 (PC) — Tres proyectos base de robots y biblioteca de sensores ROS 2
+
+- **Entregado:** `godot/plantillas/` (control, IMU, GNSS, odometría, LiDAR 2D/3D, RGB-D, batería, barómetro,
+  magnetómetro, sonar, mapa y mundo común) + `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/dron-mapeo/`.
+  Cada proyecto tiene `robot.json`, preset Vita, README y catálogo exacto `ros/topics.json`. Guía larga: **docs/29**.
+- **RB-KAIROS+:** Xacro oficial + UR10e, 40 links/39 joints; 11 620 triángulos Vita (chasis 3 000) y 67 246 PC.
+  Sensores físicos del modelo y extras del bridge Gazebo documentados por separado. Blender 5.2 necesitó conversión
+  DAE→OBJ (`tools/convertir-urdf-dae.py`).
+- **G1:** mallas/clips existentes, D435/Mid-360/IMU montados en los links URDF; 87 tipos en el esquema, incluidos
+  `unitree_hg`, `unitree_go` y `unitree_api`. **Dron propio:** 552 triángulos, RGB-D frontal/cenital y suite de estado.
+- **Mundo común:** bosque, ciudad, parque y casa amueblada; personas, perro/gato/oveja, coches, juguetes, cocina,
+  comida, plantas y obstáculos. Kenney CC0 + modelos propios en Blender. Colisiones finales en metros, compensada la
+  escala visual; prueba de 120 ticks sin caer ni desplazar al dron.
+- **XRCE:** cola BE de 64 en `xrce_transport.cpp`, un datagrama por `poll()` y contadores `be_pending/be_dropped`.
+  Scans/JPEG/nubes grandes fiables en PC; scan Vita de 60 rayos = 296 B. Suite host **294/0**; plantilla Vita
+  `verify_runtime.py` **PASS, 694 imports**.
+- **ROS 2 real:** agente aislado UDP 8889; IMU, scans, CameraInfo, estado UR10e, mapas, PointCloud2, profundidad,
+  `/g1/estado` y `/lowstate` verificados con `ros2 topic echo/info`; logs sin `ERROR`. Loopback de los tres proyectos
+  también limpio. CDR y pruebas comunes 7/7.
+- **VPK finales (optimizados):** `build/rbkairos-plus.vpk` 23 997 414 B (`1c8859f036693c44`),
+  `build/g1-sensores.vpk` 24 106 371 B (`44e8e70c9a7d3326`), `build/dron-mapeo.vpk` 23 609 334 B
+  (`5b5352dc1891aba6`). Contenido comprobado, cuatro atlas RGBA incluidos y sin mallas PC.
+- **Cámara real:** prueba gráfica con `rclpy`: JPEG válido de 4 376 B, RGB 320×240 `rgb8`, profundidad 80×60 con
+  valores positivos y 381 puntos 3D; editor gráfico recompilado y log sin `ERROR`. Personas visibles y texturizadas.
+- **Siguiente gate en hardware (usuario):** instalar los VPK y, con `docker/vita-ros.sh up`, comprobar ≥30 FPS,
+  ausencia de crecimiento de `be_dropped`, scans/IMU en ROS 2 y navegación sin atravesar paredes. Cámaras/nubes 3D se
+  validan en PC y llegan a Vita por relay. Exportar con `tools/export-vita-vpk.sh godot/<proyecto> build/<proyecto>.vpk`
+  si cambia el código; no desplegar aún desde esta bitácora porque la Vita está en manos del usuario.
 
 ---
 

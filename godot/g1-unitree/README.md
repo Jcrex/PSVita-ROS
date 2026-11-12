@@ -54,6 +54,15 @@ Regenerar piezas: robot `tools/urdf2godot/urdf2godot.py <urdf> --proyecto godot/
 esquema `tools/gen_msg_schema.py -o godot/g1-unitree/ros/schema.rsch std_msgs/msg/Float32MultiArray geometry_msgs/msg/Twist`.
 La imagen del simulador: `docker/vita-ros.sh g1-build` (necesita la de la estación).
 
+## Minimapa (modo ros + `vita_relay`)
+
+Con `docker/vita-ros.sh relay` corriendo en el PC (y un `/map`: Nav2/slam_toolbox, o
+`python3 /scripts/fuente_prueba_relay.py /ws/mapa.yaml` con la casa copiada a `docker/ws/`), aparece abajo a la
+derecha un minimapa 2D: el mapa llega por teselas de 32×32 (`/vita/mapa_tesela`, 260 B, best effort) más la meta
+fiable + TRANSIENT_LOCAL, y la pose por `/vita/pose2d`. Decodificador común en `godot/comun/vita_relay.gd`
+(enlazado como `comun/`; la exportación copia el contenido con `cp -rL`). Probado en el PC 2026-11-12: 42 teselas
+de la casa en ~2 s, 60 FPS. **Validar en hardware.**
+
 ## Decisiones y por qué
 
 - **`/g1/estado` compacto** (`Float32MultiArray`, 19 valores = 76 B, *best effort*) en vez de `JointState`
