@@ -1,0 +1,332 @@
+[
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Decisión principal: dos capas y dos vistas. 3D GXM solo para geometría rígida o estática (instancias movidas por transform); 2D CanvasItem para lo denso y dinámico en una llamada por display; raster como textura; texto en 2D. Vistas «Planta 2D» y «Orbital 3D».",
+  "evidencia": "[V] El 3D solo dibuja triángulos de MeshInstance3D y guarda xyz+uv en un arena de 24 MiB que no libera mallas sueltas; mover una instancia solo cambia su matriz. [V] El lienzo 2D baja todo a quads con color por primitiva, los funde en lotes y es la ruta validada en hardware (G6, G7c). [I] Por eso lo que cambia de forma con cada mensaje (scan, nube, líneas) es más seguro en 2D, y lo que solo cambia de pose (robot, TF, marcadores) en 3D. El precio: lo superpuesto en 2D no se oculta tras el 3D y en vista orbital hay que reproyectar.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:70",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:187-221",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:912",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:953",
+   "toolchains/godot4-vita/engine/platform/vita/gxm_canvas_vita.inc:355-397",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:46-107",
+   "docs/06-bitacora-estado.md:46-58",
+   "docs/ia/workshops/posts/W8-borrador.md §0, §3, §8"
+  ],
+  "confianza": "[I] (decisión de diseño sobre hechos [V])",
+  "coste_estimado": "Sin plantilla nueva: todo GDScript + relay. Biblioteca de visualización (paleta, ejes, flecha, cinta, lote 2D): ~3-5 días.",
+  "como_se_mediria_en_hardware": "Gate E-W8-6: escena completa Fase 1 (G1 + casa horneada + mapa 384² + scan 180 + path + 20 TF + 16 marcadores + HUD) con el relay en vivo 10 min. Verde: [gxm2d-perf] fps >= 29,5 en todas las ventanas, [gxm3d] avg_submit_us <= 9000, [vita-prof] process <= 8000, [gxm2d-canvas] avg_canvas_us <= 3000, budget= sin recortar."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Matriz display → capa y técnica (Fase 1)",
+  "evidencia": "[I] RobotModel: MeshInstance3D por link, <= 15 000 tri / <= 40 instancias. TF: malla «ejes» compartida (3 cajas, 36 tri, UV a paleta) instanciada por frame, <= 32 (tope de modules/tf-tree); nombres en 2D. LaserScan: 2D, 180-360 quads en un lote (promoción a ArrayMesh 3D tras E-W8-2). OccupancyGrid/costmap: Image RGBA8 → ImageTexture en quad 3D (POINT = celdas nítidas) o draw_texture_rect. Path: cinta plana 2 tri/segmento (<= 112 tri) reconstruida a 2 Hz, o draw_polyline. Marker: pool de <= 48 instancias de primitivas unidad (cubo 12, esfera 64, cilindro 32, flecha 44 tri); LINE_*/POINTS/TEXT en 2D. Odometry: flecha + rastro <= 20 instancias. Pose: flecha. CompressedImage: TextureRect 160×120 en el HUD. PointCloud2 decimada: 2D, <= 468 puntos con color por banda de altura. HUD: Label a <= 10 Hz.",
+  "fuentes": [
+   "docs/ia/workshops/posts/W8-borrador.md §3",
+   "docs/27-xrce-limites-y-relay.md §2",
+   "docker/scripts/vita_relay.py:10-22",
+   "godot/g1-unitree/robot/mallas_g1_vita/informe.json",
+   "modules/tf-tree/include/tf_tree.h:10-12"
+  ],
+  "confianza": "[I]",
+  "coste_estimado": "Por display: S (pose, odometría, path, imagen) a M (marcadores, TF con nombres, nube).",
+  "como_se_mediria_en_hardware": "Cada display se activa por separado en E-W8-6 y se anota su incremento de avg_submit_us, avg_canvas_us y process respecto a la escena sin él."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Color sin shaders: textura-paleta 16×16 compartida + UV por triángulo (un material, una superficie, un draw por malla) con un texel de alfa que excluye la luz por vértice",
+  "evidencia": "[V] El aplanado conserva UV y el material lee texture_albedo; el 3D fuerza filtro POINT, así que un UV en el centro de un texel da el color exacto. [V] Una superficie entra en la pasada de luz solo si albedo.a > 0,99 y su textura no tiene alfa (detect_alpha sobre toda la imagen): un texel transparente sin usar basta para excluirla. [V fórmula] Sin luz por vértice el tinte por objeto = ambiente + 0,12 + 0,6×luz direccional, recortado a 1: con ambiente >= 0,3 y energía >= 1 el color sale exacto. [I] Sustituye a «una superficie por color» (N draws, N mallas).",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:77-113",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:724-732",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:773-813",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:996-997",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_gxm_vita.cpp:78",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_gxm_vita.cpp:184-187",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:391",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:442"
+  ],
+  "confianza": "[V] mecanismo en código; [I] aspecto final en pantalla",
+  "coste_estimado": "S: ~80 líneas GDScript (generar la paleta y funciones de UV); 1 textura = 256 KiB de CDRAM.",
+  "como_se_mediria_en_hardware": "Escena con 3 mallas iguales: paleta con texel de alfa, paleta sin alfa y albedo_color opaco. Captura + [gxm3d] lit= (debe contar solo las dos últimas). Verde: colores idénticos al PC y lit sin la primera."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Hallazgo: la pasada de luz por vértice duplica draws y triángulos de GPU, tiene un cupo de 3 000 vértices por fotograma y se recalcula cuando una instancia se mueve 1 cm",
+  "evidencia": "[V] Superficie opaca, sin esqueleto y sin alfa → segundo draw multiplicativo con una malla de 16 B por vértice en el mismo arena. [V] vertex_budget = 3000: una superficie de más de 1 000 triángulos nunca entra. [V] El hash de validez incluye el origen de la instancia ×100. [I] En el G1 (35 mallas; solo el torso, 2 162 tri, supera 1 000) + casa (34 cajas) salen 69 draws base + hasta 68 de luz ≈ 137 draws y ≈ 24 000 triángulos de GPU; al andar, todos los links piden recolorearse cada fotograma y el cupo se lo llevan los primeros de la lista.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:590-601",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:602-610",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:868",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:996-997",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:1011-1033",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:471-559",
+   "godot/g1-unitree/robot/mallas_g1_vita/informe.json",
+   "godot/g1-unitree/casa/casa.tscn",
+   "godot/g1-unitree/project.godot"
+  ],
+  "confianza": "[V] código; [I] coste y efecto visual",
+  "coste_estimado": "0 (ajuste rendering/vita/vertex_lighting) o S (hornear la casa en una malla con paleta: 68 draws → 1).",
+  "como_se_mediria_en_hardware": "En G8-G1 y E-W8-1: conmutar en caliente ProjectSettings.set_setting('rendering/vita/vertex_lighting', false/true) y comparar [gxm3d] lit=, avg_submit_us, build_us y [gxm2d-perf] fps con el robot quieto y andando."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Riesgo: una ArrayMesh dinámica con el mismo número de vértices y material opaco dibujaría la luz sobre la geometría antigua",
+  "evidencia": "[V] La malla de luz copia las posiciones al crearse y solo se recrea si cambia el recuento (lit.count != count); la validez de colores (colors_valid) depende de mesh id, origen y luces, no del contenido de la malla; invalidate_mesh no toca lit_cache. [V] La pasada de luz se dibuja con test y escritura de profundidad activos. [I] Resultado esperado: formas fantasma multiplicadas y oclusión por geometría que ya no existe. Regla derivada: lo dinámico nunca va por la pasada de luz (paleta con alfa o albedo.a <= 0,99).",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:187-207",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:606",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:640-655",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:365-376",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:530-559"
+  ],
+  "confianza": "[I] (lectura de código; sin reproducir)",
+  "coste_estimado": "0 si se sigue la regla; arreglo en el motor = borrar lit_cache de la malla en invalidate_mesh (~5 líneas, plantilla nueva).",
+  "como_se_mediria_en_hardware": "E-W8-2, variante «opaca»: ArrayMesh de 180 triángulos, material albedo opaco sin textura, vertex_lighting=true, puntos que giran con recuento constante a 10 Hz. Verde para la regla: aparece el fantasma (confirmado) y desaparece con la paleta con alfa."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Presupuesto del arena GPU para contenido dinámico: 60 B por triángulo y reconstrucción, sin liberación hasta el reinicio global",
+  "evidencia": "[V] 20 B por vértice aplanado sin índices (+16 B de cabecera por malla); arena de 24 MiB; invalidate_mesh no devuelve espacio; al agotarse se reinicia entero, se vacía la caché de luz y se reaplana todo lo visible. [I] Con ≈ 21,5 MiB libres: Path 112 tri a 2 Hz = 13 KB/s (reinicio cada ≈ 28 min); scan 180 tri a 10 Hz = 108 KB/s (≈ 3,5 min); scan 720 tri = 432 KB/s (≈ 52 s); nube 468 tri a 5 Hz = 140 KB/s (≈ 2,7 min). [I] El reinicio reaplana 60-90 mil vértices: tirón estimado de 14-30 ms.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:35",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:402-429",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:450-452",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:187-221",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:1225-1230"
+  ],
+  "confianza": "[V] tamaños y mecanismo; [I] duración del tirón",
+  "coste_estimado": "0 (regla: malla reconstruida por mensaje solo a <= 2 Hz hasta medir).",
+  "como_se_mediria_en_hardware": "E-W8-2: ArrayMesh de {180, 720, 2000} triángulos reconstruida a 10 Hz durante 5 min; leer arena_kb (diente de sierra), invalidations, build_us y el Δt máximo por ventana de 5 s. Verde para promocionar scan/nube a 3D: build_us <= 2000 con 720 tri y tirón de reinicio <= 33 ms."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Lienzo 2D: un display denso = una llamada (canvas_item_add_triangle_array o draw_multiline_colors); color por primitiva gratis; coste de CPU por quad cada fotograma",
+  "evidencia": "[V] canvas_item_add_triangle_array crea un único comando de polígono; draw_multiline fino crea un único comando PRIMITIVE_LINES con color por segmento; draw_polyline fino, un LINE_STRIP. [V] El backend recorre todos los comandos cada fotograma y emite un quad de 6 vértices por triángulo (vértice repetido) o por línea de 1 px, con el color medio de los vértices; los quads de color plano contiguos se funden en un draw (hasta 65 532 vértices). Pool de 4 MiB ⇒ ≈ 43 000 quads planos. [I] Coste ≈ 1-1,6 µs por triángulo a 444 MHz ⇒ 1 000 primitivas ≈ 1-1,6 ms por fotograma.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/servers/rendering/renderer_canvas_cull.cpp:747-790",
+   "toolchains/godot4-vita/engine/servers/rendering/renderer_canvas_cull.cpp:980-1003",
+   "toolchains/godot4-vita/engine/servers/rendering/renderer_canvas_cull.cpp:1247-1276",
+   "toolchains/godot4-vita/engine/servers/rendering/renderer_canvas_cull.cpp:1779-1797",
+   "toolchains/godot4-vita/engine/platform/vita/gxm_canvas_vita.inc:73-125",
+   "toolchains/godot4-vita/engine/platform/vita/gxm_canvas_vita.inc:355-397",
+   "toolchains/godot4-vita/engine/platform/vita/gxm_canvas_vita.inc:511-569",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:46-107",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:193"
+  ],
+  "confianza": "[V] mecanismo; [I] µs por primitiva",
+  "coste_estimado": "0 de motor; S por display.",
+  "como_se_mediria_en_hardware": "E-W8-3: {180, 500, 1000, 2000} triángulos en una canvas_item_add_triangle_array, quietos y moviendo el transform del nodo. Leer [gxm2d-canvas] avg_canvas_us y [gxm2d-perf] quads=, draws=. Verde: <= 1,5 µs por triángulo y 1 lote."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Métrica que faltaba: [gxm2d-canvas] avg_canvas_us; y [gxm2d-perf] draws= no cuenta los draws 3D",
+  "evidencia": "[V] El lienzo acumula el tiempo de bajar los comandos y lo imprime cada 300 llamadas (calls, avg_canvas_us, avg_items). [V] stat_draws solo se incrementa en flush_batch (lotes 2D); vita_gxm_mesh_draw no lo toca: los draws 3D se deducen de [gxm3d] drawn= (instancias) + lit= (pasadas de luz). [V] El port ajusta su presupuesto adaptativo con avg_submit_us: > 14 000 recorta, < 9 000 restaura. [V] [vita-prof] render= incluye el envío y las esperas (GPU, vsync): no es CPU pura.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/gxm_canvas_vita.inc:570-578",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:73-89",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:430-449",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:1245-1253",
+   "toolchains/godot4-vita/engine/core/os/vita_prof.h:9-20",
+   "toolchains/godot4-vita/engine/main/main.cpp:5062-5078"
+  ],
+  "confianza": "[V]",
+  "coste_estimado": "0",
+  "como_se_mediria_en_hardware": "fish en el PC: set VITA 192.168.1.94; mkdir -p ~/vita-logs; curl -s -o ~/vita-logs/godot_stderr.log ftp://$VITA:1337/ux0:/data/gxm3d/godot_stderr.log; grep -E '\\[(gxm2d-perf|gxm2d-canvas|gxm3d|vita-prof|vita-memory)\\]' ~/vita-logs/godot_stderr.log | tail -n 40"
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Texturas: tope 64 MiB y 256 unidades (cada una se redondea a 256 KiB); actualizar = recrear entera; mapa en sub-texturas de 128² y formato RGBA8888 por paquete",
+  "evidencia": "[V] texture_2d_update llama a texture_2d_initialize: duplica la imagen, convierte a RGBA8, recorre el alfa y libera la textura de GPU; la nueva se crea en el primer uso (empaquetado por píxel si RGBA4444). [V] vita_texture_allocation_bytes redondea a 262 144 B; límite 64 MiB (el doc del port dice 48: manda el código). [V] El preset de exportación escribe gxm_texture_format.cfg (RGBA4444 por defecto, RGBA8888 opcional; el G1 usa 8888). [I] 384² RGBA8 ≈ 6-12 ms por actualización; 128² ≈ 1 ms; 160×120 ≈ 1 ms. RGBA4444 da 16 niveles por canal: bandas en imagen de cámara y degradados de costmap.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_gxm_vita.cpp:60-84",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_gxm_vita.cpp:188-216",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:124-154",
+   "toolchains/godot4-vita/engine/platform/vita/loader/texture_format.h:14-16",
+   "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/platform.gd:47",
+   "toolchains/godot4-vita/engine/platform/vita/editor/addons/psvita/platform.gd:309",
+   "godot/g1-unitree/export_presets.cfg",
+   "godot/comun/vita_relay.gd:72-77"
+  ],
+  "confianza": "[V] mecanismo y límites; [I] milisegundos",
+  "coste_estimado": "S: trocear el mapa en sub-texturas y subir solo la sucia (<= 1 por fotograma).",
+  "como_se_mediria_en_hardware": "E-W8-4: ImageTexture.update() de 128², 256², 384² a 1 y 4 Hz (quad 3D y rect 2D) durante 10 min. Leer Δt máximo, [gxm3d] build_us, [vita-memory] textures= y cdram_free=. Verde: 128² <= 2 ms, 384² <= 12 ms, cdram_free estable."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Regla de corte de la decodificación: bytes → relay; C++ del motor si existe; GDScript si <= 2 ms por mensaje y <= 1 ms por fotograma de media; si no, C en un módulo dual nuevo «viz-decode»",
+  "evidencia": "[V] Best effort admite <= 488 B de CDR y cada mensaje se decodifica a un árbol RosMsg antes del callback (int16[] → PackedInt32Array por bucle C++, float32[]/uint8[] por memcpy). [I] Hipótesis de 1,5 µs por instrucción GDScript (sin medir): 2 ms ≈ 1 300 instrucciones ≈ 110 elementos a 12 instrucciones. Reparto: joints, pose, path, marcadores, TF → GDScript; scan → GDScript con tabla de direcciones (≈ 1,3 ms) o C; tesela de mapa → LUT + blit_rect o PNG del motor; imagen → JPEG del motor; nube > 78 puntos y proyección por fotograma → C. viz-decode: vizd_scan_xy, vizd_project, vizd_points_tris, vizd_cloud_cm, vizd_tile2bit_rgba, vizd_ribbon; se expone desde ros2_vita (ADR 0008 §1).",
+  "fuentes": [
+   "godot/ros2_vita/xrce_transport.cpp:411-415",
+   "godot/ros2_vita/ros_runtime.cpp:118-133",
+   "godot/ros2_vita/ros_msg.cpp:432-488",
+   "docs/adr/0008-godot-via-modulo-estatico.md:22-25",
+   "docs/27-xrce-limites-y-relay.md §1-2",
+   "docs/ia/workshops/posts/W8-borrador.md §4"
+  ],
+  "confianza": "[I] (umbral de diseño; depende de E-W8-0)",
+  "coste_estimado": "viz-decode: M, 2-3 días (C + Rust + paridad + binding) + recompilar plantilla 1-2 h; no bloquea la Fase 1.",
+  "como_se_mediria_en_hardware": "E-W8-0: bucles GDScript de 10 000 iteraciones (aritmética+índice, cos/sin, llamada al motor, Image.set_pixel, set_joints de 29 joints) cronometrados con Time.get_ticks_usec(); salida «[w8] gd_op_us=… engine_call_us=…». Si gd_op_us > 3, scan y path pasan a C."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Hallazgos en el cliente del relay ya escrito: tesela de mapa por set_pixel (≈ 20 ms por tesela), textura entera a 4 Hz, cos/sin por rayo, redibujado por fotograma, get_meta por joint",
+  "evidencia": "[V] vita_relay.gd:55-66 llama a set_pixel 1 024 veces por tesela desde GDScript; :72-77 sube la textura completa hasta 4 veces por segundo; :94-107 calcula cos y sin y hace append por rayo. [V] minimapa.gd:33-36 llama a queue_redraw() cada fotograma. [V] urdf_robot.gd:62-73 hace 5 get_meta por joint y mensaje. [I] A 20 teselas/s la decodificación actual ocupa ≈ 40 % del núcleo durante la sincronía inicial (144 teselas, ≈ 7 s) y siempre con SLAM; set_joints de 29 joints ≈ 3 ms a 25 Hz ≈ 7 % del núcleo.",
+  "fuentes": [
+   "godot/comun/vita_relay.gd:55-66",
+   "godot/comun/vita_relay.gd:72-77",
+   "godot/comun/vita_relay.gd:94-107",
+   "godot/g1-unitree/minimapa.gd:33-36",
+   "godot/g1-unitree/robot/urdf_robot.gd:62-73",
+   "docker/scripts/vita_relay.py:140"
+  ],
+  "confianza": "[V] código; [I] milisegundos",
+  "coste_estimado": "S-M, solo GDScript: LUT byte→16 B RGBA + Image.create_from_data + blit_rect; sub-texturas; tabla de direcciones; redibujar al cambiar; cachear constantes de joints.",
+  "como_se_mediria_en_hardware": "E-W8-4 y E-W8-0: «[w8] tesela_us=» con set_pixel, con LUT y con PNG; «[w8] set_joints_us=» antes y después. Verde: tesela <= 1,5 ms, scan <= 1,5 ms, set_joints <= 1 ms."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Imagen y mapa por el C++ del motor: Image.load_jpg_from_buffer / load_png_from_buffer están en la plantilla; el libjpeg del VitaSDK no tiene SIMD",
+  "evidencia": "[V] La plantilla exporta Image::load_jpg_from_buffer, load_png_from_buffer y load_webp_from_buffer; el módulo jpg se compila para la Vita y enlaza el libjpeg.a del SDK, que no contiene símbolos jsimd (decodificación escalar). [I] JPEG 160×120 ≈ 2-4 ms de decodificación + ≈ 1-2 ms de subida; 320×240 ≈ 9-13 ms. [I] Una tesela 32×32 como PNG indexado de 2 bit ocupa 110-360 B (cabe siempre en un datagrama) y se decodifica en ≈ 0,3 ms sin código nuestro.",
+  "fuentes": [
+   "toolchains/godot4-vita/out/libgodot.so (strings/nm: load_jpg_from_buffer, load_png_from_buffer, jpeg_read_header)",
+   "toolchains/godot4-vita/engine/modules/jpg/image_loader_libjpeg_turbo.cpp",
+   "toolchains/godot4-vita/engine/platform/vita/detect.py:228-232",
+   "toolchains/vitasdk/arm-vita-eabi/lib/libjpeg.a (nm: 0 símbolos jsimd)"
+  ],
+  "confianza": "[V] disponibilidad; [I] tiempos",
+  "coste_estimado": "S: módulo «camara» del relay (OpenCV, JPEG 160×120 q40) + TextureRect; PNG de teselas = cambio opcional de formato en el relay.",
+  "como_se_mediria_en_hardware": "E-W8-5: load_jpg_from_buffer de 160×120 q40 y 320×240 + ImageTexture.update a 5 y 10 Hz; «[w8] jpg_us=», fps, textures=. Verde: 160×120 <= 6 ms en total y fps sin bajar de escalón (60 o 30)."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Presupuesto de render inicial: Viz 30 FPS = 30 000 triángulos, 150 instancias 3D, 1 500 quads 2D, 16 MiB de texturas; HMI 60 FPS = 15 000 triángulos y 80 instancias",
+  "evidencia": "[I] Asignación de diseño a partir de G7c (59 FPS con 20 instancias y 5 574 triángulos), de los umbrales del propio port (avg_submit_us 9/14 ms) y de la lectura del código. CPU por fotograma Viz/HMI: GDScript+XRCE+decodificación 8/4 ms; envío 3D 9/6 ms; lienzo 3/2 ms; construcciones 6/3 ms de pico. Reparto 3D: robot 15 000 tri y 40 instancias; mapa y entorno 3 000 y 12; TF 1 200 y 32; marcadores 3 000 y 48; Path 500 y 4; reserva 7 300 y 14. triangle_budget = 40 000 para que el descarte por instancia entera no actúe dentro del presupuesto. [I] Coste por draw 3D estimado 15-40 µs.",
+  "fuentes": [
+   "docs/06-bitacora-estado.md:56-58",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:858-859",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:934",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:950",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:1245-1249",
+   "docs/ia/workshops/posts/W1-vita-sdk.json",
+   "docs/ia/workshops/posts/W8-borrador.md §5"
+  ],
+  "confianza": "[I] (un solo dato de hardware)",
+  "coste_estimado": "0 (documento) + proyecto w8-bench 1-2 días.",
+  "como_se_mediria_en_hardware": "E-W8-1: K ∈ {20, 70, 150, 300} instancias × {10, 20, 40, 60} mil triángulos, con vertex_lighting true y false. Verde: 30 000/150 con fps >= 29,5 y avg_submit_us <= 9000; 15 000/80 con fps >= 59. µs por draw = Δavg_submit_us/ΔK."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Ajustes de proyecto obligatorios para visualización: distance_darkening=false, shadow_rays=0, light_flares=false, triangle_budget=40000, texturas RGBA8888, cámara cenital a <= 20 m",
+  "evidencia": "[V] distance_darkening (activo por defecto) baja la base hasta el 18 % a más de 16 m de la cámara. [V] shadow_rays=96 por defecto lanza rayos de física dentro del render para luces omni/spot. [V] El descarte por distancia usa la distancia a la posición de la cámara: borde a > 40 m siempre, a > 22 m si el radio aparente < 0,012 rad; una cámara ortográfica alta perdería marcadores. [V] Los ajustes se leen cada fotograma con get_setting: se pueden cambiar en caliente. [V] Ningún proyecto del repo define hoy rendering/vita/*.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:699-704",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:774-780",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:848-869",
+   "toolchains/godot4-vita/engine/platform/vita/gxm_camera_lod.h:9-18",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:917-925",
+   "godot/g1-unitree/project.godot",
+   "godot/g7-imu/project.godot"
+  ],
+  "confianza": "[V] código; [I] que project.godot admita claves sin registrar",
+  "coste_estimado": "S: 5 líneas por project.godot.",
+  "como_se_mediria_en_hardware": "Vista cenital del G1 con y sin los ajustes: captura (brillo del suelo) y [gxm3d] rays=, distance_culled=. Verde: rays=0, distance_culled=0 y colores sin oscurecer."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Reglas de geometría: líneas como cinta plana (2 tri/segmento) o prisma (6), ejes TF como una malla compartida de 36 tri, grosor mínimo por distancia como escala de instancia, estático horneado en una instancia",
+  "evidencia": "[V] No hay culling de caras: una cinta plana se ve por ambos lados. [V] El cargador inicia vita2d sin MSAA. [I] Una caja de menos de ~1,5 px parpadea: con fov 55° (focal ≈ 522 px) el grosor mínimo es 1,5·d/522 (9 mm a 3 m, 29 mm a 10 m); se aplica como escala de la instancia, sin reconstruir malla. [V] Cada instancia es un draw: la casa del G1 (34 cajas, 21 materiales) horneada con paleta pasa de 34-68 draws a 1.",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:370",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:193",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:912",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:953",
+   "godot/g1-unitree/casa/casa.tscn",
+   "godot/g1-unitree/main.gd:114-117"
+  ],
+  "confianza": "[V] hechos; [I] umbral de 1,5 px",
+  "coste_estimado": "S-M: funciones de malla en GDScript (ejes, flecha, cinta, primitivas unidad); hornear la casa en docker/g1/casa.py.",
+  "como_se_mediria_en_hardware": "Inspección visual: ejes de 10 mm, 20 mm y 30 mm de grosor a 2, 5 y 10 m; anotar el menor sin parpadeo. Casa horneada frente a 34 cajas: [gxm3d] drawn=, lit=, avg_submit_us."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Alternativa registrada P1: parche para que mesh_surface_update_vertex_region escriba en sitio en el arena (elimina el consumo de arena y el riesgo de la malla de luz obsoleta)",
+  "evidencia": "[V] Hoy es un no-op heredado del almacenamiento dummy; los vértices residentes son vita2d_texture_vertex contiguos y la GPU está ociosa entre fotogramas (comentario del propio puente). [I] ~60-100 líneas en GXMMeshStorage: decodificar la región y escribir x,y,z en flat[rid][surface].gpu (y en la malla de luz); arreglaría también Sprite3D. Es el parche más pequeño y el más proponible a upstream (WolffsRoom/godot4-vita).",
+  "fuentes": [
+   "toolchains/godot4-vita/engine/servers/rendering/dummy/storage/mesh_storage.h:120",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:32-43",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:402-429",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:35-42",
+   "godot/loader-patches/0001-ros2-vita-imports.patch",
+   "tools/build-godot-template.sh:49-57"
+  ],
+  "confianza": "[I]",
+  "coste_estimado": "M: 1-2 días + plantilla (1-2 h) + mantener un parche del motor (hoy solo hay uno, del cargador).",
+  "como_se_mediria_en_hardware": "Repetir E-W8-2 con surface_update_vertex_region: arena_kb plano, invalidations sin crecer, build_us ≈ 0. Solo se aborda si E-W8-2 sale rojo."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Alternativa registrada P2/P3: color por vértice y líneas/puntos 3D con lo que vita2d ya ofrece; MSAA en el cargador",
+  "evidencia": "[V] vita2d tiene vita2d_color_vertex (x,y,z,color) y vita2d_draw_array(modo, …) acepta SCE_GXM_PRIMITIVE_LINES y POINTS; la malla de luz del puente ya es una malla residente con color por vértice dibujada con el programa de color de vita2d. [I] P2 = leer ARRAY_COLOR en el aplanado + un tipo de malla de color en el puente + dejar pasar LINES/POINTS: sin shaders nuevos, pero toca plantilla y cargador; las líneas saldrían de 1 px. [V] vita2d_init_advanced_with_msaa existe; la pasada de luz crea su programa con MULTISAMPLE_NONE, habría que adaptarla (P3).",
+  "fuentes": [
+   "toolchains/vitasdk/arm-vita-eabi/include/vita2d.h:21-26",
+   "toolchains/vitasdk/arm-vita-eabi/include/vita2d.h:62",
+   "toolchains/vitasdk/arm-vita-eabi/include/vita2d.h:100",
+   "toolchains/vitasdk/arm-vita-eabi/include/psp2/gxm.h:104-107",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:377-401",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:482-545",
+   "toolchains/godot4-vita/engine/platform/vita/loader/gxm_bridge.c:502"
+  ],
+  "confianza": "[I]",
+  "coste_estimado": "P2: M-L (3-5 días + pruebas en hardware); P3: S-M.",
+  "como_se_mediria_en_hardware": "Tras el parche: ArrayMesh con ARRAY_COLOR y otra con PRIMITIVE_LINES; captura y submitted_triangles. No se aborda en la Fase 1: la paleta y el 2D lo cubren."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Alternativas descartadas: vitaGL de vita-app, vista 2D cenital como única vista, todo lo dinámico en 3D, una instancia por punto, una superficie por color, ruta de piel con esqueleto, decodificar mensajes crudos en GDScript",
+  "evidencia": "[V] vitaGL: proceso aparte, no convive con Godot en la GPU (ADR 0008 contexto 4; ADR 0007) y ADR 0008 §5 deja vita-app como histórica. [I] Planta pura: deja fuera RobotModel y TF 3D que G7c y el G1 ya dan; se conserva como una de las dos vistas. [I] Todo dinámico en 3D: aplazado a E-W8-2. [V] Instancia por punto: un draw por instancia. [I] Superficie por color: N draws frente a 1 con paleta. [V] Ruta de piel: la caché de piel solo se refresca si cambia la versión del esqueleto y copia vértices cada fotograma; frágil. [V] Mensajes crudos: no caben en XRCE (docs/27) y cuestan de 60 ms a 1 s en GDScript (W4 §3).",
+  "fuentes": [
+   "docs/adr/0007-convivencia-vita2d-vitagl.md",
+   "docs/adr/0008-godot-via-modulo-estatico.md:17-18,42-51",
+   "vita-app/src/viz/viz.c:29-45",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:912",
+   "toolchains/godot4-vita/engine/platform/vita/rasterizer_scene_gxm_vita.inc:1046-1122",
+   "docs/27-xrce-limites-y-relay.md §1",
+   "docs/ia/workshops/posts/W4-matriz-borrador.md §3"
+  ],
+  "confianza": "[V]/[I] según la fila",
+  "coste_estimado": "0",
+  "como_se_mediria_en_hardware": "No aplica (descartes por diseño), salvo «todo dinámico en 3D», que se decide con E-W8-2."
+ },
+ {
+  "workshop": "W8",
+  "autor": "diseñador-render (fable)",
+  "candidato": "Borrador de ADR 00XX «Presupuesto de render y visualización sin shaders en la Vita»",
+  "evidencia": "Formato de docs/adr/0008 (Estado, Fecha, Contexto, Decisión, Alternativas descartadas, Consecuencias). Decisión en 8 puntos: reparto en dos capas, dos vistas, paleta, reglas de malla, regla de corte de la decodificación, presupuesto inicial, ajustes fijos y no parchear el rasterizador en la Fase 1. Estado propuesto: pendiente de revisión escéptica y de los gates E-W8-1, E-W8-3 y E-W8-6.",
+  "fuentes": [
+   "docs/ia/workshops/posts/W8-borrador.md §8",
+   "docs/adr/0008-godot-via-modulo-estatico.md"
+  ],
+  "confianza": "[I]",
+  "coste_estimado": "0 (texto); numeración a cargo del orquestador.",
+  "como_se_mediria_en_hardware": "El ADR pasa a Aceptado cuando E-W8-1, E-W8-3 y E-W8-6 estén verdes; si alguno sale rojo se aplica el punto 8 de la decisión (bajar contenido, cambiar de capa o parche P1)."
+ }
+]

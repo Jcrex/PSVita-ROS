@@ -74,6 +74,62 @@
    "equipo": [
     "orquestador (opus)"
    ]
+  },
+  "W3": {
+   "pregunta": "DB-TSDF: escalera de bits",
+   "equipo": [
+    "diseñador-dbtsdf (fable, máx.)"
+   ],
+   "estado": "cerrado (diseño) → docs/26, ADR 0010; juicio de otro modelo pendiente",
+   "posts": [
+    "posts/W3-borrador.md"
+   ]
+  },
+  "W8": {
+   "pregunta": "Render sin shaders y presupuesto",
+   "equipo": [
+    "diseñador-render (fable, máx.)"
+   ],
+   "estado": "cerrado (diseño) → docs/31, ADR 0011; por medir E-W8-0…6",
+   "posts": [
+    "posts/W8-render.json",
+    "posts/W8-borrador.md"
+   ]
+  },
+  "W9": {
+   "pregunta": "Acciones sin XRCE",
+   "equipo": [
+    "diseñador-acciones (fable, máx.)"
+   ],
+   "estado": "cerrado (diseño, 13 posts; borrador en prosa no escrito por límites) → docs/32, ADR 0012",
+   "posts": [
+    "posts/W9-acciones.json"
+   ]
+  },
+  "W12": {
+   "pregunta": "Sensores (LT5) y visión (LT7)",
+   "equipo": [
+    "investigador-sensores-vision (opus)"
+   ],
+   "estado": "cerrado → docs/28",
+   "posts": [
+    "posts/W12-sensores-vision.json",
+    "posts/W12-borrador.md"
+   ]
+  },
+  "W10": {
+   "pregunta": "Plugins y capa URDF↔ros2_vita",
+   "equipo": [
+    "orquestador (opus) — sustituye a Fable por límites de uso"
+   ],
+   "estado": "cerrado en docs/33 §4 (capa URDF: ADR 0009/docs/25)"
+  },
+  "W11": {
+   "pregunta": "Reparto Vita/PC (Fase 2) y prioridades (Fase 4)",
+   "equipo": [
+    "orquestador (opus) — sustituye a Fable por límites de uso"
+   ],
+   "estado": "cerrado en docs/33 §5"
   }
  },
  "decisiones": [],
@@ -96,5 +152,18 @@
   "acciones": [
    "API_PARITY.md corregido: TF y RosLogger ⏳ (no existen en el módulo) → tarea P0 de ros2_vita"
   ]
+ },
+ "sustituciones": [
+  "2026-11-12: W10 y W11 los resolvió el orquestador (Opus 5.5) en vez de Fable 5.2 (límites de uso de 5 h y semanal); W3/W8/W9 fueron de Fable con cortes"
+ ],
+ "docs_finales": {
+  "24": "portabilidad Ozuba",
+  "25": "URDF + ADR 0009",
+  "26": "DB-TSDF + ADR 0010",
+  "27": "XRCE y relay",
+  "28": "sensores y visión",
+  "31": "render + ADR 0011",
+  "32": "acciones + ADR 0012",
+  "33": "maestro"
  }
 }

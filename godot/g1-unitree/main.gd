@@ -20,6 +20,7 @@ extends Node3D
 
 const Marcha := preload("res://marcha.gd")
 const ColisionCasa := preload("res://colision_casa.gd")
+const Minimapa := preload("res://minimapa.gd")
 
 const MODOS := ["marcha", "ros", "de pie", "barrido"]
 const POSE_DEFECTO := {   # deploy/deploy_mujoco/configs/g1.yaml (default_angles) de unitree_rl_gym
@@ -59,6 +60,8 @@ var _arrastrando := false
 var node: RosNode
 var pub_cmd: RosPublisher
 var sub_estado: RosSubscriber   # guardar las referencias: RefCounted, si se sueltan se cancelan
+var subs_relay: Array = []      # suscripciones del minimapa (vita_relay)
+var minimapa: Control
 var ros_listo := false
 var ros_error := ""
 var estado_n := 0
@@ -129,6 +132,11 @@ func _montar_escena() -> void:
 	hud.add_theme_constant_override("outline_size", 4)
 	var capa := CanvasLayer.new()
 	capa.add_child(hud)
+	# Minimapa del modo ros (abajo a la derecha; se muestra al llegar /vita/mapa_meta del relay del PC).
+	minimapa = Minimapa.new()
+	minimapa.position = Vector2(960 - 250, 544 - 222)
+	minimapa.size = Vector2(240, 196)
+	capa.add_child(minimapa)
 	add_child(capa)
 
 
@@ -278,6 +286,16 @@ func _iniciar_ros() -> void:
 	qos.set_reliability(RosQoS.BEST_EFFORT)   # g1_sim publica /g1/estado en best effort
 	pub_cmd = node.create_publisher("/cmd_vel", "geometry_msgs/msg/Twist", qos)
 	sub_estado = node.create_subscription("/g1/estado", "std_msgs/msg/Float32MultiArray", _on_estado, qos)
+	# Minimapa: mapa por teselas + pose desde `docker/vita-ros.sh relay` (doc 27). La meta va en fiable +
+	# TRANSIENT_LOCAL para que llegue aunque la Vita se conecte después de publicarse el mapa.
+	var latched := RosQoS.new()
+	latched.set_reliability(RosQoS.RELIABLE)
+	latched.set_durability(RosQoS.TRANSIENT_LOCAL)
+	subs_relay = [
+		node.create_subscription("/vita/mapa_meta", "std_msgs/msg/Float32MultiArray", minimapa.relay.on_mapa_meta, latched),
+		node.create_subscription("/vita/mapa_tesela", "std_msgs/msg/UInt8MultiArray", minimapa.relay.on_mapa_tesela, qos),
+		node.create_subscription("/vita/pose2d", "std_msgs/msg/Float32MultiArray", minimapa.on_pose, qos),
+	]
 	ros_listo = true
 
 

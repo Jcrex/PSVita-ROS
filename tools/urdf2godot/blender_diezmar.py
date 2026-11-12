@@ -53,6 +53,11 @@ def main():
             bpy.ops.object.modifier_apply(modifier=mod.name)
         # Sombreado plano: con mallas muy diezmadas el suave da artefactos y la Vita ilumina por vértice.
         bpy.ops.object.shade_flat()
+        # Quitar vértices sueltos (si no, el OBJ los exporta igualmente: archivos enormes con pocas caras).
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.delete_loose(use_verts=True, use_edges=False, use_faces=False)
+        bpy.ops.object.mode_set(mode="OBJECT")
         despues = triangulos(obj)
         bpy.ops.wm.obj_export(
             filepath=t["salida"], export_selected_objects=True, forward_axis="Y", up_axis="Z",

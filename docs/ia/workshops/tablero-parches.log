@@ -1,3 +1,4 @@
 2026-11-11 · W1,W4,W5,W7 · añadidos veredictos provisionales de la ronda divergente (pendientes de revisión escéptica, posts/revision-oleada1.json) · proyecto G1 registrado
 2026-11-11 · W2 · veredicto provisional · W6 absorbido por G1 (justificación: el G1 es un RobotModel real con 29 joints; la parte TF depende de la revisión de paridad)
 2026-11-11 · revisión oleada 1 · 22 V / 2 ALT / 1 DESAFÍO integrados · API_PARITY.md corregido (TF, RosLogger)
+2026-11-12 · W3,W8,W9,W12 cerrados; W10,W11 por el orquestador (sustitución documentada); docs 24–28, 31–33; ADRs 0009–0012
