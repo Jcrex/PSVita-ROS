@@ -62,6 +62,9 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   `tools/build-pcre2-vita.sh`, docs/18 §4.5);
   `tools/check-vita-imports.py` / `build-rust-pic.sh` / `build-c-pic.sh` verifican/construyen los enlaces (G2); `tools/hwprobe/`
   es una sonda de hardware (sin compilar; docs/14 §9).
+  `godot/plantillas/` = biblioteca común de robots/sensores ROS 2 y mundo 3D reutilizable;
+  `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/dron-mapeo/` = tres proyectos base con catálogos
+  `ros/topics.json`, perfiles PC/Vita y presets `.vpk` propios; guía en `docs/29`;
   `godot/godot35/` = app teleop en Godot 3.5 (HISTÓRICO, validada en hardware; docs/20–21);
   `godot/rclgd/` = clon local de rclgd (jazzy, trae Godot 4.7.1), no versionado.
 - `docker/` — estación ROS 2 Jazzy propia (`vita-ros.sh`): agente micro-ROS, monitor de la Vita,

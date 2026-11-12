@@ -50,7 +50,11 @@ struct XrceDiag {
 	// Códigos de la inicialización de red (Vita): 0 = OK; 0x8041... = errores de sceNet.
 	int rc_sysmodule = 0, rc_netinit = 0, rc_netctl = 0, rc_net_udp = 0;
 	int topic_callbacks = 0, topic_dropped = 0; // datos entregados por uxr / descartados aquí
-	int reliable_full = 0; // publicaciones desviadas al stream best effort por estar lleno el fiable
+	int reliable_full = 0; // intentos de envio que encontraron el stream fiable lleno
+	int be_dropped = 0; // mensajes descartados al llenarse la cola best effort
+	int be_pending = 0;
+	int reliable_dropped = 0;
+	int reliable_pending = 0;
 };
 XrceDiag g_diag;
 
@@ -166,6 +170,15 @@ String history_xml(const Ref<RosQoS> &p_qos) {
 }
 
 class XrceTransport : public RosTransport {
+	struct Pending {
+		int id = 0;
+		PackedByteArray data;
+	};
+	static constexpr size_t BE_QUEUE_MAX = 64;
+	static constexpr size_t RELIABLE_QUEUE_MAX = 32;
+	List<Pending> pending;
+	List<Pending> reliable_pending;
+
 	struct Endpoint {
 		uxrObjectId entity; // datawriter o datareader
 		bool reliable = true;
@@ -330,12 +343,90 @@ public:
 		topics.clear();
 		pubs.clear();
 		subs.clear();
+		pending.clear();
+		reliable_pending.clear();
+		g_diag.be_pending = 0;
+		g_diag.reliable_pending = 0;
 	}
 
 	void poll() override {
 		if (session_open) {
 			uxr_run_session_time(&session, 0); // no bloquea: envía y vacía lo recibido
+			_publish_pending();
+			_publish_reliable_pending();
 		}
+	}
+
+	void _publish_pending() {
+		if (pending.is_empty()) {
+			return;
+		}
+		Pending p = pending.front()->get();
+		const Endpoint *ep = pubs.getptr(p.id);
+		if (!ep) {
+			pending.pop_front();
+			return;
+		}
+		ucdrBuffer ub;
+		if (uxr_prepare_output_stream(&session, best_effort_out, ep->entity, &ub, (uint32_t)p.data.size()) == UXR_INVALID_REQUEST_ID) {
+			return;
+		}
+		pending.pop_front();
+		g_diag.be_pending = pending.size();
+		ucdr_serialize_array_uint8_t(&ub, p.data.ptr(), p.data.size());
+	}
+
+	void _publish_reliable_pending() {
+		if (reliable_pending.is_empty()) {
+			return;
+		}
+		Pending p = reliable_pending.front()->get();
+		const Endpoint *ep = pubs.getptr(p.id);
+		if (!ep) {
+			reliable_pending.pop_front();
+			g_diag.reliable_pending = reliable_pending.size();
+			return;
+		}
+		ucdrBuffer ub;
+		const bool fits = p.data.size() + XRCE_OVERHEAD <= UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
+		if (fits) {
+			if (uxr_prepare_output_stream(&session, reliable_out, ep->entity, &ub, (uint32_t)p.data.size()) == UXR_INVALID_REQUEST_ID) {
+				g_diag.reliable_full++;
+				return;
+			}
+		} else if (uxr_prepare_output_stream_fragmented(&session, reliable_out, ep->entity, &ub, p.data.size(), &XrceTransport::_flush, nullptr) == UXR_INVALID_REQUEST_ID) {
+			g_diag.reliable_full++;
+			return;
+		}
+		reliable_pending.pop_front();
+		g_diag.reliable_pending = reliable_pending.size();
+		ucdr_serialize_array_uint8_t(&ub, p.data.ptr(), p.data.size());
+	}
+
+	void _enqueue_reliable(int p_id, const uint8_t *p_data, size_t p_len) {
+		if ((size_t)reliable_pending.size() >= RELIABLE_QUEUE_MAX) {
+			reliable_pending.pop_front();
+			g_diag.reliable_dropped++;
+		}
+		Pending p;
+		p.id = p_id;
+		p.data.resize(p_len);
+		memcpy(p.data.ptrw(), p_data, p_len);
+		reliable_pending.push_back(p);
+		g_diag.reliable_pending = reliable_pending.size();
+	}
+
+	void _enqueue(int p_id, const uint8_t *p_data, size_t p_len) {
+		if ((size_t)pending.size() >= BE_QUEUE_MAX) {
+			pending.pop_front();
+			g_diag.be_dropped++;
+		}
+		Pending p;
+		p.id = p_id;
+		p.data.resize(p_len);
+		memcpy(p.data.ptrw(), p_data, p_len);
+		pending.push_back(p);
+		g_diag.be_pending = pending.size();
 	}
 
 	int advertise(const String &p_topic, const String &p_type, const Ref<RosQoS> &p_qos) override {
@@ -407,24 +498,14 @@ public:
 		ERR_FAIL_COND_V(!session_open, ERR_UNCONFIGURED);
 		const Endpoint *ep = pubs.getptr(p_id);
 		ERR_FAIL_NULL_V(ep, ERR_DOES_NOT_EXIST);
-		ucdrBuffer ub;
 		const bool fits = p_len + XRCE_OVERHEAD <= UXR_CONFIG_CUSTOM_TRANSPORT_MTU;
-		if (!fits) {
-			// Mayor que un datagrama: solo el stream fiable sabe fragmentar.
-			ERR_FAIL_COND_V_MSG(!ep->reliable, ERR_OUT_OF_MEMORY,
+		if (!ep->reliable) {
+			ERR_FAIL_COND_V_MSG(!fits, ERR_OUT_OF_MEMORY,
 					vformat("ros2_vita/xrce: %d bytes no caben en un datagrama best effort (MTU %d).", (int)p_len, (int)BEST_EFFORT_BUF));
-			ERR_FAIL_COND_V_MSG(uxr_prepare_output_stream_fragmented(&session, reliable_out, ep->entity, &ub, p_len, &XrceTransport::_flush, nullptr) == UXR_INVALID_REQUEST_ID,
-					ERR_BUSY, "ros2_vita/xrce: stream fiable lleno; mensaje grande descartado.");
-		} else if (!ep->reliable || uxr_prepare_output_stream(&session, reliable_out, ep->entity, &ub, (uint32_t)p_len) == UXR_INVALID_REQUEST_ID) {
-			// Best effort, o el fiable está lleno (WiFi lenta, sin confirmar aún): mejor enviar sin garantía
-			// que bloquear o tirar el mensaje (para un teleop cuenta el último). La QoS DDS no cambia: la
-			// fiabilidad aquí es solo del tramo Vita <-> agente.
-			if (ep->reliable) {
-				g_diag.reliable_full++;
-			}
-			ERR_FAIL_COND_V(uxr_prepare_output_stream(&session, best_effort_out, ep->entity, &ub, (uint32_t)p_len) == UXR_INVALID_REQUEST_ID, ERR_BUSY);
+			_enqueue(p_id, p_data, p_len);
+			return OK;
 		}
-		ucdr_serialize_array_uint8_t(&ub, p_data, p_len);
+		_enqueue_reliable(p_id, p_data, p_len);
 		return OK;
 	}
 };
@@ -451,6 +532,10 @@ Dictionary ros2_vita_xrce_diagnostics() {
 	d["topic_callbacks"] = g_diag.topic_callbacks;
 	d["topic_dropped"] = g_diag.topic_dropped;
 	d["reliable_full"] = g_diag.reliable_full;
+	d["be_pending"] = g_diag.be_pending;
+	d["be_dropped"] = g_diag.be_dropped;
+	d["reliable_pending"] = g_diag.reliable_pending;
+	d["reliable_dropped"] = g_diag.reliable_dropped;
 	return d;
 }
 

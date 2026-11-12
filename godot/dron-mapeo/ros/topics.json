@@ -1,0 +1,53 @@
+{
+  "fuentes": {
+    "modelo": "dron propio generado con Blender, 552 triángulos",
+    "arquitectura_sensores": "ROS 2 Jazzy + docs/27 y docs/28"
+  },
+  "perfil_xrce": {
+    "camara": "JPEG 160x120 y profundidad 40x30 a 1 Hz; RGB crudo desactivado",
+    "lidar_2d": "2 Hz; 60 rayos BE en Vita y formato compacto",
+    "lidar_3d": "8 anillos x 30 azimut a 1 Hz",
+    "odometria_y_joints": "5 Hz estándar + 5 Hz compacto + TF 5 Hz",
+    "imu": "10 Hz",
+    "otros": "GNSS 2 Hz, presión/campo/rotores/flujo 5 Hz, Range 2 Hz, mapa por teselas",
+    "colas": "BE 64 y fiable 32 con reintento y contadores de descarte"
+  },
+  "topics": [
+    {"nombre":"/drone/cmd_vel","tipo":"geometry_msgs/msg/Twist","direccion":"sub","loopback":"best effort","vita":"best effort"},
+    {"nombre":"/drone/cmd_vel_stamped","tipo":"geometry_msgs/msg/TwistStamped","direccion":"sub","loopback":"reliable","vita":"reliable"},
+    {"nombre":"/drone/odom","tipo":"nav_msgs/msg/Odometry","direccion":"pub","loopback":"reliable 30 Hz","vita":"no; usar pose2d"},
+    {"nombre":"/vita/drone/pose2d","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"best effort","vita":"best effort 20 Hz"},
+    {"nombre":"/tf","tipo":"tf2_msgs/msg/TFMessage","direccion":"pub","loopback":"best effort, odom->drone_base_link","vita":"best effort"},
+    {"nombre":"/drone/imu/data","tipo":"sensor_msgs/msg/Imu","direccion":"pub","loopback":"best effort 50 Hz","vita":"best effort 30 Hz"},
+    {"nombre":"/drone/gps/fix","tipo":"sensor_msgs/msg/NavSatFix","direccion":"pub","loopback":"best effort 10 Hz","vita":"best effort 5 Hz"},
+    {"nombre":"/drone/pressure","tipo":"sensor_msgs/msg/FluidPressure","direccion":"pub","loopback":"best effort 20 Hz","vita":"best effort 10 Hz"},
+    {"nombre":"/drone/magnetic_field","tipo":"sensor_msgs/msg/MagneticField","direccion":"pub","loopback":"best effort 20 Hz","vita":"best effort 10 Hz"},
+    {"nombre":"/drone/battery_state","tipo":"sensor_msgs/msg/BatteryState","direccion":"pub","loopback":"best effort 1 Hz","vita":"best effort 0,2 Hz"},
+    {"nombre":"/drone/front_camera/color/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable rgb8 320x240 5 Hz","vita":"no"},
+    {"nombre":"/drone/front_camera/color/image_raw/compressed","tipo":"sensor_msgs/msg/CompressedImage","direccion":"pub","loopback":"reliable JPEG 5 Hz","vita":"relay troceado"},
+    {"nombre":"/drone/front_camera/color/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
+    {"nombre":"/drone/front_camera/depth/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable 32FC1 80x60 5 Hz","vita":"no"},
+    {"nombre":"/drone/front_camera/depth/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
+    {"nombre":"/drone/down_camera/color/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable rgb8 320x240 5 Hz","vita":"no"},
+    {"nombre":"/drone/down_camera/color/image_raw/compressed","tipo":"sensor_msgs/msg/CompressedImage","direccion":"pub","loopback":"reliable JPEG 5 Hz","vita":"relay troceado"},
+    {"nombre":"/drone/down_camera/color/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
+    {"nombre":"/drone/down_camera/depth/image_raw","tipo":"sensor_msgs/msg/Image","direccion":"pub","loopback":"reliable 32FC1 80x60 5 Hz","vita":"no"},
+    {"nombre":"/drone/down_camera/depth/camera_info","tipo":"sensor_msgs/msg/CameraInfo","direccion":"pub","loopback":"reliable 5 Hz","vita":"no"},
+    {"nombre":"/drone/lidar/points","tipo":"sensor_msgs/msg/PointCloud2","direccion":"pub","loopback":"reliable, 16 anillos, 5 Hz","vita":"no; relay de nube"},
+    {"nombre":"/drone/scan","tipo":"sensor_msgs/msg/LaserScan","direccion":"pub","loopback":"reliable, 360 rayos, 10 Hz","vita":"best effort, 60 rayos, 5 Hz"},
+    {"nombre":"/vita/drone/scan","tipo":"std_msgs/msg/Int16MultiArray","direccion":"pub","loopback":"reliable","vita":"best effort"},
+    {"nombre":"/drone/sonar/down","tipo":"sensor_msgs/msg/Range","direccion":"pub","loopback":"best effort 10 Hz","vita":"best effort 5 Hz"},
+    {"nombre":"/drone/sonar/front","tipo":"sensor_msgs/msg/Range","direccion":"pub","loopback":"best effort 10 Hz","vita":"best effort 5 Hz"},
+    {"nombre":"/drone/rotors","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"best effort 20 Hz","vita":"best effort 10 Hz"},
+    {"nombre":"/drone/optical_flow","tipo":"geometry_msgs/msg/TwistStamped","direccion":"pub","loopback":"best effort 20 Hz","vita":"best effort 10 Hz"},
+    {"nombre":"/drone/emergency_stop","tipo":"std_msgs/msg/Bool","direccion":"sub","loopback":"reliable","vita":"reliable"},
+    {"nombre":"/drone/map","tipo":"nav_msgs/msg/OccupancyGrid","direccion":"pub","loopback":"reliable latched 1 Hz","vita":"no; teselas"},
+    {"nombre":"/vita/drone/mapa_meta","tipo":"std_msgs/msg/Float32MultiArray","direccion":"pub","loopback":"reliable latched","vita":"reliable latched"},
+    {"nombre":"/vita/drone/mapa_tesela","tipo":"std_msgs/msg/UInt8MultiArray","direccion":"pub","loopback":"best effort","vita":"best effort, 260 B"}
+  ],
+  "fuera_de_alcance": [
+    "El modelo de vuelo es cinemático, no aerodinámico ni controlador PX4/ArduPilot.",
+    "El mapa 2D integra LaserScan con odometría conocida; SLAM completo, loop closure y mapa 3D se delegan a slam_toolbox u otro nodo PC.",
+    "La cámara y la nube 3D no se capturan en Vita por las limitaciones GXM; se consume su versión reducida mediante relay."
+  ]
+}

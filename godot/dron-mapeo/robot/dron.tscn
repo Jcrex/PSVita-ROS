@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="ArrayMesh" path="res://comun/mundo/assets/generados/dron.obj" id="1"]
+
+[node name="Dron" type="Node3D"]
+
+[node name="Modelo" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")

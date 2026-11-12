@@ -1,0 +1,35 @@
+{
+  "titulo": "Dron RGB-D + LiDAR + SLAM · ROS 2",
+  "nodo": "drone_mapping_godot",
+  "namespace": "drone",
+  "script": "res://comun/robots/dron.gd",
+  "visual_pc": "res://robot/dron.tscn",
+  "visual_vita": "res://robot/dron.tscn",
+  "spawn_ros": [-5.0, -5.0, 3.0, 0.0],
+  "radio_colision": 0.55,
+  "altura_colision": 0.5,
+  "altura_objetivo": 0.2,
+  "control": {
+    "topic_cmd": "/drone/cmd_vel",
+    "topic_cmd_stamped": "/drone/cmd_vel_stamped",
+    "velocidad_max": [3.0, 3.0, 2.0],
+    "aceleracion_max": [3.0, 3.0, 3.0]
+  },
+  "sensores": [
+    {"tipo":"odometria","nombre":"odometria","topic":"/drone/odom","topic_compacto":"/vita/drone/pose2d","odom_frame":"odom","base_frame":"drone_base_link","hz":30.0,"hz_vita":20.0},
+    {"tipo":"imu","nombre":"imu","topic":"/drone/imu/data","frame_id":"drone_imu_link","hz":50.0,"hz_vita":30.0},
+    {"tipo":"gps","nombre":"gps","topic":"/drone/gps/fix","frame_id":"drone_gps_link","pos_ros":[0.0,0.0,0.15],"hz":10.0,"hz_vita":5.0},
+    {"tipo":"barometro","nombre":"barometro","topic":"/drone/pressure","frame_id":"drone_barometer_link","hz":20.0,"hz_vita":10.0},
+    {"tipo":"magnetometro","nombre":"magnetometro","topic":"/drone/magnetic_field","frame_id":"drone_magnetometer_link","hz":20.0,"hz_vita":10.0},
+    {"tipo":"bateria","nombre":"bateria","topic":"/drone/battery_state","frame_id":"drone_battery_link","voltaje_nominal":22.2,"capacidad_ah":5.0},
+    {"tipo":"camara","nombre":"front_camera","topic":"/drone/front_camera/color","frame_id":"drone_front_camera","optical_frame":"drone_front_camera_optical_frame","pos_ros":[0.22,0.0,0.0],"publicar_profundidad":true,"hz":5.0},
+    {"tipo":"camara","nombre":"down_camera","topic":"/drone/down_camera/color","frame_id":"drone_down_camera","optical_frame":"drone_down_camera_optical_frame","pos_ros":[0.0,0.0,-0.1],"rpy_ros":[0.0,1.57079633,0.0],"publicar_profundidad":true,"hz":5.0},
+    {"tipo":"lidar_3d","nombre":"lidar_3d","topic":"/drone/lidar/points","frame_id":"drone_lidar_link","pos_ros":[0.0,0.0,0.2],"anillos":16,"muestras_azimut":90,"hz":5.0},
+    {"tipo":"lidar_2d","nombre":"scan","topic":"/drone/scan","topic_compacto":"/vita/drone/scan","frame_id":"drone_lidar_link","pos_ros":[0.0,0.0,0.2],"muestras":360,"muestras_vita":60,"angulo_min":-3.14159265,"angulo_max":3.14159265,"rango_max":20.0,"hz":10.0,"hz_vita":5.0},
+    {"tipo":"rango","nombre":"sonar_down","topic":"/drone/sonar/down","frame_id":"drone_sonar_down","direccion_ros":[0.0,0.0,-1.0],"rango_max":15.0,"hz":10.0,"hz_vita":5.0},
+    {"tipo":"rango","nombre":"sonar_front","topic":"/drone/sonar/front","frame_id":"drone_sonar_front","direccion_ros":[1.0,0.0,0.0],"rango_max":8.0,"infrarrojo":true,"hz":10.0,"hz_vita":5.0},
+    {"tipo":"res://comun/sensores/dron_estado.gd","nombre":"estado_drone","frame_id":"drone_base_link","hz":20.0,"hz_vita":10.0},
+    {"tipo":"res://comun/sensores/estop.gd","nombre":"estop","topic":"/drone/emergency_stop"},
+    {"tipo":"mapeo_2d","nombre":"mapeo","padre":"scan","scan_topic":"/drone/scan","map_topic":"/drone/map","topic_meta_compacto":"/vita/drone/mapa_meta","topic_tesela_compacta":"/vita/drone/mapa_tesela","tamano":128,"resolucion":0.25}
+  ]
+}
