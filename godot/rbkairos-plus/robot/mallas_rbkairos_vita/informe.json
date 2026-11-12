@@ -1,0 +1,116 @@
+{
+ "urdf": "/home/jcrex/Proyectos/PSVita-ROS/toolchains/rbkairos_plus_obj.urdf",
+ "escena": "godot/rbkairos-plus/robot/rbkairos_vita.tscn",
+ "links": 40,
+ "joints": 39,
+ "movibles": 10,
+ "triangulos_original": 644880,
+ "triangulos_escena": 11620,
+ "mallas": [
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_base_link_0.obj",
+   "antes": 208241,
+   "despues": 3000
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_top_cover_0.obj",
+   "antes": 4434,
+   "despues": 705
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_base_logo_left_0.obj",
+   "antes": 1646,
+   "despues": 334
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_base_logo_right_0.obj",
+   "antes": 1646,
+   "despues": 334
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_base_logo_front_0.obj",
+   "antes": 1646,
+   "despues": 334
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_base_logo_rear_0.obj",
+   "antes": 1646,
+   "despues": 334
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_front_right_wheel_link_0.obj",
+   "antes": 12488,
+   "despues": 387
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_front_left_wheel_link_0.obj",
+   "antes": 13272,
+   "despues": 387
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_back_left_wheel_link_0.obj",
+   "antes": 12488,
+   "despues": 387
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_back_right_wheel_link_0.obj",
+   "antes": 13272,
+   "despues": 387
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_base_link_inertia_0.obj",
+   "antes": 5002,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_shoulder_link_0.obj",
+   "antes": 30093,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_upper_arm_link_0.obj",
+   "antes": 41143,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_forearm_link_0.obj",
+   "antes": 17929,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_wrist_1_link_0.obj",
+   "antes": 16053,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_wrist_2_link_0.obj",
+   "antes": 18423,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_arm_wrist_3_link_0.obj",
+   "antes": 978,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_imu_base_link_0.obj",
+   "antes": 10098,
+   "despues": 338
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_front_laser_base_link_0.obj",
+   "antes": 1598,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_rear_laser_base_link_0.obj",
+   "antes": 1598,
+   "despues": 388
+  },
+  {
+   "salida": "/home/jcrex/Proyectos/PSVita-ROS/godot/rbkairos-plus/robot/mallas_rbkairos_vita/robot_front_rgbd_camera_link_0.obj",
+   "antes": 231186,
+   "despues": 1201
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+{
+  "robotnik_simulation": "8273bc97470c6c4ec532b4223f0af0e0ab18e644",
+  "robotnik_description": "751059edd6af3a9c083018cfaee59e4496d46580",
+  "robotnik_sensors": "e5186c343910b86a924201edb256f79eb0f73295",
+  "ur_description": "0eb1a861f7772fceb38510d90fa2f98ec668070c",
+  "control_msgs": "ab911bf0746fb064b1a88a2c0d364d6b7abd477b"
+}

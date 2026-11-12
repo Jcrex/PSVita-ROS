@@ -103,6 +103,10 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
   se fragmentan solo en el stream fiable; en *best effort* se rechazan (MTU 512).
 - Entrega de mensajes: cola acotada (256, descarta el más antiguo) volcada al hilo
   principal en `process_frame`.
+- Publicación best effort: cola acotada de 64 mensajes copiados, un datagrama por `poll()` y descarte del más
+  antiguo al llenarse; contadores `be_pending` y `be_dropped` en `get_transport_info()`.
+- Publicación fiable: cola independiente de 32 con reintento si el stream está lleno, un mensaje por `poll()` y
+  contadores `reliable_pending` y `reliable_dropped`. Ya no se desvían publicaciones fiables al stream best effort.
 
 ## Ejes y tipos
 - Mismos helpers de conversión y mismo sentido (`Transform3D` de Godot ⇄ REP-103).

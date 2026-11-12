@@ -35,8 +35,21 @@ VER="$("$GODOT4_DEV7" --version 2>/dev/null | tail -1)"
 # Copia de trabajo (se borra al salir).
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/vita-export.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
-cp -r "$PROJ/." "$WORK/"
+cp -rL "$PROJ/." "$WORK/"   # -L: copia el contenido de los enlaces (p. ej. comun -> ../comun, código compartido)
 rm -rf "$WORK/.godot"
+python3 - "$WORK/project.godot" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+text = p.read_text()
+if "renderer/rendering_method=" not in text:
+    text = text.replace("[rendering]", '[rendering]\n\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"', 1)
+    p.write_text(text)
+for imp in p.parent.rglob("*.png.import"):
+    data = imp.read_text()
+    if "compress/mode=2" in data:
+        imp.write_text(data.replace("compress/mode=2", "compress/mode=0"))
+PY
 mkdir -p "$WORK/addons"
 cp -r "$PSVITA_ADDON" "$WORK/addons/psvita"
 mkdir -p "$WORK/addons/psvita/templates"

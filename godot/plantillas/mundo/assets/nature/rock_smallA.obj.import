@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://xatdqrh024ua"
+path="res://.godot/imported/rock_smallA.obj-1238cea5ab0a47f0862244eeb573efbe.mesh"
+
+[deps]
+
+files=["res://.godot/imported/rock_smallA.obj-1238cea5ab0a47f0862244eeb573efbe.mesh"]
+
+source_file="res://comun/mundo/assets/nature/rock_smallA.obj"
+dest_files=["res://.godot/imported/rock_smallA.obj-1238cea5ab0a47f0862244eeb573efbe.mesh", "res://.godot/imported/rock_smallA.obj-1238cea5ab0a47f0862244eeb573efbe.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

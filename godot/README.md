@@ -37,6 +37,10 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 | `g5-xrce/` | Proyecto de la puerta G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
 | `g6-hmi/` | HMI piloto (G6): teleop `/cmd_vel` con el mapeo de docs/09 + vista cenital de `/odom` (rejilla, robot, rastro, panel) |
 | `g7-imu/` | G7a: IMU de la Vita → `sensor_msgs/Imu` en `/vita/imu` (best effort, 30 Hz, parámetros de escala y ejes). Probado en host y **corre en la Vita** (2026-10-31); **validar en hardware** unidades y ejes. Lección: `docs/tutorial/08` |
+| `plantillas/` | Biblioteca de robots, sensores ROS 2, mundo 3D, generación de esquemas y pruebas comunes. Guía de registro en su README |
+| `rbkairos-plus/` | RB-KAIROS+ oficial con UR10e, IMU, 2×SICK S300, D435, sensores extra del bridge Gazebo y mapa |
+| `g1-sensores/` | Unitree G1 con D435, Mid-360, 3 IMU, joints y topics propietarios Unitree |
+| `dron-mapeo/` | Dron 6DOF con RGB-D frontal/cenital, LiDAR 3D/2D, GNSS, barómetro, magnetómetro, sonar y mapa |
 
 ## Puertas de verificación (docs/18 §8)
 
@@ -72,8 +76,12 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
    `--ipc=host` en **los dos** contenedores: si no, Fast DDS intenta memoria compartida entre contenedores
    distintos, el descubrimiento funciona pero **no llegan datos**. En la Vita: `tools/export-vita-vpk.sh godot/g5-xrce`
    (la IP del agente va en `ros/agent_ip` de `project.godot`).
-   Diseño: un solo hilo; `poll()` cada frame con `uxr_run_session_time(0)` (no bloquea). Sin agente, `rclgd.init`
-   se bloquea ~10 s (10 intentos de sesión) y devuelve `ERR_CANT_CONNECT`.
+   Diseño: un solo hilo; `poll()` cada frame con `uxr_run_session_time(0)` (no bloquea). Los mensajes best effort
+   se copian a una cola de 64 y se envía uno por frame (`be_pending`/`be_dropped` en el diagnóstico), evitando
+   saturar el stream cuando varios sensores publican en el mismo frame. Sin agente, `rclgd.init`
+   se bloquea ~10 s (10 intentos de sesión) y devuelve `ERR_CANT_CONNECT`. Los mensajes fiables tienen otra cola
+   de 32 con reintento por `poll()` (`reliable_pending`/`reliable_dropped`): si el stream está lleno esperan en vez
+   de descartarse o de bloquear a los demás sensores.
 5. **G6 — HMI piloto (verde en hardware).** `docker/vita-ros.sh up` + `sim` (turtlesim + `/odom`) y
    `tools/export-vita-vpk.sh godot/g6-hmi` → `tools/deploy-vpk-ftp.sh build/g6-hmi.vpk`. Lecciones de XRCE: un
    mensaje reconstruido de fragmentos **no es contiguo** (copiar con `ucdr_deserialize_array_uint8_t`); a 20 Hz el

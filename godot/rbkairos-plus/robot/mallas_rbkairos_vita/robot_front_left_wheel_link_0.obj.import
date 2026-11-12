@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dk28igpl80ott"
+path="res://.godot/imported/robot_front_left_wheel_link_0.obj-c0d7d0f6f86d88f42cbd8e0b13ed2276.mesh"
+
+[deps]
+
+files=["res://.godot/imported/robot_front_left_wheel_link_0.obj-c0d7d0f6f86d88f42cbd8e0b13ed2276.mesh"]
+
+source_file="res://robot/mallas_rbkairos_vita/robot_front_left_wheel_link_0.obj"
+dest_files=["res://.godot/imported/robot_front_left_wheel_link_0.obj-c0d7d0f6f86d88f42cbd8e0b13ed2276.mesh", "res://.godot/imported/robot_front_left_wheel_link_0.obj-c0d7d0f6f86d88f42cbd8e0b13ed2276.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
