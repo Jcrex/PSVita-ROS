@@ -177,11 +177,31 @@ def mul_q(a, b):  # xyzw
 URDF_G1 = os.path.join(DESC, "g1_29dof_rev_1_0.urdf")
 
 
+def carpeta_mallas():
+    """Carpeta de mallas que ven TODOS los RViz: si G1_MALLAS está definida (vita-ros.sh la monta en la misma ruta
+    absoluta en el PC, la estación y este contenedor), se copian ahí las mallas oficiales; si no, las de la imagen."""
+    import shutil
+    destino = os.environ.get("G1_MALLAS", "")
+    if not destino:
+        return os.path.join(DESC, "meshes")
+    try:
+        os.makedirs(destino, exist_ok=True)
+        for f in os.listdir(os.path.join(DESC, "meshes")):
+            d = os.path.join(destino, f)
+            if not os.path.exists(d):
+                shutil.copy2(os.path.join(DESC, "meshes", f), d)
+        return destino
+    except OSError as e:
+        print(f"[g1] no se pudieron copiar las mallas a {destino}: {e}; uso las de la imagen", flush=True)
+        return os.path.join(DESC, "meshes")
+
+
 def lanzar_robot_state_publisher():
     """robot_state_publisher con el URDF oficial; las mallas pasan a file:// absolutas para RViz."""
     import subprocess
     import tempfile
-    urdf = open(URDF_G1).read().replace('filename="meshes/', f'filename="file://{DESC}/meshes/')
+    mallas = carpeta_mallas()
+    urdf = open(URDF_G1).read().replace('filename="meshes/', f'filename="file://{mallas}/')
     yaml = tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False)
     # YAML con el URDF como bloque literal (indentado) para no pelearse con las comillas.
     yaml.write("robot_state_publisher:\n  ros__parameters:\n    robot_description: |\n")
@@ -227,6 +247,9 @@ def modo_ros(casa, x, y, yaw):
         mapa.info.origin.orientation.w = 1.0
         mapa.data = datos
         p_map.publish(mapa)
+        # Además de latched, se republica cada 2 s: un RViz con el display Map en VOLATILE (su valor por
+        # defecto) no recibe nunca un mensaje publicado una sola vez («No map received»).
+        nodo.create_timer(2.0, lambda: p_map.publish(mapa))
         tf_est = StaticTransformBroadcaster(nodo)
         t0 = TransformStamped()
         t0.header.stamp, t0.header.frame_id, t0.child_frame_id = mapa.header.stamp, "map", "odom"

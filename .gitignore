@@ -51,3 +51,6 @@ godot/rclgd/
 
 # Caché del editor de Godot 4 (se regenera al abrir el proyecto)
 .godot/
+
+# Mallas del G1 copiadas por g1_sim (52 MB, BSD-3 de Unitree; se regeneran solas)
+docker/g1/cache/
