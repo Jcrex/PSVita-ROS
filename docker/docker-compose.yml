@@ -63,8 +63,14 @@ services:
     profiles: ["g1"]
     network_mode: host
     ipc: host
-    environment: *ros-env
+    environment:
+      <<: *ros-env
+      DISPLAY: ${DISPLAY:-:0}
+      QT_QPA_PLATFORM: xcb
+      XDG_RUNTIME_DIR: /tmp/runtime-root
     volumes:
       - ./g1:/opt/g1:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw            # solo para `vita-ros.sh g1-rviz`
+      - ${XAUTHORITY:-~/.Xauthority}:/root/.Xauthority:ro
     command: ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && python3 -u /opt/g1/g1_sim.py --casa /opt/g1/casa.json --inicio ${G1_INICIO:-2.5,2.5,0}"]
 

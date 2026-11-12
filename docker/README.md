@@ -45,7 +45,7 @@ La IP que muestra `up` es la que va en `ros/agent_ip` del proyecto Godot (p. ej.
 | `topics` / `echo [topic]` | `ros2 topic list -t` / `ros2 topic echo` |
 | `sim` | turtlesim con `/turtle1/cmd_vel` remapeado a `/cmd_vel` (ligero, sin GPU) + `scripts/turtle_odom.py`, que publica su pose como `/odom` (relativa al inicio) para la HMI de la Vita |
 | `sim-tb3` | TurtleBot3 Burger en Gazebo Harmonic (mundo vacío). En Jazzy su `/cmd_vel` es `TwistStamped`; la imagen lo cambia a `Twist` (lo que publica la Vita) en los YAML del puente de Gazebo. GUI: validar en el PC |
-| `g1` / `g1-build` / `g1-clips` | Unitree G1 (proyecto `godot/g1-unitree`): imagen `psvita-ros-g1sim:jazzy` (`docker/g1/`, encima de la estación) con MuJoCo y la política de marcha oficial de `unitree_rl_gym`, en la casa de `docker/g1/casa.json`. `/cmd_vel` → `/g1/estado` (best effort, 25 Hz) + `/joint_states`, `/odom`, `/tf`. `g1-clips` regenera los clips de marcha |
+| `g1` / `g1-build` / `g1-clips` | Unitree G1 (proyecto `godot/g1-unitree`): imagen `psvita-ros-g1sim:jazzy` (`docker/g1/`, encima de la estación) con MuJoCo y la política de marcha oficial de `unitree_rl_gym`, en la casa de `docker/g1/casa.json`. `/cmd_vel` → `/g1/estado` (best effort, 25 Hz) + `/joint_states`, `/odom`, `/tf`. `g1-clips` regenera los clips de marcha. Desde 2026-11-13 publica también `/robot_description` + TF de los 29 joints (`robot_state_publisher`), `/map` de la casa (latched) y `map → odom`; `g1-rviz` abre RViz con el modelo |
 | `rviz` / `rqt` / `teleop` | RViz2, `rqt_graph`, `teleop_twist_keyboard` (para probar sin la Vita) |
 | `bridge-server` | Puente Zenoh escuchando en TCP 7447 |
 | `bridge-client <IP>` | Puente Zenoh conectando al `bridge-server` |
@@ -62,6 +62,13 @@ agente puede ir en el PC. Si algún día no fuera así (otra red, aislamiento de
 3. El grafo ROS 2 queda unido por Zenoh (TCP 7447): `monitor`, `sim` y RViz pueden correr en el PC.
 
 Abrir en el cortafuegos del equipo con el agente: UDP 8888 (agente) y TCP 7447 (Zenoh).
+
+## Sesiones XRCE «fantasma»
+
+Si una app con `ros2_vita` se cierra sin despedirse (botón PS, Godot matado), sus publicadores seguían anunciados
+en el agente sin datos (visto el 2026-11-13: 7 sesiones, 103 topics). Desde ese día la clave de cliente es estable
+por app y plataforma, así que al reconectar el agente reutiliza la sesión (`session re-established`). Los fantasmas
+de antes de ese cambio se limpian reiniciando el agente: `docker restart vita_agent` (y reconectar las apps).
 
 ## GPU
 

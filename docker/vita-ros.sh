@@ -60,6 +60,10 @@ case "${1:-help}" in
         header; "${COMPOSE[@]}" up -d agent
         echo -e "${GREEN}[✓]${NC} G1 en MuJoCo (Ctrl+C para parar). La Vita/Godot: modo «ros» con agente $(ip_pc)"
         "${COMPOSE[@]}" --profile g1 run --rm --name vita_g1sim g1sim ;;
+    g1-rviz)
+        # RViz en la imagen del G1 (las mallas del URDF están ahí): casa, modelo del robot, odometría y TF.
+        gui; "${COMPOSE[@]}" --profile g1 run --rm --name vita_g1rviz g1sim \
+            bash -lc "source /opt/ros/jazzy/setup.bash && rviz2 -d /opt/g1/g1.rviz" ;;
     g1-clips)
         # Regenera los clips de marcha de la política oficial para el modo «marcha» de Godot.
         "${COMPOSE[@]}" --profile g1 run --rm --user "$(id -u):$(id -g)" -v "$SCRIPT_DIR/../godot/g1-unitree/anim:/salida" \
@@ -106,6 +110,7 @@ Uso: docker/vita-ros.sh <comando>
   sim                 turtlesim obedeciendo /cmd_vel + su pose como /odom (ligero)
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
   g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
+  g1-rviz             RViz del G1: casa (/map), modelo (/robot_description), odometría
   relay [mód] [pref]  vita_relay: scan/pose/joints/mapa/path compactos para la Vita (doc 27)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)

@@ -1,0 +1,52 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Reference Frame: map
+      Plane Cell Count: 12
+    - Class: rviz_default_plugins/Map
+      Name: Casa
+      Enabled: true
+      Topic:
+        Value: /map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.8
+    - Class: rviz_default_plugins/RobotModel
+      Name: G1
+      Enabled: true
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: false
+    - Class: rviz_default_plugins/Odometry
+      Name: Odom
+      Enabled: true
+      Topic:
+        Value: /odom
+      Keep: 50
+      Shape:
+        Value: Arrow
+  Global Options:
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 9
+      Focal Point: {X: 5, Y: 4, Z: 0}
+      Pitch: 0.9
+      Yaw: 3.9

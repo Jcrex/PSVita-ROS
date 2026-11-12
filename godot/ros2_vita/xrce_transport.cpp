@@ -53,6 +53,7 @@ struct XrceDiag {
 	int reliable_full = 0; // intentos de envio que encontraron el stream fiable lleno
 	int be_dropped = 0; // mensajes descartados al llenarse la cola best effort
 	int be_pending = 0;
+	int64_t client_key = 0;
 	int reliable_dropped = 0;
 	int reliable_pending = 0;
 };
@@ -305,11 +306,21 @@ public:
 		transport_open = true;
 		g_diag.step = "creando sesion XRCE";
 
-		// Clave de cliente distinta en cada arranque: con una fija, dos clientes (la Vita y una prueba en
-		// el PC) se echaban el uno al otro de la sesión del agente. -p client_key:=N para fijarla.
-		uint32_t key = p_args.has("client_key") ? (uint32_t)String(p_args["client_key"]).to_int()
-												: (uint32_t)(OS::get_singleton()->get_ticks_usec() ^ (uint64_t)OS::get_singleton()->get_unix_time() * 2654435761u);
+		// Clave de cliente ESTABLE por app y plataforma (2026-11-13): al reconectar, el agente sustituye la sesión
+		// anterior de la misma app en vez de dejarla huérfana. Con una clave aleatoria por arranque, cada cierre
+		// sin despedida (botón PS, Godot matado) dejaba en el agente publicadores «fantasma» anunciados sin datos
+		// (se vieron 7 sesiones y 103 topics). La plataforma entra en el hash para que la misma app en la Vita y
+		// en el PC no se echen la una a la otra. -p client_key:=N la fija a mano (p. ej. dos instancias en el PC).
+		uint32_t key;
+		if (p_args.has("client_key")) {
+			key = (uint32_t)String(p_args["client_key"]).to_int();
+		} else {
+			String app = String(ps->get_setting("application/config/name", "ros2_vita"));
+			String plataforma = OS::get_singleton()->has_feature("vita") ? "vita" : OS::get_singleton()->get_name();
+			key = (app + "|" + plataforma).hash();
+		}
 		key = key ? key : 0xCAFE0005;
+		g_diag.client_key = (int64_t)key;
 		uxr_init_session(&session, &transport.comm, key);
 		uxr_set_topic_callback(&session, &XrceTransport::_on_topic, this);
 		bool created = uxr_create_session(&session);
@@ -581,6 +592,7 @@ Dictionary ros2_vita_xrce_diagnostics() {
 	d["topic_dropped"] = g_diag.topic_dropped;
 	d["reliable_full"] = g_diag.reliable_full;
 	d["be_pending"] = g_diag.be_pending;
+	d["client_key"] = g_diag.client_key;
 	d["be_dropped"] = g_diag.be_dropped;
 	d["reliable_pending"] = g_diag.reliable_pending;
 	d["reliable_dropped"] = g_diag.reliable_dropped;
