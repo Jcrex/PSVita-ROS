@@ -44,6 +44,7 @@ services:
     volumes:
       - ./scripts:/scripts:ro
       - ${VITA_WS_PATH:-./ws}:/ws:rw            # workspace colcon para futuras ampliaciones
+      - ${G1_MALLAS:-/tmp/g1_mallas}:${G1_MALLAS:-/tmp/g1_mallas}:ro   # mallas del G1 para RViz (ver g1sim)
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${XAUTHORITY:-~/.Xauthority}:/root/.Xauthority:ro
     devices:
@@ -68,8 +69,12 @@ services:
       DISPLAY: ${DISPLAY:-:0}
       QT_QPA_PLATFORM: xcb
       XDG_RUNTIME_DIR: /tmp/runtime-root
+      G1_MALLAS: ${G1_MALLAS:-/tmp/g1_mallas}
     volumes:
       - ./g1:/opt/g1:ro
+      # Mallas del G1 en la MISMA ruta absoluta en el PC y en los contenedores: el URDF publicado usa file://
+      # a esta carpeta y así cualquier RViz (g1-rviz, `vita-ros.sh rviz` o uno del PC) las encuentra.
+      - ${G1_MALLAS:-/tmp/g1_mallas}:${G1_MALLAS:-/tmp/g1_mallas}:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw            # solo para `vita-ros.sh g1-rviz`
       - ${XAUTHORITY:-~/.Xauthority}:/root/.Xauthority:ro
     command: ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && python3 -u /opt/g1/g1_sim.py --casa /opt/g1/casa.json --inicio ${G1_INICIO:-2.5,2.5,0}"]

@@ -16,6 +16,9 @@ if docker info 2>/dev/null | grep -q "Runtimes:.*nvidia"; then
     COMPOSE+=(-f docker-compose.nvidia.yml)
 fi
 mkdir -p "${VITA_WS_PATH:-$SCRIPT_DIR/ws}/src"
+# Mallas del G1 (las copia g1_sim): misma ruta absoluta en el PC y en los contenedores, para RViz.
+export G1_MALLAS="${G1_MALLAS:-$SCRIPT_DIR/g1/cache/mallas}"
+mkdir -p "$G1_MALLAS"
 
 header() { echo -e "${CYAN}══ PSVita-ROS · estación ROS 2 Jazzy ══${NC}"; }
 
