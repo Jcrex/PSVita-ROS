@@ -63,6 +63,13 @@ fiable + TRANSIENT_LOCAL, y la pose por `/vita/pose2d`. Decodificador común en 
 (enlazado como `comun/`; la exportación copia el contenido con `cp -rL`). Probado en el PC 2026-11-12: 42 teselas
 de la casa en ~2 s, 60 FPS. **Validar en hardware.**
 
+## RViz con el modelo y la casa (2026-11-13)
+
+`docker/vita-ros.sh g1` publica además `/robot_description` (URDF oficial, mallas `file://` de su imagen) con
+`robot_state_publisher` → TF completo de los 29 joints, y `/map` de la casa con `map → odom`. `docker/vita-ros.sh g1-rviz`
+abre RViz en esa misma imagen con `docker/g1/g1.rviz` (mapa, modelo, odometría y herramienta 2D Goal Pose).
+`g1-unitree` **no** tiene cámara ni otros sensores: eso es `godot/g1-sensores` (prefijo `g1s`).
+
 ## Decisiones y por qué
 
 - **`/g1/estado` compacto** (`Float32MultiArray`, 19 valores = 76 B, *best effort*) en vez de `JointState`

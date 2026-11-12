@@ -9,6 +9,18 @@ El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un
 
 ---
 
+## 2026-11-13 (PC) — G1 en vivo desde la Vita: sesiones fantasma, `/robot_description` y `/map`
+
+- **La Vita conecta en modo ros** (sesiones del agente desde 192.168.1.94): `/cmd_vel` a 20 Hz desde la Vita,
+  `/g1/estado` a 25 Hz y `/tf`, `/odom`, `/joint_states` a 50 Hz desde `g1_sim`.
+- **Topics «vacíos» = sesiones XRCE fantasma:** 7 sesiones abiertas (6 nodos `/ros2_vita`, 103 topics del dron,
+  RB-KAIROS+, G1 antiguo…), porque cada cierre sin despedida dejaba la sesión anunciada y la clave era aleatoria.
+  Arreglo en `ros2_vita`: clave estable `hash(nombre de la app | plataforma)` (`-p client_key:=N` para forzarla);
+  probado con `kill -9` ×3 + 1 vivo → 1 nodo, «session re-established». Limpiar los de antes: `docker restart vita_agent`.
+- **`g1_sim`:** `robot_state_publisher` (`/robot_description` + TF de los 29 joints), `/map` de la casa (latched) y
+  `map → odom`; `vita-ros.sh g1-rviz` con `docker/g1/g1.rviz`. Cámara: no existe en `g1-unitree` (está en `g1-sensores`).
+- Editores, plantilla Vita (`PASS … 694 imports`) y `.vpk` reconstruidos; host 294/0.
+
 ## 2026-11-12 (PC, noche) — Revisión del trabajo de Kimi e integración de ambas líneas
 
 - **Revisión** (4 revisores Opus aislados, `docs/ia/revision-kimi/`): procedencia y licencias correctas; 3 críticos

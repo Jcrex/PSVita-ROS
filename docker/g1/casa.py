@@ -130,6 +130,26 @@ def escribir_tscn(ruta_casa, salida, alto_visual):
 
 def escribir_mapa(ruta_casa, base, res=0.05, margen=0.5):
     """OccupancyGrid como PGM (P5) + YAML de map_server: 0 = ocupado (negro), 254 = libre."""
+    celdas, w, h, x0, y0 = rejilla_pgm(ruta_casa, res, margen)
+    os.makedirs(os.path.dirname(os.path.abspath(base)), exist_ok=True)
+    with open(base + ".pgm", "wb") as f:
+        f.write(f"P5\n{w} {h}\n255\n".encode() + bytes(celdas))
+    open(base + ".yaml", "w").write(
+        f"image: {os.path.basename(base)}.pgm\nmode: trinary\nresolution: {res}\n"
+        f"origin: [{x0:.3f}, {y0:.3f}, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.25\n")
+    return w, h
+
+
+def occupancy_grid(ruta_casa, res=0.05, margen=0.5):
+    """La misma rejilla en formato nav_msgs/OccupancyGrid: (data fila 0 = abajo, -1/0/100, w, h, x0, y0)."""
+    celdas, w, h, x0, y0 = rejilla_pgm(ruta_casa, res, margen)
+    conv = {254: 0, 0: 100}
+    data = [conv.get(celdas[(h - 1 - j) * w + i], -1) for j in range(h) for i in range(w)]
+    return data, w, h, x0, y0
+
+
+def rejilla_pgm(ruta_casa, res=0.05, margen=0.5):
+    """Rejilla en orden PGM (fila 0 = arriba): 0 ocupado, 254 libre, 205 desconocido."""
     casa = cargar(ruta_casa)
     xs = [p for m in casa["muros"] for p in (m["de"][0], m["a"][0])]
     ys = [p for m in casa["muros"] for p in (m["de"][1], m["a"][1])]
@@ -153,13 +173,7 @@ def escribir_mapa(ruta_casa, base, res=0.05, margen=0.5):
                 lx, ly = c * px + s * py, -s * px + c * py
                 if abs(lx) <= sx / 2 and abs(ly) <= sy / 2 and 0 <= i < w and 0 <= j < h:
                     celdas[(h - 1 - j) * w + i] = 0
-    os.makedirs(os.path.dirname(os.path.abspath(base)), exist_ok=True)
-    with open(base + ".pgm", "wb") as f:
-        f.write(f"P5\n{w} {h}\n255\n".encode() + bytes(celdas))
-    open(base + ".yaml", "w").write(
-        f"image: {os.path.basename(base)}.pgm\nmode: trinary\nresolution: {res}\n"
-        f"origin: [{x0:.3f}, {y0:.3f}, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.25\n")
-    return w, h
+    return celdas, w, h, x0, y0
 
 
 if __name__ == "__main__":
