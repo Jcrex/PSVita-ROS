@@ -72,6 +72,8 @@ var _perfil_fotogramas := 0
 ## opciones en la Vita; el valor inicial sale de "mundo": {"luz_por_vertice": true|false} de robot.json.
 var luz_por_vertice := true
 var _perfil_dibujado := {}
+## Posición (Godot) y guiñada de salida: del nodo InicioRobot de main.tscn o, si no lo hay, de "spawn_ros".
+var _spawn := {"pos": Vector3.ZERO, "yaw": 0.0}
 
 
 func _ready() -> void:
@@ -82,15 +84,21 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	# `-- mundo=completo` fuerza el mundo de siempre aunque el robot sea el de la Vita (para comparar medidas).
-	perfil_ligero = (OS.has_feature("vita") or lod_override == "vita") and _mundo_arg != "completo"
+	perfil_ligero = Perfil.es_ligero()
 	Perfil.activo = (OS.has_feature("vita") or _perfil_arg) and ProjectSettings.get_setting("ros/perfil_gd", true)
-	mundo = Mundo.instantiate()
-	mundo.perfil_ligero = perfil_ligero
+	# Regla de escenas (doc 35): el mundo, la luz, el ambiente y el punto de salida del robot son nodos de
+	# main.tscn, editables en Godot. El mundo ya hizo su _ready() (los hijos van antes que el padre) y eligió el
+	# perfil él solo; si una escena no lo trae, se instancia como antes.
+	mundo = get_node_or_null("Mundo")
+	if mundo == null:
+		mundo = Mundo.instantiate()
+		mundo.perfil_ligero = perfil_ligero
+		add_child(mundo)
 	var cfg_mundo: Dictionary = config.get("mundo", {})
 	mundo.radio_visible = cfg_mundo.get("radio_visible", mundo.radio_visible)
 	if perfil_ligero:
 		_fijar_luz_por_vertice(cfg_mundo.get("luz_por_vertice", true))
-	add_child(mundo)
+	_spawn = _leer_spawn()
 	_crear_robot()
 	_montar_camara_hud()
 	_configurar_camara()
@@ -140,9 +148,8 @@ func _crear_robot() -> void:
 	colision.position.y = capsula.height * 0.5
 	robot.add_child(colision)
 	add_child(robot)
-	var spawn: Array = config.get("spawn_ros", [0.0, 0.0, 0.0, 0.0])
-	robot.position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
-	robot.rotation.y = spawn[3]
+	robot.position = _spawn.pos
+	robot.rotation.y = _spawn.yaw
 	if robot.has_method("reiniciar_estado"):
 		robot.reiniciar_estado()   # sin pico de velocidad del origen al spawn en la primera odometría (R2-B5)
 	var clave_visual := "visual_vita" if OS.has_feature("vita") or lod_override == "vita" else "visual_pc"
@@ -153,6 +160,20 @@ func _crear_robot() -> void:
 		robot.add_child(visual)
 	if robot.has_method("inicializar_modelo"):
 		robot.call("inicializar_modelo", config)
+
+
+func _leer_spawn() -> Dictionary:
+	var inicio := get_node_or_null("InicioRobot") as Node3D
+	if inicio != null:
+		return {"pos": inicio.position, "yaw": inicio.rotation.y}
+	var spawn: Array = config.get("spawn_ros", [0.0, 0.0, 0.0, 0.0])
+	return {"pos": Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2])), "yaw": spawn[3]}
+
+
+func _volver_al_spawn() -> void:
+	robot.global_position = _spawn.pos
+	robot.rotation.y = _spawn.yaw
+	robot.reiniciar_estado()   # R2-B5
 
 
 func _conectar_deferred() -> void:
@@ -295,16 +316,21 @@ func _base_ros(roll: float, pitch: float, yaw: float) -> Basis:
 
 
 func _montar_camara_hud() -> void:
-	var ambiente := WorldEnvironment.new()
-	ambiente.environment = Environment.new()
-	ambiente.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	ambiente.environment.ambient_light_color = Color(0.58, 0.62, 0.68)
-	ambiente.environment.ambient_light_energy = 0.8
-	add_child(ambiente)
-	var luz := DirectionalLight3D.new()
-	luz.rotation = Vector3(deg_to_rad(-55.0), deg_to_rad(35.0), 0.0)
-	luz.shadow_enabled = false
-	add_child(luz)
+	# Ambiente y luz: si main.tscn los trae (nodos «Ambiente» y «Luz»), se usan tal cual; si no, los de siempre.
+	if get_node_or_null("Ambiente") == null:
+		var ambiente := WorldEnvironment.new()
+		ambiente.name = "Ambiente"
+		ambiente.environment = Environment.new()
+		ambiente.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		ambiente.environment.ambient_light_color = Color(0.58, 0.62, 0.68)
+		ambiente.environment.ambient_light_energy = 0.8
+		add_child(ambiente)
+	if get_node_or_null("Luz") == null:
+		var luz := DirectionalLight3D.new()
+		luz.name = "Luz"
+		luz.rotation = Vector3(deg_to_rad(-55.0), deg_to_rad(35.0), 0.0)
+		luz.shadow_enabled = false
+		add_child(luz)
 	camara = Camera3D.new()
 	camara.current = true
 	camara.far = 80.0
@@ -455,19 +481,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif ev.keycode == KEY_H: _hud_completo = not _hud_completo
 		elif ev.keycode == KEY_L and perfil_ligero: _fijar_luz_por_vertice(not luz_por_vertice)
 		elif ev.keycode == KEY_R:
-			var spawn: Array = config.spawn_ros
-			robot.global_position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
-			robot.rotation.y = spawn[3]
-			robot.reiniciar_estado()   # R2-B5
+			_volver_al_spawn()
 	if ev is InputEventJoypadButton and ev.pressed:
 		if ev.button_index == JOY_BUTTON_B: _cenital = not _cenital
 		elif ev.button_index == JOY_BUTTON_BACK: _hud_completo = not _hud_completo
 		elif ev.button_index == JOY_BUTTON_START and perfil_ligero: _fijar_luz_por_vertice(not luz_por_vertice)
 		elif ev.button_index == JOY_BUTTON_Y:
-			var spawn: Array = config.spawn_ros
-			robot.global_position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
-			robot.rotation.y = spawn[3]
-			robot.reiniciar_estado()   # R2-B5
+			_volver_al_spawn()
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT: _arrastrando = ev.pressed
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP: _distancia_cam = maxf(_cam_dist_min, _distancia_cam - _cam_paso_rueda)

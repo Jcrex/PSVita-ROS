@@ -5,7 +5,6 @@
   "script": "res://comun/robots/dron.gd",
   "visual_pc": "res://robot/dron.tscn",
   "visual_vita": "res://robot/dron.tscn",
-  "spawn_ros": [-5.0, -5.0, 3.0, 0.0],
   "radio_colision": 0.55,
   "altura_colision": 0.5,
   "altura_objetivo": 0.2,

@@ -118,6 +118,13 @@ When the user explicitly asks to learn something, generate the guide/lesson then
 - One commit per coherent milestone; never leave parity tests red.
 - Code that cannot be verified on the laptop is marked "validar en el PC /
   en hardware" in code and READMEs — keep those markers accurate.
+- **Godot scenes rule (user decision, 2026-11-13; `docs/35-regla-escenas-editables.md`):** what is seen and where
+  (world, props, collisions, light, environment, robot spawn) lives in an editable `.tscn`, never built from JSON
+  in code. Code only adapts the scene to the platform (PC/Vita mesh choice, merging, culling) and creates runtime
+  things (robot physics, sensors, camera, HUD). Never save meshes the Vita must not load: store the path and show
+  an editor-only preview (child without `owner`). JSON is only for non-placement config (ROS, sensors, control).
+  The template world `godot/plantillas/mundo/mundo.tscn` is shared by all template projects. Generated scenes
+  (e.g. `g1-unitree/casa/casa.tscn` from `docker/g1/casa.json`) are edited at their source.
 
 ## Sync laptop ↔ PC
 

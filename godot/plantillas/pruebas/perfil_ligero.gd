@@ -23,9 +23,10 @@ func _init() -> void:
 
 
 func _probar() -> void:
-	var MundoBase = load("res://comun/mundo/mundo_base.gd")
-	var completo: Node3D = MundoBase.new()
-	var ligero: Node3D = MundoBase.new()
+	var Mundo: PackedScene = load("res://comun/mundo/mundo.tscn")
+	var completo: Node3D = Mundo.instantiate()
+	completo.perfil_ligero = false
+	var ligero: Node3D = Mundo.instantiate()
 	ligero.perfil_ligero = true
 	root.add_child(completo)
 	root.add_child(ligero)

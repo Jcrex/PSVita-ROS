@@ -1,21 +1,33 @@
 extends Node3D
+## Mundo común de las plantillas (bosque, ciudad, parque y casa). Desde el 2026-11-13 el mundo ES la escena
+## `mundo.tscn` (regla de escenas, doc 35): cada caja y cada modelo es un nodo que se coloca en el editor. Este
+## script solo ADAPTA esa escena al arrancar:
+##  - cajas (`caja_mundo.gd`): les pone la colisión si son sólidas;
+##  - modelos (`asset_mundo.gd`): crea su malla (de PC o de la Vita) y registra los que se mueven.
+##
+## Perfil «Vita ligero» (2026-11-13, objetivo 60 FPS; ADR 0011 §6: HMI = 15 000 triángulos y 80 instancias).
+## En la Vita, o con `-- lod=vita` en el PC (Perfil.es_ligero()). Cambia solo lo que se DIBUJA; las colisiones son
+## las mismas, así que rayos, LiDAR y mapa no cambian:
+##  1. Cajas fundidas en una malla por color (28 draws → 11) y, en las láminas del suelo, solo la cara de arriba.
+##  2. `modelo_vita` de cada modelo: variante de pocos triángulos (tools/generar-lod-vita.py).
+##  3. `dibujar_en_vita = false`: adorno pequeño que no se dibuja (comida, libros…).
+##  4. Visibilidad por distancia al robot (`enfocar()`): fuera de `radio_visible` no se dibuja nada pequeño. El
+##     rasterizador GXM ya descarta a más de 40 m (gxm_camera_lod.h), pero desde la casa se veía media ciudad.
 
 const Util = preload("res://comun/ros/util_ros.gd")
 const Perfil = preload("res://comun/ros/perfil.gd")
+const CajaMundo = preload("res://comun/mundo/caja_mundo.gd")
+const AssetMundo = preload("res://comun/mundo/asset_mundo.gd")
 
-## Perfil «Vita ligero» (2026-11-13, objetivo 60 FPS; ADR 0011 §6: HMI = 15 000 triángulos y 80 instancias).
-## Lo activa la aplicación ANTES de añadir el mundo al árbol (en la Vita, o con `-- lod=vita` en el PC). Cambia
-## solo lo que se DIBUJA; las colisiones son las mismas, así que rayos, LiDAR y mapa no cambian:
-##  1. Cajas del terreno y de la casa fundidas en una malla por color (28 draws → 11) y, en las láminas del suelo,
-##     solo la cara de arriba.
-##  2. `"modelo_vita"` de assets.json: variante de pocos triángulos (tools/generar-lod-vita.py).
-##  3. `"vita": false` de assets.json: adorno pequeño que no se dibuja (comida, libros…).
-##  4. Visibilidad por distancia al robot (`enfocar()`): fuera de `radio_visible` no se dibuja nada pequeño. El
-##     rasterizador GXM ya descarta a más de 40 m (gxm_camera_lod.h), pero desde la casa se veía media ciudad.
-var perfil_ligero := false
+## Si nadie lo fija antes de entrar en el árbol (las pruebas lo hacen), _ready() lo decide con Perfil.es_ligero().
+var perfil_ligero := false:
+	set(v):
+		perfil_ligero = v
+		_perfil_fijado = true
 ## Radio (m) alrededor del foco en el que se dibujan los assets, más el radio del propio asset. ≤ 0 = sin límite.
 var radio_visible := 14.0
 
+var _perfil_fijado := false
 var _agentes: Array[Dictionary] = []
 var _tiempo := 0.0
 var _assets_visibles: Array[Dictionary] = []   # {nodo: Node3D, radio: float}; solo con perfil_ligero
@@ -24,10 +36,26 @@ var _triangulos_malla := {}                    # Mesh -> triángulos (caché de 
 
 
 func _ready() -> void:
-	_construir_terreno()
-	_construir_casa()
+	if not _perfil_fijado:
+		perfil_ligero = Perfil.es_ligero()
+	var cajas: Array[Node] = []
+	var assets: Array[Node] = []
+	_buscar(self, cajas, assets)
+	for c in cajas:
+		_preparar_caja(c)
 	_fundir_cajas()
-	_cargar_assets()
+	for a in assets:
+		_preparar_asset(a)
+
+
+func _buscar(n: Node, cajas: Array[Node], assets: Array[Node]) -> void:
+	for h in n.get_children():
+		if h.get_script() == CajaMundo:
+			cajas.append(h)
+		elif h.get_script() == AssetMundo:
+			assets.append(h)
+		else:
+			_buscar(h, cajas, assets)
 
 
 func _material(color: Color) -> StandardMaterial3D:
@@ -37,33 +65,49 @@ func _material(color: Color) -> StandardMaterial3D:
 	return m
 
 
-func _caja(nombre: String, pos_ros: Vector3, tam_ros: Vector3, color: Color, solido: bool = true) -> Node3D:
-	if perfil_ligero:
-		return _caja_ligera(nombre, pos_ros, tam_ros, color, solido)
-	var n := MeshInstance3D.new()
-	n.name = nombre
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(tam_ros.y, tam_ros.z, tam_ros.x)
-	mesh.material = _material(color)
-	n.mesh = mesh
-	n.position = Util.vector_godot(pos_ros)
-	add_child(n)
+func _color(caja) -> Color:
+	var m = caja.mesh.material
+	return m.albedo_color if m is BaseMaterial3D else Color.WHITE
+
+
+func _preparar_caja(caja) -> void:   # caja_mundo.gd (MeshInstance3D)
+	var box := caja.mesh as BoxMesh
+	if box == null:
+		push_warning("Caja sin BoxMesh: " + caja.name)
+		return
+	if not perfil_ligero:
+		if caja.solido:
+			var body := StaticBody3D.new()
+			var shape := CollisionShape3D.new()
+			var forma := BoxShape3D.new()
+			forma.size = box.size
+			shape.shape = forma
+			body.add_child(shape)
+			caja.add_child(body)
+		return
+	# Perfil ligero: la caja no es un nodo con su malla, sino 2 o 12 triángulos más en la malla de su color. El
+	# nodo que queda (solo si es sólida) lleva únicamente la colisión, igual que antes.
+	var xf: Transform3D = global_transform.affine_inverse() * caja.global_transform
+	_fundir_caja(xf, box.size, _color(caja), caja.solido)
+	var padre: Node = caja.get_parent()
+	var nombre: StringName = caja.name
+	var local: Transform3D = caja.transform
+	var solido: bool = caja.solido
+	padre.remove_child(caja)
+	caja.free()
 	if solido:
-		var body := StaticBody3D.new()
+		var cuerpo := StaticBody3D.new()
+		cuerpo.name = nombre
 		var shape := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		box.size = mesh.size
-		shape.shape = box
-		body.add_child(shape)
-		n.add_child(body)
-	return n
+		var forma := BoxShape3D.new()
+		forma.size = box.size
+		shape.shape = forma
+		cuerpo.add_child(shape)
+		cuerpo.transform = local
+		padre.add_child(cuerpo)
 
 
-## Perfil ligero: la caja no es un nodo con su malla, sino 2 o 12 triángulos más en la malla de su color. El nodo
-## que queda (solo si es sólida) lleva únicamente la colisión, igual que antes.
-func _caja_ligera(nombre: String, pos_ros: Vector3, tam_ros: Vector3, color: Color, solido: bool) -> Node3D:
-	var tam := Vector3(tam_ros.y, tam_ros.z, tam_ros.x)
-	var centro := Util.vector_godot(pos_ros)
+func _fundir_caja(xf: Transform3D, tam: Vector3, color: Color, solido: bool) -> void:
 	var st: SurfaceTool = _cajas_por_color.get(color)
 	if st == null:
 		st = SurfaceTool.new()
@@ -84,26 +128,15 @@ func _caja_ligera(nombre: String, pos_ros: Vector3, tam_ros: Vector3, color: Col
 		var nrm: Vector3 = caras[i][0]
 		var u: Vector3 = caras[i][1] * h
 		var v: Vector3 = caras[i][2] * h
-		var c: Vector3 = centro + nrm * h
+		var c: Vector3 = nrm * h
 		var p0 := c - u - v
 		var p1 := c + u - v
 		var p2 := c + u + v
 		var p3 := c - u + v
+		var nrm_g := (xf.basis * nrm).normalized()
 		for p in [p0, p2, p1, p0, p3, p2]:
-			st.set_normal(nrm)
-			st.add_vertex(p)
-	if not solido:
-		return null
-	var cuerpo := StaticBody3D.new()
-	cuerpo.name = nombre
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = tam
-	shape.shape = box
-	cuerpo.add_child(shape)
-	cuerpo.position = centro
-	add_child(cuerpo)
-	return cuerpo
+			st.set_normal(nrm_g)
+			st.add_vertex(xf * p)
 
 
 func _fundir_cajas() -> void:
@@ -120,83 +153,20 @@ func _fundir_cajas() -> void:
 	_cajas_por_color.clear()
 
 
-func _construir_terreno() -> void:
-	_caja("Suelo", Vector3(0.0, 0.0, -0.15), Vector3(52.0, 52.0, 0.3), Color(0.32, 0.48, 0.24))
-	_caja("Bosque", Vector3(-13.0, 13.0, 0.01), Vector3(24.0, 24.0, 0.03), Color(0.18, 0.34, 0.16), false)
-	_caja("Ciudad", Vector3(13.0, 13.0, 0.02), Vector3(24.0, 24.0, 0.04), Color(0.48, 0.48, 0.43), false)
-	_caja("Parque", Vector3(-13.0, -13.0, 0.02), Vector3(24.0, 24.0, 0.04), Color(0.35, 0.55, 0.25), false)
-	_caja("CarreteraNS", Vector3(12.0, 12.0, 0.05), Vector3(4.0, 24.0, 0.04), Color(0.12, 0.13, 0.15), false)
-	_caja("CarreteraEO", Vector3(12.0, 12.0, 0.06), Vector3(24.0, 4.0, 0.04), Color(0.12, 0.13, 0.15), false)
-	for i in 10:
-		_caja("PasoPeatones%d" % i, Vector3(9.0 + i * 0.65, 9.8, 0.09), Vector3(0.35, 2.0, 0.02), Color(0.85, 0.85, 0.78), false)
-	_caja("SenderoParque", Vector3(-12.0, -12.0, 0.06), Vector3(2.0, 20.0, 0.03), Color(0.65, 0.53, 0.36), false)
-	_caja("Colina", Vector3(-20.0, 20.0, 0.35), Vector3(7.0, 6.0, 0.7), Color(0.25, 0.4, 0.18))
-	_caja("ObstaculoRampa", Vector3(-4.0, -4.0, 0.2), Vector3(2.0, 1.0, 0.4), Color(0.62, 0.4, 0.18))
-
-
-func _construir_casa() -> void:
-	var pared := Color(0.82, 0.78, 0.68)
-	_caja("CasaSuelo", Vector3(10.0, -14.0, 0.08), Vector3(12.0, 10.0, 0.16), Color(0.55, 0.37, 0.22))
-	_caja("CasaNorte", Vector3(10.0, -9.0, 1.25), Vector3(12.0, 0.18, 2.5), pared)
-	_caja("CasaSurIzq", Vector3(5.5, -19.0, 1.25), Vector3(3.0, 0.18, 2.5), pared)
-	_caja("CasaSurDer", Vector3(13.5, -19.0, 1.25), Vector3(5.0, 0.18, 2.5), pared)
-	_caja("CasaOeste", Vector3(4.0, -14.0, 1.25), Vector3(0.18, 10.0, 2.5), pared)
-	_caja("CasaEste", Vector3(16.0, -14.0, 1.25), Vector3(0.18, 10.0, 2.5), pared)
-	_caja("CasaTabiqueA", Vector3(10.0, -12.0, 1.25), Vector3(0.15, 5.0, 2.5), pared)
-	_caja("CasaTabiqueB", Vector3(7.0, -14.5, 1.25), Vector3(5.0, 0.15, 2.5), pared)
-
-
-func _cargar_assets() -> void:
-	var datos = JSON.parse_string(FileAccess.get_file_as_string("res://comun/mundo/assets.json"))
-	if datos == null:
-		push_error("Falta o es inválido res://comun/mundo/assets.json")
+func _preparar_asset(a) -> void:   # asset_mundo.gd (Node3D)
+	var visual: Node3D = a.montar(perfil_ligero)
+	if visual == null and not a.tiene_colision() and not a.se_mueve():
+		a.get_parent().remove_child(a)   # adorno sin colisión: en el perfil ligero no existe
+		a.free()
 		return
-	for entrada in datos:
-		var dibujar: bool = not (perfil_ligero and entrada.get("vita", true) == false)
-		if not dibujar and not entrada.has("colision") and not entrada.has("movimiento"):
-			continue   # adorno sin colisión: en el perfil ligero no existe
-		var ruta: String = entrada.modelo
-		if perfil_ligero and entrada.has("modelo_vita") and ResourceLoader.exists(entrada.modelo_vita):
-			ruta = entrada.modelo_vita
-		var recurso = load(ruta) if dibujar else null
-		if dibujar and recurso == null:
-			push_warning("Asset ausente: " + ruta)
-			continue
-		var n: Node3D
-		if not dibujar:
-			n = Node3D.new()   # solo sostiene la colisión
-		elif recurso is PackedScene:
-			n = recurso.instantiate()
-		else:
-			var instancia := MeshInstance3D.new()
-			instancia.mesh = recurso
-			n = instancia
-		n.name = entrada.get("nombre", entrada.modelo.get_file().get_basename())
-		var p: Array = entrada.pos
-		n.position = Util.vector_godot(Vector3(p[0], p[1], p[2]))
-		n.rotation.y = entrada.get("yaw", 0.0)
-		var e = entrada.get("escala", 1.0)
-		n.scale = Vector3.ONE * e if e is float or e is int else Util.vector_godot(Vector3(e[0], e[1], e[2])).abs()
-		add_child(n)
-		if perfil_ligero and dibujar:
-			var radio := 1.0
-			if n is MeshInstance3D and n.mesh != null:
-				radio = n.mesh.get_aabb().size.length() * 0.5 * maxf(n.scale.x, maxf(n.scale.y, n.scale.z))
-			_assets_visibles.append({"nodo": n, "radio": radio})
-		if entrada.has("colision"):
-			var c: Array = entrada.colision
-			var body := StaticBody3D.new()
-			var shape := CollisionShape3D.new()
-			var box := BoxShape3D.new()
-			box.size = Vector3(c[1], c[2], c[0])
-			shape.shape = box
-			if c.size() > 3:
-				shape.position = Util.vector_godot(Vector3(c[3], c[4], c[5]))
-			body.add_child(shape)
-			body.scale = Vector3.ONE / n.scale
-			n.add_child(body)
-		if entrada.has("movimiento"):
-			_agentes.append({"nodo": n, "centro": n.position, "radio": entrada.movimiento[0], "velocidad": entrada.movimiento[1], "fase": entrada.get("fase", 0.0)})
+	if perfil_ligero and visual != null:
+		var radio := 1.0
+		if visual is MeshInstance3D and visual.mesh != null:
+			radio = visual.mesh.get_aabb().size.length() * 0.5 * maxf(a.scale.x, maxf(a.scale.y, a.scale.z))
+		_assets_visibles.append({"nodo": a, "radio": radio})
+	if a.se_mueve():
+		_agentes.append({"nodo": a, "centro": a.position, "radio": a.radio_movimiento,
+			"velocidad": a.velocidad_movimiento, "fase": a.fase_movimiento})
 
 
 func _process(dt: float) -> void:
@@ -231,7 +201,8 @@ func enfocar(foco: Vector3) -> int:
 		var limite: float = radio_visible + a.radio
 		if nodo.visible:
 			limite *= 1.15
-		var d := Vector2(nodo.position.x - foco.x, nodo.position.z - foco.z).length_squared()
+		var g := nodo.global_position
+		var d := Vector2(g.x - foco.x, g.z - foco.z).length_squared()
 		var ver: bool = radio_visible <= 0.0 or d < limite * limite
 		if ver != nodo.visible:
 			nodo.visible = ver
