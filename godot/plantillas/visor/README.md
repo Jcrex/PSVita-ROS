@@ -357,3 +357,63 @@ $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_directo
 El `ERROR: RosMsg: tipo 'std_msgs/msg/Empty' no esta en el esquema` del log es el caso negativo (decisión 4). Con V5,
 `pruebas/visor_hud.gd` comprueba que Joy, medidores, GoalStatusArray y el feedback **suscriben** (antes «sin
 esquema») y `pruebas/visor_displays.gd` ve el Path estándar en «ok».
+
+## Herramientas que publican (V7)
+
+Estado: **hecho y verde en host** (`pruebas/visor_herramientas.gd`, 70/70) y **probado en vivo en el host** contra la
+estación (`docker/vita-ros.sh up`, `transporte=xrce`, agente 127.0.0.1): `ros2 topic echo` en `vita_station` recibe
+`/goal_pose`, `/initialpose` (con la covarianza de RViz) y `/clicked_point` con `frame_id: map`. **Sin validar en
+hardware** (gate V7 de doc 36 §10: un toque = un evento; meta con ✕ llega a `/goal_pose`; panel trasero no disponible,
+`docs/28:59`).
+
+| Archivo | Herramienta (RViz) | Mensaje → topic | PC | Vita | QoS (doc 36 §6) |
+|---|---|---|---|---|---|
+| `herramienta_visor.gd` | base (`rviz_common::Tool`) | — | — | — | fiable, KEEP_LAST 5 (PC) / 1 (Vita), volátil |
+| `herramientas/teleop.gd` | Teleop | `Twist` → `/cmd_vel`, 20 Hz | flechas + Mayús | stick izq. + **R mantenido**; △/✕ escala | fiable, 1 (`fiabilidad` = BE con el G1) |
+| `herramientas/meta.gd` | Nav2 Goal | `PoseStamped` → `goal_pose` | pulsar, arrastrar el rumbo, soltar | igual + **✕** confirma (○ descarta) | fiable, 5/1 |
+| `herramientas/pose_inicial.gd` | 2D Pose Estimate | `PoseWithCovarianceStamped` → `initialpose` | igual que meta | igual que meta | fiable, 5/1 |
+| `herramientas/punto.gd` | Publish Point | `PointStamped` → `/clicked_point` | al soltar | un toque (sin ✕) | fiable, 5/1 |
+
+**Controles.** SELECT (Tab en el PC) recorre ninguna → Teleop → Meta → Pose inicial → Punto → ninguna (orden del
+árbol); la activa sale en la barra de estado. El táctil delantero llega como ratón (`emulate_mouse_from_touch`); en la
+Vita cada pulsación escribe `[visor-herr] <nombre> toque n=… publicados=…`. Con la planta 2D visible (`planta` = el
+nodo `Vista`) el punto tocado es la inversa de `VisorRos.planta_desde`; si no, rayo de `visor.camara` al suelo de
+`marco_fijo_nodo` (o del origen) y, en Publish Point, rayo de física contra las colisiones del mundo. Todo pasa a ROS
+con `rclgd.godot_to_ros_vector`; `header.frame_id` = `visor.marco_fijo`; sello `nodo.now()`.
+
+**En la escena** (`godot/visor-ros/main.tscn`): `VisorRos/Hud/Herramientas` con Teleop, Meta, PoseInicial y Punto
+(`planta` → `Planta/Vista`). Para que no choquen los botones: el banco E-W8-1 pasa a **START** (`boton = 6`) y
+GestorHud cambia de pestaña solo con **L** (`boton_siguiente = -1`, R queda para el hombre muerto).
+
+### Decisiones de V7 no cubiertas (las más conservadoras)
+
+1. **`extends Node2D`** (el esqueleto de doc 36 §2.9.9 decía `Node`): cada herramienta dibuja su flecha fantasma (y la
+   meta pendiente en naranja) en su `_draw()`, bajo el CanvasLayer del HUD; ≤ 4 *quads* fuera del recuento de
+   GestorHud.
+2. **El ciclo de SELECT incluye «ninguna»** y se arranca sin herramienta activa (`activa_al_inicio` lo cambia).
+   Atiende el SELECT la herramienta activa (o la primera si no hay ninguna): un evento = un cambio.
+3. **Rumbo a 0 en cada pulsación** (el esqueleto de doc 36a heredaba el de la meta anterior). Una pulsación nueva
+   sustituye la meta pendiente; ○/Esc la descartan; al desactivar se descarta.
+4. **Publish Point desactiva y vuelve a «ninguna»** (RViz vuelve a su herramienta por defecto; aquí no hay
+   «Interact»). En la planta 2D el punto es el suelo (z = 0): sin física 2D.
+5. **Teleop:** solo con la herramienta activa; al desactivarla en marcha manda el Twist cero. Escala multiplicativa
+   1,0 (paso 0,25, tope 2,0) sobre `v_max`/`w_max` (g6-hmi usa m/s absolutos). `tick()` y `simular()` son públicos
+   para las pruebas.
+6. **Botones** [I, validar en hardware]: SELECT = `JOY_BUTTON_BACK`, ✕ = `JOY_BUTTON_A` (validado en G6), ○ =
+   `JOY_BUTTON_B`, R = `JOY_BUTTON_RIGHT_SHOULDER`. `ui_accept` (Intro/Espacio) confirma en el PC.
+7. **Sin táctil** (cursor con el stick derecho, rumbo con L/R) y la fuente `/vita/joy` **no** entran en V7.
+8. `RegistroDisplays` y GestorHud no cambian: las herramientas no son displays de un tipo (no se crean por topic).
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_herramientas.gd   # RESULTADO: 70/70
+```
+
+**En la Vita** (con `docker/vita-ros.sh up` en el PC y el `.vpk` de `visor-ros`):
+
+```fish
+docker exec -it vita_station bash -lc "source /opt/ros/jazzy/setup.bash; ros2 topic echo /goal_pose geometry_msgs/msg/PoseStamped"
+```
+
+Verde: SELECT dos veces → barra «Meta»; un toque con arrastre deja la flecha naranja y **no** publica; ✕ → un solo
+mensaje en el `echo` (`frame_id: map`, posición del toque); cada toque da una sola línea `[visor-herr] Meta toque n=`
+en el log (n sube de uno en uno). Igual con `/initialpose` (covarianza 0,25 / 0,25 / 0,0685) y `/clicked_point` (sin ✕).
