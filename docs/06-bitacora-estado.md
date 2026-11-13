@@ -9,6 +9,18 @@ El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un
 
 ---
 
+## 2026-11-13 (PC, tarde) — Reconexión automática de `ros2_vita` y `g1-sensores` igual que `g1-unitree`
+
+- **Reconexión automática** (`xrce_transport.cpp`): tras reiniciar la estación las apps dejaban de publicar (el
+  agente olvida la sesión y el cliente no lo notaba). Ahora: sondas fiables (`create_participant` con `UXR_REUSE`)
+  si en 3 s no llega nada del agente; con 3 sin respuesta, ping de 30 ms cada 2 s y, al volver, se recrean sesión,
+  participante, topics, publicadores y suscriptores con los mismos ids. Probado parando el agente 8 s: `/cmd_vel`
+  vuelve a 10 Hz sola. Host 294/0; editores y plantilla Vita (`PASS … 694 imports`) reconstruidos.
+- **`g1-sensores`** (agente Opus, `docs/ia/revision-kimi/g1-sensores-controles.md`): mismos mandos, selector de clip,
+  root motion y cámara que `g1-unitree` (con `move_and_slide` contra el mundo); modo `fuente_movimiento: g1_sim`
+  (✕/Espacio) que sigue `/g1/estado` de `docker/vita-ros.sh g1` y añade los sensores `g1s`. Runner 14/12/12; prueba
+  nueva `g1-sensores/pruebas/movimiento_g1.gd`. **Validar en la Vita** (mandos y 60 FPS).
+
 ## 2026-11-13 (PC) — G1 en vivo desde la Vita: sesiones fantasma, `/robot_description` y `/map`
 
 - **La Vita conecta en modo ros** (sesiones del agente desde 192.168.1.94): `/cmd_vel` a 20 Hz desde la Vita,

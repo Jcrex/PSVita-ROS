@@ -8,6 +8,12 @@
   "radio_colision": 0.28,
   "altura_colision": 1.45,
   "altura_objetivo": 1.0,
+  "fuente_movimiento": "local",
+  "_nota_fuente": "local = Godot es la planta (clips de marcha.gd con root motion + move_and_slide); g1_sim = docker/vita-ros.sh g1 es la planta: el cuerpo sigue /g1/estado y la orden local se publica en /cmd_vel. ✕/Espacio alterna. g1_sim_anclaje: relativo (la primera pose de g1_sim cae donde está el G1) o absoluto.",
+  "g1_sim_topic_estado": "/g1/estado",
+  "g1_sim_topic_cmd": "/cmd_vel",
+  "g1_sim_anclaje": "relativo",
+  "camara": {"nodo_objetivo": "pelvis", "desfase_objetivo": -0.2, "distancia": 3.2, "pitch": 0.45, "dist_min": 1.0, "dist_max": 14.0, "pitch_min": -0.1, "vel_zoom": 3.0, "paso_rueda": 0.3, "suavizado": 0.6},
   "prefijo_compacto": "/vita/g1s",
   "_nota_g1s": "Un solo productor (revisión R4, P0): docker/g1/g1_sim.py publica /g1/estado, /odom, /joint_states y /tf odom->pelvis; g1-sensores usa /g1s/... , /vita/g1s/... y marcos con prefijo g1s/ para poder convivir.",
   "tf_estatico": [

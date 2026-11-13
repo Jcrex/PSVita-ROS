@@ -68,7 +68,9 @@ Abrir en el cortafuegos del equipo con el agente: UDP 8888 (agente) y TCP 7447 (
 Si una app con `ros2_vita` se cierra sin despedirse (botón PS, Godot matado), sus publicadores seguían anunciados
 en el agente sin datos (visto el 2026-11-13: 7 sesiones, 103 topics). Desde ese día la clave de cliente es estable
 por app y plataforma, así que al reconectar el agente reutiliza la sesión (`session re-established`). Los fantasmas
-de antes de ese cambio se limpian reiniciando el agente: `docker restart vita_agent` (y reconectar las apps).
+de antes de ese cambio se limpian reiniciando el agente: `docker restart vita_agent`. Desde el mismo día las apps
+**se reconectan solas** si el agente se reinicia (`up`/`down`, `restart`): detectan la pérdida en ~6 s y vuelven a
+publicar sin reiniciarlas.
 
 ## GPU
 

@@ -38,6 +38,17 @@ var _hud_t := 0.0
 var _yaw_cam := 0.0
 var _pitch_cam := 0.5
 var _distancia_cam := 7.0
+# Cámara de seguimiento configurable con "camara" en robot.json (por defecto, la de siempre de las plantillas).
+# g1-sensores la iguala a g1-unitree/main.gd:326 (pelvis − 0,2 m, 3,2 m, cabeceo 0,45, guiñada suavizada 0,6 s).
+var _cam_dist_min := 2.0
+var _cam_dist_max := 25.0
+var _cam_pitch_min := 0.1
+var _cam_vel_zoom := 5.0          # m/s con la cruceta
+var _cam_paso_rueda := 0.5        # m por golpe de rueda
+var _cam_suavizado := 0.0         # s de la constante de tiempo de la guiñada (0 = rígida)
+var _cam_nodo_objetivo: Node3D    # p. ej. la pelvis del G1; null = origen del cuerpo + altura_objetivo
+var _cam_desfase_objetivo := 0.0  # m en vertical sobre ese nodo
+var _yaw_seguir := 0.0
 var _cenital := false
 var _arrastrando := false
 var _pub_tf_estatico: RosPublisher
@@ -53,6 +64,7 @@ func _ready() -> void:
 	add_child(Mundo.instantiate())
 	_crear_robot()
 	_montar_camara_hud()
+	_configurar_camara()
 	if not sin_ros:
 		_conectar_deferred.call_deferred()
 
@@ -271,9 +283,31 @@ func _montar_camara_hud() -> void:
 	add_child(capa)
 
 
+## Lee "camara" de robot.json: {distancia, pitch, dist_min, dist_max, pitch_min, vel_zoom, paso_rueda,
+## suavizado, nodo_objetivo, desfase_objetivo}. Sin ese bloque todo queda como antes (rbkairos-plus, dron-mapeo).
+func _configurar_camara() -> void:
+	var c: Dictionary = config.get("camara", {})
+	_distancia_cam = c.get("distancia", _distancia_cam)
+	_pitch_cam = c.get("pitch", _pitch_cam)
+	_cam_dist_min = c.get("dist_min", _cam_dist_min)
+	_cam_dist_max = c.get("dist_max", _cam_dist_max)
+	_cam_pitch_min = c.get("pitch_min", _cam_pitch_min)
+	_cam_vel_zoom = c.get("vel_zoom", _cam_vel_zoom)
+	_cam_paso_rueda = c.get("paso_rueda", _cam_paso_rueda)
+	_cam_suavizado = c.get("suavizado", _cam_suavizado)
+	_cam_desfase_objetivo = c.get("desfase_objetivo", _cam_desfase_objetivo)
+	var nombre: String = c.get("nodo_objetivo", "")
+	if nombre != "":
+		var modelo := robot.get_node_or_null("Modelo")
+		_cam_nodo_objetivo = modelo.find_child(nombre, true, false) if modelo != null else null
+	_yaw_seguir = robot.rotation.y
+
+
 func _process(dt: float) -> void:
 	_tiempo += dt
-	if demo and ros_listo:
+	# La demo ya no exige ROS: fijar_orden() no publica nada, y así `-- sin_ros demo captura=…` sirve de prueba de
+	# movimiento sin agente (antes, con sin_ros, el robot no se movía).
+	if demo:
 		var fase := fmod(_tiempo, 16.0)
 		if robot.has_method("fijar_orden"):
 			if fase < 6.0: robot.fijar_orden(Vector3(0.5, 0.0, 0.0))
@@ -292,14 +326,21 @@ func _mover_camara(dt: float) -> void:
 	var rx := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
 	var ry := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 	if absf(rx) > 0.15: _yaw_cam -= rx * 2.0 * dt
-	if absf(ry) > 0.15: _pitch_cam = clampf(_pitch_cam + ry * 1.5 * dt, 0.1, 1.45)
-	if Input.is_joy_button_pressed(0, JOY_BUTTON_DPAD_UP): _distancia_cam = maxf(2.0, _distancia_cam - 5.0 * dt)
-	if Input.is_joy_button_pressed(0, JOY_BUTTON_DPAD_DOWN): _distancia_cam = minf(25.0, _distancia_cam + 5.0 * dt)
+	if absf(ry) > 0.15: _pitch_cam = clampf(_pitch_cam + ry * 1.5 * dt, _cam_pitch_min, 1.45)
+	if Input.is_joy_button_pressed(0, JOY_BUTTON_DPAD_UP): _distancia_cam = maxf(_cam_dist_min, _distancia_cam - _cam_vel_zoom * dt)
+	if Input.is_joy_button_pressed(0, JOY_BUTTON_DPAD_DOWN): _distancia_cam = minf(_cam_dist_max, _distancia_cam + _cam_vel_zoom * dt)
 	var objetivo := robot.global_position + Vector3(0.0, config.get("altura_objetivo", 0.8), 0.0)
+	if _cam_nodo_objetivo != null:
+		objetivo = _cam_nodo_objetivo.global_position + Vector3(0.0, _cam_desfase_objetivo, 0.0)
 	if _cenital:
 		camara.look_at_from_position(Vector3(0.0, 45.0, 0.01), Vector3.ZERO, Vector3.FORWARD)
 		return
-	var y := robot.rotation.y + _yaw_cam
+	# Guiñada del robot suavizada (g1-unitree/main.gd:344) para no marear con el balanceo de la marcha.
+	if _cam_suavizado > 0.0:
+		_yaw_seguir = lerp_angle(_yaw_seguir, robot.rotation.y, 1.0 - exp(-dt / _cam_suavizado))
+	else:
+		_yaw_seguir = robot.rotation.y
+	var y := _yaw_seguir + _yaw_cam
 	var dir := Vector3(sin(y) * cos(_pitch_cam), sin(_pitch_cam), cos(y) * cos(_pitch_cam))
 	camara.look_at_from_position(objetivo + dir * _distancia_cam, objetivo)
 
@@ -318,6 +359,8 @@ func _actualizar_hud(dt: float) -> void:
 	var p: Vector3 = robot.posicion_ros()
 	hud.text = "%s · ROS %s\nSensores %d/%d · pose (%.1f, %.1f, %.1f)\nFPS %d · ○/C cenital · R reinicia" % [
 		config.get("titulo", "Robot ROS 2"), estado, activos, sensores.size(), p.x, p.y, p.z, Engine.get_frames_per_second()]
+	if robot.has_method("linea_hud"):   # p. ej. el G1: fuente de movimiento y clip
+		hud.text += "\n" + robot.call("linea_hud")
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -337,11 +380,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 			robot.reiniciar_estado()   # R2-B5
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT: _arrastrando = ev.pressed
-		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP: _distancia_cam = maxf(2.0, _distancia_cam - 0.5)
-		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN: _distancia_cam = minf(25.0, _distancia_cam + 0.5)
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP: _distancia_cam = maxf(_cam_dist_min, _distancia_cam - _cam_paso_rueda)
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN: _distancia_cam = minf(_cam_dist_max, _distancia_cam + _cam_paso_rueda)
 	elif ev is InputEventMouseMotion and _arrastrando:
 		_yaw_cam -= ev.relative.x * 0.01
-		_pitch_cam = clampf(_pitch_cam + ev.relative.y * 0.01, 0.1, 1.45)
+		_pitch_cam = clampf(_pitch_cam + ev.relative.y * 0.01, _cam_pitch_min, 1.45)
 
 
 func _exit_tree() -> void:
