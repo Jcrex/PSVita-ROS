@@ -22,6 +22,7 @@
 #include "core/string/print_string.h"
 
 #include <uxr/client/client.h>
+#include <uxr/client/util/ping.h> // uxr_ping_agent: reconexión tras perder la sesión
 
 extern "C" {
 #include "microros_transport.h" // modules/microros-transport (dual C/Rust) -> net-udp
@@ -54,6 +55,8 @@ struct XrceDiag {
 	int be_dropped = 0; // mensajes descartados al llenarse la cola best effort
 	int be_pending = 0;
 	int64_t client_key = 0;
+	int sondas = 0; // sondas de vigilancia enviadas
+	int reconexiones = 0;
 	int reliable_dropped = 0;
 	int reliable_pending = 0;
 };
@@ -197,7 +200,12 @@ class XrceTransport : public RosTransport {
 	struct Endpoint {
 		uxrObjectId entity; // datawriter o datareader
 		bool reliable = true;
+		// Lo necesario para recrearlo tras una reconexión (agente reiniciado o WiFi caída).
+		String topic;
+		String dds;
+		CharString xml;
 	};
+	static constexpr const char *PARTICIPANT_XML = "<dds><participant><rtps><name>ros2_vita</name></rtps></participant></dds>";
 
 	uxrCustomTransport transport = {};
 	TransportArgs targs = {};
@@ -206,6 +214,27 @@ class XrceTransport : public RosTransport {
 	bool transport_open = false;
 	bool session_open = false;
 	bool time_synced = false;
+	uint32_t client_key = 0;
+	int domain_id = 0;
+	bool ids_base = false; // participant/publisher/subscriber ya tienen id (se reutilizan al reconectar)
+
+	// Vigilancia de la sesión (2026-11-13): si el agente se reinicia, olvida nuestra sesión y todo lo que
+	// publicamos se pierde en silencio. Si en VIGIA_SILENCIO_MS no llega nada del agente, se manda una sonda
+	// fiable (create_participant con UXR_REUSE) cuya respuesta solo llega si el agente aún nos conoce; con
+	// VIGIA_SONDAS sin respuesta, la sesión se da por perdida y se reconecta (ping de transporte cada
+	// RECONEXION_MS y, si contesta, se recrean sesión, participante, topics, publicadores y suscriptores).
+	// Nada bloquea el fotograma salvo el ping de 30 ms mientras el agente no está.
+	static constexpr uint64_t VIGIA_SILENCIO_MS = 3000;
+	static constexpr uint64_t VIGIA_PERIODO_MS = 1000;
+	static constexpr int VIGIA_SONDAS = 3;
+	static constexpr uint64_t RECONEXION_MS = 2000;
+	uint64_t ultimo_contacto_ms = 0;
+	uint64_t proxima_sonda_ms = 0;
+	uint64_t proxima_reconexion_ms = 0;
+	int sondas_sin_respuesta = 0;
+	bool sesion_perdida = false;
+
+	static uint64_t _ms() { return OS::get_singleton()->get_ticks_msec(); }
 
 	uint8_t reliable_out_buf[RELIABLE_SLOT * RELIABLE_HISTORY];
 	uint8_t reliable_in_buf[RELIABLE_SLOT * RELIABLE_HISTORY];
@@ -256,6 +285,8 @@ class XrceTransport : public RosTransport {
 	static void _on_topic(uxrSession *, uxrObjectId p_object, uint16_t, uxrStreamId, ucdrBuffer *p_ub, uint16_t p_len, void *p_args) {
 		XrceTransport *self = (XrceTransport *)p_args;
 		g_diag.topic_callbacks++;
+		self->ultimo_contacto_ms = _ms();
+		self->sondas_sin_respuesta = 0;
 		for (const KeyValue<int, Endpoint> &kv : self->subs) {
 			if (kv.value.entity.id == p_object.id && kv.value.entity.type == p_object.type) {
 				// Un mensaje reconstruido de fragmentos NO es contiguo: cada trozo sigue en su hueco del stream
@@ -270,6 +301,119 @@ class XrceTransport : public RosTransport {
 				return;
 			}
 		}
+	}
+
+	// Cualquier STATUS del agente (respuesta a la sonda o a crear entidades) prueba que nos conoce.
+	static void _on_status(uxrSession *, uxrObjectId, uint16_t, uint8_t, void *p_args) {
+		XrceTransport *self = (XrceTransport *)p_args;
+		self->ultimo_contacto_ms = _ms();
+		self->sondas_sin_respuesta = 0;
+	}
+
+	// Crea la sesión y lo básico (streams, participante, publisher, subscriber) y sincroniza la hora.
+	// Se usa al arrancar y al reconectar. false si el agente no responde o rechaza algo.
+	bool _abrir_sesion() {
+		uxr_init_session(&session, &transport.comm, client_key);
+		uxr_set_topic_callback(&session, &XrceTransport::_on_topic, this);
+		uxr_set_status_callback(&session, &XrceTransport::_on_status, this);
+		if (!uxr_create_session(&session)) {
+			return false;
+		}
+		session_open = true;
+		reliable_out = uxr_create_output_reliable_stream(&session, reliable_out_buf, sizeof(reliable_out_buf), RELIABLE_HISTORY);
+		reliable_in = uxr_create_input_reliable_stream(&session, reliable_in_buf, sizeof(reliable_in_buf), RELIABLE_HISTORY);
+		best_effort_out = uxr_create_output_best_effort_stream(&session, best_effort_out_buf, sizeof(best_effort_out_buf));
+		best_effort_in = uxr_create_input_best_effort_stream(&session);
+		if (!ids_base) {
+			participant = _new_object(UXR_PARTICIPANT_ID);
+			publisher = _new_object(UXR_PUBLISHER_ID);
+			subscriber = _new_object(UXR_SUBSCRIBER_ID);
+			ids_base = true;
+		}
+		uint16_t req[3];
+		req[0] = uxr_buffer_create_participant_xml(&session, reliable_out, participant, (uint16_t)domain_id, PARTICIPANT_XML, UXR_REPLACE);
+		req[1] = uxr_buffer_create_publisher_xml(&session, reliable_out, publisher, participant, "", UXR_REPLACE);
+		req[2] = uxr_buffer_create_subscriber_xml(&session, reliable_out, subscriber, participant, "", UXR_REPLACE);
+		if (!_wait(req, 3, "crear participante/publisher/subscriber")) {
+			return false;
+		}
+		// Sincronizar el reloj con el agente (NTP simplificado de XRCE): now() usará su hora.
+		time_synced = uxr_sync_session(&session, 1000);
+		if (!time_synced) {
+			WARN_PRINT("ros2_vita/xrce: no se pudo sincronizar la hora con el agente; now() usa el reloj local.");
+		}
+		ultimo_contacto_ms = _ms();
+		sondas_sin_respuesta = 0;
+		return true;
+	}
+
+	bool _crear_writer(const Endpoint &p_ep) {
+		uxrObjectId topic;
+		if (!_topic(p_ep.topic, p_ep.dds, &topic)) {
+			return false;
+		}
+		uint16_t req = uxr_buffer_create_datawriter_xml(&session, reliable_out, p_ep.entity, publisher, p_ep.xml.get_data(), UXR_REPLACE);
+		return _wait(&req, 1, "crear el datawriter de " + p_ep.topic);
+	}
+
+	bool _crear_reader(const Endpoint &p_ep) {
+		uxrObjectId topic;
+		if (!_topic(p_ep.topic, p_ep.dds, &topic)) {
+			return false;
+		}
+		uint16_t req = uxr_buffer_create_datareader_xml(&session, reliable_out, p_ep.entity, subscriber, p_ep.xml.get_data(), UXR_REPLACE);
+		if (!_wait(&req, 1, "crear el datareader de " + p_ep.topic)) {
+			return false;
+		}
+		// Pedir al agente que reenvíe todas las muestras de este datareader.
+		uxrDeliveryControl delivery = {};
+		delivery.max_samples = UXR_MAX_SAMPLES_UNLIMITED;
+		uxr_buffer_request_data(&session, reliable_out, p_ep.entity, p_ep.reliable ? reliable_in : best_effort_in, &delivery);
+		return true;
+	}
+
+	// Vigilancia: ¿el agente sigue conociendo nuestra sesión? (ver VIGIA_*). Devuelve false si se perdió.
+	bool _vigilar(uint64_t p_ahora) {
+		if (p_ahora - ultimo_contacto_ms < VIGIA_SILENCIO_MS || p_ahora < proxima_sonda_ms) {
+			return true;
+		}
+		proxima_sonda_ms = p_ahora + VIGIA_PERIODO_MS;
+		if (sondas_sin_respuesta >= VIGIA_SONDAS) {
+			sesion_perdida = true;
+			g_diag.step = "agente perdido: reconectando";
+			WARN_PRINT("ros2_vita/xrce: el agente no responde (¿reiniciado o WiFi caída?); reconectando...");
+			return false;
+		}
+		uxr_buffer_create_participant_xml(&session, reliable_out, participant, (uint16_t)domain_id, PARTICIPANT_XML, UXR_REUSE);
+		sondas_sin_respuesta++;
+		g_diag.sondas++;
+		return true;
+	}
+
+	// Reconexión tras perder la sesión: ping corto al agente cada RECONEXION_MS; si contesta, se recrea todo con
+	// los mismos ids, así los RosPublisher/RosSubscriber de GDScript siguen funcionando sin enterarse.
+	void _reconectar(uint64_t p_ahora) {
+		if (p_ahora < proxima_reconexion_ms) {
+			return;
+		}
+		proxima_reconexion_ms = p_ahora + RECONEXION_MS;
+		if (!uxr_ping_agent(&transport.comm, 30)) {
+			return;
+		}
+		topics.clear();
+		if (!_abrir_sesion()) {
+			return;
+		}
+		for (const KeyValue<int, Endpoint> &kv : pubs) {
+			_crear_writer(kv.value);
+		}
+		for (const KeyValue<int, Endpoint> &kv : subs) {
+			_crear_reader(kv.value);
+		}
+		sesion_perdida = false;
+		g_diag.reconexiones++;
+		g_diag.step = "sesion abierta (reconectada)";
+		print_line(vformat("ros2_vita/xrce: reconectado con el agente (%d publicadores, %d suscripciones).", pubs.size(), subs.size()));
 	}
 
 	// Fragmentación: cuando se llenan los slots del stream fiable, hay que enviarlos antes de seguir.
@@ -319,44 +463,20 @@ public:
 			String plataforma = OS::get_singleton()->has_feature("vita") ? "vita" : OS::get_singleton()->get_name();
 			key = (app + "|" + plataforma).hash();
 		}
-		key = key ? key : 0xCAFE0005;
-		g_diag.client_key = (int64_t)key;
-		uxr_init_session(&session, &transport.comm, key);
-		uxr_set_topic_callback(&session, &XrceTransport::_on_topic, this);
-		bool created = uxr_create_session(&session);
-		read_netctl();
-		if (!created) {
-			g_diag.step = "sin respuesta del agente";
+		client_key = key ? key : 0xCAFE0005;
+		domain_id = domain;
+		g_diag.client_key = (int64_t)client_key;
+		ids_base = false;
+		sesion_perdida = false;
+		if (!_abrir_sesion()) {
+			read_netctl();
+			g_diag.step = session_open ? "el agente rechazo las entidades" : "sin respuesta del agente";
 			stop();
 			ERR_FAIL_V_MSG(ERR_CANT_CONNECT, vformat("ros2_vita/xrce: sin respuesta del agente en %s:%d "
 													 "(esta corriendo micro-ros-agent udp4 --port %d?).",
 													 ip, port, port));
 		}
-		session_open = true;
-		g_diag.step = "creando entidades";
-
-		reliable_out = uxr_create_output_reliable_stream(&session, reliable_out_buf, sizeof(reliable_out_buf), RELIABLE_HISTORY);
-		reliable_in = uxr_create_input_reliable_stream(&session, reliable_in_buf, sizeof(reliable_in_buf), RELIABLE_HISTORY);
-		best_effort_out = uxr_create_output_best_effort_stream(&session, best_effort_out_buf, sizeof(best_effort_out_buf));
-		best_effort_in = uxr_create_input_best_effort_stream(&session);
-
-		participant = _new_object(UXR_PARTICIPANT_ID);
-		publisher = _new_object(UXR_PUBLISHER_ID);
-		subscriber = _new_object(UXR_SUBSCRIBER_ID);
-		uint16_t req[3];
-		req[0] = uxr_buffer_create_participant_xml(&session, reliable_out, participant, (uint16_t)domain,
-				"<dds><participant><rtps><name>ros2_vita</name></rtps></participant></dds>", UXR_REPLACE);
-		req[1] = uxr_buffer_create_publisher_xml(&session, reliable_out, publisher, participant, "", UXR_REPLACE);
-		req[2] = uxr_buffer_create_subscriber_xml(&session, reliable_out, subscriber, participant, "", UXR_REPLACE);
-		if (!_wait(req, 3, "crear participante/publisher/subscriber")) {
-			stop();
-			return ERR_CANT_CREATE;
-		}
-		// Sincronizar el reloj con el agente (NTP simplificado de XRCE): now() usará su hora.
-		time_synced = uxr_sync_session(&session, 1000);
-		if (!time_synced) {
-			WARN_PRINT("ros2_vita/xrce: no se pudo sincronizar la hora con el agente; now() usa el reloj local.");
-		}
+		read_netctl();
 		g_diag.step = "sesion abierta";
 		print_line("ros2_vita/xrce: sesion XRCE establecida.");
 		return OK;
@@ -393,7 +513,15 @@ public:
 
 	void poll() override {
 		if (session_open) {
+			uint64_t ahora = _ms();
+			if (sesion_perdida) {
+				_reconectar(ahora); // mientras tanto, lo publicado se queda en las colas (último valor BE)
+				return;
+			}
 			uxr_run_session_time(&session, 0); // recibe (no bloquea)
+			if (!_vigilar(ahora)) {
+				return;
+			}
 			_publish_reliable_pending();
 			_publish_pending();
 			uxr_flash_output_streams(&session); // envía en este mismo poll: sin fotograma de retraso
@@ -491,18 +619,15 @@ public:
 		ERR_FAIL_COND_V(!session_open, -1);
 		String dds = dds_type_name(p_type);
 		ERR_FAIL_COND_V_MSG(dds.is_empty(), -1, "ros2_vita/xrce: tipo ROS no valido: " + p_type);
-		uxrObjectId topic;
-		if (!_topic(p_topic, dds, &topic)) {
-			return -1;
-		}
 		Endpoint ep;
 		ep.entity = _new_object(UXR_DATAWRITER_ID);
 		ep.reliable = !(p_qos.is_valid() && p_qos->get_reliability() == RosQoS::BEST_EFFORT);
-		CharString xml = ("<dds><data_writer><topic><kind>NO_KEY</kind><name>rt" + p_topic + "</name><dataType>" + dds +
+		ep.topic = p_topic;
+		ep.dds = dds;
+		ep.xml = ("<dds><data_writer><topic><kind>NO_KEY</kind><name>rt" + p_topic + "</name><dataType>" + dds +
 				"</dataType>" + history_xml(p_qos) + "</topic>" + qos_xml(p_qos) + "</data_writer></dds>")
-								 .utf8();
-		uint16_t req = uxr_buffer_create_datawriter_xml(&session, reliable_out, ep.entity, publisher, xml.get_data(), UXR_REPLACE);
-		if (!_wait(&req, 1, "crear el datawriter de " + p_topic)) {
+						 .utf8();
+		if (!_crear_writer(ep)) {
 			return -1;
 		}
 		pubs[next_id] = ep;
@@ -513,24 +638,17 @@ public:
 		ERR_FAIL_COND_V(!session_open, -1);
 		String dds = dds_type_name(p_type);
 		ERR_FAIL_COND_V_MSG(dds.is_empty(), -1, "ros2_vita/xrce: tipo ROS no valido: " + p_type);
-		uxrObjectId topic;
-		if (!_topic(p_topic, dds, &topic)) {
-			return -1;
-		}
 		Endpoint ep;
 		ep.entity = _new_object(UXR_DATAREADER_ID);
 		ep.reliable = !(p_qos.is_valid() && p_qos->get_reliability() == RosQoS::BEST_EFFORT);
-		CharString xml = ("<dds><data_reader><topic><kind>NO_KEY</kind><name>rt" + p_topic + "</name><dataType>" + dds +
+		ep.topic = p_topic;
+		ep.dds = dds;
+		ep.xml = ("<dds><data_reader><topic><kind>NO_KEY</kind><name>rt" + p_topic + "</name><dataType>" + dds +
 				"</dataType>" + history_xml(p_qos) + "</topic>" + qos_xml(p_qos) + "</data_reader></dds>")
-								 .utf8();
-		uint16_t req = uxr_buffer_create_datareader_xml(&session, reliable_out, ep.entity, subscriber, xml.get_data(), UXR_REPLACE);
-		if (!_wait(&req, 1, "crear el datareader de " + p_topic)) {
+						 .utf8();
+		if (!_crear_reader(ep)) {
 			return -1;
 		}
-		// Pedir al agente que reenvíe todas las muestras de este datareader.
-		uxrDeliveryControl delivery = {};
-		delivery.max_samples = UXR_MAX_SAMPLES_UNLIMITED;
-		uxr_buffer_request_data(&session, reliable_out, ep.entity, ep.reliable ? reliable_in : best_effort_in, &delivery);
 		subs[next_id] = ep;
 		return next_id++;
 	}
@@ -593,6 +711,8 @@ Dictionary ros2_vita_xrce_diagnostics() {
 	d["reliable_full"] = g_diag.reliable_full;
 	d["be_pending"] = g_diag.be_pending;
 	d["client_key"] = g_diag.client_key;
+	d["sondas"] = g_diag.sondas;
+	d["reconexiones"] = g_diag.reconexiones;
 	d["be_dropped"] = g_diag.be_dropped;
 	d["reliable_pending"] = g_diag.reliable_pending;
 	d["reliable_dropped"] = g_diag.reliable_dropped;

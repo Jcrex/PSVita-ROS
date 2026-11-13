@@ -101,6 +101,11 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
   Transporte por defecto: `xrce` en la Vita, `loopback` en el host.
 - XRCE: `RosQoS` se traduce a XML de Fast DDS (reliability, durability, history/depth). Mensajes > ~490 bytes
   se fragmentan solo en el stream fiable; en *best effort* se rechazan (MTU 512).
+- **Reconexión automática** (2026-11-13): si en 3 s no llega nada del agente, se envían sondas fiables
+  (`create_participant` con `UXR_REUSE`); con 3 sin respuesta la sesión se da por perdida (agente reiniciado o
+  WiFi caída) y se reconecta sola (ping de 30 ms cada 2 s; al responder, se recrean sesión, participante, topics,
+  publicadores y suscriptores con los mismos ids, sin tocar GDScript). Contadores `sondas` y `reconexiones` en
+  `get_transport_info()`. Clave de cliente estable por app y plataforma (`client_key`).
 - Entrega de mensajes: cola acotada (256, descarta el más antiguo) volcada al hilo
   principal en `process_frame`.
 - Publicación best effort: cola acotada de 64 mensajes copiados, un datagrama por `poll()` y descarte del más

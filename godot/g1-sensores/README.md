@@ -1,6 +1,7 @@
 # Unitree G1 — plantilla completa de sensores ROS 2
 
-Reutiliza el URDF y las mallas de `godot/g1-unitree/`: 29 articulaciones, 12 633 triángulos en Vita y 60 633 en PC. La marcha usa los clips grabados de la política oficial de Unitree; las colisiones y el movimiento son cinemáticos.
+Reutiliza el URDF y las mallas de `godot/g1-unitree/`: 29 articulaciones, 12 633 triángulos en Vita y 60 633 en PC. La marcha usa los clips grabados de la política oficial de Unitree con su desplazamiento integrado (root motion),
+como `godot/g1-unitree/`; el choque con el mundo lo hace el `CharacterBody3D` con `move_and_slide()`.
 
 ## g1_sim **o** g1-sensores: espacio de nombres `g1s`
 
@@ -49,9 +50,57 @@ $G --path godot/g1-sensores
 $G --path godot/g1-sensores -- lod=vita
 ```
 
-Stick izquierdo: andar/girar; L/R o Q/E: paso lateral; ○/C: cenital; △/R: reiniciar. Al soltar el mando el robot
-se para (hombre muerto local). Para control bajo nivel, publica `unitree_hg/msg/LowCmd` en `/lowcmd`; para locomoción
-de alto nivel usa `/cmd_vel` o `api_id=7105` en `/api/sport/request`.
+Mandos (los mismos que `godot/g1-unitree/`; detalle y diferencias previas en
+`docs/ia/revision-kimi/g1-sensores-controles.md`):
+
+| Vita | Teclado | Acción |
+|---|---|---|
+| stick izq. ↑↓ | W/S | avanzar / retroceder (a tope o con Mayús = correr) |
+| stick izq. ←→ | A/D | girar |
+| L/R | Q/E | paso lateral |
+| stick der. | arrastrar ratón | cámara (detrás del robot, guiñada suavizada) |
+| cruceta ↑↓ | rueda | zoom (1–14 m) |
+| ✕ | Espacio | alterna fuente de movimiento local ↔ g1_sim |
+| △ | R | vuelve al inicio |
+| ○ | C | vista cenital |
+
+Al soltar el mando el robot se para (hombre muerto local). `/cmd_vel` externo (Nav2, teleop_twist_keyboard) y la
+API 7105 eligen el clip igual que el mando; la parada de emergencia (`/g1/emergency_stop`) lo deja en «quieto».
+Para control bajo nivel, publica `unitree_hg/msg/LowCmd` en `/lowcmd` (solo en modo local).
+
+`-- sin_ros demo` hace un recorrido automático sin agente (prueba de movimiento):
+
+```fish
+$G --path godot/g1-sensores --resolution 960x544 -- sin_ros demo captura=/tmp/g1s.png fotograma=300
+```
+
+## Fuente de movimiento: `local` o `g1_sim`
+
+Campo `"fuente_movimiento"` de `robot.json` (✕/Espacio la cambia en marcha):
+
+- **`local`** (por defecto): **Godot es la planta**. La orden (mando, `/cmd_vel`, API 7105, demo) elige un clip con
+  `_clip_para` (la misma función que `g1-unitree/main.gd`) y el robot avanza lo que avanzó la política de Unitree
+  en ese clip. Funciona en la Vita sin PC.
+- **`g1_sim`**: **`docker/vita-ros.sh g1` es la planta** (MuJoCo + política oficial). El cuerpo sigue la pose y las
+  piernas de `/g1/estado` (como el modo «ros» de g1-unitree) y la orden local se publica en `/cmd_vel` a 20 Hz
+  (solo mientras hay orden, más unos ceros al soltar, para no tapar a otros emisores). g1-sensores **añade los
+  sensores**: IMU, D435, Mid-360, mapeo… siguen publicando con el prefijo `g1s` desde esa pose.
+  - `"g1_sim_anclaje": "relativo"` (por defecto) hace coincidir la primera pose de g1_sim con la del G1 en el
+    mundo de las plantillas; `"absoluto"` usa x, y, yaw de `/g1/estado` tal cual.
+  - La casa de MuJoCo no es el mundo de las plantillas: en este modo el G1 **atraviesa** las paredes de Godot
+    (las que cuentan son las de MuJoCo). La altura sí sale del suelo de Godot (un rayo vertical).
+  - En este modo el nodo **no** atiende `/cmd_vel` (lo consume g1_sim directamente) ni `LowCmd`.
+
+```fish
+docker/vita-ros.sh up      # agente en UDP 8888
+docker/vita-ros.sh g1      # en otra terminal: g1_sim
+$G --path godot/g1-sensores   # y ✕/Espacio, o "fuente_movimiento": "g1_sim" en robot.json
+```
+
+**Ojo con `/cmd_vel` si usas dos apps a la vez.** Es una entrada compartida: g1_sim, g1-sensores en modo local y
+g1-unitree en modo ros lo escuchan o lo publican. Con g1-sensores en `local` y g1_sim vivo, el mando de otra app
+mueve a los dos G1; con g1-sensores en `g1_sim` y g1-unitree en modo ros, ambos mandan a g1_sim (gana el último
+mensaje). Usa un solo emisor o remapea el topic con `g1_sim_topic_cmd`.
 
 ## Exportar
 
