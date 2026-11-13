@@ -1,0 +1,351 @@
+ERROR: Warning, don't know how to obtain executable path on this OS! Please override this function properly.
+   at: get_executable_path (drivers/unix/os_unix.cpp:1168)
+[vita-worker] forcing zero background WorkerThreadPool threads (requested=2)
+[gxm2d] vita2d_init=1 texture_format=RGBA8888
+[vita-memory] stage=renderer_init result=0x00000000 user_free=26214400 cdram_free=92274688 phycont_free=27262976 textures=0
+[vita-pad] init driver=1 mode_rc=0 device=0 native_mapping=1
+[gxm3d] experimental static mesh renderer enabled
+[gxm2d] native canvas v3: RGBA8->RGBA4444 loader upload; flexible viewport canvas; ninepatch/polygon/primitive; no GLES shaders
+[vita-audio] mixer_thread running capunlocker=0 cpu3_affinity_rc=0x00000000
+_gain=-1 volume_rc=0x00000000
+[vita-audio] thread_start id=5 started=1
+[vita-audio] mixer_thread running capunlocker=0 cpu3_affinity_rc=0x00000000
+[vita-audio] blocks=1 peak=0 active=1
+[vita-memory] stage=frame result=0x00000000 user_free=25165824 cdram_free=92274688 phycont_free=27262976 textures=0
+[gxm2d] texture uploads=1 last=800x600 format=RGBA8888 allocation=2097152 budget=2097152
+[gxm2d] boot splash shown image=800x600
+[vita-audio] blocks=121 peak=0 active=1
+[dllp-thorvg] initializing SVG renderer with 0 worker threads
+[dllp-start] 00 enter Main::start
+[dllp-start] 10 resolve main scene
+[dllp-start] 20 create SceneTree
+[dllp-start] 30 SceneTree installed
+[dllp-start] 40 custom loaders
+[dllp-start] 50 autoloads enumerated
+[dllp-start] 55 autoload instances
+[dllp-start] 70 before scene load
+[vita-load] slow self_ms=155 total_ms=155 depth=3 path=res://comun/mundo/mundo_base.gd
+[vita-audio] blocks=241 peak=0 active=1
+[vita-load] slow self_ms=1857 total_ms=2036 depth=1 path=res://comun/aplicacion_robot.gd
+[vita-load] summary total_ms=2061 path=res://.godot/exported/133200997/export-3070c538c03ee49b7677ff960a3f5195-main.scn
+[vita-load]   ext=gd count=2 self_ms=2013
+[dllp-start] 75 scene resource loaded
+[dllp-start] 80 main scene instantiated
+[dllp-start] 85 scene attached
+[dllp-start] 99 Main::start complete
+[vita-loop] initialize begin
+[vita-audio] blocks=361 peak=0 active=1
+[vita-audio] blocks=481 peak=0 active=1
+[vita-load] slow self_ms=380 total_ms=380 depth=3 path=res://.godot/imported/survivorMaleB.png-4a24cd814f7a4e3e81e9030e22b7e037.ctex
+[vita-audio] blocks=601 peak=0 active=1
+[vita-audio] blocks=721 peak=0 active=1
+[vita-load] slow self_ms=882 total_ms=882 depth=0 path=res://comun/robots/humanoide_g1.gd
+[vita-audio] blocks=841 peak=0 active=1
+[vita-audio] blocks=961 peak=0 active=1
+[vita-load] slow self_ms=338 total_ms=2471 depth=0 path=res://.godot/exported/133200997/export-34e31feeced8aa37959eea262930fa7a-g1_vita.scn
+[vita-load] summary total_ms=2471 path=res://.godot/exported/133200997/export-34e31feeced8aa37959eea262930fa7a-g1_vita.scn
+[vita-load]   ext=mesh count=35 self_ms=1232
+[vita-load]   ext=obj count=35 self_ms=831
+[vita-load]   ext=scn count=1 self_ms=338
+[vita-loop] initialize complete
+[vita-pad] sample=1 buttons=0x00000000 lx=133 ly=131 rx=128 ry=129 frame=1
+[vita-loop] frame 0 begin
+[vita-worker] zero-worker fallback; tasks running synchronously.
+[gxm3d] vertex lighting program rc=0x00000000
+[vita-memory] stage=mesh_arena result=0x00000000 user_free=0 cdram_free=92274688 phycont_free=27262976 textures=0
+[gxm2d] texture uploads=2 last=512x512 format=RGBA8888 allocation=1048576 budget=1048576
+[vita-audio] blocks=1081 peak=0 active=1
+[gxm2d] texture uploads=3 last=1024x1024 format=RGBA8888 allocation=4194304 budget=5242880
+[gxm2d] texture uploads=4 last=512x512 format=RGBA8888 allocation=1048576 budget=6291456
+[gxm3d] frame=1 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=25 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=558755 avg_submit_us=21229 avg_gpu_wait_us=9 build_us=537526 arena_kb=1188 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] texture uploads=5 last=256x256 format=RGBA8888 allocation=262144 budget=6553600
+[gxm2d] rect submitted xy=(11.0,11.0) rgba=ff000000
+[gxm2d] rect submitted xy=(22.0,14.0) rgba=ff000000
+[gxm2d] rect submitted xy=(31.0,11.0) rgba=ff000000
+[gxm2d] texture uploads=6 last=256x256 format=RGBA8888 allocation=262144 budget=6815744
+[vita-loop] frame 0 complete
+[vita-loop] frame 1 begin
+WARNING: d435: sensor solo PC; se desactiva en Vita
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+WARNING: mid360: sensor solo PC; se desactiva en Vita
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+[vita-load] slow self_ms=193 total_ms=193 depth=0 path=res://comun/sensores/unitree_estado.gd
+[gxm3d] frame=2 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=37 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=8946 avg_submit_us=19501 avg_gpu_wait_us=8 build_us=4995 arena_kb=1235 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] texture uploads=7 last=256x256 format=RGBA8888 allocation=262144 budget=6553600
+[gxm2d] texture uploads=8 last=256x256 format=RGBA8888 allocation=262144 budget=6815744
+[vita-loop] frame 1 complete
+[vita-loop] frame 2 begin
+[vita-audio] blocks=1201 peak=0 active=1
+[gxm3d] frame=3 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=44 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=8638 avg_submit_us=17922 avg_gpu_wait_us=8 build_us=4928 arena_kb=1282 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[vita-loop] frame 2 complete
+[gxm3d] frame=4 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=47 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=8399 avg_submit_us=16485 avg_gpu_wait_us=8 build_us=4838 arena_kb=1328 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=5 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=49 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=7891 avg_submit_us=15221 avg_gpu_wait_us=8 build_us=4047 arena_kb=1330 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=6 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=50 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=7489 avg_submit_us=14057 avg_gpu_wait_us=8 build_us=3914 arena_kb=1332 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=7 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=50 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=7379 avg_submit_us=13010 avg_gpu_wait_us=7 build_us=3789 arena_kb=1332 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=8 visible_instances=52 candidates=52 drawn=52 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=51 rays=0 distance_culled=0 submitted_triangles=19457 budget=40000 cpu_submit_us=8319 avg_submit_us=12081 avg_gpu_wait_us=7 build_us=4593 arena_kb=1376 invalidations=382
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[vita-audio] blocks=1321 peak=0 active=1
+[gxm2d] texture uploads=9 last=256x256 format=RGBA8888 allocation=262144 budget=6553600
+[gxm2d] texture uploads=10 last=256x256 format=RGBA8888 allocation=262144 budget=6815744
+[vita-audio] blocks=1441 peak=0 active=1
+[gxm2d] texture uploads=11 last=256x256 format=RGBA8888 allocation=262144 budget=6553600
+[gxm2d] texture uploads=12 last=256x256 format=RGBA8888 allocation=262144 budget=6815744
+[vita-audio] blocks=1561 peak=0 active=1
+[gxm2d] texture uploads=13 last=256x256 format=RGBA8888 allocation=262144 budget=6553600
+[gxm2d] texture uploads=14 last=256x256 format=RGBA8888 allocation=262144 budget=6815744
+[vita-audio] blocks=1681 peak=0 active=1
+[vita-audio] blocks=1801 peak=0 active=1
+[gxm2d] texture uploads=15 last=256x256 format=RGBA8888 allocation=262144 budget=6553600
+[gxm2d] texture uploads=16 last=256x256 format=RGBA8888 allocation=262144 budget=6815744
+[vita-audio] blocks=1921 peak=0 active=1
+[vita-audio] blocks=2041 peak=0 active=1
+[vita-audio] blocks=2161 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=86497 fps=11.6 draws=221 quads=303 clips=1 gpu_wait_us=5 targets=0
+[gxm3d] frame=300 visible_instances=51 candidates=51 drawn=51 structural=10 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=64 rays=0 distance_culled=0 submitted_triangles=15961 budget=40000 cpu_submit_us=7593 avg_submit_us=3518 avg_gpu_wait_us=5 build_us=3881 arena_kb=1557 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=2579 avg_items=1
+[vita-prof] avg_us_per_frame process=10114 physics_scripts=21121 navigation=41 physics3d=798 physics2d=8 render=14703 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=2281 peak=0 active=1
+[vita-audio] blocks=2401 peak=0 active=1
+[vita-audio] blocks=2521 peak=0 active=1
+[vita-audio] blocks=2641 peak=0 active=1
+[vita-audio] blocks=2761 peak=0 active=1
+[vita-audio] blocks=2881 peak=0 active=1
+[vita-audio] blocks=3001 peak=0 active=1
+[vita-audio] blocks=3121 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=35531 fps=28.1 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=133 ly=131 rx=128 ry=129 frame=600
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6815744
+[gxm3d] frame=600 visible_instances=46 candidates=46 drawn=46 structural=9 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=48 rays=0 distance_culled=0 submitted_triangles=15049 budget=40000 cpu_submit_us=6935 avg_submit_us=2778 avg_gpu_wait_us=5 build_us=4056 arena_kb=1580 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1889 avg_items=1
+[vita-prof] avg_us_per_frame process=5054 physics_scripts=18175 navigation=36 physics3d=688 physics2d=7 render=10711 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=3241 peak=0 active=1
+[vita-audio] blocks=3361 peak=0 active=1
+[vita-audio] blocks=3481 peak=0 active=1
+[vita-audio] blocks=3601 peak=0 active=1
+[vita-audio] blocks=3721 peak=0 active=1
+[vita-audio] blocks=3841 peak=0 active=1
+[vita-audio] blocks=3961 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=35209 fps=28.4 draws=222 quads=305 clips=2 gpu_wait_us=5 targets=0
+[gxm3d] frame=900 visible_instances=44 candidates=44 drawn=44 structural=8 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=37 rays=0 distance_culled=0 submitted_triangles=13433 budget=40000 cpu_submit_us=6306 avg_submit_us=2415 avg_gpu_wait_us=5 build_us=3956 arena_kb=1580 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1890 avg_items=1
+[vita-prof] avg_us_per_frame process=4905 physics_scripts=18250 navigation=35 physics3d=681 physics2d=7 render=10266 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=4081 peak=0 active=1
+[vita-audio] blocks=4201 peak=0 active=1
+[vita-audio] blocks=4321 peak=0 active=1
+[vita-audio] blocks=4441 peak=0 active=1
+[vita-audio] blocks=4561 peak=0 active=1
+[vita-audio] blocks=4681 peak=0 active=1
+[vita-audio] blocks=4801 peak=0 active=1
+[vita-audio] blocks=4921 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=33739 fps=29.6 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=131 rx=128 ry=129 frame=1200
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6815744
+[gxm3d] frame=1200 visible_instances=44 candidates=44 drawn=44 structural=8 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=38 rays=0 distance_culled=0 submitted_triangles=13433 budget=40000 cpu_submit_us=6292 avg_submit_us=2428 avg_gpu_wait_us=4 build_us=3841 arena_kb=1605 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1886 avg_items=1
+[vita-prof] avg_us_per_frame process=4848 physics_scripts=17470 navigation=33 physics3d=650 physics2d=6 render=10125 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=5041 peak=0 active=1
+[vita-audio] blocks=5161 peak=0 active=1
+[vita-audio] blocks=5281 peak=0 active=1
+[vita-audio] blocks=5401 peak=0 active=1
+[vita-audio] blocks=5521 peak=0 active=1
+[vita-audio] blocks=5641 peak=0 active=1
+[vita-audio] blocks=5761 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=33079 fps=30.2 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[gxm3d] frame=1500 visible_instances=41 candidates=41 drawn=41 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=27 rays=0 distance_culled=0 submitted_triangles=13093 budget=40000 cpu_submit_us=5767 avg_submit_us=2039 avg_gpu_wait_us=4 build_us=3716 arena_kb=1605 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1853 avg_items=1
+[vita-prof] avg_us_per_frame process=4733 physics_scripts=17088 navigation=33 physics3d=640 physics2d=6 render=9741 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=5881 peak=0 active=1
+[vita-audio] blocks=6001 peak=0 active=1
+[vita-audio] blocks=6121 peak=0 active=1
+[vita-audio] blocks=6241 peak=0 active=1
+[vita-audio] blocks=6361 peak=0 active=1
+[vita-audio] blocks=6481 peak=0 active=1
+[vita-audio] blocks=6601 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=32709 fps=30.6 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=131 rx=128 ry=129 frame=1800
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6815744
+[gxm3d] frame=1800 visible_instances=41 candidates=41 drawn=41 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=27 rays=0 distance_culled=0 submitted_triangles=13093 budget=40000 cpu_submit_us=5891 avg_submit_us=2050 avg_gpu_wait_us=5 build_us=3840 arena_kb=1605 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1852 avg_items=1
+[vita-prof] avg_us_per_frame process=4701 physics_scripts=17086 navigation=33 physics3d=632 physics2d=6 render=9658 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=6721 peak=0 active=1
+[vita-audio] blocks=6841 peak=0 active=1
+[vita-audio] blocks=6961 peak=0 active=1
+[vita-audio] blocks=7081 peak=0 active=1
+[vita-audio] blocks=7201 peak=0 active=1
+[vita-audio] blocks=7321 peak=0 active=1
+[vita-audio] blocks=7441 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=32091 fps=31.2 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[gxm3d] frame=2100 visible_instances=41 candidates=41 drawn=41 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=30 rays=0 distance_culled=0 submitted_triangles=13093 budget=40000 cpu_submit_us=5899 avg_submit_us=2036 avg_gpu_wait_us=4 build_us=3867 arena_kb=1652 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1847 avg_items=1
+[vita-prof] avg_us_per_frame process=4590 physics_scripts=16484 navigation=32 physics3d=617 physics2d=6 render=9648 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=7561 peak=0 active=1
+[vita-audio] blocks=7681 peak=0 active=1
+[vita-audio] blocks=7801 peak=0 active=1
+[vita-audio] blocks=7921 peak=0 active=1
+[vita-audio] blocks=8041 peak=0 active=1
+[vita-audio] blocks=8161 peak=0 active=1
+[vita-audio] blocks=8281 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=32888 fps=30.4 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=131 rx=128 ry=129 frame=2400
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6815744
+[gxm3d] frame=2400 visible_instances=41 candidates=41 drawn=41 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=31 rays=0 distance_culled=0 submitted_triangles=13093 budget=40000 cpu_submit_us=5735 avg_submit_us=2045 avg_gpu_wait_us=4 build_us=3697 arena_kb=1655 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1849 avg_items=1
+[vita-prof] avg_us_per_frame process=4721 physics_scripts=17167 navigation=32 physics3d=633 physics2d=6 render=9637 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=8401 peak=0 active=1
+[vita-audio] blocks=8521 peak=0 active=1
+[vita-audio] blocks=8641 peak=0 active=1
+[vita-audio] blocks=8761 peak=0 active=1
+[vita-audio] blocks=8881 peak=0 active=1
+[vita-audio] blocks=9001 peak=0 active=1
+[vita-audio] blocks=9121 peak=0 active=1
+[vita-audio] blocks=9241 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=36279 fps=27.6 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[gxm3d] frame=2700 visible_instances=41 candidates=41 drawn=41 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=31 rays=0 distance_culled=0 submitted_triangles=13093 budget=40000 cpu_submit_us=5923 avg_submit_us=2060 avg_gpu_wait_us=5 build_us=3836 arena_kb=1655 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1867 avg_items=1
+[vita-prof] avg_us_per_frame process=5135 physics_scripts=20074 navigation=36 physics3d=698 physics2d=7 render=9705 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=9361 peak=0 active=1
+[vita-audio] blocks=9481 peak=0 active=1
+[vita-audio] blocks=9601 peak=0 active=1
+[vita-audio] blocks=9721 peak=0 active=1
+[vita-audio] blocks=9841 peak=0 active=1
+[vita-audio] blocks=9961 peak=0 active=1
+[vita-audio] blocks=10081 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=33760 fps=29.6 draws=222 quads=305 clips=2 gpu_wait_us=4 targets=0
+[vita-pad] sample=1 buttons=0x00001000 lx=130 ly=131 rx=128 ry=129 frame=3000
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6815744
+[gxm3d] frame=3000 visible_instances=43 candidates=43 drawn=43 structural=7 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=34 rays=0 distance_culled=0 submitted_triangles=13117 budget=40000 cpu_submit_us=5959 avg_submit_us=2098 avg_gpu_wait_us=4 build_us=3858 arena_kb=1669 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1875 avg_items=1
+[vita-prof] avg_us_per_frame process=4809 physics_scripts=17669 navigation=33 physics3d=653 physics2d=7 render=9713 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=10201 peak=0 active=1
+[vita-audio] blocks=10321 peak=0 active=1
+[vita-audio] blocks=10441 peak=0 active=1
+[vita-audio] blocks=10561 peak=0 active=1
+[vita-audio] blocks=10681 peak=0 active=1
+[vita-audio] blocks=10801 peak=0 active=1
+[vita-audio] blocks=10921 peak=0 active=1
+[vita-audio] blocks=11041 peak=0 active=1
+[vita-audio] blocks=11161 peak=0 active=1
+[vita-audio] blocks=11281 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=47233 fps=21.2 draws=223 quads=306 clips=2 gpu_wait_us=5 targets=0
+[gxm3d] frame=3300 visible_instances=84 candidates=78 drawn=78 structural=14 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=121 rays=0 distance_culled=6 submitted_triangles=30963 budget=40000 cpu_submit_us=9719 avg_submit_us=5852 avg_gpu_wait_us=5 build_us=3959 arena_kb=2688 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1924 avg_items=1
+[vita-prof] avg_us_per_frame process=6160 physics_scripts=24900 navigation=48 physics3d=913 physics2d=300 render=13823 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=11401 peak=0 active=1
+[vita-audio] blocks=11521 peak=0 active=1
+[vita-audio] blocks=11641 peak=0 active=1
+[vita-audio] blocks=11761 peak=0 active=1
+[vita-audio] blocks=11881 peak=0 active=1
+[vita-audio] blocks=12001 peak=0 active=1
+[vita-audio] blocks=12121 peak=0 active=1
+[vita-audio] blocks=12241 peak=0 active=1
+[vita-audio] blocks=12361 peak=0 active=1
+[vita-audio] blocks=12481 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=44991 fps=22.2 draws=224 quads=307 clips=2 gpu_wait_us=5 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=132 rx=128 ry=129 frame=3600
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=83886080 phycont_free=27262976 textures=7864320
+[gxm3d] frame=3600 visible_instances=75 candidates=72 drawn=72 structural=14 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=101 rays=0 distance_culled=3 submitted_triangles=29517 budget=40000 cpu_submit_us=9237 avg_submit_us=5009 avg_gpu_wait_us=9 build_us=4194 arena_kb=2700 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1874 avg_items=1
+[vita-prof] avg_us_per_frame process=5907 physics_scripts=23722 navigation=45 physics3d=870 physics2d=321 render=13239 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=12601 peak=0 active=1
+[vita-audio] blocks=12721 peak=0 active=1
+[vita-audio] blocks=12841 peak=0 active=1
+[vita-audio] blocks=12961 peak=0 active=1
+[vita-audio] blocks=13081 peak=0 active=1
+[vita-audio] blocks=13201 peak=0 active=1
+[vita-audio] blocks=13321 peak=0 active=1
+[vita-audio] blocks=13441 peak=0 active=1
+[vita-audio] blocks=13561 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=43240 fps=23.1 draws=224 quads=307 clips=2 gpu_wait_us=5 targets=0
+[gxm3d] frame=3900 visible_instances=68 candidates=68 drawn=68 structural=13 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=94 rays=0 distance_culled=0 submitted_triangles=28793 budget=40000 cpu_submit_us=8734 avg_submit_us=4724 avg_gpu_wait_us=5 build_us=3959 arena_kb=2700 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1866 avg_items=1
+[vita-prof] avg_us_per_frame process=5816 physics_scripts=22582 navigation=43 physics3d=827 physics2d=305 render=12594 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=13681 peak=0 active=1
+[vita-audio] blocks=13801 peak=0 active=1
+[vita-audio] blocks=13921 peak=0 active=1
+[vita-audio] blocks=14041 peak=0 active=1
+[vita-audio] blocks=14161 peak=0 active=1
+[vita-audio] blocks=14281 peak=0 active=1
+[vita-audio] blocks=14401 peak=0 active=1
+[vita-audio] blocks=14521 peak=0 active=1
+[vita-audio] blocks=14641 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=42584 fps=23.5 draws=224 quads=307 clips=2 gpu_wait_us=5 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=131 ly=132 rx=128 ry=128 frame=4200
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=83886080 phycont_free=27262976 textures=7864320
+[gxm3d] frame=4200 visible_instances=67 candidates=67 drawn=67 structural=12 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=93 rays=0 distance_culled=0 submitted_triangles=28781 budget=40000 cpu_submit_us=8641 avg_submit_us=4631 avg_gpu_wait_us=5 build_us=3882 arena_kb=2700 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1866 avg_items=1
+[vita-prof] avg_us_per_frame process=5859 physics_scripts=22301 navigation=42 physics3d=814 physics2d=303 render=12459 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=14761 peak=0 active=1
+[vita-audio] blocks=14881 peak=0 active=1
+[vita-audio] blocks=15001 peak=0 active=1
+[vita-audio] blocks=15121 peak=0 active=1
+[vita-audio] blocks=15241 peak=0 active=1
+[vita-audio] blocks=15361 peak=0 active=1
+[vita-audio] blocks=15481 peak=0 active=1
+[vita-audio] blocks=15601 peak=0 active=1
+[vita-audio] blocks=15721 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=42284 fps=23.6 draws=224 quads=307 clips=2 gpu_wait_us=5 targets=0
+[gxm3d] frame=4500 visible_instances=66 candidates=66 drawn=66 structural=11 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=94 rays=0 distance_culled=0 submitted_triangles=26433 budget=40000 cpu_submit_us=8303 avg_submit_us=4583 avg_gpu_wait_us=5 build_us=3714 arena_kb=2706 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1869 avg_items=1
+[vita-prof] avg_us_per_frame process=5707 physics_scripts=21971 navigation=43 physics3d=813 physics2d=301 render=12400 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=15841 peak=0 active=1
+[vita-audio] blocks=15961 peak=0 active=1
+[vita-audio] blocks=16081 peak=0 active=1
+[vita-audio] blocks=16201 peak=0 active=1
+[vita-audio] blocks=16321 peak=0 active=1
+[vita-audio] blocks=16441 peak=0 active=1
+[vita-audio] blocks=16561 peak=0 active=1
+[vita-audio] blocks=16681 peak=0 active=1
+[vita-audio] blocks=16801 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=42806 fps=23.4 draws=223 quads=306 clips=2 gpu_wait_us=5 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=130 rx=128 ry=129 frame=4800
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=83886080 phycont_free=27262976 textures=7864320
+[gxm3d] frame=4800 visible_instances=73 candidates=70 drawn=70 structural=13 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=102 rays=0 distance_culled=3 submitted_triangles=29265 budget=40000 cpu_submit_us=8873 avg_submit_us=4912 avg_gpu_wait_us=5 build_us=3995 arena_kb=2753 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1866 avg_items=1
+[vita-prof] avg_us_per_frame process=5817 physics_scripts=22357 navigation=43 physics3d=823 physics2d=304 render=12520 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=16921 peak=0 active=1
+[vita-audio] blocks=17041 peak=0 active=1
+[vita-audio] blocks=17161 peak=0 active=1
+[vita-audio] blocks=17281 peak=0 active=1
+[vita-audio] blocks=17401 peak=0 active=1
+[vita-audio] blocks=17521 peak=0 active=1
+[vita-audio] blocks=17641 peak=0 active=1
+[vita-audio] blocks=17761 peak=0 active=1
+[vita-audio] blocks=17881 peak=0 active=1
+[vita-audio] blocks=18001 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=42690 fps=23.4 draws=224 quads=307 clips=2 gpu_wait_us=5 targets=0
+[gxm3d] frame=5100 visible_instances=68 candidates=68 drawn=68 structural=13 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=98 rays=0 distance_culled=0 submitted_triangles=28793 budget=40000 cpu_submit_us=8747 avg_submit_us=4712 avg_gpu_wait_us=5 build_us=4031 arena_kb=2753 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1871 avg_items=1
+[vita-prof] avg_us_per_frame process=5784 physics_scripts=22194 navigation=42 physics3d=820 physics2d=302 render=12410 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=18121 peak=0 active=1
+[vita-audio] blocks=18241 peak=0 active=1
+[vita-audio] blocks=18361 peak=0 active=1
+[vita-audio] blocks=18481 peak=0 active=1
+[vita-audio] blocks=18601 peak=0 active=1
+[vita-audio] blocks=18721 peak=0 active=1
+[vita-audio] blocks=18841 peak=0 active=1
+[vita-audio] blocks=18961 peak=0 active=1
+[vita-audio] blocks=19081 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=42512 fps=23.5 draws=224 quads=307 clips=2 gpu_wait_us=5 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=130 rx=128 ry=129 frame=5400
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=83886080 phycont_free=27262976 textures=7864320
+[gxm3d] frame=5400 visible_instances=67 candidates=67 drawn=67 structural=12 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=97 rays=0 distance_culled=0 submitted_triangles=28781 budget=40000 cpu_submit_us=8636 avg_submit_us=4681 avg_gpu_wait_us=5 build_us=4000 arena_kb=2753 invalidations=382
+[gxm2d-canvas] calls=300 avg_canvas_us=1870 avg_items=1
+[vita-prof] avg_us_per_frame process=5859 physics_scripts=22053 navigation=42 physics3d=816 physics2d=303 render=12594 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=19201 peak=0 active=1
+[vita-audio] blocks=19321 peak=0 active=1
+[vita-audio] blocks=19441 peak=0 active=1
+[vita-audio] blocks=19561 peak=0 active=1
+[vita-audio] blocks=19681 peak=0 active=1
+[vita-audio] blocks=19801 peak=0 active=1
+[vita-audio] blocks=19921 peak=0 active=1
