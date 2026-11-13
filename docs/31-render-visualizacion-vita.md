@@ -60,7 +60,7 @@ Confirman W7/W4 salvo donde se indica **(nuevo)** o **(corrige)**.
 triángulos) + 34 cajas de la casa con 21 materiales, sin `StaticBody3D` y con los ajustes `rendering/vita/*` por
 defecto (`godot/g1-unitree/project.godot`). Con luz por vértice eso son 69 *draws* base + hasta 68 de luz = **≈ 137
 *draws*** y ≈ 13 000 + 10 900 triángulos de GPU por fotograma [I]. G7c (59 FPS) eran 20 instancias y 5 574
-triángulos (`docs/06-bitacora-estado.md:56-58`): el G1 es ×3,4 en *draws* y ×2,3 en triángulos, sin medir todavía
+triángulos (bitácora 2026-11-01, «G7c VERDE», en `docs/bitacora/2026-11.md`): el G1 es ×3,4 en *draws* y ×2,3 en triángulos, sin medir todavía
 (gate G8-G1).
 
 ---

@@ -33,7 +33,7 @@
 
 ## 2. LiDAR 2D con `intersect_ray`
 
-- Margen real: g7c ≈ 17 ms/fotograma, render ≈ 11,6 ms (`docs/06-bitacora-estado.md:56`) [V] ⇒ a 30 FPS sobran ~15 ms.
+- Margen real: g7c ≈ 17 ms/fotograma, render ≈ 11,6 ms (bitácora 2026-11-01, «G7c VERDE», en `docs/bitacora/2026-11.md`) [V] ⇒ a 30 FPS sobran ~15 ms.
 - El render lanza hasta 96 rayos de sombra (`pv:rasterizer_scene_gxm_vita.inc:550,869`) [V], solo con luces omni/spot y StaticBody3D ⇒ luz direccional o `shadow_rays=0`.
 - Estimación [I]: 50–130 µs/rayo desde GDScript (20–50 µs de núcleo + Dictionary) ⇒ 4 ms = 30–80 rayos/fotograma ⇒ 180 rayos a 10 Hz repartidos en 3 fotogramas: justo.
 - Mejoras: capa de colisión propia, rango ≤ 8 m, helper C++ `scan()` sin Dictionary (2–3× [I]), o DDA sobre rejilla en C (2–5 µs/rayo [I]).

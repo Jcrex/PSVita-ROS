@@ -1,5 +1,7 @@
 # 07 — Requisitos: la web como IDE/panel de control del proyecto
 
+> **Estado (2026-11-13):** EN PAUSA con la web (usuario, 2026-11-01).
+
 **Fecha de creación:** 2026-07-06
 **Estado:** Recopilación de requerimientos — visión a largo plazo, sin diseño
 detallado ni compromiso de calendario.

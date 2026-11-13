@@ -1,7 +1,7 @@
 # Arquitectura de la Fase 1: micro-ROS y transporte UDP
 
 **Fecha de creación:** 2026-06-08
-**Estado:** Fundación aprobada — incógnita dura pendiente de validación
+**Estado:** Fundación aprobada — incógnita dura cerrada en hardware (sesión XRCE + pub/sub sobre la red de la Vita; doc 13 §2)
 
 ---
 

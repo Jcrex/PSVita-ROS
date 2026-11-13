@@ -1,5 +1,7 @@
 # Visión y objetivos del proyecto PS Vita ↔ ROS2
 
+> **Estado (2026-11-13):** Vigente como marco. El orden estricto por objetivos y «la laptop no instala nada» ya no describen el trabajo: producto = Godot 4 + `ros2_vita` (ADR 0008).
+
 **Fecha de creación:** 2026-06-08
 **Estado:** Fundación aprobada
 

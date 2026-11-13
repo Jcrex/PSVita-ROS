@@ -28,7 +28,7 @@ poder **traducirse directamente a código**: fichas por tipo con esqueleto GDScr
 | Límites XRCE y relay del PC | `docs/27-xrce-limites-y-relay.md`, `docs/32-acciones-puente-pc.md`, `docs/adr/0012-*.md` |
 | Sensores y visión | `docs/28-sensores-y-vision-vita.md`, `docs/29-plantillas-robots-sensores.md` |
 | URDF / RobotModel | `docs/25-urdf-godot.md`, `docs/adr/0009-urdf-horneado-en-pc.md` |
-| Mini-rviz histórico | `docs/11-diseno-mini-rviz.md`, `docs/04-investigacion-portabilidad-rviz2.md` |
+| Mini-rviz histórico | `archivo/docs/11-diseno-mini-rviz.md`, `docs/04-investigacion-portabilidad-rviz2.md` |
 | Rendimiento real medido | `docs/30-rendimiento-xrce-plantillas.md`, `docs/34-perfil-vita-ligero.md` |
 | Regla de escenas editables | `docs/35-regla-escenas-editables.md` |
 

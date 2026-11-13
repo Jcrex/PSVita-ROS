@@ -1,11 +1,11 @@
 # ADR 0007: convivencia vita2d ↔ vitaGL — Opción 2 (todo vitaGL)
 
-- **Estado:** Aceptado
+- **Estado:** **Superado** por ADR 0008 §5 (enmienda 2026-11-11): `vita-app` es histórica; ADR 0011 descarta su vitaGL.
 - **Fecha:** 2026-07-10
 
 ## Contexto
 
-El mini-rviz (ADR 0006, `docs/11-diseno-mini-rviz.md`) necesita vitaGL
+El mini-rviz (ADR 0006, `archivo/docs/11-diseno-mini-rviz.md`) necesita vitaGL
 para la escena 3D, pero la app ya dibuja su UI declarativa con vita2d
 (ADR 0005). Ambas bibliotecas inicializan el GPU (SceGxm) y el plan
 (`docs/10` §B2) preveía decidir la convivencia con un experimento en

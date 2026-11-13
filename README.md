@@ -151,15 +151,15 @@ v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
 | `docs/01` … `docs/05` | Hardware, arquitectura micro-ROS, estrategia dual, investigación rviz2, setup del PC |
 | `docs/06-bitacora-estado.md` | **Dónde estamos y próximos pasos exactos** |
 | `docs/09-objetivo2-control-robot.md` | Diseño del teleop `/cmd_vel` (mapeo de mandos) |
-| `docs/10-plan-objetivos-3-4.md` | **Guía operativa de los Objetivos 3/4** (etapas A-F) |
-| `docs/11-diseno-mini-rviz.md` | Diseño del mini-rviz y formato VBM |
+| `archivo/docs/10-plan-objetivos-3-4.md` | **Guía operativa de los Objetivos 3/4** (etapas A-F) |
+| `archivo/docs/11-diseno-mini-rviz.md` | Diseño del mini-rviz y formato VBM |
 | `docs/12-investigacion-godot-ros2-vita.md` | Investigación web: Godot en la Vita, micro-ROS, Rust nativo (con fuentes) |
 | `docs/13-infraestructura-desarrollo-vita.md` | Mapa del entorno completo, librerías de optimización y pendientes por dependencia |
 | `docs/14-hardware-vita-memoria-hilos-optimizacion.md` | Hardware de la Vita: memoria, hilos, CPU/GPU y experimentos |
 | `docs/15-rust-nativo-y-optimizacion-vita.md` | Rust nativo: modos de uso, target, perfil y optimización |
 | `docs/17-rclgd-estado-del-arte-godot-ros2.md` | Estudio del código de `rclgd` y `roomba_ws` (ROSCon) y qué aprovechar en la Vita |
-| `docs/16-paginas-pendientes-de-leer.md` | Páginas que no se pudieron abrir (para leer en el PC) |
-| `docs/19-plan-multiagente-migracion-godot4.md` | **Plan multiagente** de la migración: mapa jerárquico, ramas, agentes y oleadas |
+| `archivo/docs/16-paginas-pendientes-de-leer.md` | Páginas que no se pudieron abrir (para leer en el PC) |
+| `archivo/docs/19-plan-multiagente-migracion-godot4.md` | **Plan multiagente** de la migración: mapa jerárquico, ramas, agentes y oleadas |
 | `docs/18-migracion-a-godot4.md` | **Migración a Godot 4** (godot4-vita): qué cambia, enlace de Rust, red, riesgos y backlog |
 | `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
 | `docs/20-godot35-migracion-historico.md` | *(Histórico)* Migración a **Godot 3.5** validada en hardware: prerrequisitos del VitaSDK y requisitos del `.vpk` |
