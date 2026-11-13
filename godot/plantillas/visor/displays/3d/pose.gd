@@ -44,7 +44,8 @@ func _procesar(msg):
 	var p = msg.pose
 	if "covariance" in p:                               # Odometry / PoseWithCovariance(Stamped): pose.pose
 		p = p.pose
-	return Prim.pose_godot(p)
+	var t: Transform3D = Prim.pose_godot(p)
+	return t if t.is_finite() else null                   # NaN/Inf: ignorar (T2, revisión V1)
 
 
 func _procesar_compacto(msg):
@@ -52,6 +53,8 @@ func _procesar_compacto(msg):
 	if d.is_empty():
 		return null
 	var pos: Vector2 = d["pos"]
+	if not (pos.is_finite() and is_finite(float(d["yaw"]))):
+		return null
 	var q := Quaternion(Vector3(0, 0, 1), float(d["yaw"]))      # giro en Z de ROS
 	return Transform3D(Basis(rclgd.ros_to_godot_quat(q)), rclgd.ros_to_godot_vector(Vector3(pos.x, pos.y, 0.0)))
 

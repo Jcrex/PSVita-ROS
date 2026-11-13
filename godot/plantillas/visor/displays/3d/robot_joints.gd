@@ -84,10 +84,13 @@ func _al_pose2d(m) -> void:
 	if d.is_empty():
 		return
 	var pos: Vector2 = d["pos"]
+	if not (pos.is_finite() and is_finite(float(d["yaw"]))):
+		return
 	var q := Quaternion(Vector3(0, 0, 1), float(d["yaw"]))
 	var t := Transform3D(Basis(rclgd.ros_to_godot_quat(q)), rclgd.ros_to_godot_vector(Vector3(pos.x, pos.y, 0.0)))
 	t.origin.y = robot.transform.origin.y                 # el plano: la altura de la base es la de la escena
-	robot.transform = t
+	# Conservar la escala propia (revisión V1: los EJES de respaldo van a 0,5 y `transform = t` los dejaba a 1).
+	robot.transform = t.scaled_local(robot.scale)
 	poses_base += 1
 
 

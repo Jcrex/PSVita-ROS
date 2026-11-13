@@ -14,6 +14,8 @@
 [ext_resource type="Script" path="res://comun/visor/displays/2d/scan.gd" id="12_scan"]
 [ext_resource type="Script" path="res://comun/visor/displays/2d/pose.gd" id="13_pose"]
 [ext_resource type="Script" path="res://comun/visor/displays/2d/path.gd" id="14_path"]
+[ext_resource type="Script" path="res://comun/visor/texto_superpuesto.gd" id="15_texto"]
+[ext_resource type="Script" path="res://banco_primitivas.gd" id="16_banco"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -32,9 +34,13 @@ transform = Transform3D(0.81915206, -0.46984634, 0.32898995, 0, 0.57357645, 0.81
 transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 6, 6)
 current = true
 
-[node name="VisorRos" type="Node" parent="." node_paths=PackedStringArray("camara")]
+[node name="BancoPrimitivas" type="Node3D" parent="."]
+script = ExtResource("16_banco")
+
+[node name="VisorRos" type="Node" parent="." node_paths=PackedStringArray("camara", "texto")]
 script = ExtResource("1_visor")
 camara = NodePath("../Camara")
+texto = NodePath("Hud/Texto")
 
 [node name="Robot" type="Node3D" parent="VisorRos"]
 script = ExtResource("8_robot")
@@ -83,6 +89,13 @@ tipo = "nav_msgs/msg/Odometry"
 
 [node name="Hud" type="CanvasLayer" parent="VisorRos"]
 layer = 2
+
+[node name="Texto" type="Control" parent="VisorRos/Hud" node_paths=PackedStringArray("camara")]
+offset_right = 960.0
+offset_bottom = 544.0
+mouse_filter = 2
+script = ExtResource("15_texto")
+camara = NodePath("../../../Camara")
 
 [node name="GestorHud" type="Control" parent="VisorRos/Hud" node_paths=PackedStringArray("barra", "pestanas")]
 offset_right = 960.0

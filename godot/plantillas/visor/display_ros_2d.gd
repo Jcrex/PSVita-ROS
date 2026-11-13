@@ -46,6 +46,7 @@ static func tipos_ros() -> PackedStringArray:
 
 func _enter_tree() -> void:
 	add_to_group("display_ros")
+	_seccion = "visor/" + name          # ya aquí: `_process` corre antes de `conectar` (revisión V1: sección «»)
 
 
 ## Lo llama VisorRos. Las subclases que lo amplíen llaman primero a `super.conectar(v)`.

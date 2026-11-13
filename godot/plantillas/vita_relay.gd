@@ -32,7 +32,7 @@ var mapa_img: Image
 var mapa_tex: ImageTexture
 var teselas_recibidas := 0
 var _sucio := false
-var _t_ultima := 0.0
+var _t_ultima := -1000.0     # s; muy atrás: la primera subida no espera a que el motor lleve 1/HZ_TEXTURA s
 var _tesela_img: Image                 # imagen 32×32 reutilizada para cada tesela (set_data + blit_rect)
 var _tesela_bytes := PackedByteArray()
 

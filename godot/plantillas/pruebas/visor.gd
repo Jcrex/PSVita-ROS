@@ -163,6 +163,10 @@ func _probar_pc() -> void:
 	await create_timer(0.45).timeout
 	check(eco.gris and eco.caducados == 1, "caducidad: el HUD pasa a gris una vez")
 	check(eco.color_estado(Color.RED) == eco.COLOR_CADUCADO, "caducidad: color de dato viejo")
+	# Revisión V1: los colores del HUD salen de PaletaViz (gris de la rampa, no STALE: ver display_ros_hud.gd).
+	var pal = preload("res://comun/visor/paleta_viz.gd")
+	check(eco.COLOR_CADUCADO.is_equal_approx(pal.color(eco.I_CADUCADO)) and eco.COLOR_OK == pal.OK
+			and eco.COLOR_AVISO == pal.WARN and eco.COLOR_ERROR == pal.ERROR, "HUD: colores de PaletaViz")
 	check(not eco3.visible and eco3.caducados == 1, "caducidad: el 3D se oculta una vez")
 	check(eco2.visible and eco2.caducados == 0, "caducidad 0 = nunca caduca")
 	pub.publish(_cadena("d"))

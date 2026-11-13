@@ -45,12 +45,16 @@ func _procesar(msg):
 	var y: float = o.y
 	var z: float = o.z
 	var w: float = o.w
-	return Vector3(p.position.x, p.position.y, atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)))
+	var r := Vector3(p.position.x, p.position.y, atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)))
+	return r if r.is_finite() else null                   # NaN/Inf (EKF sin iniciar): ignorar (T2, revisión V1)
 
 
 func _procesar_compacto(msg):
 	var d: Dictionary = VitaRelay.pose2d(msg)
-	return null if d.is_empty() else Vector3(d["pos"].x, d["pos"].y, d["yaw"])
+	if d.is_empty():
+		return null
+	var r := Vector3(d["pos"].x, d["pos"].y, d["yaw"])
+	return r if r.is_finite() else null
 
 
 func _pintar(d) -> void:

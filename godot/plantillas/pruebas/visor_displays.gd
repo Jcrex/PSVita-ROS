@@ -463,6 +463,9 @@ func _probar_vita() -> void:
 	check(ds.scan.puntos_dibujados == 135 and ds.scan.puntos_dibujados <= ds.scan.cupo,
 			"scan Vita: 135 de 180 rayos (los NaN = 0 fuera), ≤ cupo %d" % ds.scan.cupo)
 	check(ds.pose.pose.is_equal_approx(Vector3(1.0, 2.0, PI / 2)), "pose 2D Vita: pose2d → (1, 2, 90°)")
+	var nan_msg = _arr("std_msgs/msg/Float32MultiArray", PackedFloat32Array([NAN, 0, 0, 0, 0, 0]))
+	check(ds.pose._procesar_compacto(nan_msg) == null and ds.pose3._procesar_compacto(nan_msg) == null,
+			"pose Vita: pose2d con NaN se ignora en 2D y 3D (T2, revisión V1)")
 	var t: Transform3D = ds.pose3._vis.transform
 	check(t.origin.is_equal_approx(Vector3(-2, 0, -1)), "pose 3D Vita: pose2d → (x ROS = −Z, y ROS = −X)")
 	check(ds.path.puntos_dibujados == 57 and ds.path.puntos_dibujados <= ds.path.cupo, "path Vita: 57 puntos ≤ cupo 112")
