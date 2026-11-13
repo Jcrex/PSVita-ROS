@@ -50,7 +50,7 @@
 
 ---
 
-## 2. Plan de subagentes — Fase O (organización), PRIMERO
+## 2. Plan de subagentes — Fase O (organización), PRIMERO — **CERRADA 2026-11-13** (ADR 0014; `organizacion/O2-registro.md`, `O3-revision.md`)
 
 Modelos según `docs/ia/workshops/README.md` §4.6: Haiku = inventarios; Opus = ejecución y revisión; Fable = decisiones.
 
