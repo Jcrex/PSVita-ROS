@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-13 (regla de escenas editables, doc 35: el mundo y el punto de salida del robot pasan a `main.tscn`). Antes, el mismo día: T1 y T2 medidos en la Vita (`g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-13, cierre de sesión (regla de escenas editables, doc 35, comprobada por el usuario en el editor; `g1-sensores` a 57–58 FPS en la Vita, doc 34 §7.1). Antes, el mismo día: T1 y T2 medidos en la Vita (`g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque; las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
@@ -21,8 +21,20 @@ El estado vivo está en el primer bloque; las fechas anteriores, un bloque por s
   sigue editando en `docker/g1/casa.json`).
 - **Verificado en host:** mundo idéntico (volcado de mallas y colisiones en los dos perfiles), runner 14/12/12,
   `perfil_ligero` 18/12/12, `presupuesto` OK con las mismas cifras, g1-unitree y loopback sin errores.
-- **Pendiente:** que el usuario abra el editor gráfico y vea los modelos; exportar y probar el `.vpk` en la Vita
-  (no debería cambiar nada); elegir `luz_por_vertice` (doc 34 §7.1).
+- **Editor gráfico: comprobado por el usuario** (ve el mundo y el robot en `main.tscn`).
+- **Cierre de la sesión (2026-11-13).** Commits locales **sin push**: `68e75c1` (perfil ligero, parche de la nube),
+  `239571f` (medidas T1/T2 en la Vita) y `e892a43` (escenas editables), más los anteriores desde `688cc3c`.
+  Ficheros sueltos sin versionar en la raíz: `0001-perfil-vita-ligero.patch` (ya aplicado),
+  `34-perfil-vita-ligero.md` (copia idéntica de `docs/34`) y `sesion-kimi.md`; se pueden borrar.
+- **Cómo retomar (por orden):**
+  1. Exportar `g1-sensores` con las escenas nuevas y probarlo en la Vita (debe seguir a 57–58 FPS; no cambia lo que
+     se dibuja): `tools/export-vita-vpk.sh godot/g1-sensores build/g1-sensores.vpk` y
+     `tools/deploy-vpk-ftp.sh build/g1-sensores.vpk 192.168.1.94`.
+  2. Que el usuario elija `luz_por_vertice` (V = 57 FPS, más clara; O = 58 FPS, algo más oscura) y fijarlo en
+     `"mundo"` de `robot.json`.
+  3. Bajar ~0,5–1 ms de scripts de física para 60 FPS estables: `sensor/mapeo` y `sensor/mid360_scan` (~0,6 ms
+     cada uno), robot ~1,5 ms, sensores por turnos (doc 34 §7.1 y §8.4).
+  4. T3: push y PR a `main` (**preguntar antes**). Sin tocar: T4–T7.
 
 ## 2026-11-13 (PC, mediodía) — T1 y T2 validados en la Vita: 57–58 FPS
 
