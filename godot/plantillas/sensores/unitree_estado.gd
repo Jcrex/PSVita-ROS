@@ -25,6 +25,7 @@ var _pub_wireless: RosPublisher
 var _pub_imu_torso: RosPublisher
 var _imu_torso: RosMsg
 var _cuenta := 0
+var _nombres_marcha := PackedStringArray()
 
 
 func _init() -> void:
@@ -95,8 +96,9 @@ func _publicar_compacto() -> void:
 	var p: Vector3 = robot.call("posicion_base_ros")
 	var q: Quaternion = robot.call("orientacion_base_ros")
 	var datos := PackedFloat32Array([p.x, p.y, p.z, q.x, q.y, q.z, q.w])
-	var pos := PackedStringArray(marcha_nombres())
-	var valores: PackedFloat32Array = robot.call("posiciones_joints", pos)
+	if _nombres_marcha.is_empty():
+		_nombres_marcha = PackedStringArray(marcha_nombres())   # una vez, no un array nuevo por publicación
+	var valores: PackedFloat32Array = robot.call("posiciones_joints", _nombres_marcha)
 	datos.append_array(valores)
 	_compacto.data = datos
 	_pub_compacto.publish(_compacto)

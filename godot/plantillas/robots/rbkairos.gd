@@ -10,6 +10,10 @@ var _pos_brazo := PackedFloat64Array()
 var _obj_brazo := PackedFloat64Array()
 var _modelo: Node3D
 var _brazo: Node
+# Perfil «Vita ligero»: la lista de nombres y el búfer de posiciones del modelo se crean una vez (antes, cada tick
+# construía dos listas de nombres y buscaba cada junta con find()).
+var _nombres_todos := PackedStringArray()
+var _pos_todos := PackedFloat32Array()
 
 
 func inicializar_modelo(config: Dictionary) -> void:
@@ -31,9 +35,10 @@ func configurar_ros(nombre: String, espacio: String, transporte: String) -> int:
 
 
 func nombres_joints() -> PackedStringArray:
-	var n := PackedStringArray(RUEDAS)
-	n.append_array(nombres_brazo)
-	return n
+	if _nombres_todos.size() != RUEDAS.size() + nombres_brazo.size():
+		_nombres_todos = PackedStringArray(RUEDAS)
+		_nombres_todos.append_array(nombres_brazo)
+	return _nombres_todos
 
 
 func fijar_objetivos_joints(nombres, posiciones) -> void:
@@ -64,4 +69,11 @@ func _physics_process(dt: float) -> void:
 	for i in _pos_brazo.size():
 		_pos_brazo[i] = move_toward(_pos_brazo[i], _obj_brazo[i], 1.5 * dt)
 	if _modelo != null and _modelo.has_method("set_joints"):
-		_modelo.call("set_joints", nombres_joints(), posiciones_joints(nombres_joints()))
+		var nombres := nombres_joints()   # ruedas y después el brazo, el mismo orden que el búfer
+		if _pos_todos.size() != nombres.size():
+			_pos_todos.resize(nombres.size())
+		for i in 4:
+			_pos_todos[i] = angulos_ruedas[i]
+		for i in _pos_brazo.size():
+			_pos_todos[4 + i] = _pos_brazo[i]
+		_modelo.call("set_joints", nombres, _pos_todos)

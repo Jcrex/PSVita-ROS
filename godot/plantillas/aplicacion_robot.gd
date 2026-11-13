@@ -1,6 +1,7 @@
 extends Node3D
 
 const Util = preload("res://comun/ros/util_ros.gd")
+const Perfil = preload("res://comun/ros/perfil.gd")
 const Mundo = preload("res://comun/mundo/mundo.tscn")
 const SENSORES := {
 	"imu": preload("res://comun/sensores/imu.gd"),
@@ -32,6 +33,8 @@ var captura := ""
 var fotograma_captura := 120
 var transporte_override := ""
 var lod_override := ""
+var _perfil_arg := false
+var _mundo_arg := ""
 var _fotogramas := 0
 var _tiempo := 0.0
 var _hud_t := 0.0
@@ -52,6 +55,23 @@ var _yaw_seguir := 0.0
 var _cenital := false
 var _arrastrando := false
 var _pub_tf_estatico: RosPublisher
+# Perfil «Vita ligero» (2026-11-13): en la Vita o con `-- lod=vita`. Mundo con menos triángulos y draws
+# (mundo_base.gd), HUD corto sin contorno y refrescado a 4 Hz, y contadores propios `[perfil-gd]`.
+var perfil_ligero := false
+var mundo: Node3D
+var _hud_fondo: ColorRect
+var _hud_completo := false        # SELECT/H alterna el HUD largo de siempre
+var _hud_periodo := 0.1
+var _foco_t := 1.0                # ≥ periodo: enfoca en el primer fotograma
+var _perfil_fotogramas := 0
+## Luz por vértice del 3D GXM (`rendering/vita/vertex_lighting`, que el rasterizador lee cada fotograma:
+## rasterizer_scene_gxm_vita.inc:867). Con ella, cada malla cuyo origen se mueve ≥ 1 cm se vuelve a iluminar en la
+## CPU (hasta 3 000 vértices por fotograma, :602-696 y :868): con un robot articulado andando son ~3,9 ms fijos
+## por fotograma (`build_us` del log del 2026-11-13) y una segunda pasada de dibujo por malla (`lit=`). Sin ella
+## cada malla lleva un tono único (se ve más plano). START (o L) lo alterna en marcha para medir las dos
+## opciones en la Vita; el valor inicial sale de "mundo": {"luz_por_vertice": true|false} de robot.json.
+var luz_por_vertice := true
+var _perfil_dibujado := {}
 
 
 func _ready() -> void:
@@ -61,7 +81,16 @@ func _ready() -> void:
 		push_error("No se pudo leer " + ruta_config)
 		get_tree().quit(1)
 		return
-	add_child(Mundo.instantiate())
+	# `-- mundo=completo` fuerza el mundo de siempre aunque el robot sea el de la Vita (para comparar medidas).
+	perfil_ligero = (OS.has_feature("vita") or lod_override == "vita") and _mundo_arg != "completo"
+	Perfil.activo = (OS.has_feature("vita") or _perfil_arg) and ProjectSettings.get_setting("ros/perfil_gd", true)
+	mundo = Mundo.instantiate()
+	mundo.perfil_ligero = perfil_ligero
+	var cfg_mundo: Dictionary = config.get("mundo", {})
+	mundo.radio_visible = cfg_mundo.get("radio_visible", mundo.radio_visible)
+	if perfil_ligero:
+		_fijar_luz_por_vertice(cfg_mundo.get("luz_por_vertice", true))
+	add_child(mundo)
 	_crear_robot()
 	_montar_camara_hud()
 	_configurar_camara()
@@ -69,11 +98,18 @@ func _ready() -> void:
 		_conectar_deferred.call_deferred()
 
 
+func _fijar_luz_por_vertice(activa: bool) -> void:
+	luz_por_vertice = activa
+	ProjectSettings.set_setting("rendering/vita/vertex_lighting", activa)
+
+
 func _leer_argumentos() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a == "sin_ros": sin_ros = true
 		elif a == "demo": demo = true
 		elif a == "cenital": _cenital = true
+		elif a == "perfil": _perfil_arg = true
+		elif a.begins_with("mundo="): _mundo_arg = a.substr(6)
 		elif a.begins_with("captura="): captura = a.substr(8)
 		elif a.begins_with("fotograma="): fotograma_captura = a.substr(10).to_int()
 		elif a.begins_with("transporte="): transporte_override = a.substr(11)
@@ -277,8 +313,18 @@ func _montar_camara_hud() -> void:
 	hud = Label.new()
 	hud.position = Vector2(12, 8)
 	hud.add_theme_color_override("font_color", Color(0.95, 0.97, 1.0))
-	hud.add_theme_color_override("font_outline_color", Color.BLACK)
-	hud.add_theme_constant_override("outline_size", 4)
+	if perfil_ligero:
+		# Medido en la Vita (2026-11-13): el HUD eran 224 draws y 307 quads 2D por fotograma. El contorno dibuja cada
+		# letra dos veces; aquí se cambia por UN rectángulo oscuro detrás y el texto se acorta (~45 letras).
+		_hud_periodo = 0.25
+		_hud_fondo = ColorRect.new()
+		_hud_fondo.color = Color(0.0, 0.0, 0.0, 0.55)
+		_hud_fondo.position = Vector2(6, 4)
+		_hud_fondo.size = Vector2(420, 52)
+		capa.add_child(_hud_fondo)
+	else:
+		hud.add_theme_color_override("font_outline_color", Color.BLACK)
+		hud.add_theme_constant_override("outline_size", 4)
 	capa.add_child(hud)
 	add_child(capa)
 
@@ -314,8 +360,28 @@ func _process(dt: float) -> void:
 			elif fase < 10.0: robot.fijar_orden(Vector3(0.0, 0.0, 0.5))
 			elif fase < 13.0: robot.fijar_orden(Vector3(0.0, 0.4, 0.0))
 			else: robot.fijar_orden(Vector3(-0.3, 0.0, 0.0))
+	var t := Perfil.t0() if Perfil.activo else 0
 	_mover_camara(dt)
+	if perfil_ligero:
+		_foco_t += dt
+		if _foco_t >= 0.25:
+			_foco_t = 0.0
+			mundo.enfocar(robot.global_position)
+	if Perfil.activo:
+		Perfil.sumar("camara", t)
+		t = Perfil.t0()
 	_actualizar_hud(dt)
+	if Perfil.activo:
+		Perfil.sumar("hud", t)
+		_perfil_fotogramas += 1
+		if _perfil_fotogramas >= Perfil.CADA:
+			# Triángulos, mallas y superficies dentro de la vista de la cámara: se cuentan una vez cada 300
+			# fotogramas, fuera de las secciones medidas. Deben parecerse a submitted_triangles de [gxm3d].
+			_perfil_dibujado = mundo.contar_dibujado(self, camara, 960.0 / 544.0 if DisplayServer.get_name() == "headless" else 0.0)
+			printerr(Perfil.volcar(_perfil_fotogramas, "triangulos=%d mallas=%d superficies=%d luz_vertice=%d ligero=%d" % [
+				_perfil_dibujado.triangulos, _perfil_dibujado.mallas, _perfil_dibujado.superficies,
+				1 if luz_por_vertice else 0, 1 if perfil_ligero else 0]))
+			_perfil_fotogramas = 0
 	_fotogramas += 1
 	if captura != "" and _fotogramas >= fotograma_captura:
 		get_viewport().get_texture().get_image().save_png(captura)
@@ -347,9 +413,12 @@ func _mover_camara(dt: float) -> void:
 
 func _actualizar_hud(dt: float) -> void:
 	_hud_t += dt
-	if _hud_t < 0.1:
+	if _hud_t < _hud_periodo:
 		return
 	_hud_t = 0.0
+	if perfil_ligero and not _hud_completo:
+		_actualizar_hud_corto()
+		return
 	var activos := 0
 	for sensor in sensores.values():
 		if sensor.get("habilitado") == true:
@@ -361,11 +430,30 @@ func _actualizar_hud(dt: float) -> void:
 		config.get("titulo", "Robot ROS 2"), estado, activos, sensores.size(), p.x, p.y, p.z, Engine.get_frames_per_second()]
 	if robot.has_method("linea_hud"):   # p. ej. el G1: fuente de movimiento y clip
 		hud.text += "\n" + robot.call("linea_hud")
+	if _hud_fondo != null:
+		_hud_fondo.size = Vector2(940, 112)
+
+
+## HUD del perfil ligero: dos líneas cortas. El texto solo se reasigna si cambia (reasignarlo obliga al Label a
+## recolocar las letras). SELECT (o H) muestra el HUD completo.
+func _actualizar_hud_corto() -> void:
+	var estado := "sin ROS" if sin_ros else ("ROS ok" if ros_listo else "ROS…")
+	if ros_error != "": estado = "ROS ERROR"
+	var texto := "%s · %d sens · %d FPS · luz %s" % [estado, sensores.size(), Engine.get_frames_per_second(),
+		"V" if luz_por_vertice else "O"]   # V = por vértice, O = por objeto (START alterna)
+	if robot.has_method("linea_hud_corta"):
+		texto += "\n" + robot.call("linea_hud_corta")
+	if texto != hud.text:
+		hud.text = texto
+	if _hud_fondo != null and _hud_fondo.size.x != 420.0:
+		_hud_fondo.size = Vector2(420, 52)
 
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		if ev.keycode == KEY_C: _cenital = not _cenital
+		elif ev.keycode == KEY_H: _hud_completo = not _hud_completo
+		elif ev.keycode == KEY_L and perfil_ligero: _fijar_luz_por_vertice(not luz_por_vertice)
 		elif ev.keycode == KEY_R:
 			var spawn: Array = config.spawn_ros
 			robot.global_position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))
@@ -373,6 +461,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 			robot.reiniciar_estado()   # R2-B5
 	if ev is InputEventJoypadButton and ev.pressed:
 		if ev.button_index == JOY_BUTTON_B: _cenital = not _cenital
+		elif ev.button_index == JOY_BUTTON_BACK: _hud_completo = not _hud_completo
+		elif ev.button_index == JOY_BUTTON_START and perfil_ligero: _fijar_luz_por_vertice(not luz_por_vertice)
 		elif ev.button_index == JOY_BUTTON_Y:
 			var spawn: Array = config.spawn_ros
 			robot.global_position = Util.vector_godot(Vector3(spawn[0], spawn[1], spawn[2]))

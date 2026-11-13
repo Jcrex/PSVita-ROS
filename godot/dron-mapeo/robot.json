@@ -9,6 +9,8 @@
   "radio_colision": 0.55,
   "altura_colision": 0.5,
   "altura_objetivo": 0.2,
+  "mundo": {"radio_visible": 28.0},
+  "_nota_mundo": "Perfil Vita ligero: el dron solo tiene 552 triángulos y vuela alto, así que ve más lejos que los robots de suelo (14 m por defecto).",
   "prefijo_compacto": "/vita/drone",
   "tf_estatico_sensores": true,
   "control": {

@@ -1,15 +1,50 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE). Antes: 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-13 (perfil «Vita ligero» de las plantillas, doc 34; T1 sigue pendiente del usuario). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
-El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un bloque por sesión más abajo.
+El estado vivo está en el primer bloque; las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
 ¿dónde nos quedamos?, ¿qué hace cada programa?, ¿qué arquitectura se empleó?,
 ¿cuál es el siguiente paso exacto?
 
 ---
 
-## 2026-11-13 (PC, noche) — `g1-sensores` en la Vita: 23,5 FPS, diagnóstico y primer arreglo (Estado para retomar)
+## 2026-11-13 (nube, sesión programada) — Perfil «Vita ligero» de las plantillas (T2) (Estado para retomar)
+
+Sesión de Fable 5.2 lanzada por una tarea programada, **en la nube: sin Vita, sin el PC y sin `toolchains/`**. El
+editor de host se compiló allí (`godot4-vita@d1a5f29`, `GODOT_VERSION_STATUS=dev7`, sin XRCE). Informe largo:
+[`docs/34-perfil-vita-ligero.md`](34-perfil-vita-ligero.md).
+
+- **T1 (validar la física a 30 ticks en la Vita): SIN HACER, necesita al usuario.** El `.vpk` sigue en
+  `ux0:/g1-sensores.vpk` (sha256 fbfa43d5…). Pasos: instalar, usar 1–2 min, cerrar, FTP y en el PC:
+  ```fish
+  curl -s --max-time 30 "ftp://192.168.1.94:1337/ux0:/data/gxm3d/godot_stderr.log" -o /tmp/g1s-fisica30.log
+  grep -E "vita-prof|gxm2d-perf" /tmp/g1s-fisica30.log | tail -6
+  ```
+  Verde: `fps ≥ 29` y `physics_scripts ≤ 9500` (antes 23,5 y 22 194). Guardar el log en `docs/ia/revision-kimi/`.
+- **T2 hecho en host, por validar en la Vita** (solo GDScript y assets; el motor y `ros2_vita` no cambian):
+  - Mundo ligero (`mundo_base.gd`, `assets.json`, `tools/generar-lod-vita.py`): cajas fundidas por color, 25 modelos
+    con variante `*_vita.obj`, 8 adornos sin dibujar y visibilidad por distancia. En vista con el G1: de
+    30 355–36 517 triángulos y 83–108 mallas a **13 455–14 909 y 50–55** (límite 15 000 / 80 del ADR 0011).
+  - Contador de render del PC (`contar_dibujado`) **calibrado contra la Vita**: 19 469 triángulos y 53 mallas en
+    el PC frente a 19 457 y 52 en el log de la Vita.
+  - Marcha del G1 ×1,9 y modelo URDF ×2,8 más rápidos por tick (medido en el PC); HUD corto sin contorno a 4 Hz.
+  - Contadores `[perfil-gd]` en el log (µs por sección cada 300 fotogramas) y START para alternar la luz por vértice.
+- **Hallazgo:** `build_us` ≈ 3,9 ms fijos por fotograma = luz por vértice del 3D GXM reiluminando las mallas que se
+  mueven (tope de 3 000 vértices por fotograma, `rasterizer_scene_gxm_vita.inc:602-696,868`). Con ella activada la
+  estimación es 40–60 FPS; desactivada, 60 probables pero con las mallas en tono plano. **Decide la prueba.**
+- **Pruebas:** host 294/0; runner 14/12/12; nuevas `perfil_ligero.gd` 18/12/12 y `presupuesto.gd` OK en los 3;
+  `movimiento_g1.gd` 0 fallos.
+- **Cómo retomar:**
+  1. Aplicar el commit de esta sesión en el PC (llegó como parche: `git am`; la sesión no podía hacer push).
+  2. T1 con el `.vpk` ya subido. Después, exportar y probar el perfil ligero: comandos y criterio de verde en el
+     doc 34 §7 (andar 1 min, START, andar 1 min, bajar el log).
+  3. Con el log: decidir `luz_por_vertice` y, si hace falta, seguir por el doc 34 §8 (sombreado horneado en la
+     paleta, coste de XRCE en `_process`, G1 de ~8 000 triángulos).
+  4. Sin tocar: T3 (push y PR, **preguntar antes**), T4 (TF y RosLogger), T5 (puente ADR 0012), T6 (gates G8),
+     T7 (DB-TSDF) y los pendientes menores.
+
+## 2026-11-13 (PC, noche) — `g1-sensores` en la Vita: 23,5 FPS, diagnóstico y primer arreglo
 
 - **Topics en vivo desde la Vita** (perfil XRCE de las plantillas): `/g1s/estado` 10 Hz; `/vita/g1s/pose2d`,
   `/vita/g1s/joints`, `/tf`, 3 IMU 5 Hz; `scan_compacto` 2 Hz; `mapa_tesela` 1 Hz. ~45 msg/s, ritmos exactos, sin

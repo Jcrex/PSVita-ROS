@@ -8,6 +8,8 @@
   "radio_colision": 0.28,
   "altura_colision": 1.45,
   "altura_objetivo": 1.0,
+  "mundo": {"radio_visible": 12.0, "presupuesto": {"triangulos": 15000, "mallas": 80}},
+  "_nota_mundo": "Perfil Vita ligero (doc 34): el G1 ya gasta 12 633 de los 15 000 triángulos del ADR 0011 para 60 FPS, así que el mundo se dibuja solo a 12 m (14 m por defecto). pruebas/presupuesto.gd comprueba el límite.",
   "fuente_movimiento": "local",
   "_nota_fuente": "local = Godot es la planta (clips de marcha.gd con root motion + move_and_slide); g1_sim = docker/vita-ros.sh g1 es la planta: el cuerpo sigue /g1/estado y la orden local se publica en /cmd_vel. ✕/Espacio alterna. g1_sim_anclaje: relativo (la primera pose de g1_sim cae donde está el G1) o absoluto.",
   "g1_sim_topic_estado": "/g1/estado",

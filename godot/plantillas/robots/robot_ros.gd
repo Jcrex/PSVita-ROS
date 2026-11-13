@@ -2,6 +2,7 @@ extends CharacterBody3D
 
 const Contexto = preload("res://comun/ros/contexto_ros.gd")
 const Util = preload("res://comun/ros/util_ros.gd")
+const Perfil = preload("res://comun/ros/perfil.gd")
 
 @export var topic_cmd := "/cmd_vel"
 @export var topic_cmd_stamped := ""
@@ -118,8 +119,14 @@ func _physics_process(dt: float) -> void:
 			_teleop_local_activo = false
 	for i in 3:
 		orden_actual[i] = move_toward(orden_actual[i], orden_objetivo[i], aceleracion_max[i] * dt)
-	_integrar_movimiento(dt)
-	_actualizar_estado(dt)
+	if Perfil.activo:
+		var t := Perfil.t0()
+		_integrar_movimiento(dt)
+		_actualizar_estado(dt)
+		Perfil.sumar("robot", t)
+	else:
+		_integrar_movimiento(dt)
+		_actualizar_estado(dt)
 
 
 func _integrar_movimiento(dt: float) -> void:

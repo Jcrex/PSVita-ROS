@@ -55,6 +55,28 @@ para no chocar con `docker/g1/g1_sim.py` (`/g1/estado`, `/odom`, `/tf`).
 
 `mapeo_2d.gd` integra un LaserScan con odometría conocida. No es SLAM con scan matching ni cierre de bucles: para eso se usa `slam_toolbox` en PC. Las acciones y los servicios no existen en `ros2_vita`; `JointTrajectory`, `LowCmd` y `unitree_api/Request` sí son topics y funcionan.
 
+## Perfil «Vita ligero» (60 FPS; doc 34)
+
+Activo en la Vita y con `-- lod=vita` en el PC (`-- mundo=completo` lo anula para comparar). Cambia lo que se
+dibuja, no lo que choca. Detalle, medidas y prueba de hardware en `docs/34-perfil-vita-ligero.md`.
+
+- **Mundo** (`mundo/mundo_base.gd`): cajas fundidas por color, `"modelo_vita"` (variante de pocos triángulos generada
+  con `tools/generar-lod-vita.py`), `"vita": false` (adorno que no se dibuja), `"lod_vita": false | fracción` (no
+  reducir, u otra fracción) y visibilidad por distancia al robot.
+- **`robot.json`, clave `mundo`:** `radio_visible` (m; 14 por defecto), `luz_por_vertice` (true por defecto) y
+  `presupuesto` (`triangulos`, `mallas`; 15 000 y 80 por defecto, ADR 0011 §6).
+- **HUD:** dos líneas cortas; SELECT/H muestra el completo. START/L alterna la luz por vértice del 3D GXM.
+- **Contadores:** `ros/perfil.gd` escribe `[perfil-gd]` en stderr cada 300 fotogramas (µs por sección y triángulos
+  en vista). En el PC: `-- perfil`.
+- **Un robot nuevo** puede dar `linea_hud_corta()` y debe pasar `pruebas/presupuesto.gd`.
+
+```fish
+set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+$GH --headless --path godot/g1-sensores --script res://comun/pruebas/perfil_ligero.gd -- sin_ros lod=vita
+$GH --headless --path godot/g1-sensores --script res://comun/pruebas/presupuesto.gd -- sin_ros lod=vita
+$GH --headless --path godot/g1-sensores --quit-after 700 -- transporte=loopback lod=vita perfil
+```
+
 ## Ejecutar y comprobar
 
 ```fish

@@ -46,6 +46,7 @@ var _desde_lowcmd := -1.0
 var _nombres := PackedStringArray()
 var _posiciones := PackedFloat32Array()
 var _indices_piernas := PackedInt32Array()   # marcha.joints[i] → índice en _nombres (precalculado)
+var _indice_nombre := {}                     # nombre de junta → índice en _nombres (evita find() por publicación)
 var _bloqueado := false
 
 # Estado del modo g1_sim
@@ -73,6 +74,7 @@ func inicializar_modelo(config: Dictionary) -> void:
 	_posiciones.resize(_nombres.size())
 	for i in _nombres.size():
 		_posiciones[i] = POSE_DEFECTO.get(_nombres[i], 0.0)
+		_indice_nombre[_nombres[i]] = i
 	# load() y no preload(): res://marcha.gd solo existe en g1-sensores (enlace a g1-unitree); con preload, abrir
 	# las plantillas desde rbkairos-plus o dron-mapeo daría error al analizar este script.
 	var script_marcha: Script = load("res://marcha.gd")
@@ -229,7 +231,8 @@ func _marcha_local(dt: float) -> void:
 	_sincronizar_marcha()   # parte de la pose real del cuerpo (tras chocar o tras reiniciar con R/△)
 	var antes: Vector2 = marcha.pos
 	# Sin colisión dentro de marcha.gd: la hace la física. g1-unitree usa colision_casa.libre (rejilla 2D).
-	marcha.avanzar(dt, func(_p): return true)
+	# Callable vacío = «no preguntar» (antes se creaba una lambda nueva cada tick y se llamaba 1–2 veces).
+	marcha.avanzar(dt, Callable())
 	var paso: Vector2 = marcha.pos - antes
 	# Root motion → velocidad: move_and_slide recorre exactamente `paso` si no choca y desliza si choca.
 	velocity = Util.vector_godot(Vector3(paso.x, paso.y, 0.0)) / maxf(dt, 1e-6)
@@ -371,6 +374,13 @@ func linea_hud() -> String:
 	return "Movimiento: local (✕/Espacio → g1_sim) · clip %s%s" % [clip, "  [pared]" if _bloqueado else ""]
 
 
+## HUD del perfil «Vita ligero» (aplicacion_robot.gd): lo mínimo, para dibujar pocas letras.
+func linea_hud_corta() -> String:
+	if fuente_movimiento == "g1_sim":
+		return "g1_sim · %d rx" % _estados_recibidos
+	return "local · %s%s" % [marcha.actual if marcha != null else "?", " [pared]" if _bloqueado else ""]
+
+
 ## R2-A5: la odometría y /tf publican odom→pelvis con la pose REAL de la pelvis (~0,79 m y su balanceo), no el
 ## origen del CharacterBody3D a la altura de los pies.
 func posicion_base_ros() -> Vector3:
@@ -393,9 +403,10 @@ func nombres_joints() -> PackedStringArray:
 
 func posiciones_joints(nombres: PackedStringArray) -> PackedFloat32Array:
 	var r := PackedFloat32Array()
-	for nombre in nombres:
-		var i := _nombres.find(nombre)
-		r.append(_posiciones[i] if i >= 0 else 0.0)
+	r.resize(nombres.size())
+	for k in nombres.size():
+		var i: int = _indice_nombre.get(nombres[k], -1)
+		r[k] = _posiciones[i] if i >= 0 else 0.0
 	return r
 
 
@@ -404,7 +415,7 @@ func fijar_motor(indice: int, q: float) -> void:
 		return   # en g1_sim las piernas las manda MuJoCo; LowCmd no tendría efecto real
 	if indice < 0 or indice >= MOTORES.size():
 		return
-	var i := _nombres.find(MOTORES[indice])
+	var i: int = _indice_nombre.get(MOTORES[indice], -1)
 	if i >= 0:
 		_posiciones[i] = q
 		_desde_lowcmd = 0.0   # modo bajo nivel: la marcha queda en pausa (R2-M5)
