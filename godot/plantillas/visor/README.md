@@ -218,3 +218,49 @@ lo declarado), cada widget con su mensaje (real por loopback con esquema; falso 
 (T2) en batería, medidor y mando, camino compacto de estado_meta y el HUD de `main.tscn`. Un `Logger` cuenta los
 errores de script de `visor/` (debe ser 0). Los `ERROR: RosMsg: tipo … no esta en el esquema` del log son los
 tipos V5 de arriba (esperados).
+
+## Displays V3 (relay que ya existe)
+
+Estado: **hecho y verde en host** (`pruebas/visor_displays.gd`, 104/104) y **probado en vivo en el host** contra la
+estación (`docker/vita-ros.sh up` + `relay scan,pose,joints,mapa,path` + fuente sintética de `/map`, `/scan`,
+`/odom`, `/joint_states` y `/plan`) con `-- transporte=xrce compacto=1`: los cinco topics compactos llegan y se
+pintan (scan 180 puntos, path, 234 teselas con ≤ 102 µs por tesela en el host, robot con `joints_orden` y base
+colocada con `pose2d`). **Sin validar en hardware** (gate de V3: escena tipo E-W8-6 sin marcadores ≥ 55 FPS,
+`process` ≤ 4 ms, tesela ≤ 1,5 ms).
+
+| Display | Archivo | PC (estándar, `_procesar`) | Vita (compacto, `_procesar_compacto`) | Dato intermedio | Capa · cupo |
+|---|---|---|---|---|---|
+| Scan | `displays/2d/scan.gd` | `LaserScan` (filtro REP-117, tabla cos/sin) | `<p>/scan_compacto` | `PackedVector2Array` m | sensores_2d · 360 quads |
+| Path | `displays/2d/path.gd` | `nav_msgs/Path` | `<p>/path_compacto` | `PackedVector2Array` m | sensores_2d · 112 |
+| Pose | `displays/2d/pose.gd` | `PoseStamped`, `Odometry`, `PoseWithCovarianceStamped` | `<p>/pose2d` | `Vector3(x, y, yaw)` | sensores_2d · 1 + rastro |
+| Mapa | `displays/2d/mapa.gd` | `OccupancyGrid` (rampa «map» de RViz en CPU) | `<p>/mapa_tesela` + `<p>/mapa_meta` | diccionario de `MapaTextura` | sensores_2d · 1 |
+| RobotModel | `displays/3d/robot_joints.gd` | `JointState` → `set_joints` | `<p>/joints` + `joints_orden` (+ `pose2d` para la base) | `[nombres, posiciones]` | robot · 40 inst. |
+| Pose3D | `displays/3d/pose.gd` | igual que Pose | `<p>/pose2d` | `Transform3D` | poses · 1 inst. |
+| Mapa3D | `displays/3d/mapa.gd` | igual que Mapa (quad texturizado) | igual que Mapa | igual que Mapa | mundo · 1 inst. |
+
+`mapa_textura.gd` (no es un display) guarda la textura y la geometría del mapa para los dos displays de mapa.
+`RegistroDisplays`: en el PC el defecto de `OccupancyGrid` y `PoseStamped` es el 3D; en la Vita las reglas
+`orbital` se saltan y gana la planta 2D (D7). `vita_relay.gd` lleva los arreglos de `docs/31` §4.4: LUT +
+`blit_rect` en las teselas (imagen idéntica a la de `set_pixel`, comprobado), tabla de direcciones del scan y
+`actualizar_textura()` que devuelve si subió (redibujo solo al cambiar). Los formatos VC/1 no cambian.
+`godot/visor-ros/main.tscn` trae Robot, Meta3D y Mapa3D (`solo_pc`) y, en `Planta/Vista`, Mapa, Plan, Scan y Odom.
+
+Decisiones de V3 no cubiertas (las más conservadoras):
+
+1. **Mapa sin *shader*** en PC y Vita: `OccupancyGrid` → colores con un bucle por celda en CPU al llegar (es
+   *latched*); el *shader* de mapas#0 queda como mejora `solo_pc`. En la Vita, 3 colores (2 bit).
+2. **Sub-texturas de 128²** (resto de `docs/31` §4.4) **no** entran: se sigue subiendo la textura entera ≤ 4 Hz.
+3. **Odometría:** `2d/pose.gd` hace también de odometría (con rastro) hasta que exista `2d/odometria.gd`.
+4. **Robot sin TF en la Vita:** `pose2d` mueve el robot en el plano solo si `visor.tf` es null; sin `escena_robot`
+   se dibujan unos EJES. `visor-ros` no trae robot horneado (el G1 vive en `godot/g1-unitree`): se asigna
+   `escena_robot` en el `.tscn` del proyecto que lo tenga.
+5. **`nav_msgs/Path` no está en el esquema** de `visor-ros`: en el host con ros2_vita el Path estándar queda «sin
+   esquema» (el `ERROR: … Path no esta en el esquema` del log de la prueba es esperado); en la Vita va por el relay.
+6. Con dos displays de mapa en la Vita, cada uno decodifica sus teselas (por eso Mapa3D es `solo_pc` en el ejemplo).
+7. Medida en hardware: `displays/2d/mapa.gd` escribe cada 5 s `[visor-mapa] teselas= media_us= max_us=` en la Vita
+   (o con `-- perfil`).
+
+```fish
+set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_displays.gd    # RESULTADO: 104/104
+```
