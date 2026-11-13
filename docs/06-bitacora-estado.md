@@ -13,7 +13,19 @@ fichero del mes en `docs/bitacora/`.
 
 ---
 
-## 2026-11-13 (PC, noche) — Fase O: organización del repositorio (Estado para retomar)
+## 2026-11-13 (PC, noche) — Visor W13, fase V1 (V1–V4) hecha en host (Estado para retomar)
+
+- **Hecho (commits `35c0cae`, `1137018`, `8c9405e`, `0627f0f`, revisión `e45c12a`):** núcleo del visor en
+  `godot/plantillas/visor/` (ADR 0013), primitivas y paleta, HUD con pestañas, displays scan/path/pose/mapa/robot con el
+  relay actual; proyecto `godot/visor-ros/`; fuente sintética `docker/vita-ros.sh fuente-visor`. Pruebas de host:
+  visor 57, primitivas 114, HUD 68, displays 105, host 294/0, runner 14/14; en vivo en host con XRCE + relay: 8 displays OK.
+  Revisión y comandos de hardware: `docs/ia/workshops/posts/V1-revision.md`.
+- **DESAFÍOS abiertos:** dato caducado en gris de la paleta (no `STALE` azul, contraste 1,6:1; contra doc 36 §2.9.5);
+  mapa sin shader en el PC (bucle por celda). En la Vita el scan va en el origen hasta V9 (TfLigero).
+- **Falta (usuario):** prueba en la Vita: gates G-W13-H0, E-W8-1 y V3 (≥ 55 FPS, `process` ≤ 4 ms, tesela ≤ 1,5 ms).
+- **Siguiente:** fase V2 del visor (V5 esquemas `TIPOS_VISOR` → V6 relay rev. 2 ∥ V7 herramientas → V8 ∥ V9).
+
+## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 
 - **Petición del usuario:** sacar `respaldo-chat-claude/`, archivar decisiones descartadas sin limpiar y ejecutar el
   plan de subagentes (`docs/ia/plan-organizacion-y-visor-2026-11-13.md`). Decisiones del juez Fable 5.2:
