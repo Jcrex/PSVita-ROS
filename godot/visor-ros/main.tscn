@@ -1,6 +1,12 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://comun/visor/visor_ros.gd" id="1_visor"]
+[ext_resource type="Script" path="res://comun/visor/gestor_hud.gd" id="2_gestor"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/bateria.gd" id="3_bateria"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/estado_meta.gd" id="4_meta"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/barra_estado.gd" id="5_barra"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/medidor.gd" id="6_medidor"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/joy.gd" id="7_joy"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -30,3 +36,86 @@ position = Vector2(480, 272)
 
 [node name="Hud" type="CanvasLayer" parent="VisorRos"]
 layer = 2
+
+[node name="GestorHud" type="Control" parent="VisorRos/Hud" node_paths=PackedStringArray("barra", "pestanas")]
+offset_right = 960.0
+offset_bottom = 544.0
+mouse_filter = 2
+script = ExtResource("2_gestor")
+barra = NodePath("Barra")
+pestanas = NodePath("Pestanas")
+
+[node name="Barra" type="Control" parent="VisorRos/Hud/GestorHud"]
+offset_right = 960.0
+offset_bottom = 24.0
+mouse_filter = 2
+
+[node name="Fondo" type="ColorRect" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_right = 960.0
+offset_bottom = 24.0
+mouse_filter = 2
+color = Color(0.08, 0.09, 0.12, 0.85)
+
+[node name="Bateria" type="Control" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_right = 240.0
+offset_bottom = 24.0
+script = ExtResource("3_bateria")
+topic = "/battery_state"
+tipo = "sensor_msgs/msg/BatteryState"
+
+[node name="Meta" type="Control" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_left = 240.0
+offset_right = 540.0
+offset_bottom = 24.0
+script = ExtResource("4_meta")
+
+[node name="Estado" type="Control" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_left = 540.0
+offset_right = 960.0
+offset_bottom = 24.0
+script = ExtResource("5_barra")
+
+[node name="Pestanas" type="Control" parent="VisorRos/Hud/GestorHud"]
+offset_left = 640.0
+offset_top = 24.0
+offset_right = 960.0
+offset_bottom = 520.0
+mouse_filter = 2
+
+[node name="Estado" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Temperatura" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Estado"]
+offset_right = 320.0
+offset_bottom = 72.0
+script = ExtResource("6_medidor")
+topic = "/temperature"
+tipo = "sensor_msgs/msg/Temperature"
+
+[node name="Presion" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Estado"]
+offset_top = 80.0
+offset_right = 320.0
+offset_bottom = 152.0
+script = ExtResource("6_medidor")
+topic = "/barometer"
+tipo = "sensor_msgs/msg/FluidPressure"
+etiqueta = "Pres"
+campo = "fluid_pressure"
+escala = 0.01
+unidad = "hPa"
+minimo = 950.0
+maximo = 1050.0
+aviso = 1040.0
+
+[node name="Mando" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Joy" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Mando"]
+offset_right = 320.0
+offset_bottom = 160.0
+script = ExtResource("7_joy")
