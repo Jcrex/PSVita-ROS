@@ -61,6 +61,8 @@ para no chocar con `docker/g1/g1_sim.py` (`/g1/estado`, `/odom`, `/tf`).
    toolchains/rosbags-venv/bin/python godot/plantillas/generar_esquemas.py --salida godot/<robot>/ros/schema.rsch
    ```
    Para Unitree añade `--unitree godot/g1-sensores/ros/msg`.
+   Si la app usa el visor de topics (`comun/visor/`), añade `--visor` (`TIPOS_VISOR`, V5; ejemplo `godot/visor-ros`).
+   Los `.msg` que rosbags no trae van en `ros/msg/<paquete>/<msg|action>/` y se registran solos.
 6. Incluye `robot.json`, `ros/topics.json` y `ros/*.rsch` en el preset. Excluye el modelo PC del robot del VPK.
 
 ## Perfiles de plataforma

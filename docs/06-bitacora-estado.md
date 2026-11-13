@@ -23,7 +23,11 @@ fichero del mes en `docs/bitacora/`.
 - **DESAFÍOS abiertos:** dato caducado en gris de la paleta (no `STALE` azul, contraste 1,6:1; contra doc 36 §2.9.5);
   mapa sin shader en el PC (bucle por celda). En la Vita el scan va en el origen hasta V9 (TfLigero).
 - **Falta (usuario):** prueba en la Vita: gates G-W13-H0, E-W8-1 y V3 (≥ 55 FPS, `process` ≤ 4 ms, tesela ≤ 1,5 ms).
-- **Siguiente:** fase V2 del visor (V5 esquemas `TIPOS_VISOR` → V6 relay rev. 2 ∥ V7 herramientas → V8 ∥ V9).
+- **V5 hecho en host (2026-11-13):** `TIPOS_VISOR` en `godot/plantillas/generar_esquemas.py` (`--visor`; `visor-ros`
+  85 tipos, el resto de apps sin cambios) y displays directos `3d/{punto,vector,ejes,imu,fuerza,rango,marcador_simple}`,
+  `2d/{poligono,covarianza,gps}`. Pruebas: visor_directos 228/228, visor 57, primitivas 114, HUD 68, displays 105, host
+  294/0, runner g1-sensores 14/14; en vivo en host con XRCE + `ros2 topic pub`: 7 tipos. Pendiente: probar en la Vita.
+- **Siguiente:** V6 relay rev. 2 ∥ V7 herramientas → V8 ∥ V9.
 
 ## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 
