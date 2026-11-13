@@ -9,7 +9,23 @@ El estado vivo está en el primer bloque; las fechas anteriores, un bloque por s
 
 ---
 
-## 2026-11-13 (PC, tarde) — Regla de escenas editables (Estado para retomar)
+## 2026-11-13 (PC, noche) — W13: visualizar todos los tipos de topic en Godot (Estado para retomar)
+
+- **Petición del usuario:** investigación exhaustiva, con subagentes en paralelo y rclgd como referencia, de cómo
+  visualizar todos los tipos de topic en Godot, para traducirlo después a código. **Regla nueva del usuario:** no se
+  le preguntan decisiones; las toma un subagente **Fable 5.2**.
+- **Workshop W13** (`docs/ia/workshops/W13-visualizacion-topics.md`): 5 investigadores Opus 5.5, 107 fichas por tipo
+  con esqueleto GDScript; revisor escéptico (76 V / 18 DESAFÍO / 7 ALT / 6 Por medir; `check-only` 101/107); juez
+  Fable 5.2 (D1–D15).
+- **Resultado:** [`docs/36-visualizacion-topics-godot.md`](36-visualizacion-topics-godot.md) (catálogo de 82 tipos,
+  arquitectura, relay VC/1 rev. 2, QoS, presupuesto, 32 trampas, 16 «Por resolver») y
+  [`ADR 0013`](adr/0013-visualizacion-topics-godot.md): visor propio en `godot/plantillas/visor/` (gdviz solo como
+  modelo), `_procesar`/`_procesar_compacto` → `_pintar`, planta 2D por defecto en la Vita, HUD 400 quads por pestañas.
+- **Sin código todavía**; los esqueletos del doc 36 no han pasado `--check-only`.
+- **Cómo retomar:** tareas V1–V15 (doc 36 §10). Fase 1 = V1 núcleo → V2 primitivas → V3 displays con el relay
+  actual → V4 HUD. Lo anterior (escenas editables, abajo) sigue pendiente de exportar y probar en la Vita.
+
+## 2026-11-13 (PC, tarde) — Regla de escenas editables
 
 - **Petición del usuario:** que `main.tscn` no esté vacía en el editor y que sea una regla. Informe:
   [`docs/35-regla-escenas-editables.md`](35-regla-escenas-editables.md); regla también en `CLAUDE.md`.

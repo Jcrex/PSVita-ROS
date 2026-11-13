@@ -1,0 +1,406 @@
+[
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/LaserScan (PC)",
+    "equivalente": "RViz2 LaserScan display (rviz_default_plugins/displays/laser_scan/laser_scan_display.cpp: laser_geometry::LaserProjection → PointCloud2 → PointCloudCommon)",
+    "candidato": "Nube de puntos PRIMITIVE_POINTS en una ArrayMesh por barrido, hija del nodo del frame_id, con tabla de direcciones cacheada y color por intensidad (LUT de 256); decay = una MeshInstance3D congelada (top_level) por barrido que se libera con un temporizador.",
+    "pc_rclgd": "Node3D + MeshInstance3D (capa 3D) con StandardMaterial3D unshaded, vertex_color_use_as_albedo y use_point_size; RosNode.create_subscription(topic, 'sensor_msgs/msg/LaserScan', cb, qos BEST_EFFORT); msg.ranges/intensities llegan como PackedFloat32Array por memcpy.",
+    "vita_ros2_vita": "Capa 2D (ADR 0011, docs/31 §2.3): ver ficha 'LaserScan (Vita)'. 3D sin puntos (H1) ni color por vértice (H3).",
+    "campos": "angle_min/angle_increment/ranges → dirección (cos,sin) en ROS; punto ROS (r·cos, r·sin, 0) → Godot (−y, 0, −x) (= rclgd.ros_to_godot_vector, comprobado); filtro REP-117: se descarta lo que NO cumple range_min ≤ r ≤ range_max (así caen ±Inf y NaN: la comparación directa r<min or r>max deja pasar NaN, error encontrado en la prueba); intensities → LUT; header.frame_id → nodo padre resuelto por el registro TF; header.stamp → solo para decay/TF (RViz transforma al fixed frame en el sello, aquí se congela con la pose actual: aproximación [I]).",
+    "codigo": "extends Node3D   # Display LaserScan (PC, rclgd). Hijo del nodo del frame_id del scan.\n@export var color_intensidad := true\n@export var rango_intensidad := Vector2(0.0, 4096.0)   # RViz: Min/Max Intensity\n@export var decay_s := 0.0          # 0 = solo el último barrido (RViz Decay Time)\n@export var tam_px := 3.0\nvar _sub: RosSubscriber\nvar _dirs := PackedVector2Array(); var _clave := Vector3.INF\nvar _mat := StandardMaterial3D.new()\nvar _lut := PackedColorArray(range(256).map(func(k): return Color.from_hsv(0.8333 * (1.0 - k / 255.0), 1, 1)))\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\t_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; _mat.vertex_color_use_as_albedo = true\n\t_mat.use_point_size = true; _mat.point_size = tam_px\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/LaserScan\", _on_scan, qos)\n\nfunc _on_scan(msg) -> void:\n\tvar r: PackedFloat32Array = msg.ranges; var it: PackedFloat32Array = msg.intensities\n\tvar clave := Vector3(msg.angle_min, msg.angle_increment, r.size())\n\tif clave != _clave:   # tabla de direcciones: cos/sin solo si cambia la geometría\n\t\t_clave = clave; _dirs.resize(r.size())\n\t\tfor i in r.size(): _dirs[i] = Vector2.from_angle(msg.angle_min + i * msg.angle_increment)\n\tvar pts := PackedVector3Array(); var col := PackedColorArray()\n\tvar esc := 255.0 / maxf(rango_intensidad.y - rango_intensidad.x, 1e-6)\n\tfor i in r.size():\n\t\tif not (r[i] >= msg.range_min and r[i] <= msg.range_max): continue   # ±Inf y NaN fuera (REP-117)\n\t\tvar d := _dirs[i] * r[i]\n\t\tpts.append(Vector3(-d.y, 0.0, -d.x))   # ROS (x, y, 0) → Godot (−y, 0, −x)\n\t\tcol.append(_lut[clampi(int((it[i] - rango_intensidad.x) * esc), 0, 255)] if color_intensidad and i < it.size() else Color.RED)\n\tvar a := []; a.resize(Mesh.ARRAY_MAX); a[Mesh.ARRAY_VERTEX] = pts; a[Mesh.ARRAY_COLOR] = col\n\tvar mi := MeshInstance3D.new(); mi.material_override = _mat; mi.mesh = ArrayMesh.new()\n\tif pts.size() > 0: mi.mesh.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, a)\n\tadd_child(mi)\n\tif decay_s > 0.0:   # congelado en el mundo donde se midió; RViz lo hace en el fixed frame\n\t\tmi.top_level = true; mi.global_transform = global_transform\n\t\tget_tree().create_timer(decay_s).timeout.connect(mi.queue_free)\n\tfor c in get_children(): if c != mi and not c.top_level: c.queue_free()\n",
+    "parametros": [
+      "color_intensidad: bool",
+      "rango_intensidad: Vector2 (RViz Min/Max Intensity, 0–4096)",
+      "decay_s: float (RViz Decay Time)",
+      "tam_px: float (RViz Size (Pixels), 3)",
+      "estilo futuro: Points | Squares | Flat Squares (RViz Style)"
+    ],
+    "evidencia": "Medido en host (Ryzen 5800X): 720 rayos → 711 µs la 1.ª vez, 263–340 µs con la tabla cacheada; 717 de 720 puntos (Inf, −Inf, NaN fuera). Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»). RViz delega la proyección en laser_geometry con channel Intensity y tolerancia del filtro TF = (n−1)·time_increment.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/laser_scan/laser_scan_display.cpp",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/pointcloud/point_cloud_common.cpp (Style, Size, Alpha, Decay Time)",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:53-70 (uint8[]→PackedByteArray y float32[]→PackedFloat32Array por memcpy)",
+      "godot/plantillas/sensores/lidar_2d.gd:104-110 (REP-117 en el publicador)",
+      "godot/plantillas/vita_relay.gd:94-107 (cos/sin por rayo, sin tabla)",
+      "docs/31-render-visualizacion-vita.md:210"
+    ],
+    "confianza": "[V] código y coste en host; [I] coste de render PRIMITIVE_POINTS en GPU real",
+    "coste_estimado": "CPU PC ≈ 0,3 ms/mensaje (720 rayos) + crear ArrayMesh (≈ 0,1 ms/10k pts en host); 1 draw por barrido vivo (decay 1 s a 10 Hz = 10 draws); 12 B/vértice + 16 B color.",
+    "como_se_mediria_en_hardware": "PC: `ros2 bag play` de un TB3 (360 rayos, 5 Hz) + scan sintético 2 000 rayos a 40 Hz; verde = 60 FPS con decay 2 s y `Performance.TIME_PROCESS` < 2 ms. Comparar visualmente con RViz2 en el mismo fixed frame."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/LaserScan (Vita)",
+    "equivalente": "RViz2 LaserScan display (versión reducida)",
+    "candidato": "Lote único 2D: un triángulo por punto en UNA llamada canvas_item_add_triangle_array, redibujado solo al llegar mensaje; entrada = LaserScan estándar ≤ 106 rayos (BE) o /vita/scan_compacto del relay.",
+    "pc_rclgd": "Mismo código funciona en PC (CanvasItem) para un minimapa; en PC se prefiere la ficha 3D.",
+    "vita_ros2_vita": "Capa 2D (H16-H17). ¿Cabe en 488 B? LaserScan con frame 'base_scan' y sin intensidades: ≤ 106 rayos (484 B medido con ros2_vita; 110 rayos = 504 B con rosbags) → el simulador de plantillas ya publica 60 rayos (lidar_2d.gd:6). Escáner real (360–720 rayos, 1 504–5 824 B) → relay /vita/scan_compacto Int16 cm 180 rayos = 384 B BE 10 Hz (docs/27:61-64, :98). float32[] llega por memcpy (H25). Tabla de direcciones: cos/sin solo si cambia geometría (arreglo propuesto en docs/31:210). QoS con set_reliability(): la Vita no expone la propiedad reliability.",
+    "campos": "Igual que la ficha PC, pero en planta 2D: ROS x → pantalla arriba (−y_px), ROS y → izquierda (−x_px), escala px/m; el transform del Node2D aplica pose y zoom (CAN:26-30).",
+    "codigo": "extends Node2D   # LaserScan en la Vita: capa 2D, UN lote por mensaje (H16-H17). Planta o superpuesto.\n@export var escala_px := 40.0   # px por metro en la vista de planta\n@export var lado_px := 3.0\n@export var color := Color(1, 0.2, 0.2)\nvar _sub: RosSubscriber\nvar _idx := PackedInt32Array(); var _v := PackedVector2Array(); var _c := PackedColorArray()\nvar _dirs := PackedVector2Array(); var _clave := Vector3.INF\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)   # ≤ 106 rayos con frame corto = ≤ 488 B\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/LaserScan\", _on_scan, qos)\n\nfunc _on_scan(msg) -> void:   # también vale para /vita/scan_compacto tras desempaquetar\n\tvar r: PackedFloat32Array = msg.ranges\n\tvar clave := Vector3(msg.angle_min, msg.angle_increment, r.size())\n\tif clave != _clave:\n\t\t_clave = clave; _dirs.resize(r.size())\n\t\tfor i in r.size(): _dirs[i] = Vector2.from_angle(msg.angle_min + i * msg.angle_increment)\n\t_v.resize(r.size() * 3); _c.resize(r.size() * 3); var n := 0\n\tfor i in r.size():\n\t\tif not (r[i] >= msg.range_min and r[i] <= msg.range_max): continue\n\t\tvar d := _dirs[i] * r[i] * escala_px; var p := Vector2(-d.y, -d.x)   # ROS x arriba, y izquierda\n\t\t_v[n] = p + Vector2(0, -lado_px); _v[n + 1] = p + Vector2(lado_px, lado_px); _v[n + 2] = p + Vector2(-lado_px, lado_px)\n\t\t_c[n] = color; _c[n + 1] = color; _c[n + 2] = color; n += 3\n\t_v.resize(n); _c.resize(n)\n\tif _idx.size() != n: _idx = PackedInt32Array(range(n))\n\tqueue_redraw()   # solo al llegar un mensaje, nunca cada fotograma\n\nfunc _draw() -> void:\n\tif _v.size() > 0: RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _v, _c)\n",
+    "parametros": [
+      "escala_px: float",
+      "lado_px: float",
+      "color: Color",
+      "modo: planta | superpuesto (reproyección con Camera3D.unproject_position, ≤ 20 Hz, docs/31:145-147)"
+    ],
+    "evidencia": "Host: 106 rayos → 74 µs, 315 vértices; CDR LaserScan 106 rayos = 484 B (≤ 488). Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»). Extrapolación Vita con 1,5 µs/instrucción (docs/31:162) ≈ 1–1,5 ms/mensaje [I].",
+    "fuentes": [
+      "docs/31-render-visualizacion-vita.md:48-49 (H16-H17)",
+      "docs/31-render-visualizacion-vita.md:98-107 (§2.3)",
+      "docs/31-render-visualizacion-vita.md:178",
+      "docs/27-xrce-limites-y-relay.md:10,33,61-64,98",
+      "godot/plantillas/sensores/lidar_2d.gd:5-6",
+      "godot/plantillas/vita_relay.gd:94-107",
+      "godot/ros2_vita/ros_runtime.cpp:76-92 (RosQoS sin ADD_PROPERTY: solo set_reliability) vs godot/rclgd/rclgd/src/rclgd/ros_qos.cpp:27-28 (propiedad)",
+      "godot/ros2_vita/ros_msg.cpp:436-458 (uint8[]/float32[]/float64[] por memcpy)"
+    ],
+    "confianza": "[V] tamaños y código en host; [I] coste en la Vita",
+    "coste_estimado": "Vita [I]: ≈ 1–1,5 ms GDScript por mensaje (106 rayos) a 5–10 Hz; 1 lote 2D, ≤ 106 quads (presupuesto 800 quads de sensores, docs/31:255); red 484 B × 10 Hz ≈ 5 KB/s.",
+    "como_se_mediria_en_hardware": "Vita + g1-sensores: suscribir /scan (60 rayos) y /vita/scan_compacto; leer `[vita-prof] process=` y `[gxm2d-canvas] avg_canvas_us=`; verde = 59–60 FPS con el display activo y avg_canvas_us ≤ 2 000."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/MultiEchoLaserScan",
+    "equivalente": "RViz2 no trae display de MultiEchoLaserScan en rviz_default_plugins (solo LaserScan); en ROS 1 laser_geometry tenía conversión multieco",
+    "candidato": "Aplanar a LaserScan eligiendo eco (primero/último/más fuerte/todos) y reutilizar el display LaserScan.",
+    "pc_rclgd": "Hereda de scan_pc.gd; ranges/intensities son LaserEcho[] → Array de RosMsg (un objeto envuelto por haz: camino lento de compound arrays).",
+    "vita_ros2_vita": "No: 360 haces × 3 ecos + intensidades = 11 584 B (medido con rosbags) > 7,5 KiB fiable. El relay elige eco y emite /vita/scan_compacto. No hace falta esquema nuevo en la Vita.",
+    "campos": "ranges[i].echoes (float32[]) → PackedFloat32Array; con 'todos' el ángulo se aproxima repartiendo el incremento (no hay ángulo por eco en el mensaje: todos los ecos de un haz comparten ángulo; mejor dibujarlos con el mismo ángulo — hueco de la versión ≤ 40 líneas).",
+    "codigo": "extends \"res://scan_pc.gd\"   # MultiEchoLaserScan (PC): reutiliza el display LaserScan eligiendo un eco.\n@export_enum(\"primero\", \"ultimo\", \"mas_fuerte\", \"todos\") var eco := \"primero\"\nvar _tmp := {}   # LaserScan «aplanado» que se pasa a _on_scan\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\tsuper.iniciar(nodo, topic)   # crea el material y una suscripción LaserScan que se sustituye:\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/MultiEchoLaserScan\", _on_multi, qos)\n\nfunc _on_multi(msg) -> void:\n\tvar r := PackedFloat32Array(); var it := PackedFloat32Array(); var inc: float = msg.angle_increment\n\tvar rs: Array = msg.ranges; var ins: Array = msg.intensities   # Array de RosMsg LaserEcho (lento: 1 objeto por haz)\n\tvar n := rs.size(); var cada := 1\n\tfor i in n:\n\t\tvar e: PackedFloat32Array = rs[i].echoes\n\t\tvar ei: PackedFloat32Array = ins[i].echoes if i < ins.size() else PackedFloat32Array()\n\t\tvar idx := range(e.size()) if eco == \"todos\" else [0 if eco == \"primero\" else (e.size() - 1 if eco == \"ultimo\" else Array(ei).find(Array(ei).max()) if ei.size() else 0)]\n\t\tfor j in idx:\n\t\t\tif j >= 0 and j < e.size(): r.append(e[j]); it.append(ei[j] if j < ei.size() else 0.0)\n\t\tcada = maxi(cada, idx.size())\n\t# con «todos», cada haz aporta varios ecos: se repite el ángulo (aproximación: incremento / cada)\n\t_on_scan({\"ranges\": r, \"intensities\": it, \"angle_min\": msg.angle_min, \"angle_increment\": inc / cada,\n\t\t\"range_min\": msg.range_min, \"range_max\": msg.range_max})\n",
+    "parametros": [
+      "eco: primero | ultimo | mas_fuerte | todos",
+      "los de LaserScan"
+    ],
+    "evidencia": "Probado en host con diccionarios que imitan LaserEcho (rclgd y ros2_vita aceptan acceso por punto). Tamaño CDR medido con rosbags (ROS2_JAZZY).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/tree/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays (no hay multi_echo)",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/MultiEchoLaserScan.msg",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:465-488 (Array de RosMsg por elemento)",
+      "docs/27-xrce-limites-y-relay.md:35"
+    ],
+    "confianza": "[V] tamaño y ausencia en RViz2; [I] utilidad (pocos drivers ROS 2 lo publican)",
+    "coste_estimado": "PC: dominado por envolver 2·N RosMsg (≈ 1–3 µs cada uno [I]); 360 haces ≈ 1–2 ms.",
+    "como_se_mediria_en_hardware": "Bag de un SICK/Hokuyo multieco; comparar con la ficha LaserScan sobre el primer eco; verde = mismos puntos que `ros2 topic echo` del primer eco."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/PointCloud2 (PC)",
+    "equivalente": "RViz2 PointCloud2 display (point_cloud2_display.cpp + point_cloud_common.cpp + transformers XYZ/Intensity/AxisColor/RGB8/FlatColor)",
+    "candidato": "Decodificador genérico por fields/offset/point_step con decode_float sobre el PackedByteArray, diezmado uniforme hasta max_puntos, color por campo (LUT arcoíris), rgb empaquetado o plano; ArrayMesh PRIMITIVE_POINTS bajo un nodo cuya basis convierte ROS→Godot (sin conversión por punto).",
+    "pc_rclgd": "MeshInstance3D (capa 3D), material unshaded con color por vértice y point_size; create_subscription BEST_EFFORT; msg.fields = Array[RosMsg PointField]; msg.data = PackedByteArray (memcpy). Ruta rápida opcional: si x,y,z,i son float32 en 0/4/8/12 y point_step 16 → data.to_vector4_array() (48 µs/10k frente a 600 µs con decode_float; disponible en Godot 4.7 y en 4.8-dev7, no en 4.4).",
+    "vita_ros2_vita": "No cabe: 20 puntos xyzi = 461 B, 100 = 1 741 B, 1 000 xyz = 12 117 B (docs/27:68). Ver ficha 'PointCloud2 (Vita)' (relay → /vita/nube2d). El esquema PointCloud2 sí está en la Vita (generar_esquemas.py:28) para nubes diminutas.",
+    "campos": "fields[].name/offset/datatype (7 = FLOAT32; INT8…FLOAT64 = 1…8) ; is_bigendian → data.bswap32() si todos los campos son de 4 B (RViz no lo trata: lee en orden del host); width·height puntos; row_step ignorable si height = 1 o sin relleno; is_dense=false → descartar NaN (Vector3.is_finite); 'rgb' float32 = uint32 0x00RRGGBB (decode_u32); basis = Basis(ROS x→(0,0,−1), y→(−1,0,0), z→(0,1,0)) comprobada contra rclgd.ros_to_godot_vector.",
+    "codigo": "extends MeshInstance3D   # Display PointCloud2 (PC, rclgd). Hijo del nodo del frame_id.\n@export var campo_color := \"intensity\"   # \"\" = plano, \"z\" = eje, \"rgb\" = empaquetado\n@export var rango_color := Vector2(0.0, 1.0)   # min/max del campo (RViz: autocompute)\n@export var max_puntos := 60000\n@export var tam_px := 3.0\nvar _sub: RosSubscriber\nvar _lut := PackedColorArray(range(256).map(func(k): return Color.from_hsv(0.8333 * (1.0 - k / 255.0), 1, 1)))\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\tbasis = Basis(Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0))  # ROS→Godot sin bucle\n\tvar m := StandardMaterial3D.new()\n\tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.vertex_color_use_as_albedo = true\n\tm.use_point_size = true; m.point_size = tam_px   # PRIMITIVE_POINTS con tamaño en píxeles\n\tmaterial_override = m\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)   # sensor data\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/PointCloud2\", _on_nube, qos)\n\nfunc _on_nube(msg) -> void:\n\tvar off := {}\n\tfor f in msg.fields: off[f.name] = f.offset   # datatype 7 = FLOAT32 asumido (comprobar)\n\tvar data: PackedByteArray = msg.data\n\tif msg.is_bigendian: data.bswap32()           # válido si todos los campos son de 4 B\n\tvar ps: int = msg.point_step\n\tvar total: int = msg.width * msg.height\n\tvar paso := maxi(1, ceili(float(total) / max_puntos))   # diezmado uniforme\n\tvar ox: int = off[\"x\"]; var oy: int = off[\"y\"]; var oz: int = off[\"z\"]; var oc: int = off.get(campo_color, -1)\n\tvar pts := PackedVector3Array(); var col := PackedColorArray()\n\tvar esc := 255.0 / maxf(rango_color.y - rango_color.x, 1e-6)\n\tfor i in range(0, total, paso):\n\t\tvar o := i * ps\n\t\tvar p := Vector3(data.decode_float(o + ox), data.decode_float(o + oy), data.decode_float(o + oz))\n\t\tif not p.is_finite(): continue   # is_dense = false → NaN\n\t\tpts.append(p)\n\t\tif campo_color == \"rgb\" and oc >= 0: var c := data.decode_u32(o + oc); col.append(Color8(c >> 16 & 255, c >> 8 & 255, c & 255))\n\t\telif oc >= 0: col.append(_lut[clampi(int((data.decode_float(o + oc) - rango_color.x) * esc), 0, 255)])\n\t\telse: col.append(Color.WHITE)\n\tvar a := []; a.resize(Mesh.ARRAY_MAX); a[Mesh.ARRAY_VERTEX] = pts; a[Mesh.ARRAY_COLOR] = col\n\tvar am := ArrayMesh.new()\n\tif pts.size() > 0: am.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, a)\n\tmesh = am\n",
+    "parametros": [
+      "campo_color: '' | 'intensity' | 'z' | 'rgb' (RViz Color Transformer)",
+      "rango_color: Vector2 (RViz Min/Max; autocompute = 2.ª pasada)",
+      "max_puntos: int (diezmado)",
+      "tam_px: float (Size (Pixels) = 3)",
+      "decay_s (como LaserScan)",
+      "voxel_m: float (filtro de vóxel opcional con Dictionary de celdas, hueco)",
+      "invertir_arcoiris: bool [?] (orden exacto del arcoíris de RViz sin verificar)"
+    ],
+    "evidencia": "Host: 10 000 puntos xyzi → callback 1,9–2,0 ms (decode_float + LUT), color correcto, NaN fuera, rgb 0xFF8000 → (1, 0.502, 0). Deserializar 160 KB en ros2_vita (host) ≈ 2,6 ms. Microbenchmarks: decode_float xyz 600 µs/10k; to_vector4_array 48 µs; bucle v4→v3 490 µs; bswap32 de 160 KB 47 µs; ArrayMesh 10k puntos 0,1 ms. Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/include/rviz_default_plugins/displays/pointcloud/point_cloud_helpers.hpp (findChannelIndex, valueFromCloud sin is_bigendian, getRainbowColor)",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/pointcloud/transformers/intensity_pc_transformer.cpp",
+      "https://docs.godotengine.org/en/stable/classes/class_packedbytearray.html (to_vector4_array, bswap32 en 4.7)",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:53-70 (uint8[]→PackedByteArray y float32[]→PackedFloat32Array por memcpy)",
+      "godot/plantillas/sensores/lidar_3d.gd:26-37 (fields x,y,z,intensity point_step 16)",
+      "docs/27-xrce-limites-y-relay.md:68-69"
+    ],
+    "confianza": "[V] decodificación, ejes y costes de CPU en host; [I] coste de dibujo de 60k puntos en GPU",
+    "coste_estimado": "PC: ≈ 0,2 µs/punto en GDScript (≈ 2 ms/10k, 12 ms/60k → con 60k a 10 Hz conviene la ruta GPU: textura RGBAF + shader con VERTEX_ID, 0 bucles; hueco); 1 draw.",
+    "como_se_mediria_en_hardware": "PC con lidar_3d.gd a 5 Hz y un bag de Ouster/Velodyne (64k pts, point_step 48 con relleno); verde = 60 FPS y TIME_PROCESS < 4 ms con max_puntos 30 000; comparar color con RViz2 Intensity."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/PointCloud2 (Vita)",
+    "equivalente": "RViz2 PointCloud2 con Style Flat Squares y Axis color (Z)",
+    "candidato": "Relay del PC: vóxel 10 cm + Int16 cm xyz en trozos de ≤ 78 puntos (/vita/nube2d, BE, 5 Hz); en la Vita, planta 2D con un lote por trozo y color por banda de altura (paleta de 16).",
+    "pc_rclgd": "No aplica (el PC dibuja la nube completa).",
+    "vita_ros2_vita": "Capa 2D (docs/31:138: ≤ 468 puntos, 0 tri 3D). Int16MultiArray 3 + 234 int16 = 486 B (medido con ros2_vita) ≤ 488 BE. int16[] llega como PackedInt32Array (H25). GDScript ≈ 1,7 ms por trozo en la Vita [I] (docs/31:184) → ≤ 6 trozos a 5 Hz ≈ 50 ms/s (5 % CPU); función C vizd_cloud_cm en viz-decode cuando exista. Formato del relay propuesto aquí: [seq, trozo, n_trozos, x,y,z…] (el relay actual aún no lo implementa: docs/27:106 lo marca como diseño).",
+    "campos": "d[3+3k..] = x,y,z en cm del frame del sensor (o ya en map si el relay transforma con TF: recomendado, la Vita no tiene /tf completo); planta: ROS x → arriba; z → banda de color.",
+    "codigo": "extends Node2D   # PointCloud2 en la Vita: el relay la convierte en /vita/nube2d (Int16 xyz cm, ≤ 78 pts/trozo).\n@export var escala_px := 40.0\n@export var alturas := Vector2(-0.2, 2.0)   # banda de color por z (m), como el Axis color de RViz\n@export var lado_px := 2.0\nvar _sub: RosSubscriber; var _trozos := {}   # trozo → [PackedVector2Array, PackedColorArray]\nvar _lut := PackedColorArray(range(16).map(func(k): return Color.from_hsv(0.66 * (1.0 - k / 15.0), 1, 1)))\n\nfunc iniciar(nodo: RosNode, topic := \"/vita/nube2d\") -> void:\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"std_msgs/msg/Int16MultiArray\", _on_trozo, qos)\n\nfunc _on_trozo(msg) -> void:   # formato propuesto: [seq, trozo, n_trozos, x0, y0, z0, …] en cm\n\tvar d: PackedInt32Array = msg.data   # int16[] llega como PackedInt32Array (H25)\n\tif d.size() < 3: return\n\tif d[1] == 0: _trozos.clear()       # trozo 0 = nueva nube\n\tvar v := PackedVector2Array(); var c := PackedColorArray()\n\tvar esc := 15.0 / (alturas.y - alturas.x)\n\tfor i in range(3, d.size() - 2, 3):\n\t\tvar p := Vector2(-d[i + 1], -d[i]) * (escala_px / 100.0)   # planta: ROS x arriba, y izquierda\n\t\tvar col := _lut[clampi(int((d[i + 2] / 100.0 - alturas.x) * esc), 0, 15)]\n\t\tv.append_array([p + Vector2(0, -lado_px), p + Vector2(lado_px, lado_px), p + Vector2(-lado_px, lado_px)])\n\t\tc.append_array([col, col, col])\n\t_trozos[d[1]] = [v, c]\n\tqueue_redraw()\n\nfunc _draw() -> void:   # un lote por trozo (≤ 6 lotes con 468 puntos); todo con color plano → se funde (H16)\n\tfor t in _trozos.values():\n\t\tRenderingServer.canvas_item_add_triangle_array(get_canvas_item(), PackedInt32Array(range(t[0].size())), t[0], t[1])\n",
+    "parametros": [
+      "escala_px",
+      "alturas: Vector2 (rango de la banda de color)",
+      "lado_px",
+      "voxel del relay (10 cm)",
+      "max_trozos (6)"
+    ],
+    "evidencia": "Host: 78 puntos → 45 µs, 234 vértices; CDR 486 B. Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»).",
+    "fuentes": [
+      "docs/27-xrce-limites-y-relay.md:68-69,106",
+      "docs/31-render-visualizacion-vita.md:57 (H25),100-107,138,184,195",
+      "docs/adr/0011-presupuesto-render-vita.md",
+      "docs/adr/0012-puente-pc-acciones-y-relay.md",
+      "docker/scripts/vita_relay.py (sin manejador de nubes todavía)"
+    ],
+    "confianza": "[V] tamaños y código en host; [I] coste en la Vita; [?] formato final del relay",
+    "coste_estimado": "Vita [I]: ≈ 1,7 ms/trozo GDScript (0,05 ms en C); ≤ 468 quads; 6 × 486 B × 5 Hz ≈ 15 KB/s.",
+    "como_se_mediria_en_hardware": "Relay con nube de lidar_3d.gd; Vita con el display; verde = 59–60 FPS, `[gxm2d-perf] quads=` ≤ 500 y sin pérdida de trozos visible (seq)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/PointCloud (obsoleto)",
+    "equivalente": "RViz2 PointCloud display (point_cloud_display.cpp, que convierte a PointCloud2 con point_cloud_to_point_cloud2.cpp)",
+    "candidato": "Como RViz: convertir a PointCloud2 (fuera de Godot si se puede; si no, respaldo GDScript que hereda el display PointCloud2).",
+    "pc_rclgd": "points = Array de RosMsg Point32 (un objeto por punto); channels[].values = PackedFloat32Array.",
+    "vita_ros2_vita": "No: sin esquema en la Vita (no está en generar_esquemas.py) y nunca cabe; relay → /vita/nube2d.",
+    "campos": "points[i].x/y/z → Vector3 en ROS (la basis del nodo convierte); channels[name=='intensity'|'rgb'].values[i] → color.",
+    "codigo": "extends \"res://nube_pc2.gd\"   # sensor_msgs/PointCloud (obsoleto): Point32[] + ChannelFloat32[].\n# Recomendado: convertirla a PointCloud2 fuera de Godot (nodo point_cloud_converter / relay); esto es el respaldo.\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\tsuper.iniciar(nodo, topic)   # material y ejes; se sustituye la suscripción:\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/PointCloud\", _on_vieja, qos)\n\nfunc _on_vieja(msg) -> void:\n\tvar puntos: Array = msg.points   # Array de RosMsg Point32: un objeto por punto (caro, ≈ 1 µs+/pt en PC)\n\tvar canal := PackedFloat32Array()\n\tfor ch in msg.channels:\n\t\tif ch.name == campo_color: canal = ch.values   # float32[] → PackedFloat32Array (memcpy)\n\tvar pts := PackedVector3Array(); var col := PackedColorArray()\n\tvar esc := 255.0 / maxf(rango_color.y - rango_color.x, 1e-6)\n\tvar paso := maxi(1, ceili(float(puntos.size()) / max_puntos))\n\tfor i in range(0, puntos.size(), paso):\n\t\tvar p := Vector3(puntos[i].x, puntos[i].y, puntos[i].z)\n\t\tif not p.is_finite(): continue\n\t\tpts.append(p)\n\t\tcol.append(_lut[clampi(int((canal[i] - rango_color.x) * esc), 0, 255)] if i < canal.size() else Color.WHITE)\n\tvar a := []; a.resize(Mesh.ARRAY_MAX); a[Mesh.ARRAY_VERTEX] = pts; a[Mesh.ARRAY_COLOR] = col\n\tvar am := ArrayMesh.new()\n\tif pts.size() > 0: am.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, a)\n\tmesh = am\n",
+    "parametros": [
+      "los de PointCloud2"
+    ],
+    "evidencia": "Probado en host con diccionarios que imitan Point32/ChannelFloat32. Tipo marcado como obsoleto en common_interfaces (comentario del .msg) [V en el .msg].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/PointCloud.msg",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/pointcloud/point_cloud_to_point_cloud2.cpp",
+      "godot/plantillas/generar_esquemas.py:12-38"
+    ],
+    "confianza": "[V] estructura; [I] coste (wrap por elemento)",
+    "coste_estimado": "PC: wrap de N RosMsg ≈ 1–3 µs cada uno [I] → 10k puntos ≈ 10–30 ms: solo para nubes pequeñas.",
+    "como_se_mediria_en_hardware": "Publicar PointCloud de 1 000 puntos; verde = misma nube que con la conversión a PointCloud2."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/Image — rgb8, rgba8, bgr8, bgra8, mono8, 8UC1, 8UC3, bayer_*8 (PC)",
+    "equivalente": "RViz2 Image display (ros_image_texture.cpp: RGB8/RGBA8/BGR(A)8/MONO8 directos; bayer* como gris sin demosaico)",
+    "candidato": "Image.create_from_data con el formato equivalente (cero conversión) + ImageTexture.update reutilizando la textura; bgr/bgra se intercambian en un shader canvas_item; bayer se muestra en gris como RViz.",
+    "pc_rclgd": "TextureRect (capa HUD/Control) con ShaderMaterial; tabla encoding → Image.Format; create_subscription BEST_EFFORT. Un mismo script cubre también 16UC1/mono16/32FC1 (ficha siguiente).",
+    "vita_ros2_vita": "Directo solo miniaturas: mono8 20×20 = 448 B BE; rgb8 12×8 = 336 B; 80×60 mono8 = 4 848 B (fiable, ≤ 7,5 KiB). Lo normal: relay → JPEG (ficha CompressedImage). En la Vita no hay shader: bgr8 → truco sin shader data.reverse() + Image.rotate_180() (1,8 ms en host frente a 14,7 ms del bucle GDScript) o que el relay lo entregue en rgb8. ImageTexture.update en la Vita = duplicar + convertir a RGBA8 + detect_alpha (H19); paquete con textures/gpu_format = RGBA8888 (H20).",
+    "campos": "width/height/encoding/step/data; step ≠ width·bpp (filas con relleno) → hoy se rechaza (hueco: recortar con Image.get_region o copiar filas); is_bigendian solo importa en 16/32 bit; header.frame_id para Camera/overlay.",
+    "codigo": "extends TextureRect   # Display Image (PC, rclgd; en la Vita solo rgb8/mono8 pequeñas). Capa HUD.\n@export var rango := Vector2(0.0, 5.0)   # profundidad en m (RViz: Normalize Range = off)\nconst FMT := {\"rgb8\": Image.FORMAT_RGB8, \"rgba8\": Image.FORMAT_RGBA8, \"bgr8\": Image.FORMAT_RGB8,\n\t\"bgra8\": Image.FORMAT_RGBA8, \"mono8\": Image.FORMAT_L8, \"8UC1\": Image.FORMAT_L8, \"8UC3\": Image.FORMAT_RGB8,\n\t\"bayer_rggb8\": Image.FORMAT_L8, \"bayer_bggr8\": Image.FORMAT_L8, \"bayer_gbrg8\": Image.FORMAT_L8,\n\t\"bayer_grbg8\": Image.FORMAT_L8, \"mono16\": Image.FORMAT_R16, \"16UC1\": Image.FORMAT_R16, \"32FC1\": Image.FORMAT_RF}\nconst SH := \"shader_type canvas_item; uniform int modo; uniform vec2 rango; uniform sampler2D paleta : filter_nearest;\nvoid fragment(){ vec4 c = texture(TEXTURE, UV);\n if (modo == 1) { COLOR = vec4(c.bgr, c.a); }   // bgr8/bgra8: intercambio de canales en GPU\n else if (modo >= 2) { float z = modo == 2 ? c.r * 65.535 : c.r;   // 16UC1 en mm (unorm) / 32FC1 en m\n  COLOR = (z > 0.0 && !isinf(z)) ? texture(paleta, vec2(clamp((z - rango.x) / (rango.y - rango.x), 0.0, 1.0), 0.5)) : vec4(0.0); } }\"\nvar _sub: RosSubscriber\nvar _tex: ImageTexture\nvar _mat := ShaderMaterial.new()\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\t_mat.shader = Shader.new(); _mat.shader.code = SH; material = _mat\n\tvar g := GradientTexture1D.new(); g.gradient = Gradient.new()   # paleta tipo «turbo»: azul→rojo\n\tg.gradient.colors = PackedColorArray([Color.DARK_BLUE, Color.CYAN, Color.YELLOW, Color.RED])\n\tg.gradient.offsets = PackedFloat32Array([0.0, 0.33, 0.66, 1.0]); _mat.set_shader_parameter(\"paleta\", g)\n\tstretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/Image\", _on_imagen, qos)\n\nfunc _on_imagen(msg) -> void:\n\tvar e: String = msg.encoding\n\tif not FMT.has(e) or msg.is_bigendian: return   # yuv422/nv21/rgb16…: relay o hueco (ver borrador)\n\tvar w: int = msg.width; var h: int = msg.height; var data: PackedByteArray = msg.data\n\tvar bpp: int = {Image.FORMAT_L8: 1, Image.FORMAT_RGB8: 3, Image.FORMAT_RGBA8: 4, Image.FORMAT_R16: 2, Image.FORMAT_RF: 4}[FMT[e]]\n\tif msg.step != w * bpp: return   # filas con relleno: recortar fila a fila (raro; hueco)\n\tvar img := Image.create_from_data(w, h, false, FMT[e], data)\n\t_mat.set_shader_parameter(\"modo\", 1 if e.begins_with(\"bgr\") else (2 if FMT[e] == Image.FORMAT_R16 else (3 if e == \"32FC1\" else 0)))\n\t_mat.set_shader_parameter(\"rango\", rango)\n\tif _tex == null or _tex.get_size() != Vector2(w, h) or _tex.get_format() != img.get_format():\n\t\t_tex = ImageTexture.create_from_image(img); texture = _tex   # 1.ª vez o cambio de tamaño\n\telse: _tex.update(img)   # sin realojar (H19 en la Vita: convierte a RGBA8)\n",
+    "parametros": [
+      "rango: Vector2 (profundidad)",
+      "stretch_mode",
+      "paleta (GradientTexture1D)",
+      "normalizar_auto: bool (RViz Normalize Range + median de 5 fotogramas; hueco)"
+    ],
+    "evidencia": "Host: rgb8/bgr8/mono8/16UC1/32FC1 320×240 → 8–22 µs por mensaje (create_from_data 2 µs; la textura es dummy en headless); los shaders compilan. Microbenchmarks 640×480: convert RGB8→RGBA8 0,8 ms; swap BGR en GDScript 14,7 ms; reverse+rotate_180 1,8 ms (pixel (0,0) B1G2R3 → R3G2B1 comprobado). Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/image/ros_image_texture.cpp",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/include/sensor_msgs/image_encodings.hpp",
+      "toolchains/godot4-vita/engine/doc/classes/Image.xml:146-156 (create_from_data)",
+      "docs/31-render-visualizacion-vita.md:51-52 (H19-H20)",
+      "docs/27-xrce-limites-y-relay.md:72",
+      "godot/plantillas/sensores/camara.gd:87-112 (publicador rgb8 + jpeg)"
+    ],
+    "confianza": "[V] formatos, CDR y costes CPU en host; [I] coste de subida de textura en GPU",
+    "coste_estimado": "PC: ≈ 0 µs de conversión + subida de textura (∝ píxeles; 640×480×3 ≈ 0,9 MB). Vita [I]: 160×120 RGBA8 update ≈ 1–3 ms (docs/28:67).",
+    "como_se_mediria_en_hardware": "PC: camara.gd a 30 Hz 640×480 rgb8 y un bag usb_cam bgr8; verde = 60 FPS y colores iguales a rqt_image_view. Vita: 80×60 mono8 fiable a 5 Hz; verde = ≥ 57 FPS y `[vita-memory] textures=` estable."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/Image — 16UC1, mono16, 32FC1 (profundidad) y 16SC1/64FC1",
+    "equivalente": "RViz2 Image display (convertTo8bit con normalización automática min/max y mediana de 5 fotogramas, o rango manual; 16UC1/mono16/32FC1 a gris)",
+    "candidato": "Sin bucle por píxel: 16UC1 → Image.FORMAT_R16 (unorm, z_m = r·65,535) y 32FC1 → FORMAT_RF, y el shader aplica rango y mapa de color (GradientTexture1D); 0/NaN/Inf transparentes.",
+    "pc_rclgd": "El mismo imagen.gd (modo 2 = 16UC1, modo 3 = 32FC1). FORMAT_R16 existe en Godot 4.7 estable y en 4.8-dev7; en móvil/web se convierte a RF (nota del Image.xml).",
+    "vita_ros2_vita": "Sin shaders: colorear en CPU cuesta 33–35 ms en host para 640×480 (inviable); el relay entrega la profundidad ya coloreada en JPEG/PNG 8 bit (o mono8 pequeña). Image.convert(R16→L8) existe (1,3 ms en host) pero escala 0–65 535 → 0–255 (5 m = 0,08 → casi negro) [V medido]. Profundidad pequeña 40×30 32FC1 = 4 848 B (fiable) como hace camara.gd (resolucion_profundidad_xrce).",
+    "campos": "16UC1 en mm (convención REP-118 [I]; RViz no asume unidades), 32FC1 en m; 0 o NaN = sin dato; 16SC1 → FORMAT_R16I hueco; 64FC1 → to_float64_array y bucle (caro) o relay.",
+    "codigo": "extends TextureRect   # Display Image (PC, rclgd; en la Vita solo rgb8/mono8 pequeñas). Capa HUD.\n@export var rango := Vector2(0.0, 5.0)   # profundidad en m (RViz: Normalize Range = off)\nconst FMT := {\"rgb8\": Image.FORMAT_RGB8, \"rgba8\": Image.FORMAT_RGBA8, \"bgr8\": Image.FORMAT_RGB8,\n\t\"bgra8\": Image.FORMAT_RGBA8, \"mono8\": Image.FORMAT_L8, \"8UC1\": Image.FORMAT_L8, \"8UC3\": Image.FORMAT_RGB8,\n\t\"bayer_rggb8\": Image.FORMAT_L8, \"bayer_bggr8\": Image.FORMAT_L8, \"bayer_gbrg8\": Image.FORMAT_L8,\n\t\"bayer_grbg8\": Image.FORMAT_L8, \"mono16\": Image.FORMAT_R16, \"16UC1\": Image.FORMAT_R16, \"32FC1\": Image.FORMAT_RF}\nconst SH := \"shader_type canvas_item; uniform int modo; uniform vec2 rango; uniform sampler2D paleta : filter_nearest;\nvoid fragment(){ vec4 c = texture(TEXTURE, UV);\n if (modo == 1) { COLOR = vec4(c.bgr, c.a); }   // bgr8/bgra8: intercambio de canales en GPU\n else if (modo >= 2) { float z = modo == 2 ? c.r * 65.535 : c.r;   // 16UC1 en mm (unorm) / 32FC1 en m\n  COLOR = (z > 0.0 && !isinf(z)) ? texture(paleta, vec2(clamp((z - rango.x) / (rango.y - rango.x), 0.0, 1.0), 0.5)) : vec4(0.0); } }\"\nvar _sub: RosSubscriber\nvar _tex: ImageTexture\nvar _mat := ShaderMaterial.new()\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\t_mat.shader = Shader.new(); _mat.shader.code = SH; material = _mat\n\tvar g := GradientTexture1D.new(); g.gradient = Gradient.new()   # paleta tipo «turbo»: azul→rojo\n\tg.gradient.colors = PackedColorArray([Color.DARK_BLUE, Color.CYAN, Color.YELLOW, Color.RED])\n\tg.gradient.offsets = PackedFloat32Array([0.0, 0.33, 0.66, 1.0]); _mat.set_shader_parameter(\"paleta\", g)\n\tstretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/Image\", _on_imagen, qos)\n\nfunc _on_imagen(msg) -> void:\n\tvar e: String = msg.encoding\n\tif not FMT.has(e) or msg.is_bigendian: return   # yuv422/nv21/rgb16…: relay o hueco (ver borrador)\n\tvar w: int = msg.width; var h: int = msg.height; var data: PackedByteArray = msg.data\n\tvar bpp: int = {Image.FORMAT_L8: 1, Image.FORMAT_RGB8: 3, Image.FORMAT_RGBA8: 4, Image.FORMAT_R16: 2, Image.FORMAT_RF: 4}[FMT[e]]\n\tif msg.step != w * bpp: return   # filas con relleno: recortar fila a fila (raro; hueco)\n\tvar img := Image.create_from_data(w, h, false, FMT[e], data)\n\t_mat.set_shader_parameter(\"modo\", 1 if e.begins_with(\"bgr\") else (2 if FMT[e] == Image.FORMAT_R16 else (3 if e == \"32FC1\" else 0)))\n\t_mat.set_shader_parameter(\"rango\", rango)\n\tif _tex == null or _tex.get_size() != Vector2(w, h) or _tex.get_format() != img.get_format():\n\t\t_tex = ImageTexture.create_from_image(img); texture = _tex   # 1.ª vez o cambio de tamaño\n\telse: _tex.update(img)   # sin realojar (H19 en la Vita: convierte a RGBA8)\n",
+    "parametros": [
+      "rango: Vector2 m",
+      "paleta: gris | arcoíris | turbo (GradientTexture1D)",
+      "auto_rango: bool (requiere recorrer la imagen: en GDScript caro; hueco: Image.compute_image_metrics o shader de reducción)"
+    ],
+    "evidencia": "Host: create_from_data R16 640×480 0,3 ms (formato 39 conservado), RF 2 µs; shaders compilan en headless (comprobado con un shader roto: el editor sí valida). Coloreado GDScript 640×480 con LUT 33–35 ms. Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»).",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/doc/classes/Image.xml:783-786 (FORMAT_R16)",
+      "https://docs.godotengine.org/en/stable/classes/class_image.html (R16/R16I en 4.7)",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/image/ros_image_texture.cpp (convertTo8bit, median_frames 5)",
+      "godot/plantillas/sensores/camara.gd:143-176 (32FC1 publicado)",
+      "docs/30-rendimiento-xrce-plantillas.md:35-45"
+    ],
+    "confianza": "[V] formatos y CPU; [I] precisión de R16 unorm en el muestreo (16 bit → float en GPU)",
+    "coste_estimado": "PC: 0,3 ms (R16) / ~0 (RF) + subida de textura; shader trivial. Vita: no aplica (relay).",
+    "como_se_mediria_en_hardware": "PC: camara.gd con publicar_profundidad y un bag de RealSense (16UC1 848×480 30 Hz); verde = 60 FPS y mismo gradiente que RViz con Normalize Range off y min/max iguales."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/Image — yuv422 (=uyvy), uyvy, yuyv, yuv422_yuy2 (PC)",
+    "equivalente": "RViz2 Image: solo YUV422 y YUV422_YUY2 con conversión en CPU; UYVY/YUYV/NV21/NV24 lanzan UnsupportedImageEncoding",
+    "candidato": "Subir los bytes tal cual como RGBA8 de ancho/2 (4 B = 2 píxeles) y convertir YUV→RGB en un shader canvas_item; el TextureRect usa un PlaceholderTexture2D para el tamaño.",
+    "pc_rclgd": "TextureRect + ShaderMaterial; uniform 'tex' con la ImageTexture real.",
+    "vita_ros2_vita": "No (sin shaders, y no cabe): el relay convierte a JPEG.",
+    "campos": "step = width·2; yuv422 es el alias antiguo de uyvy y yuv422_yuy2 el de yuyv en image_encodings.hpp; nv21/nv24 (semiplanares 4:2:0/4:4:4): FORMAT_R8 de alto·1,5 (nv21) y shader con dos muestreos — hueco, sin código.",
+    "codigo": "extends TextureRect   # Image yuv422/uyvy/yuyv/yuv422_yuy2 (PC): 4 B = 2 píxeles → textura RGBA8 de ancho/2 + shader.\nconst SH := \"shader_type canvas_item; uniform bool uyvy; uniform sampler2D tex : filter_nearest; uniform float ancho;\nvoid fragment(){ vec4 q = texture(tex, UV);   // yuyv: (Y0,U,Y1,V); uyvy: (U,Y0,V,Y1)\n bool impar = mod(floor(UV.x * ancho), 2.0) > 0.5;\n float y = uyvy ? (impar ? q.a : q.g) : (impar ? q.b : q.r); float u = (uyvy ? q.r : q.g) - 0.5; float v = (uyvy ? q.b : q.a) - 0.5;\n COLOR = vec4(y + 1.402 * v, y - 0.344 * u - 0.714 * v, y + 1.772 * u, 1.0); }\"   # BT.601 de rango completo [I]\nvar _sub: RosSubscriber; var _tex: ImageTexture; var _mat := ShaderMaterial.new()\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\t_mat.shader = Shader.new(); _mat.shader.code = SH; material = _mat\n\ttexture = PlaceholderTexture2D.new()   # el TextureRect solo da el rectángulo; la imagen va en «tex»\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/Image\", _on_imagen, qos)\n\nfunc _on_imagen(msg) -> void:\n\tvar e: String = msg.encoding\n\tif not e in [\"yuv422\", \"uyvy\", \"yuyv\", \"yuv422_yuy2\"] or msg.step != msg.width * 2: return\n\tvar img := Image.create_from_data(msg.width / 2, msg.height, false, Image.FORMAT_RGBA8, msg.data)\n\tif _tex == null or _tex.get_size() != Vector2(img.get_size()): _tex = ImageTexture.create_from_image(img)\n\telse: _tex.update(img)\n\t(texture as PlaceholderTexture2D).size = Vector2(msg.width, msg.height)\n\t_mat.set_shader_parameter(\"tex\", _tex); _mat.set_shader_parameter(\"ancho\", float(msg.width))\n\t_mat.set_shader_parameter(\"uyvy\", e in [\"yuv422\", \"uyvy\"])   # yuv422 = UYVY en image_encodings.hpp\n",
+    "parametros": [
+      "matriz: BT.601 completo | BT.601 limitado | BT.709 [I]"
+    ],
+    "evidencia": "Host: yuyv 640×480 → 25 µs (sin conversión en CPU); shader compila. Coeficientes BT.601 de rango completo [I] (los drivers usb_cam suelen dar rango limitado: verificar).",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/include/sensor_msgs/image_encodings.hpp (UYVY, YUV422 obsoleto, YUYV, YUV422_YUY2, NV21, NV24)",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/image/ros_image_texture.cpp (solo YUV422/YUY2)"
+    ],
+    "confianza": "[V] formato y compilación; [?] fidelidad de color (sin comparar con una cámara real)",
+    "coste_estimado": "PC: ~0 CPU; textura de w/2×h×4 B.",
+    "como_se_mediria_en_hardware": "usb_cam con pixel_format yuyv; comparar con rqt_image_view; verde = sin dominante de color visible y 60 FPS."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/Image en la Vita (todas las codificaciones)",
+    "equivalente": "RViz2 Image display (vía relay)",
+    "candidato": "Regla: la Vita nunca recibe imagen cruda de cámara real; el relay del PC la reescala a 160×120 y la recomprime a JPEG q40 (≈ 1–3 KB) para CompressedImage fiable 5 Hz; profundidad → JPEG coloreado o mono8 80×60 (4 848 B fiable).",
+    "pc_rclgd": "El relay (rclpy + cv_bridge/OpenCV) en docker/: cv_bridge cubre todas las codificaciones de image_encodings (bayer → demosaico, yuv → RGB).",
+    "vita_ros2_vita": "Decodifica el motor (H22: libjpeg sin SIMD); en Godot es la ficha CompressedImage. QoS fiable (el JPEG > 488 B); RosQoS.set_reliability(RELIABLE).",
+    "campos": "encoding de entrada cualquiera → JPEG RGB; frame_id y stamp se conservan en el CompressedImage.",
+    "codigo": "extends TextureRect   # Display CompressedImage jpeg/png (PC y Vita: el motor decodifica, H22). Capa HUD.\nvar _sub: RosSubscriber\nvar _tex: ImageTexture\nvar _img := Image.new()\n\nfunc iniciar(nodo: RosNode, topic: String, fiable := false) -> void:\n\tstretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED\n\tvar qos := RosQoS.new()   # Vita: JPEG 160×120 ≈ 3 KB → fiable (≤ ~7,5 KiB), nunca BE (> 488 B)\n\tqos.set_reliability(RosQoS.RELIABLE if fiable else RosQoS.BEST_EFFORT)   # método: la Vita no expone la propiedad\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/CompressedImage\", _on_jpeg, qos)\n\nfunc _on_jpeg(msg) -> void:\n\tvar f: String = msg.format   # \"jpeg\", \"png\", \"rgb8; jpeg compressed bgr8\", \"16UC1; compressedDepth png\"\n\tif \"compressedDepth\" in f: return   # PNG de 16 bit: el cargador de Godot lo baja a 8 bit (hueco)\n\tvar data: PackedByteArray = msg.data\n\tvar err := _img.load_png_from_buffer(data) if \"png\" in f else _img.load_jpg_from_buffer(data)\n\tif err != OK: return\n\tif _tex == null or _tex.get_size() != Vector2(_img.get_size()):\n\t\t_tex = ImageTexture.create_from_image(_img); texture = _tex\n\telse: _tex.update(_img)\n",
+    "parametros": [
+      "resolución del relay (160×120)",
+      "calidad (40)",
+      "Hz (5)",
+      "mapa de color de profundidad del relay"
+    ],
+    "evidencia": "JPEG 160×120 q40 de color plano = 948 B (CDR 980 B); load_jpg_from_buffer 160×120 ≈ 90 µs en host. docs/27:71-72 y docs/28:66-67 fijan 160×120 q40 ~2–4 KB. El relay aún no tiene /vita/camara (docker/scripts/vita_relay.py: solo scan, pose, joints, mapa, path).",
+    "fuentes": [
+      "docs/27-xrce-limites-y-relay.md:71-72,107",
+      "docs/28-sensores-y-vision-vita.md:16,66-67",
+      "docs/31-render-visualizacion-vita.md:54,137,183",
+      "docker/scripts/vita_relay.py:122-280"
+    ],
+    "confianza": "[V] tamaños y API; [I] coste en la Vita",
+    "coste_estimado": "Vita [I]: 1–2 ms decodificar + 1–3 ms update (docs/28:67) ≈ 3–6 ms por imagen (docs/31:183) → a 5 Hz ≈ 2–3 % de CPU; 1 quad.",
+    "como_se_mediria_en_hardware": "Relay con /camera/color/image_raw → /vita/camara/compressed; Vita con comprimida.gd; verde = imagen a ≥ 5 Hz, 59 FPS sostenidos, `reliable_dropped` = 0."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/CompressedImage (jpeg, png; PC y Vita)",
+    "equivalente": "RViz2 Image display con transporte 'compressed' (image_transport)",
+    "candidato": "Image.load_jpg_from_buffer / load_png_from_buffer (C++ del motor) + ImageTexture.update reutilizada; mismo script en PC y Vita.",
+    "pc_rclgd": "TextureRect; suscripción directa a <topic>/compressed (rclgd no usa image_transport: se nombra el topic del transporte). BEST_EFFORT en PC.",
+    "vita_ros2_vita": "QoS fiable (JPEG > 488 B; techo ≈ 7,5 KiB → JPEG ≤ ~7 KB); BE solo si ≤ 452 B de JPEG (36 B de sobrecarga de CDR medidos). Decodifica el motor (H22). Formato image_transport: 'rgb8; jpeg compressed bgr8' → tras decodificar, Godot ya da RGB.",
+    "campos": "format → elegir decodificador ('png' en la cadena → PNG; si no, JPEG); data = PackedByteArray (memcpy); los PNG de 16 bit se bajan a 8 bit en Godot.",
+    "codigo": "extends TextureRect   # Display CompressedImage jpeg/png (PC y Vita: el motor decodifica, H22). Capa HUD.\nvar _sub: RosSubscriber\nvar _tex: ImageTexture\nvar _img := Image.new()\n\nfunc iniciar(nodo: RosNode, topic: String, fiable := false) -> void:\n\tstretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED\n\tvar qos := RosQoS.new()   # Vita: JPEG 160×120 ≈ 3 KB → fiable (≤ ~7,5 KiB), nunca BE (> 488 B)\n\tqos.set_reliability(RosQoS.RELIABLE if fiable else RosQoS.BEST_EFFORT)   # método: la Vita no expone la propiedad\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/CompressedImage\", _on_jpeg, qos)\n\nfunc _on_jpeg(msg) -> void:\n\tvar f: String = msg.format   # \"jpeg\", \"png\", \"rgb8; jpeg compressed bgr8\", \"16UC1; compressedDepth png\"\n\tif \"compressedDepth\" in f: return   # PNG de 16 bit: el cargador de Godot lo baja a 8 bit (hueco)\n\tvar data: PackedByteArray = msg.data\n\tvar err := _img.load_png_from_buffer(data) if \"png\" in f else _img.load_jpg_from_buffer(data)\n\tif err != OK: return\n\tif _tex == null or _tex.get_size() != Vector2(_img.get_size()):\n\t\t_tex = ImageTexture.create_from_image(_img); texture = _tex\n\telse: _tex.update(_img)\n",
+    "parametros": [
+      "fiable: bool",
+      "stretch_mode",
+      "hz_max (descartar si llega más rápido que se dibuja)"
+    ],
+    "evidencia": "Host: JPEG 160×120 → 88–90 µs con create/update; 640×480 (78 KB) load_jpg 1,7 ms; PNG 160×120 90 µs. Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»). (Encontrado: en ros2_vita `qos.reliability = …` falla — 'Invalid assignment of property'; hay que usar set_reliability.)",
+    "fuentes": [
+      "https://github.com/ros-perception/image_transport_plugins/tree/jazzy/compressed_image_transport",
+      "docs/31-render-visualizacion-vita.md:54 (H22)",
+      "godot/ros2_vita/ros_runtime.cpp:76-92 (RosQoS sin ADD_PROPERTY: solo set_reliability) vs godot/rclgd/rclgd/src/rclgd/ros_qos.cpp:27-28 (propiedad)",
+      "docs/27-xrce-limites-y-relay.md:35,71"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "PC: 1,7 ms por JPEG 640×480 (host); Vita [I]: 3–6 ms por 160×120.",
+    "como_se_mediria_en_hardware": "camara.gd con publicar_comprimida; Vita y PC; verde = imagen igual que rqt_image_view, 60 FPS PC, ≥ 57 FPS Vita a 5 Hz."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/CompressedImage — compressedDepth (png / rvl)",
+    "equivalente": "image_transport_plugins/compressed_depth_image_transport (RViz2 lo muestra vía image_transport)",
+    "candidato": "No decodificar en Godot: republicar a raw con `ros2 run image_transport republish compressedDepth raw` (PC) o en el relay (Vita) y usar la ficha de profundidad.",
+    "pc_rclgd": "Suscripción a la salida raw del republicador (16UC1/32FC1) con imagen.gd.",
+    "vita_ros2_vita": "Relay: decodifica y entrega JPEG coloreado o mono8 pequeña.",
+    "campos": "data = ConfigHeader (enum format + float depthParam[2] = 12 B [I]) + PNG 16 bit o RVL; format = '<enc>; compressedDepth png|rvl'; 32FC1 cuantizado como inversa: D = A / (v − B), v = 0 → NaN.",
+    "codigo": "# Godot no puede: Image.load_png_from_buffer baja los PNG de 16 bit a 8 bit (png_driver_common.cpp:72-106).\n# Solución sin código en Godot (PC):\n#   ros2 run image_transport republish compressedDepth raw --ros-args \\\n#     -r in/compressedDepth:=/camera/depth/image_raw/compressedDepth -r out:=/camera/depth/image_viz\n# y en Godot: imagen.gd con topic /camera/depth/image_viz (16UC1 → R16, 32FC1 → RF).\nfunc _es_compressed_depth(msg) -> bool:\n\treturn \"compressedDepth\" in String(msg.format)   # comprimida.gd lo descarta con esta prueba",
+    "parametros": [
+      "topic de salida del republicador"
+    ],
+    "evidencia": "Leído en el código del motor: el cargador PNG enmascara PNG_FORMAT_FLAG_LINEAR (16 bit → 8 bit) y solo produce L8/LA8/RGB8/RGBA8. Formato compressedDepth leído en codec.cpp y compression_common.hpp (rama jazzy).",
+    "fuentes": [
+      "toolchains/godot4-vita/engine/drivers/png/png_driver_common.cpp:72-106",
+      "https://github.com/ros-perception/image_transport_plugins/blob/jazzy/compressed_depth_image_transport/src/codec.cpp",
+      "https://github.com/ros-perception/image_transport_plugins/blob/jazzy/compressed_depth_image_transport/include/compressed_depth_image_transport/compression_common.hpp"
+    ],
+    "confianza": "[V] limitación del PNG; [I] tamaño de ConfigHeader (enum de 4 B)",
+    "coste_estimado": "Godot: 0 (lo hace el republicador en C++).",
+    "como_se_mediria_en_hardware": "RealSense con compressedDepth; republicador + imagen.gd; verde = misma profundidad (±1 mm) que el topic raw."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "sensor_msgs/msg/CameraInfo (frustum)",
+    "equivalente": "RViz2 CameraInfo display (rviz_default_plugins/displays/camera_info) y la proyección de Camera display",
+    "candidato": "Frustum de 8 líneas (ImmediateMesh PRIMITIVE_LINES) desde K, width y height, rehecho solo si cambia K; opcionalmente aplica la óptica a una Camera3D con set_frustum (tamaño y desplazamiento del plano cercano).",
+    "pc_rclgd": "MeshInstance3D hijo del nodo del frame óptico; Camera3D en PROJECTION_FRUSTUM.",
+    "vita_ros2_vita": "Cabe: CameraInfo plumb_bob con frame de 26 caracteres = 381 B (rosbags; 329 B con d vacío en ros2_vita) ≤ 488 BE; rational_polynomial 413 B. En 3D sin líneas (H1): 4 prismas finos (6 tri/segmento, docs/31 §2.2) o dibujar el frustum en 2D superpuesto; no hay SubViewport 3D en el port (G7c).",
+    "campos": "k[0]=fx, k[4]=fy, k[2]=cx, k[5]=cy; marco óptico (x der, y abajo, z delante) → Godot local (x, −y, −z); RViz Camera usa P (p[0], p[5], p[2], p[6]) y no K: para imágenes rectificadas P es lo correcto (hueco: usar P si p[0] > 0); binning/roi: no tratados (RViz tampoco en la matriz).",
+    "codigo": "extends MeshInstance3D   # CameraInfo: frustum en 3D (PC: líneas) + Camera3D opcional con la misma óptica.\n@export var distancia := 1.0      # profundidad del frustum dibujado (m)\n@export var camara: Camera3D      # si se asigna: vista «Camera» de RViz (cámara con la proyección de K)\nvar _sub: RosSubscriber; var _clave := []\n\nfunc iniciar(nodo: RosNode, topic: String) -> void:\n\tvar m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_color = Color.YELLOW\n\tmaterial_override = m; mesh = ImmediateMesh.new()\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_sub = nodo.create_subscription(topic, \"sensor_msgs/msg/CameraInfo\", _on_info, qos)\n\nfunc _on_info(msg) -> void:\n\tvar k: PackedFloat64Array = msg.k; var w: float = msg.width; var h: float = msg.height\n\tif k[0] <= 0.0 or [k, w, h] == _clave: return   # sin calibrar o igual que antes: nada que rehacer\n\t_clave = [k, w, h]\n\tvar esq: Array[Vector3] = []   # esquinas de la imagen proyectadas a «distancia» (óptico → Godot: (x, −y, −z))\n\tfor uv in [Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)]:\n\t\tesq.append(Vector3((uv.x - k[2]) / k[0], -(uv.y - k[5]) / k[4], -1.0) * distancia)\n\tvar im: ImmediateMesh = mesh; im.clear_surfaces(); im.surface_begin(Mesh.PRIMITIVE_LINES)\n\tfor i in 4:\n\t\tfor p in [Vector3.ZERO, esq[i], esq[i], esq[(i + 1) % 4]]: im.surface_add_vertex(p)\n\tim.surface_end()\n\tif camara:   # frustum descentrado: tamaño y desplazamiento del plano cercano a partir de fy, cx, cy\n\t\tvar n := camara.near\n\t\tcamara.keep_aspect = Camera3D.KEEP_HEIGHT\n\t\tcamara.set_frustum(n * h / k[4], Vector2(n * (w * 0.5 - k[2]) / k[0], n * (k[5] - h * 0.5) / k[4]), n, camara.far)\n",
+    "parametros": [
+      "distancia: float (alcance dibujado)",
+      "color",
+      "camara: Camera3D (vista Camera)",
+      "far"
+    ],
+    "evidencia": "Host: frustum con 1 superficie; Camera3D en PROJECTION_FRUSTUM con size = near·h/fy y offset coherente con cx, cy. Probado en host (editor 4.8-dev7 de toolchains/godot4-vita/engine/bin, que trae ros2_vita nativo): RosMsg real con el esquema de godot/g1-sensores/ros/schema.rsch, ida y vuelta serialize()/deserialize() y llamada al callback; sin agente (create_subscription avisa «rclgd.init() primero»).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/camera/camera_display.cpp (calculateProjectionMatrix con P)",
+      "toolchains/godot4-vita/engine/doc/classes/Camera3D.xml:115-121,194-212,224",
+      "godot/plantillas/sensores/camara.gd:119-139 (K y P publicados, cx=(w−1)/2)",
+      "docs/31-render-visualizacion-vita.md:85-96"
+    ],
+    "confianza": "[V] tamaños y API; [I] signo exacto del desplazamiento (convención de centro de píxel) hasta compararlo con una imagen real",
+    "coste_estimado": "≈ 0 por mensaje (solo si cambia K); 1 draw, 8 líneas.",
+    "como_se_mediria_en_hardware": "PC: camara.gd + este display; colocar un cubo en una esquina de la imagen; verde = el cubo toca la arista del frustum (±1 px en la vista Camera)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "Camera (superposición imagen + escena 3D, display 'Camera' de RViz)",
+    "equivalente": "RViz2 Camera display (Image Rendering background/overlay/both, Overlay Alpha 0,5, Zoom Factor)",
+    "candidato": "PC: SubViewport con una Camera3D colocada en el frame óptico y con la óptica de CameraInfo (camara_info.gd), compuesta con la imagen recibida en un TextureRect de fondo o superpuesto con alfa. Vita: sin SubViewport 3D → 'modo cámara' que mueve la cámara principal al frame óptico, aplica set_frustum y pone la imagen como TextureRect HUD semitransparente encima (overlay) o debajo con el 3D en wireframe (no hay fondo transparente por defecto [?]).",
+    "pc_rclgd": "SubViewport + Camera3D + TextureRect (imagen.gd / comprimida.gd) + camara_info.gd; sincronización: guardar la imagen y la pose TF de su stamp (lookup_transform con time) [I].",
+    "vita_ros2_vita": "La imagen llega por la ficha 'Image en la Vita' (JPEG del relay); la pose del frame óptico por el TF local; coste = el del 3D principal (sin segunda pasada).",
+    "campos": "header.stamp de imagen y CameraInfo deben coincidir; frame óptico de la imagen ↔ Camera3D.",
+    "codigo": "extends Control   # Display Camera (PC): imagen de fondo + escena vista desde el frame óptico encima.\n@export var alfa := 0.5                # RViz Overlay Alpha\n@export var fondo: TextureRect         # imagen.gd o comprimida.gd (fondo)\n@export var info: Node                 # camara_info.gd con 'camara' = la Camera3D del SubViewport\n@export var frame_optico: Node3D       # nodo del frame óptico (TF)\nvar _vp := SubViewport.new(); var _cam := Camera3D.new(); var _capa := TextureRect.new()\n\nfunc _ready() -> void:\n\t_vp.transparent_bg = true; _vp.world_3d = get_viewport().world_3d   # mismo mundo, fondo transparente\n\t_vp.add_child(_cam); add_child(_vp)\n\tinfo.camara = _cam                   # camara_info.gd aplica set_frustum con K\n\t_capa.texture = _vp.get_texture(); _capa.modulate.a = alfa\n\t_capa.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(_capa)\n\nfunc _process(_dt: float) -> void:\n\t_vp.size = Vector2i(fondo.size)\n\tif frame_optico: _cam.global_transform = frame_optico.global_transform   # sigue la cámara real",
+    "parametros": [
+      "alfa",
+      "modo: fondo | superpuesto | ambos",
+      "zoom",
+      "far"
+    ],
+    "evidencia": "Diseño a partir de camera_display.cpp (propiedades leídas) y de la API de SubViewport/Camera3D; no ejecutado (requiere renderizador). La restricción de la Vita (sin SubViewport 3D) viene de G7c (CLAUDE.md, docs/06).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/camera/camera_display.cpp",
+      "godot/plantillas/sensores/camara.gd:55-71 (SubViewport compartiendo world_3d)",
+      "docs/06-bitacora-estado.md (G7c: 3D solo en la pantalla principal)"
+    ],
+    "confianza": "[I] (no ejecutado); [V] limitación de la Vita",
+    "coste_estimado": "PC: una segunda pasada de render de la escena (≈ coste del 3D × resolución del SubViewport).",
+    "como_se_mediria_en_hardware": "PC: camara.gd simulada + este display; verde = las aristas del mundo simulado coinciden con la imagen (±2 px) al mover el robot."
+  },
+  {
+    "workshop": "W13",
+    "autor": "sensores-densos (opus)",
+    "tipo": "DepthCloud (profundidad + CameraInfo → nube; display 'DepthCloud' de RViz)",
+    "equivalente": "RViz2 DepthCloud display (rviz_default_plugins/displays/depth_cloud: Depth Map Topic, Color Image Topic, Occlusion Compensation, Style)",
+    "candidato": "Todo en la GPU: la profundidad se sube como textura R16/RF y una malla de w×h puntos (creada una vez) se desproyecta en el vertex shader con fx, fy, cx, cy (VERTEX_ID → píxel); cero bucles GDScript por píxel.",
+    "pc_rclgd": "MeshInstance3D hijo del frame óptico + ShaderMaterial (spatial, unshaded, POINT_SIZE); dos suscripciones (CameraInfo y Image).",
+    "vita_ros2_vita": "No (sin shaders: VERTEX no se evalúa por vértice en el port, H1/H3; y no cabe). Alternativa: el relay hace la desproyección y la reduce a /vita/nube2d (ficha PointCloud2 Vita).",
+    "campos": "depth 16UC1 (mm, escala 65,535 tras unorm) o 32FC1 (m); K de CameraInfo; óptico (x der, y abajo, z delante) → Godot (x, −y, −z); 0 = sin dato → vértice fuera; color plano (color por imagen RGB = segunda textura con el mismo UV: hueco).",
+    "codigo": "extends MeshInstance3D   # DepthCloud (PC): profundidad + K → nube en la GPU, 0 bucles GDScript por píxel.\n@export var paso := 2                 # 1 de cada paso×paso píxeles (diezmado)\n@export var color := Color(0.3, 0.9, 1.0)\nconst SH := \"shader_type spatial; render_mode unshaded;\nuniform sampler2D prof : filter_nearest; uniform vec4 k; uniform int ancho; uniform int paso; uniform float escala; uniform vec4 col;\nvoid vertex(){ ivec2 px = ivec2(VERTEX_ID % ancho, VERTEX_ID / ancho) * paso;\n float z = texelFetch(prof, px, 0).r * escala;   // 16UC1 unorm → m (escala 65.535) o 32FC1 (escala 1)\n vec3 p = vec3((float(px.x) - k.z) * z / k.x, (float(px.y) - k.w) * z / k.y, z);   // óptico: x der, y abajo, z delante\n VERTEX = z > 0.0 ? vec3(p.x, -p.y, -p.z) : vec3(0.0, 0.0, 1e9);   // a ejes de Godot; sin dato → fuera\n POINT_SIZE = 2.0; }\nvoid fragment(){ ALBEDO = col.rgb; }\"\nvar _subs: Array = []; var _k := Vector4.ZERO; var _mat := ShaderMaterial.new(); var _tex: ImageTexture\n\nfunc iniciar(nodo: RosNode, topic_prof: String, topic_info: String) -> void:\n\t_mat.shader = Shader.new(); _mat.shader.code = SH; material_override = _mat\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\t_subs = [nodo.create_subscription(topic_info, \"sensor_msgs/msg/CameraInfo\", func(i): _k = Vector4(i.k[0], i.k[4], i.k[2], i.k[5]), qos),\n\t\tnodo.create_subscription(topic_prof, \"sensor_msgs/msg/Image\", _on_prof, qos)]\n\nfunc _on_prof(msg) -> void:\n\tif _k == Vector4.ZERO or not (msg.encoding in [\"16UC1\", \"32FC1\"]): return\n\tvar fmt := Image.FORMAT_R16 if msg.encoding == \"16UC1\" else Image.FORMAT_RF\n\tvar img := Image.create_from_data(msg.width, msg.height, false, fmt, msg.data)\n\tif _tex == null or _tex.get_size() != Vector2(img.get_size()): _tex = ImageTexture.create_from_image(img)\n\telse: _tex.update(img)\n\tvar w: int = msg.width / paso; var h: int = msg.height / paso\n\tif mesh == null or mesh.surface_get_array_len(0) != w * h:   # malla de w×h puntos, una sola vez\n\t\tvar a := []; a.resize(Mesh.ARRAY_MAX); var v := PackedVector3Array(); v.resize(w * h); a[Mesh.ARRAY_VERTEX] = v\n\t\tmesh = ArrayMesh.new(); mesh.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, a); custom_aabb = AABB(Vector3(-50, -50, -50), Vector3(100, 100, 100))\n\tfor p in [[\"prof\", _tex], [\"k\", _k], [\"ancho\", w], [\"paso\", paso], [\"escala\", 65.535 if fmt == Image.FORMAT_R16 else 1.0], [\"col\", color]]: _mat.set_shader_parameter(p[0], p[1])\n",
+    "parametros": [
+      "paso (diezmado)",
+      "color / color_topic",
+      "tam_px",
+      "rango máximo",
+      "oclusión (hueco)"
+    ],
+    "evidencia": "Host: 80×60 16UC1 → 30 µs por mensaje, malla de 1 200 puntos creada una vez; shader compila (VERTEX_ID, texelFetch, POINT_SIZE). Render no verificado (headless).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/tree/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/depth_cloud",
+      "toolchains/godot4-vita/engine/doc/classes/Image.xml:783-786",
+      "godot/plantillas/sensores/camara.gd:143-176"
+    ],
+    "confianza": "[V] CPU y compilación; [I] resultado visual",
+    "coste_estimado": "PC: ≈ 0 CPU por mensaje (subida de textura w·h·2 B); GPU: w·h/paso² vértices.",
+    "como_se_mediria_en_hardware": "PC: camara.gd con profundidad 80×60 sobre la escena simulada; verde = los puntos caen sobre las superficies de colisión (±2 cm) y 60 FPS con 640×480 paso 2."
+  }
+]

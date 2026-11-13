@@ -1,169 +1,198 @@
 {
- "version": 1,
- "actualizado": "2026-11-11",
- "workshops": {
-  "W1": {
-   "pregunta": "Presupuesto real de hardware de la Vita para una app Godot 4",
-   "equipo": [
-    "investigador-vita-sdk (opus)",
-    "investigador-red (opus)"
-   ],
-   "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
-   "posts": [
-    "posts/W1-vita-sdk.json",
-    "posts/W1-red-xrce.json"
-   ],
-   "veredicto_provisional": "1 núcleo efectivo para GDScript+física+render+XRCE (WorkerThreadPool=0, --single-threaded-scene); 3 núcleos de usuario; heap del loader 256 MiB; texturas CDRAM 64 MiB; NEON activo pero -Os sin fast-math; reloj 444 MHz pedido sin comprobar; WiFi FTP 0,55–1,6 MB/s; XRCE best effort ≈ 30 KB/s, fiable ≈ 8 KiB/RTT. Por medir: hwprobe (nunca compilado), E-H7 NEON, E-H8 núcleos, RAM vía logs [memory]."
+  "version": 1,
+  "actualizado": "2026-11-13",
+  "workshops": {
+    "W1": {
+      "pregunta": "Presupuesto real de hardware de la Vita para una app Godot 4",
+      "equipo": [
+        "investigador-vita-sdk (opus)",
+        "investigador-red (opus)"
+      ],
+      "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
+      "posts": [
+        "posts/W1-vita-sdk.json",
+        "posts/W1-red-xrce.json"
+      ],
+      "veredicto_provisional": "1 núcleo efectivo para GDScript+física+render+XRCE (WorkerThreadPool=0, --single-threaded-scene); 3 núcleos de usuario; heap del loader 256 MiB; texturas CDRAM 64 MiB; NEON activo pero -Os sin fast-math; reloj 444 MHz pedido sin comprobar; WiFi FTP 0,55–1,6 MB/s; XRCE best effort ≈ 30 KB/s, fiable ≈ 8 KiB/RTT. Por medir: hwprobe (nunca compilado), E-H7 NEON, E-H8 núcleos, RAM vía logs [memory]."
+    },
+    "W4": {
+      "pregunta": "Portabilidad de gdviz / rclgd_sensors / rclgd_arm_demo y paridad de API",
+      "equipo": [
+        "inventario (haiku, esfuerzo bajo)",
+        "investigador-portabilidad (opus)"
+      ],
+      "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
+      "posts": [
+        "posts/W4-inventario.json",
+        "posts/W4-portabilidad.json",
+        "posts/W4-matriz-borrador.md"
+      ],
+      "veredicto_provisional": "Núcleo de gdviz adaptable (viz_shapes, viz_materials, viz_pose_visuals: coste M) porque el GXM solo dibuja triángulos sin color por vértice ni MultiMesh; VizPointCloud y .gdshader imposibles; relay en el PC obligatorio (entrada fiable ≈ 7,5 KiB). DISCREPANCIA: API_PARITY marca TF ✅ pero register_types.cpp no registra clases TF (a verificar). arm_demo sin LICENSE (package.xml dice MIT): solo patrón.",
+      "commits": {
+        "gdviz": "7d05d35e 2026-08-02",
+        "rclgd_sensors": "420d4d4f 2026-10-06",
+        "rclgd_arm_demo": "e6c9713d 2026-06-16"
+      }
+    },
+    "W5": {
+      "pregunta": "Addon godot-urdf de la Asset Store frente a upstream y gdviz",
+      "equipo": [
+        "investigador-urdf (opus)"
+      ],
+      "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
+      "posts": [
+        "posts/W5-urdf.json"
+      ],
+      "veredicto_provisional": "Tienda = v1.2 (sha256 9a70211a…dd07e, idéntica al tag de Codeberg), reescritura del upstream abandonado; siempre crea física, aplana jerarquía, no lee scale, sin STL en Godot 4.8. Recomendación: preprocesar en el PC; implementado como tools/urdf2godot (Blender + .tscn con nombres URDF) y probado con el G1."
+    },
+    "W7": {
+      "pregunta": "Capacidades reales del port godot4-vita 4.8-dev7",
+      "equipo": [
+        "investigador-motor (opus)"
+      ],
+      "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
+      "posts": [
+        "posts/W7-motor.json"
+      ],
+      "veredicto_provisional": "godot_physics_3d activo (Jolt no); GDScript se compila en la Vita (scripts como texto) y load_resource_pack/ux0:/ disponibles → plugins en caliente viables [I]; render 3D: solo triángulos, sin líneas/puntos/MultiMesh/GridMap/CSG/color por vértice/unshaded; texturas 3D POINT; luces por vértice; sombras por rayos de física; métricas gxm2d-perf/gxm3d/vita-prof cada 300 fotogramas."
+    },
+    "W2": {
+      "pregunta": "Límites de XRCE por tipo de mensaje y adaptadores en el PC",
+      "equipo": [
+        "investigador-xrce (opus)"
+      ],
+      "estado": "integración: pendiente revisión",
+      "posts": [
+        "posts/W2-xrce.json",
+        "posts/W2-borrador.md"
+      ],
+      "veredicto_provisional": "Best effort ≤ 488 B de CDR (xrce_transport.cpp:411-415); fiable fragmenta pero bloquea el hilo principal al enviar; recepción fiable ≈ 7,5 KiB. Casi nada de RViz cabe en crudo (LaserScan 360 = 1 504 B, OccupancyGrid 384² = 147 KB, TF del G1 = 4,8 KB). Decisión candidata: nodo vita_relay en el PC con formatos compactos best effort ≤ 488 B (~30 KB/s total). Experimento: MTU 1 400 / historial 32–64. Zenoh-Pico solo si hace falta."
+    },
+    "W6": {
+      "pregunta": "Prueba mínima TF + RobotModel en el 3D GXM",
+      "estado": "absorbido por el proyecto G1 (RobotModel del G1 a 12 633 triángulos); gate G8-G1 en hardware; TF pendiente de la discrepancia de paridad",
+      "equipo": [
+        "orquestador (opus)"
+      ]
+    },
+    "W3": {
+      "pregunta": "DB-TSDF: escalera de bits",
+      "equipo": [
+        "diseñador-dbtsdf (fable, máx.)"
+      ],
+      "estado": "cerrado (diseño) → docs/26, ADR 0010; juicio de otro modelo pendiente",
+      "posts": [
+        "posts/W3-borrador.md"
+      ]
+    },
+    "W8": {
+      "pregunta": "Render sin shaders y presupuesto",
+      "equipo": [
+        "diseñador-render (fable, máx.)"
+      ],
+      "estado": "cerrado (diseño) → docs/31, ADR 0011; por medir E-W8-0…6",
+      "posts": [
+        "posts/W8-render.json",
+        "posts/W8-borrador.md"
+      ]
+    },
+    "W9": {
+      "pregunta": "Acciones sin XRCE",
+      "equipo": [
+        "diseñador-acciones (fable, máx.)"
+      ],
+      "estado": "cerrado (diseño, 13 posts; borrador en prosa no escrito por límites) → docs/32, ADR 0012",
+      "posts": [
+        "posts/W9-acciones.json"
+      ]
+    },
+    "W12": {
+      "pregunta": "Sensores (LT5) y visión (LT7)",
+      "equipo": [
+        "investigador-sensores-vision (opus)"
+      ],
+      "estado": "cerrado → docs/28",
+      "posts": [
+        "posts/W12-sensores-vision.json",
+        "posts/W12-borrador.md"
+      ]
+    },
+    "W10": {
+      "pregunta": "Plugins y capa URDF↔ros2_vita",
+      "equipo": [
+        "orquestador (opus) — sustituye a Fable por límites de uso"
+      ],
+      "estado": "cerrado en docs/33 §4 (capa URDF: ADR 0009/docs/25)"
+    },
+    "W11": {
+      "pregunta": "Reparto Vita/PC (Fase 2) y prioridades (Fase 4)",
+      "equipo": [
+        "orquestador (opus) — sustituye a Fable por límites de uso"
+      ],
+      "estado": "cerrado en docs/33 §5"
+    },
+    "W13": {
+      "pregunta": "Visualizar todos los tipos de topic en Godot (rclgd PC / ros2_vita Vita)",
+      "equipo": [
+        "nucleo-generico (opus)",
+        "geometria-tf-robot (opus)",
+        "sensores-densos (opus)",
+        "mapas-marcadores (opus)",
+        "hmi-percepcion-acciones (opus)",
+        "esceptico-revisor (opus)",
+        "juez (fable)"
+      ],
+      "estado": "cerrado → docs/36 + ADR 0013",
+      "veredictos": {
+        "VERIFICADO": 76,
+        "DESAFIO": 18,
+        "ALTERNATIVA": 7,
+        "Por medir": 6
+      },
+      "posts": [
+        "posts/W13-nucleo-generico.json",
+        "posts/W13-geometria-tf-robot.json",
+        "posts/W13-sensores-densos.json",
+        "posts/W13-mapas-marcadores.json",
+        "posts/W13-hmi-percepcion-acciones.json",
+        "posts/W13-revision.json",
+        "posts/W13-juez-fable.md"
+      ]
+    }
   },
-  "W4": {
-   "pregunta": "Portabilidad de gdviz / rclgd_sensors / rclgd_arm_demo y paridad de API",
-   "equipo": [
-    "inventario (haiku, esfuerzo bajo)",
-    "investigador-portabilidad (opus)"
-   ],
-   "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
-   "posts": [
-    "posts/W4-inventario.json",
-    "posts/W4-portabilidad.json",
-    "posts/W4-matriz-borrador.md"
-   ],
-   "veredicto_provisional": "Núcleo de gdviz adaptable (viz_shapes, viz_materials, viz_pose_visuals: coste M) porque el GXM solo dibuja triángulos sin color por vértice ni MultiMesh; VizPointCloud y .gdshader imposibles; relay en el PC obligatorio (entrada fiable ≈ 7,5 KiB). DISCREPANCIA: API_PARITY marca TF ✅ pero register_types.cpp no registra clases TF (a verificar). arm_demo sin LICENSE (package.xml dice MIT): solo patrón.",
-   "commits": {
-    "gdviz": "7d05d35e 2026-08-02",
-    "rclgd_sensors": "420d4d4f 2026-10-06",
-    "rclgd_arm_demo": "e6c9713d 2026-06-16"
-   }
+  "decisiones": [],
+  "pendientes": [],
+  "proyectos": {
+    "G1": {
+      "estado": "fases 1–3 funcionando en el PC (motor 4.8-dev7 host + ros2_vita XRCE + simulador MuJoCo con política oficial); vpk build/g1-unitree.vpk; pendiente hardware (gate G8-G1)",
+      "ruta": "godot/g1-unitree"
+    }
   },
-  "W5": {
-   "pregunta": "Addon godot-urdf de la Asset Store frente a upstream y gdviz",
-   "equipo": [
-    "investigador-urdf (opus)"
-   ],
-   "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
-   "posts": [
-    "posts/W5-urdf.json"
-   ],
-   "veredicto_provisional": "Tienda = v1.2 (sha256 9a70211a…dd07e, idéntica al tag de Codeberg), reescritura del upstream abandonado; siempre crea física, aplana jerarquía, no lee scale, sin STL en Godot 4.8. Recomendación: preprocesar en el PC; implementado como tools/urdf2godot (Blender + .tscn con nombres URDF) y probado con el G1."
+  "revision_oleada1": {
+    "archivo": "posts/revision-oleada1.json",
+    "verificado": 22,
+    "alternativa": 2,
+    "desafio": "W1-red: el techo de recepción no es MAX_RX 16 KiB sino ~7,5 KiB en fiable (ventana de 16 huecos) y ~490 B en best effort",
+    "alternativas": [
+      "W1-sdk: '1 núcleo' es el defecto, no fijo (hilo IP, physics run_on_separate_thread no anulado, CapUnlocker libera USER_1/2)",
+      "W5: ya existe tools/urdf2godot (implementado por el orquestador)"
+    ],
+    "acciones": [
+      "API_PARITY.md corregido: TF y RosLogger ⏳ (no existen en el módulo) → tarea P0 de ros2_vita"
+    ]
   },
-  "W7": {
-   "pregunta": "Capacidades reales del port godot4-vita 4.8-dev7",
-   "equipo": [
-    "investigador-motor (opus)"
-   ],
-   "estado": "VERIFICADO por revisor aislado (con los matices de revision_oleada1)",
-   "posts": [
-    "posts/W7-motor.json"
-   ],
-   "veredicto_provisional": "godot_physics_3d activo (Jolt no); GDScript se compila en la Vita (scripts como texto) y load_resource_pack/ux0:/ disponibles → plugins en caliente viables [I]; render 3D: solo triángulos, sin líneas/puntos/MultiMesh/GridMap/CSG/color por vértice/unshaded; texturas 3D POINT; luces por vértice; sombras por rayos de física; métricas gxm2d-perf/gxm3d/vita-prof cada 300 fotogramas."
-  },
-  "W2": {
-   "pregunta": "Límites de XRCE por tipo de mensaje y adaptadores en el PC",
-   "equipo": [
-    "investigador-xrce (opus)"
-   ],
-   "estado": "integración: pendiente revisión",
-   "posts": [
-    "posts/W2-xrce.json",
-    "posts/W2-borrador.md"
-   ],
-   "veredicto_provisional": "Best effort ≤ 488 B de CDR (xrce_transport.cpp:411-415); fiable fragmenta pero bloquea el hilo principal al enviar; recepción fiable ≈ 7,5 KiB. Casi nada de RViz cabe en crudo (LaserScan 360 = 1 504 B, OccupancyGrid 384² = 147 KB, TF del G1 = 4,8 KB). Decisión candidata: nodo vita_relay en el PC con formatos compactos best effort ≤ 488 B (~30 KB/s total). Experimento: MTU 1 400 / historial 32–64. Zenoh-Pico solo si hace falta."
-  },
-  "W6": {
-   "pregunta": "Prueba mínima TF + RobotModel en el 3D GXM",
-   "estado": "absorbido por el proyecto G1 (RobotModel del G1 a 12 633 triángulos); gate G8-G1 en hardware; TF pendiente de la discrepancia de paridad",
-   "equipo": [
-    "orquestador (opus)"
-   ]
-  },
-  "W3": {
-   "pregunta": "DB-TSDF: escalera de bits",
-   "equipo": [
-    "diseñador-dbtsdf (fable, máx.)"
-   ],
-   "estado": "cerrado (diseño) → docs/26, ADR 0010; juicio de otro modelo pendiente",
-   "posts": [
-    "posts/W3-borrador.md"
-   ]
-  },
-  "W8": {
-   "pregunta": "Render sin shaders y presupuesto",
-   "equipo": [
-    "diseñador-render (fable, máx.)"
-   ],
-   "estado": "cerrado (diseño) → docs/31, ADR 0011; por medir E-W8-0…6",
-   "posts": [
-    "posts/W8-render.json",
-    "posts/W8-borrador.md"
-   ]
-  },
-  "W9": {
-   "pregunta": "Acciones sin XRCE",
-   "equipo": [
-    "diseñador-acciones (fable, máx.)"
-   ],
-   "estado": "cerrado (diseño, 13 posts; borrador en prosa no escrito por límites) → docs/32, ADR 0012",
-   "posts": [
-    "posts/W9-acciones.json"
-   ]
-  },
-  "W12": {
-   "pregunta": "Sensores (LT5) y visión (LT7)",
-   "equipo": [
-    "investigador-sensores-vision (opus)"
-   ],
-   "estado": "cerrado → docs/28",
-   "posts": [
-    "posts/W12-sensores-vision.json",
-    "posts/W12-borrador.md"
-   ]
-  },
-  "W10": {
-   "pregunta": "Plugins y capa URDF↔ros2_vita",
-   "equipo": [
-    "orquestador (opus) — sustituye a Fable por límites de uso"
-   ],
-   "estado": "cerrado en docs/33 §4 (capa URDF: ADR 0009/docs/25)"
-  },
-  "W11": {
-   "pregunta": "Reparto Vita/PC (Fase 2) y prioridades (Fase 4)",
-   "equipo": [
-    "orquestador (opus) — sustituye a Fable por límites de uso"
-   ],
-   "estado": "cerrado en docs/33 §5"
-  }
- },
- "decisiones": [],
- "pendientes": [],
- "proyectos": {
-  "G1": {
-   "estado": "fases 1–3 funcionando en el PC (motor 4.8-dev7 host + ros2_vita XRCE + simulador MuJoCo con política oficial); vpk build/g1-unitree.vpk; pendiente hardware (gate G8-G1)",
-   "ruta": "godot/g1-unitree"
-  }
- },
- "revision_oleada1": {
-  "archivo": "posts/revision-oleada1.json",
-  "verificado": 22,
-  "alternativa": 2,
-  "desafio": "W1-red: el techo de recepción no es MAX_RX 16 KiB sino ~7,5 KiB en fiable (ventana de 16 huecos) y ~490 B en best effort",
-  "alternativas": [
-   "W1-sdk: '1 núcleo' es el defecto, no fijo (hilo IP, physics run_on_separate_thread no anulado, CapUnlocker libera USER_1/2)",
-   "W5: ya existe tools/urdf2godot (implementado por el orquestador)"
+  "sustituciones": [
+    "2026-11-12: W10 y W11 los resolvió el orquestador (Opus 5.5) en vez de Fable 5.2 (límites de uso de 5 h y semanal); W3/W8/W9 fueron de Fable con cortes"
   ],
-  "acciones": [
-   "API_PARITY.md corregido: TF y RosLogger ⏳ (no existen en el módulo) → tarea P0 de ros2_vita"
-  ]
- },
- "sustituciones": [
-  "2026-11-12: W10 y W11 los resolvió el orquestador (Opus 5.5) en vez de Fable 5.2 (límites de uso de 5 h y semanal); W3/W8/W9 fueron de Fable con cortes"
- ],
- "docs_finales": {
-  "24": "portabilidad Ozuba",
-  "25": "URDF + ADR 0009",
-  "26": "DB-TSDF + ADR 0010",
-  "27": "XRCE y relay",
-  "28": "sensores y visión",
-  "31": "render + ADR 0011",
-  "32": "acciones + ADR 0012",
-  "33": "maestro"
- }
+  "docs_finales": {
+    "24": "portabilidad Ozuba",
+    "25": "URDF + ADR 0009",
+    "26": "DB-TSDF + ADR 0010",
+    "27": "XRCE y relay",
+    "28": "sensores y visión",
+    "31": "render + ADR 0011",
+    "32": "acciones + ADR 0012",
+    "33": "maestro",
+    "36": "visualización de topics + ADR 0013"
+  }
 }

@@ -1,0 +1,667 @@
+[
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "(común) conversión ROS↔Godot, marco fijo y primitivas 3D (flecha) de toda la familia",
+    "equivalente": "rviz_common FrameManager::transform + rviz_rendering::Arrow/Axes/Shape",
+    "candidato": "Un único `primitivas.gd` (RefCounted, funciones estáticas) con la conversión de pose ROS→Transform3D de Godot, la resolución header.frame_id→marco fijo con la misma firma que RosTfListener, y mallas unidad compartidas (flecha a lo largo de -Z = +X de ROS) que se mueven por `transform`, nunca se reconstruyen.",
+    "pc_rclgd": "3D: `MeshInstance3D` con una `ArrayMesh` compartida por forma (flecha, ejes, esfera, cono, anillo, disco). Conversión con `rclgd.ros_to_godot_vector/quat` (la misma que usan RosTfBroadcaster/Listener). Marco fijo con `RosNode.create_tf_listener()` → `lookup_transform(fijo, header.frame_id, header.stamp)`, que ya devuelve `Transform3D` en ejes de Godot o `null`.",
+    "vita_ros2_vita": "Mismo script: `rclgd.ros_to_godot_*` existen en ros2_vita (API_PARITY.md:19). No hay `create_tf_listener` (API_PARITY.md:36): el parámetro `tf` recibe un `TfLigero` en GDScript con la misma firma (ficha tf2_msgs Vita) o `null` (entonces todo se pinta en el frame del mensaje, válido si el marco fijo coincide con él, p. ej. `odom`). Mallas: solo PRIMITIVE_TRIANGLES (H1), sin MultiMesh (H2: N objetos = N draws), y material con albedo.a = 0,99 para sacar las primitivas de la pasada de luz por vértice (H8) y evitar el riesgo de malla dinámica H7. SHADING_MODE_UNSHADED: en la Vita no está verificado que el port lo respete [?]; da igual porque H8 ya quita la luz.",
+    "campos": "Pose.position (m, ROS) → `rclgd.ros_to_godot_vector(Vector3(x,y,z))` = Vector3(-y, z, -x); Pose.orientation (x,y,z,w) → `rclgd.ros_to_godot_quat(...)` normalizado; cuaternión nulo o no unitario → identidad (RViz lo rechaza con error: odometry_display.cpp messageIsValid). header.frame_id sin '/' inicial. Una flecha de ROS apunta a +X; en Godot a -Z, que `Basis.looking_at` produce sin más.",
+    "codigo": "extends RefCounted\n## res://comun/viz/primitivas.gd (PC y Vita): mallas solo de triángulos (H1), compartidas (H2), movidas por transform.\nstatic var _cache := {}\n\nstatic func material(c: Color) -> StandardMaterial3D:\n\tif not _cache.has(c):\n\t\tvar m := StandardMaterial3D.new()\n\t\tm.albedo_color = Color(c, 0.99)                 # a <= 0,99: fuera de la pasada de luz en la Vita (H8)\n\t\tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED\n\t\t_cache[c] = m\n\treturn _cache[c]\n\nstatic func flecha(c: Color, n := 6) -> MeshInstance3D:   # unidad sobre -Z de Godot = +X de ROS\n\tif not _cache.has(\"flecha\"):\n\t\tvar st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)\n\t\tfor i in n:\n\t\t\tvar a := Vector2.from_angle(TAU * i / n); var b := Vector2.from_angle(TAU * (i + 1) / n)\n\t\t\tfor k in [[0.0, 0.75, 0.04, 0.04], [0.75, 1.0, 0.1, 0.0]]:   # asta y punta: z0, z1, r0, r1\n\t\t\t\tvar p0 := Vector3(a.x * k[2], a.y * k[2], -k[0]); var p1 := Vector3(b.x * k[2], b.y * k[2], -k[0])\n\t\t\t\tvar q0 := Vector3(a.x * k[3], a.y * k[3], -k[1]); var q1 := Vector3(b.x * k[3], b.y * k[3], -k[1])\n\t\t\t\tfor v in [p0, q0, p1, p1, q0, q1]: st.add_vertex(v)\n\t\t_cache[\"flecha\"] = st.commit()\n\tvar mi := MeshInstance3D.new(); mi.mesh = _cache[\"flecha\"]; mi.material_override = material(c)\n\treturn mi\n\nstatic func flecha_hacia(v: Vector3) -> Transform3D:\n\tvar arriba := Vector3.UP if absf(v.normalized().y) < 0.99 else Vector3.RIGHT\n\treturn Transform3D(Basis.looking_at(v, arriba).scaled_local(Vector3(1, 1, v.length())), Vector3.ZERO)\n\nstatic func pose_godot(p) -> Transform3D:                 # geometry_msgs/Pose (RosMsg) -> Transform3D Godot\n\tvar o = p.orientation; var x = p.position\n\tvar q := Quaternion(o.x, o.y, o.z, o.w)\n\tq = q.normalized() if q.length_squared() > 1e-6 else Quaternion.IDENTITY\n\treturn Transform3D(Basis(rclgd.ros_to_godot_quat(q)), rclgd.ros_to_godot_vector(Vector3(x.x, x.y, x.z)))\n\n## header.frame_id -> marco fijo; null si TF no lo resuelve (RViz: «No transform from [x] to [fijo]»).\nstatic func en_marco_fijo(tf, fijo: String, header) -> Variant:\n\tvar f: String = header.frame_id.trim_prefix(\"/\")\n\tif tf == null or f == \"\" or f == fijo: return Transform3D.IDENTITY\n\treturn tf.lookup_transform(fijo, f, header.stamp)",
+    "parametros": [
+      "marco_fijo (String, RViz Fixed Frame)",
+      "color de cada primitiva",
+      "n lados de la flecha (6 → 24 tri)"
+    ],
+    "evidencia": "La conversión de rclgd es `ros = Vector3(-g.z, -g.x, g.y)` y el listener devuelve Transform3D ya en ejes de Godot o null, con get_last_error. RViz transforma cada mensaje con el FrameManager al marco fijo y avisa de «missing transform» si falla. Basis.diagonalize existe en C++ pero NO está expuesto a GDScript (solo inverse, transposed, orthonormalized, scaled, scaled_local, …), así que los autovalores 3×3 de las covarianzas se hacen en GDScript. Las clases tipadas nativas no existen en la Vita: tipos por texto y `msg: RosMsg` para que el mismo .gd corra en ambos.",
+    "fuentes": [
+      "godot/rclgd/docs/concepts/transforms.rst:50-65,95,100",
+      "skills/rclgd/references/api/RosTfListener.md (lookup_transform, get_last_error)",
+      "skills/rclgd/references/api/rclgd.md (ros_to_godot_vector/quat)",
+      "godot/ros2_vita/API_PARITY.md:19,36,59-69",
+      "docs/31-render-visualizacion-vita.md:33-34,39-40 (H1, H2, H7, H8)",
+      "docs/adr/0011-presupuesto-render-vita.md:36-40",
+      "toolchains/godot4-vita/engine/core/math/basis.h:227 (diagonalize C++)",
+      "toolchains/godot4-vita/engine/core/variant/variant_call.cpp:2490-2507 (métodos de Basis expuestos)",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/odometry/odometry_display.cpp (messageIsValid, FrameManager::transform)",
+      "godot/plantillas/ros/util_ros.gd:6 (BASE_ROS_A_GODOT, misma matriz que RosFrame)"
+    ],
+    "confianza": "[V] API y conversiones; [I] coste; [?] SHADING_MODE_UNSHADED en el port",
+    "coste_estimado": "Flecha 24 tri, 1 draw por instancia (sin luz por H8). Ejes 36 tri (doc 31:91). Conversión: 2 llamadas al motor por pose (≈ µs en PC; en la Vita a medir con E-W8-0).",
+    "como_se_mediria_en_hardware": "Escena con 50 flechas movidas a 30 Hz por transform: `[gxm3d] drawn=` = 50 y `lit=` = 0 (prueba H8); FPS ≥ 59 y `avg_submit_us` ≤ 9 000 (E-W8-1). Verde si además `[perfil-gd] viz=` ≤ 1 000 µs por fotograma."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Point, geometry_msgs/msg/PointStamped",
+    "equivalente": "RViz2 PointStamped display (rviz_default_plugins/PointStamped: esfera, Radius, Color, Alpha, History Length)",
+    "candidato": "Esfera de bajo polígono (octaedro 8 tri en la Vita, icosfera 80 tri en el PC) por punto, con un pool circular de N instancias para el historial; Point sin header se pinta en un frame elegido por parámetro.",
+    "pc_rclgd": "3D: pool de `MeshInstance3D` con esfera compartida escalada al radio. Subscripción `create_subscription(topic, \"geometry_msgs/msg/PointStamped\", cb)`; marco fijo vía RosTfListener.",
+    "vita_ros2_vita": "3D, mismo pool (N ≤ 20: N draws, H2). 44 B CDR (frame 'map'): cabe en best effort. Falta el esquema: PointStamped NO está en `TIPOS` de generar_esquemas.py → añadirlo (hueco). La herramienta «Publish Point» de RViz (clic → PointStamped en /clicked_point) es la contraparte que publica: la Vita puede publicarla (76 B) desde la planta 2D.",
+    "campos": "point.x/y/z (m) → rclgd.ros_to_godot_vector; header.frame_id → en_marco_fijo; header.stamp para lookup con tiempo (PC).",
+    "codigo": "extends Node3D\n## Display PointStamped (RViz: esfera + History Length).\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/clicked_point\"\n@export var marco_fijo := \"map\"\n@export var radio := 0.1\n@export var historial := 10\n@export var color := Color(1.0, 0.0, 1.0)\nvar tf\nvar sub: RosSubscriber\nvar _pool: Array[MeshInstance3D] = []\nvar _i := 0\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/PointStamped\", _on_punto)\n\tfor k in historial:\n\t\tvar e := MeshInstance3D.new()\n\t\te.mesh = Prim.esfera(); e.material_override = Prim.material(color); e.visible = false\n\t\tadd_child(e); _pool.append(e)\n\nfunc _on_punto(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar p = m.point\n\tvar e := _pool[_i]; _i = (_i + 1) % historial\n\te.transform = Transform3D(Basis.from_scale(Vector3.ONE * radio), fijo * rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\te.visible = true",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "radio (RViz Radius 0.2)",
+      "historial (RViz History Length 1)",
+      "color",
+      "alfa (solo PC)"
+    ],
+    "evidencia": "RViz declara PointStampedDisplay para geometry_msgs/msg/PointStamped en plugins_description.xml. Tamaño CDR calculado con la misma regla que doc 27 (calibrada: PoseStamped 76 B, Odometry 724 B, Path 100 = 7 228 B coinciden).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "godot/plantillas/generar_esquemas.py:12-39",
+      "docs/27-xrce-limites-y-relay.md:10,81",
+      "docs/31-render-visualizacion-vita.md:34"
+    ],
+    "confianza": "[V] tipos y tamaño; [I] coste",
+    "coste_estimado": "44 B/msg. Vita: 8 tri × N, N draws; CPU ≈ 1 lookup + 1 conversión por mensaje.",
+    "como_se_mediria_en_hardware": "`ros2 topic pub -r 10 /clicked_point geometry_msgs/msg/PointStamped ...` con historial 20: 20 esferas visibles, FPS ≥ 59, `drawn=` sube en 20."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Vector3, geometry_msgs/msg/Vector3Stamped",
+    "equivalente": "Sin display propio en rviz_default_plugins (jazzy); Foxglove lo muestra en Raw Messages / Plot. Se resuelve como flecha desde el origen del frame (patrón de Wrench/Twist).",
+    "candidato": "Flecha desde el origen de header.frame_id con largo = |v| × escala, más una serie temporal opcional (x, y, z) en el trazador genérico de nucleo-generico.",
+    "pc_rclgd": "3D: una flecha compartida (`Prim.flecha_hacia`). 2D/HUD: valores numéricos. Vector3 sin header (p. ej. dentro de otros tipos): mismo display con frame por parámetro.",
+    "vita_ros2_vita": "3D, 1 instancia. Vector3Stamped 52 B (frame 'base_link'): cabe en BE. Esquema no incluido en TIPOS (hueco). Útil también como vista planta 2D (flecha `draw_colored_polygon`).",
+    "campos": "vector.x/y/z (unidad libre) → ros_to_godot_vector × escala; si |v| < umbral se oculta (looking_at con vector nulo da error).",
+    "codigo": "extends Node3D\n## Vector3Stamped -> flecha desde el origen de header.frame_id (sin equivalente directo en RViz2).\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/vector\"\n@export var marco_fijo := \"base_link\"\n@export var escala := 1.0\n@export var color := Color(0.2, 0.6, 1.0)\nvar tf\nvar sub: RosSubscriber\nvar _f: MeshInstance3D\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/Vector3Stamped\", _on_vec)\n\t_f = Prim.flecha(color); add_child(_f)\n\nfunc _on_vec(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tvar v := rclgd.ros_to_godot_vector(Vector3(m.vector.x, m.vector.y, m.vector.z)) * escala\n\t_f.visible = fijo != null and v.length() > 1e-3\n\tif _f.visible: _f.transform = fijo * Prim.flecha_hacia(v)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "escala",
+      "color",
+      "umbral de ocultación"
+    ],
+    "evidencia": "La lista de displays de rviz_default_plugins (jazzy) no tiene Vector3 (sí accel, twist, wrench, point, pose…).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/tree/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml"
+    ],
+    "confianza": "[V] ausencia en RViz; [I] diseño",
+    "coste_estimado": "52 B/msg; 24 tri, 1 draw.",
+    "como_se_mediria_en_hardware": "Publicar un vector giratorio a 30 Hz: la flecha sigue sin saltos y `[perfil-gd]` del display ≤ 100 µs/fotograma."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Pose, geometry_msgs/msg/PoseStamped",
+    "equivalente": "RViz2 Pose display (rviz_default_plugins/Pose: Shape Arrow|Axes, Color, Alpha, Shaft/Head Length/Radius, Axes Length/Radius)",
+    "candidato": "Flecha (por defecto) o ejes RGB en la pose transformada al marco fijo; en la vista planta 2D, triángulo orientado por el yaw (patrón validado de g6-hmi).",
+    "pc_rclgd": "3D: 1 instancia (flecha o ejes compartidos). `create_subscription(topic, \"geometry_msgs/msg/PoseStamped\", cb)`; `Prim.pose_godot(m.pose)` + lookup con `m.header.stamp`.",
+    "vita_ros2_vita": "76 B: cabe en BE, 60 Hz (doc 27:81); esquema ya en TIPOS. 3D: 44 tri / 1 draw (doc 31:136). Vista planta: `draw_colored_polygon` de 3 vértices (g6-hmi/main.gd:182, minimapa.gd:55). La Vita también PUBLICA PoseStamped (goal_pose fiable 76 B → relay → Nav2, doc 27:110).",
+    "campos": "pose → Transform3D con Prim.pose_godot; yaw para 2D = util_ros.gd yaw_de_quat (atan2(2(wz+xy), 1-2(y²+z²))) sobre el cuaternión ROS; header.frame_id/stamp → marco fijo.",
+    "codigo": "extends Node3D\n## Display Pose (PoseStamped) como RViz: flecha o ejes en el marco fijo.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/goal_pose\"\n@export var marco_fijo := \"map\"\n@export_enum(\"flecha\", \"ejes\") var forma := \"flecha\"\n@export var largo := 1.0                  # RViz: Shaft Length 1 + Head Length 0.3\n@export var color := Color(1.0, 0.1, 0.0)\nvar tf\nvar sub: RosSubscriber\nvar _vis: MeshInstance3D\n\nfunc configurar(nodo: RosNode, listener, qos: RosQoS = null) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/PoseStamped\", _on_pose, qos)\n\t_vis = Prim.flecha(color) if forma == \"flecha\" else Prim.ejes()\n\t_vis.visible = false\n\tadd_child(_vis)\n\nfunc _on_pose(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null:\n\t\t_vis.visible = false\n\t\treturn\n\t_vis.transform = (fijo * Prim.pose_godot(m.pose)).scaled_local(Vector3.ONE * largo)\n\t_vis.visible = true",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "forma (flecha|ejes)",
+      "largo",
+      "color",
+      "alfa (PC)",
+      "radio de asta/punta (PC)"
+    ],
+    "evidencia": "Display Pose declarado para PoseStamped; tamaño y Hz medidos en doc 27; flecha y triángulo de yaw en 2D ya funcionan en hardware (G6, minimapa del G1).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "docs/27-xrce-limites-y-relay.md:81,110",
+      "docs/31-render-visualizacion-vita.md:136",
+      "godot/g6-hmi/main.gd:177-182",
+      "godot/g1-unitree/minimapa.gd:55",
+      "godot/plantillas/ros/util_ros.gd:51-58"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "76 B/msg; 24–44 tri, 1 draw; 2D: 1 polígono.",
+    "como_se_mediria_en_hardware": "Nav2/`ros2 topic pub -r 30 /goal_pose ...`: la flecha coincide con RViz2 en el PC (misma pose visual en 5 posiciones de prueba, error < 1 cm/1°) y FPS ≥ 59 en la Vita."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/PoseArray",
+    "equivalente": "RViz2 PoseArray display (Shape: Arrow (Flat) | Arrow (3D) | Axes; Color, Alpha, longitudes)",
+    "candidato": "Pool de flechas (PC: hasta cientos; Vita: ≤ 40 instancias) o, para nubes de partículas grandes, triángulos 2D en un solo lote (canvas_item_add_triangle_array).",
+    "pc_rclgd": "3D: pool de MeshInstance3D (PC sí admite MultiMesh, que sería lo óptimo para > 500 poses). `m.poses` llega como Array de RosMsg (copia).",
+    "vita_ros2_vita": "CDR = 28 + 56·n B (frame 'map'): n ≤ 8 cabe en BE (476 B); 10 poses = 588 B ya no. Sin MultiMesh (H2): N flechas = N draws. Decisión: en la Vita, PoseArray > 8 llega por relay como Float32MultiArray [x, y, yaw]·n (12 B/pose, ≤ 39 poses por datagrama) y se pinta en 2D como triángulos en un solo lote (H16-H17: 1 llamada, color por triángulo). Esquema no incluido (hueco) y módulo de relay inexistente (hueco). Nota: la nube de AMCL en Jazzy es nav2_msgs/ParticleCloud (con pesos), no PoseArray [I].",
+    "campos": "poses[i] → Prim.pose_godot (PC); 2D: (x, y, yaw) → triángulo de 3 vértices en píxeles; header común a todas.",
+    "codigo": "extends Node3D\n## Display PoseArray: pool de flechas (PC) reutilizado; las sobrantes se ocultan.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/poses\"\n@export var marco_fijo := \"map\"\n@export var largo := 0.3\n@export var maximo := 200               # Vita: <= 40 (H2: un draw por instancia)\n@export var color := Color(1.0, 0.1, 0.0)\nvar tf\nvar sub: RosSubscriber\nvar _pool: Array[MeshInstance3D] = []\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/PoseArray\", _on_poses)\n\nfunc _on_poses(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar poses: Array = m.poses\n\tvar n := mini(poses.size(), maximo)\n\twhile _pool.size() < n:\n\t\tvar f := Prim.flecha(color); add_child(f); _pool.append(f)\n\tfor i in _pool.size():\n\t\t_pool[i].visible = i < n\n\t\tif i < n:\n\t\t\t_pool[i].transform = (fijo * Prim.pose_godot(poses[i])).scaled_local(Vector3.ONE * largo)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "forma (flecha plana|flecha 3D|ejes)",
+      "largo",
+      "maximo",
+      "color"
+    ],
+    "evidencia": "Display PoseArray en plugins_description.xml; tamaño calculado (calculadora calibrada con doc 27); H2 y H16-H17 de doc 31.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "docs/31-render-visualizacion-vita.md:34,48-49",
+      "docs/27-xrce-limites-y-relay.md:10"
+    ],
+    "confianza": "[V] tamaños y límites; [I] umbral de 40 instancias (presupuesto ADR 0011: 150 instancias en Viz)",
+    "coste_estimado": "28+56n B; PC: n draws; Vita 2D: 3 vértices/pose en 1 lote (≈ n quads de CPU por fotograma, H16).",
+    "como_se_mediria_en_hardware": "Relay con 39 poses a 5 Hz en 2D: FPS ≥ 59 y `[gxm2d-canvas] avg_canvas_us` sube < 300 µs; variante 3D con 40 flechas: `drawn=` +40, FPS ≥ 55."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/PoseWithCovariance, geometry_msgs/msg/PoseWithCovarianceStamped",
+    "equivalente": "RViz2 PoseWithCovariance display + rviz_rendering CovarianceVisual (elipsoide de posición 2σ y discos/cono de orientación)",
+    "candidato": "Flecha de la pose + elipsoide de posición con semiejes 2·√λ (autovalores del bloque 3×3, o 2×2 si z/roll/pitch tienen varianza ≤ 0, igual que RViz) + discos de orientación roll/pitch/yaw (3D) o abanico de yaw (2D) a una distancia fija.",
+    "pc_rclgd": "3D: esfera unidad compartida escalada por Basis(autovectores)·diag(2√λ), translúcida (alfa 0,3); discos = cilindros aplanados como RViz. Autovalores 3×3 por Jacobi en GDScript (Basis.diagonalize no está expuesto). Caso 2D (el habitual: AMCL, /initialpose): solución cerrada 2×2.",
+    "vita_ros2_vita": "364 B (frame 'map'): cabe en BE; esquema no incluido (hueco). Render: sin orden de transparencias en 3D y con profundidad siempre escrita (doc 31 §2.4), así que nada de elipsoide translúcido: (a) Vista planta 2D = elipse como `draw_polyline` de 24 lados + abanico de yaw ±2σ con `draw_colored_polygon` (H17: un comando cada uno), opción por defecto; (b) Orbital 3D = disco elíptico plano opaco (abanico de 12 tri) apoyado en el suelo, escalado por transform. El 3D completo (3×3) solo en el PC. Es también lo que publica la herramienta «2D Pose Estimate» (/initialpose), que la Vita puede publicar.",
+    "campos": "covariance float64[36] por filas (x, y, z, rot X, rot Y, rot Z) → PackedFloat64Array; bloque posición c[0],c[1],c[7] (2D) o c[0..2],c[6..8],c[12..14] (3D); 2D si c[14] ≤ 0 y c[21] ≤ 0 y c[28] ≤ 0 (covariance_visual.cpp setCovariance); yaw σ = √c[35]; la elipse vive en los ejes del header.frame_id (no gira con la pose) [I]; base en ejes ROS convertida a Godot con C·B·Cᵀ (C = BASE_ROS_A_GODOT).",
+    "codigo": "extends Node3D\n## PoseWithCovarianceStamped: flecha + elipse 2σ (caso 2D de RViz CovarianceVisual) + yaw.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\nconst C := Basis(Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0))   # ejes ROS en Godot (util_ros.gd)\n@export var topic := \"/amcl_pose\"\n@export var marco_fijo := \"map\"\n@export var escala_pos := 1.0\nvar tf\nvar sub: RosSubscriber\nvar _flecha: MeshInstance3D\nvar _elipse: MeshInstance3D       # disco unidad en el plano XY de ROS (abanico de 12 tri)\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/PoseWithCovarianceStamped\", _on_msg)\n\t_flecha = Prim.flecha(Color(1, 0.1, 0)); _elipse = Prim.disco(Color(1, 0.4, 1))\n\tadd_child(_flecha); add_child(_elipse)\n\nfunc _on_msg(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar t: Transform3D = fijo * Prim.pose_godot(m.pose.pose)\n\t_flecha.transform = t\n\tvar c: PackedFloat64Array = m.pose.covariance\n\tvar a := c[0]; var b := c[1]; var d := c[7]\n\tvar h := sqrt(((a - d) * 0.5) ** 2 + b * b)\n\tvar l1 := maxf((a + d) * 0.5 + h, 0.0); var l2 := maxf((a + d) * 0.5 - h, 0.0)\n\tvar th := 0.5 * atan2(2.0 * b, a - d)               # eje mayor en el plano XY de ROS\n\tvar z := 0.002 if (c[14] <= 0.0 and c[21] <= 0.0 and c[28] <= 0.0) else 2.0 * sqrt(maxf(c[14], 0.0))\n\tvar b_ros := Basis(Vector3(0, 0, 1), th).scaled_local(Vector3(2.0 * sqrt(l1), 2.0 * sqrt(l2), z) * escala_pos)\n\t_elipse.transform = Transform3D(fijo.basis * C * b_ros * C.transposed(), t.origin)\n\t_elipse.visible = l1 > 0.0",
+    "parametros": [
+      "escala_pos (RViz Position Scale)",
+      "escala_ori (Orientation Scale)",
+      "desplazamiento_ori (Orientation Offset)",
+      "color pos / color ori (RGB por eje o único)",
+      "alfa (PC)",
+      "frame de la covarianza (Local|Fixed)"
+    ],
+    "evidencia": "RViz: autodescomposición SelfAdjointEigenSolver en doble, semiejes 2·√λ, 2D cuando c[14], c[21], c[28] ≤ 0, z = 0,001 en 2D, discos de orientación con bloques 2×2 del 3×3 angular y radian→métrico 2·tan(x/2). Solución cerrada 2×2: λ = (a+d)/2 ± √(((a−d)/2)² + b²), θ = ½·atan2(2b, a−d) [V, álgebra].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_rendering/src/rviz_rendering/objects/covariance_visual.cpp (setCovariance, updatePosition, updateOrientation, computeShapeScaleAndOrientation2D/3D)",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "docs/31-render-visualizacion-vita.md:108-113 (§2.4 transparencias)",
+      "toolchains/godot4-vita/engine/core/variant/variant_call.cpp:2490-2507",
+      "godot/plantillas/ros/util_ros.gd:6"
+    ],
+    "confianza": "[V] algoritmo RViz y tamaños; [I] marco de la elipse (fixed_orientation_node de RViz) y apariencia del disco opaco",
+    "coste_estimado": "364 B/msg; 2×2: ~15 operaciones; 3×3 Jacobi: ≤ 10 barridos (~200 ops, PC). Vita: disco 12 tri + flecha 24 tri = 2 draws; o 2 comandos 2D.",
+    "como_se_mediria_en_hardware": "AMCL con /amcl_pose: comparar captura de RViz2 y del PC Godot (mismo ancho de elipse ± 5 %, mismo ángulo ± 2°); en la Vita la planta 2D sigue a 10 Hz con FPS ≥ 59."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Twist, TwistStamped, TwistWithCovariance(Stamped)",
+    "equivalente": "RViz2 TwistStamped display (rviz_default_plugins/TwistStamped, familia ScrewDisplay: Linear/Angular Color, Linear/Angular Arrow Scale, Width, History Length, Hide Small Values)",
+    "candidato": "«Screw»: flecha de velocidad lineal y flecha de velocidad angular con anillo que marca el sentido, en el frame del header (o base_link para Twist sin header, p. ej. /cmd_vel); en la Vita además barras HUD vx/wz.",
+    "pc_rclgd": "3D: 3 instancias (ScrewDisplay genérico, código en esta ficha; lo comparten Accel y Wrench). Twist sin header: suscribir \"geometry_msgs/msg/Twist\" y fijar header ficticio (frame = parámetro). TwistWithCovariance: la covarianza 6×6 (en child_frame_id en Odometry) se muestra como texto/HUD; RViz no la dibuja en este display [I].",
+    "vita_ros2_vita": "Twist 52 B, TwistStamped 76 B: caben en BE a 60 Hz (doc 27:82); TwistWithCovarianceStamped 364 B cabe. Esquemas Twist/TwistStamped ya incluidos. En la Vita el Twist típico es el que ELLA publica (/cmd_vel, g6-hmi/main.gd:66,110-126): visualización 2D = flecha de mando en la planta (g6-hmi/main.gd:185) y barras HUD; 3D opcional (3 instancias, ≤ 90 tri).",
+    "campos": "linear (m/s) y angular (rad/s) → ros_to_godot_vector × escala; el angular es pseudovector: la flecha va por el eje de giro (regla de la mano derecha, se conserva porque la conversión es una rotación propia, transforms.rst:37-48).",
+    "codigo": "extends Node3D\n## Display «screw» de RViz (TwistStamped/AccelStamped/WrenchStamped): flecha lineal y angular + anillo.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var tipo := \"geometry_msgs/msg/TwistStamped\"     # o AccelStamped / WrenchStamped\n@export var topic := \"/cmd_vel_stamped\"\n@export var marco_fijo := \"base_link\"\n@export var escala_lineal := 1.0                          # RViz Wrench: Force Arrow Scale 2\n@export var escala_angular := 1.0\n@export var ocultar_pequenos := true                      # RViz: Hide Small Values\nvar tf\nvar sub: RosSubscriber\nvar _lin: MeshInstance3D\nvar _ang: MeshInstance3D\nvar _anillo: MeshInstance3D\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, tipo, _on_msg)\n\t_lin = Prim.flecha(Color(0.8, 0.2, 0.2)); _ang = Prim.flecha(Color(0.8, 0.8, 0.2))\n\t_anillo = Prim.anillo(Color(0.8, 0.8, 0.2))         # arco de 315° en XY, radio 1 (wrench_visual.cpp)\n\tfor n in [_lin, _ang, _anillo]: add_child(n)\n\nfunc _on_msg(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar es_w := tipo.ends_with(\"WrenchStamped\")\n\tvar c = m.get_member(\"wrench\" if es_w else (\"twist\" if tipo.ends_with(\"TwistStamped\") else \"accel\"))\n\tvar a = c.get_member(\"force\" if es_w else \"linear\"); var b = c.get_member(\"torque\" if es_w else \"angular\")\n\tvar vl := rclgd.ros_to_godot_vector(Vector3(a.x, a.y, a.z)) * escala_lineal\n\tvar va := rclgd.ros_to_godot_vector(Vector3(b.x, b.y, b.z)) * escala_angular\n\tvar umbral := 0.01 if ocultar_pequenos else 1e-6\n\t_lin.visible = vl.length() > umbral\n\t_ang.visible = va.length() > umbral\n\t_anillo.visible = _ang.visible\n\tif _lin.visible: _lin.transform = fijo * Prim.flecha_hacia(vl)\n\tif _ang.visible:\n\t\tvar t: Transform3D = fijo * Prim.flecha_hacia(va)\n\t\t_ang.transform = t\n\t\tvar r := va.length() * 0.25                        # anillo de radio L/4 a mitad del eje\n\t\t_anillo.transform = t.translated_local(Vector3(0, 0, -0.5)).scaled_local(Vector3(r, r, 1.0 / va.length()))",
+    "parametros": [
+      "tipo",
+      "topic",
+      "marco_fijo / frame por defecto si no hay header",
+      "escala_lineal",
+      "escala_angular",
+      "ancho",
+      "historial (RViz History Length)",
+      "ocultar_pequenos",
+      "colores lineal/angular"
+    ],
+    "evidencia": "screw_display.hpp declara linear/angular color, alpha, linear/angular scale, width, history length y hide small values con un deque de ScrewVisual; la carpeta displays/ contiene twist/, accel/ y screw/ (que twist y accel deriven de screw es inferencia por nombre). La conversión de rclgd es una rotación propia (dos ejes negados), por eso vale para pseudovectores.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/include/rviz_default_plugins/displays/screw/screw_display.hpp",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "docs/27-xrce-limites-y-relay.md:82",
+      "godot/g6-hmi/main.gd:66,110-126,185",
+      "godot/rclgd/docs/concepts/transforms.rst:37-48"
+    ],
+    "confianza": "[V] tamaños, propiedades; [I] herencia Twist/Accel ← Screw",
+    "coste_estimado": "52–364 B/msg; 3 instancias (24+24+32 tri), 3 draws; ~10 llamadas al motor por mensaje.",
+    "como_se_mediria_en_hardware": "Con g6-hmi publicando /cmd_vel a 20 Hz y el display suscrito en el PC: la flecha cambia con el stick sin retraso visible (< 100 ms en vídeo a 60 fps); en la Vita 3D: FPS ≥ 59 con las 3 instancias."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Accel, AccelStamped, AccelWithCovariance(Stamped)",
+    "equivalente": "RViz2 AccelStamped display (rviz_default_plugins/AccelStamped, familia ScrewDisplay)",
+    "candidato": "Mismo ScrewDisplay que Twist con tipo = AccelStamped (flecha de aceleración lineal + angular con anillo).",
+    "pc_rclgd": "Igual que Twist (`tipo := \"geometry_msgs/msg/AccelStamped\"`). Fuente típica: robot_localization (/accel/filtered, AccelWithCovarianceStamped). Para aceleración de IMU usar la ficha Imu.",
+    "vita_ros2_vita": "AccelStamped 76 B, AccelWithCovarianceStamped 364 B: caben en BE. Esquemas no incluidos (hueco). 3 instancias 3D o barras HUD.",
+    "campos": "accel.linear (m/s²), accel.angular (rad/s²) → ros_to_godot_vector × escala.",
+    "codigo": "extends Node3D\n## Display «screw» de RViz (TwistStamped/AccelStamped/WrenchStamped): flecha lineal y angular + anillo.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var tipo := \"geometry_msgs/msg/TwistStamped\"     # o AccelStamped / WrenchStamped\n@export var topic := \"/cmd_vel_stamped\"\n@export var marco_fijo := \"base_link\"\n@export var escala_lineal := 1.0                          # RViz Wrench: Force Arrow Scale 2\n@export var escala_angular := 1.0\n@export var ocultar_pequenos := true                      # RViz: Hide Small Values\nvar tf\nvar sub: RosSubscriber\nvar _lin: MeshInstance3D\nvar _ang: MeshInstance3D\nvar _anillo: MeshInstance3D\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, tipo, _on_msg)\n\t_lin = Prim.flecha(Color(0.8, 0.2, 0.2)); _ang = Prim.flecha(Color(0.8, 0.8, 0.2))\n\t_anillo = Prim.anillo(Color(0.8, 0.8, 0.2))         # arco de 315° en XY, radio 1 (wrench_visual.cpp)\n\tfor n in [_lin, _ang, _anillo]: add_child(n)\n\nfunc _on_msg(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar es_w := tipo.ends_with(\"WrenchStamped\")\n\tvar c = m.get_member(\"wrench\" if es_w else (\"twist\" if tipo.ends_with(\"TwistStamped\") else \"accel\"))\n\tvar a = c.get_member(\"force\" if es_w else \"linear\"); var b = c.get_member(\"torque\" if es_w else \"angular\")\n\tvar vl := rclgd.ros_to_godot_vector(Vector3(a.x, a.y, a.z)) * escala_lineal\n\tvar va := rclgd.ros_to_godot_vector(Vector3(b.x, b.y, b.z)) * escala_angular\n\tvar umbral := 0.01 if ocultar_pequenos else 1e-6\n\t_lin.visible = vl.length() > umbral\n\t_ang.visible = va.length() > umbral\n\t_anillo.visible = _ang.visible\n\tif _lin.visible: _lin.transform = fijo * Prim.flecha_hacia(vl)\n\tif _ang.visible:\n\t\tvar t: Transform3D = fijo * Prim.flecha_hacia(va)\n\t\t_ang.transform = t\n\t\tvar r := va.length() * 0.25                        # anillo de radio L/4 a mitad del eje\n\t\t_anillo.transform = t.translated_local(Vector3(0, 0, -0.5)).scaled_local(Vector3(r, r, 1.0 / va.length()))",
+    "parametros": [
+      "tipo = geometry_msgs/msg/AccelStamped",
+      "escalas",
+      "colores",
+      "ocultar_pequenos"
+    ],
+    "evidencia": "AccelStampedDisplay declarado para geometry_msgs/msg/AccelStamped; misma estructura de campos (linear/angular) que Twist.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/include/rviz_default_plugins/displays/screw/screw_display.hpp",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/geometry_msgs/msg/Accel.msg"
+    ],
+    "confianza": "[V] tipos; [I] reutilización exacta",
+    "coste_estimado": "76–364 B/msg; 3 draws.",
+    "como_se_mediria_en_hardware": "robot_localization en el PC publicando /accel/filtered: las flechas casan con RViz2; Vita: FPS ≥ 59."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Wrench, geometry_msgs/msg/WrenchStamped",
+    "equivalente": "RViz2 Wrench display (rviz_default_plugins/Wrench + rviz_rendering WrenchVisual: Force Color (204,51,51), Torque Color (204,204,51), Force/Torque Arrow Scale 2, Arrow Width 0.5, History Length 1, Accept NaN Values)",
+    "candidato": "Flecha de fuerza (roja) y flecha de par (amarilla) con anillo abierto de 315° y radio L/4 a mitad del eje y cabeza tangente, como WrenchVisual.",
+    "pc_rclgd": "ScrewDisplay con tipo = WrenchStamped (campos force/torque). El anillo: malla «arco» compartida (32 segmentos en RViz) + flecha pequeña tangente.",
+    "vita_ros2_vita": "WrenchStamped 76 B (frame 'tool0'): cabe en BE; esquema no incluido (hueco). En 3D el anillo no puede ser línea (H1): cinta/prisma de 28 segmentos ≈ 56–168 tri, una sola malla compartida escalada por transform (sin reconstruir). Coste total ≈ 250 tri, 4 draws.",
+    "campos": "wrench.force (N), wrench.torque (N·m) → ros_to_godot_vector × escala; NaN → 0 si «Accept NaN» (wrench_display.cpp) o se descarta.",
+    "codigo": "extends Node3D\n## Display «screw» de RViz (TwistStamped/AccelStamped/WrenchStamped): flecha lineal y angular + anillo.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var tipo := \"geometry_msgs/msg/TwistStamped\"     # o AccelStamped / WrenchStamped\n@export var topic := \"/cmd_vel_stamped\"\n@export var marco_fijo := \"base_link\"\n@export var escala_lineal := 1.0                          # RViz Wrench: Force Arrow Scale 2\n@export var escala_angular := 1.0\n@export var ocultar_pequenos := true                      # RViz: Hide Small Values\nvar tf\nvar sub: RosSubscriber\nvar _lin: MeshInstance3D\nvar _ang: MeshInstance3D\nvar _anillo: MeshInstance3D\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, tipo, _on_msg)\n\t_lin = Prim.flecha(Color(0.8, 0.2, 0.2)); _ang = Prim.flecha(Color(0.8, 0.8, 0.2))\n\t_anillo = Prim.anillo(Color(0.8, 0.8, 0.2))         # arco de 315° en XY, radio 1 (wrench_visual.cpp)\n\tfor n in [_lin, _ang, _anillo]: add_child(n)\n\nfunc _on_msg(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar es_w := tipo.ends_with(\"WrenchStamped\")\n\tvar c = m.get_member(\"wrench\" if es_w else (\"twist\" if tipo.ends_with(\"TwistStamped\") else \"accel\"))\n\tvar a = c.get_member(\"force\" if es_w else \"linear\"); var b = c.get_member(\"torque\" if es_w else \"angular\")\n\tvar vl := rclgd.ros_to_godot_vector(Vector3(a.x, a.y, a.z)) * escala_lineal\n\tvar va := rclgd.ros_to_godot_vector(Vector3(b.x, b.y, b.z)) * escala_angular\n\tvar umbral := 0.01 if ocultar_pequenos else 1e-6\n\t_lin.visible = vl.length() > umbral\n\t_ang.visible = va.length() > umbral\n\t_anillo.visible = _ang.visible\n\tif _lin.visible: _lin.transform = fijo * Prim.flecha_hacia(vl)\n\tif _ang.visible:\n\t\tvar t: Transform3D = fijo * Prim.flecha_hacia(va)\n\t\t_ang.transform = t\n\t\tvar r := va.length() * 0.25                        # anillo de radio L/4 a mitad del eje\n\t\t_anillo.transform = t.translated_local(Vector3(0, 0, -0.5)).scaled_local(Vector3(r, r, 1.0 / va.length()))",
+    "parametros": [
+      "tipo = geometry_msgs/msg/WrenchStamped",
+      "escala_fuerza (2)",
+      "escala_par (2)",
+      "ancho (0.5)",
+      "historial (1)",
+      "aceptar_nan (false)",
+      "colores"
+    ],
+    "evidencia": "wrench_display.cpp: propiedades y valores; wrench_visual.cpp: par = flecha de largo |τ|·escala, anillo de radio L/4 a altura L/2 con bucle i = 4..32 (315°) y cabeza tangente; fuerza/par se ocultan si el largo < ancho.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/wrench/wrench_display.cpp",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_rendering/src/rviz_rendering/objects/wrench_visual.cpp (createTorqueDirectionCircle, updateTorque)",
+      "docs/31-render-visualizacion-vita.md:33,90"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "76 B/msg; Vita 3D ≈ 250 tri, 4 draws.",
+    "como_se_mediria_en_hardware": "`ros2 topic pub -r 20 /wrench geometry_msgs/msg/WrenchStamped` con par rotando: el anillo indica el sentido igual que RViz2; FPS ≥ 59."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Quaternion, geometry_msgs/msg/QuaternionStamped",
+    "equivalente": "Sin display propio en RViz2 (jazzy); el Axes display muestra un frame. Foxglove: Raw Messages.",
+    "candidato": "Ejes RGB (X rojo, Y verde, Z azul, REP-103) girados por el cuaternión en el origen de header.frame_id + HUD roll/pitch/yaw en grados.",
+    "pc_rclgd": "3D: ejes compartidos (36 tri). HUD: `Label` con RPY (roll = atan2(2(wx+yz), 1−2(x²+y²)), etc.).",
+    "vita_ros2_vita": "QuaternionStamped 60 B: cabe en BE; esquema no incluido (hueco). Ejes 36 tri, 1 draw; HUD a ≤ 10 Hz (O1 de G7c, doc 31:139).",
+    "campos": "quaternion (x,y,z,w) → normalizar (si |q|≈0, identidad) → rclgd.ros_to_godot_quat → Basis; los ejes ROS (X delante) se ven en Godot como -Z, -X, +Y gracias a la conversión.",
+    "codigo": "extends Node3D\n## QuaternionStamped -> ejes RGB girados + RPY en el HUD.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/orientacion\"\n@export var marco_fijo := \"base_link\"\n@export var largo := 0.5\nvar tf\nvar sub: RosSubscriber\nvar _ejes: MeshInstance3D\nvar rpy_grados := Vector3.ZERO          # para el HUD\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/QuaternionStamped\", _on_q)\n\t_ejes = Prim.ejes(); add_child(_ejes)\n\nfunc _on_q(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar o = m.quaternion\n\tvar q := Quaternion(o.x, o.y, o.z, o.w)\n\tif q.length_squared() < 1e-6: return\n\tq = q.normalized()\n\t_ejes.transform = (fijo * Transform3D(Basis(rclgd.ros_to_godot_quat(q)), Vector3.ZERO)).scaled_local(Vector3.ONE * largo)\n\trpy_grados = Vector3(atan2(2.0 * (q.w * q.x + q.y * q.z), 1.0 - 2.0 * (q.x * q.x + q.y * q.y)),\n\t\t\tasin(clampf(2.0 * (q.w * q.y - q.z * q.x), -1.0, 1.0)),\n\t\t\tatan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))) * (180.0 / PI)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "largo",
+      "mostrar RPY"
+    ],
+    "evidencia": "Ningún display de rviz_default_plugins consume Quaternion; la fórmula de yaw coincide con util_ros.gd yaw_de_xyzw (misma convención que vita_relay.py).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/tree/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays",
+      "godot/plantillas/ros/util_ros.gd:51-58",
+      "docs/31-render-visualizacion-vita.md:91,139"
+    ],
+    "confianza": "[V] ausencia en RViz y fórmulas; [I] diseño",
+    "coste_estimado": "60 B/msg; 36 tri, 1 draw.",
+    "como_se_mediria_en_hardware": "Publicar yaw = 90°: el eje rojo (X de ROS) apunta a la izquierda de la vista por defecto, como en RViz2 con el mismo marco; RPY del HUD = (0, 0, 90)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Transform, geometry_msgs/msg/TransformStamped",
+    "equivalente": "Un elemento del TF display de RViz2 (ejes del child_frame_id + flecha hijo→padre); no hay display de TransformStamped suelto.",
+    "candidato": "Ejes en child_frame_id expresado en el marco fijo + flecha del hijo al padre (header.frame_id), como TF; en el PC además se puede reemitir con RosTfBroadcaster.send_transform si el topic no es /tf.",
+    "pc_rclgd": "3D: ejes + flecha (prisma) hijo→padre. Posición del padre por RosTfListener; el hijo = padre × transform del mensaje.",
+    "vita_ros2_vita": "TransformStamped 100 B: cabe en BE; esquema ya en TIPOS (generar_esquemas.py:21). 36 + 24 tri, 2 draws. Sin listener nativo: el padre se resuelve con TfLigero o se asume igual al marco fijo.",
+    "campos": "transform.translation/rotation → Transform3D Godot (igual que Prim.pose_godot pero campos translation/rotation); child_frame_id para la etiqueta 2D.",
+    "codigo": "extends Node3D\n## TransformStamped suelto -> ejes del hijo + flecha hijo->padre (como un frame del TF display).\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/transform\"\n@export var marco_fijo := \"map\"\nvar tf\nvar sub: RosSubscriber\nvar _ejes: MeshInstance3D\nvar _enlace: MeshInstance3D\nvar nombre_hijo := \"\"                    # etiqueta 2D (Camera3D.unproject_position)\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/TransformStamped\", _on_t)\n\t_ejes = Prim.ejes(); _enlace = Prim.flecha(Color(1.0, 0.9, 0.2))\n\tadd_child(_ejes); add_child(_enlace)\n\nfunc _on_t(m: RosMsg) -> void:\n\tvar padre = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif padre == null: return\n\tvar r = m.transform.rotation; var p = m.transform.translation\n\tvar q := Quaternion(r.x, r.y, r.z, r.w).normalized()\n\tvar hijo: Transform3D = padre * Transform3D(Basis(rclgd.ros_to_godot_quat(q)), rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\t_ejes.transform = hijo.scaled_local(Vector3.ONE * 0.3)\n\tnombre_hijo = m.child_frame_id\n\tvar v: Vector3 = padre.origin - hijo.origin\n\t_enlace.visible = v.length() > 1e-3\n\tif _enlace.visible: _enlace.transform = Transform3D(Prim.flecha_hacia(v).basis, hijo.origin)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "escala ejes",
+      "mostrar enlace",
+      "mostrar nombre"
+    ],
+    "evidencia": "tf_display.cpp: flecha «from child to parent» y posición en el marco fijo; transforms.rst: send_transform(t, frame_id, parent_frame_id, is_static, stamp).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/tf/tf_display.cpp (Show Arrows, updateParentArrow)",
+      "godot/rclgd/docs/concepts/transforms.rst:100-125",
+      "godot/plantillas/generar_esquemas.py:21"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "100 B/msg; 60 tri, 2 draws.",
+    "como_se_mediria_en_hardware": "Publicar odom→base_link girando: ejes y flecha coinciden con el TF display de RViz2 (captura lado a lado)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Polygon, geometry_msgs/msg/PolygonStamped",
+    "equivalente": "RViz2 Polygon display (rviz_default_plugins/Polygon, PolygonStamped: contorno cerrado, Color, Alpha)",
+    "candidato": "Contorno cerrado: en 3D cinta (2 tri/segmento) si es casi plano (huella de Nav2, zona), en planta 2D `draw_polyline` cerrada + relleno opcional `draw_colored_polygon` (triangulado por el motor).",
+    "pc_rclgd": "3D: ArrayMesh reconstruida por mensaje (la huella cambia poco) o ImmediateMesh LINE_STRIP (el PC sí dibuja líneas). Fuente típica: /local_costmap/published_footprint (Nav2).",
+    "vita_ros2_vita": "PolygonStamped = 28 + 12·n B (Point32): n ≤ 38 cabe en BE (4 vértices = 72 B); esquema no incluido (hueco). 3D: cinta reconstruida solo si cambian los puntos (la huella es casi estática) y a ≤ 2 Hz (ADR 0011 §4); recomendado planta 2D (1 comando, H17). Optimización: construir los puntos en ejes ROS bajo un nodo hijo con basis = BASE_ROS_A_GODOT (como RosFrame del URDF) y ahorrar n conversiones.",
+    "campos": "points[i] (Point32, float32) → PackedVector3Array ROS → cinta; header.frame_id → marco fijo una vez por mensaje (como Path de RViz).",
+    "codigo": "extends MeshInstance3D\n## PolygonStamped -> contorno cerrado como cinta (2 tri/segmento; válida en la Vita, H1).\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/local_costmap/published_footprint\"\n@export var marco_fijo := \"odom\"\n@export var ancho := 0.02\nvar tf\nvar sub: RosSubscriber\nvar _malla := ArrayMesh.new()\nvar _anterior := PackedVector3Array()\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener; mesh = _malla; material_override = Prim.material(Color(0.2, 0.9, 0.3))\n\tsub = nodo.create_subscription(topic, \"geometry_msgs/msg/PolygonStamped\", _on_poly)\n\nfunc _on_poly(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\ttransform = fijo                                     # el marco va en el nodo: la malla solo cambia si cambia la forma\n\tvar pts := PackedVector3Array()\n\tfor p in m.polygon.points: pts.append(rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\tif pts == _anterior or pts.size() < 2: return\n\t_anterior = pts\n\t_malla.clear_surfaces()\n\tvar st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)\n\tfor i in pts.size():\n\t\tvar a := pts[i]; var b := pts[(i + 1) % pts.size()]\n\t\tvar lado := (b - a).cross(Vector3.UP).normalized() * ancho * 0.5\n\t\tfor v in [a - lado, a + lado, b - lado, b - lado, a + lado, b + lado]: st.add_vertex(v)\n\tst.commit(_malla)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "ancho",
+      "color",
+      "relleno (2D)",
+      "alfa (PC)"
+    ],
+    "evidencia": "Display Polygon declarado para PolygonStamped; reconstrucción de malla limitada por H9 (cada cambio tira la caché y consume arena) y ADR 0011 §4; la huella de Nav2 solo cambia de pose, no de forma, así que la malla casi nunca se rehace.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "docs/31-render-visualizacion-vita.md:41,89,92",
+      "docs/adr/0011-presupuesto-render-vita.md:38-40",
+      "godot/g1-unitree/robot/urdf_robot.gd:6"
+    ],
+    "confianza": "[V] límites; [I] comportamiento de Nav2 (forma constante)",
+    "coste_estimado": "28+12n B; 2n tri, 1 draw; reconstrucción solo al cambiar la forma.",
+    "como_se_mediria_en_hardware": "Nav2 en la estación con la huella publicada a 5 Hz: `[gxm3d]` sin aumento de `invalidations` (malla estable) y FPS ≥ 59."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "geometry_msgs/msg/Inertia, geometry_msgs/msg/InertiaStamped",
+    "equivalente": "RViz2 RobotModel → «Mass Properties: Inertia» (caja de inercia equivalente por link) y «Mass» (esfera del CoM); no hay display de topic.",
+    "candidato": "Caja equivalente de densidad uniforme (semiejes a partir de los momentos principales) centrada en el CoM + esfera del CoM; tamaño de la esfera ∝ masa.",
+    "pc_rclgd": "3D: caja unidad compartida escalada; momentos principales por Jacobi 3×3 en GDScript (Basis.diagonalize no expuesto). Para inercias del URDF, tools/urdf2godot puede guardar la inercia en metadata del link (no lo hace hoy [?]).",
+    "vita_ros2_vita": "InertiaStamped 108 B: cabe en BE; esquema no incluido (hueco). Uso raro en la Vita: depuración del URDF horneado. 12 + 8 tri, 2 draws.",
+    "campos": "m (kg), com (Vector3 m) → ros_to_godot_vector; ixx..izz (kg·m²) → tensor 3×3 → autovalores I1..I3 → lados de caja: a = √(6(I2+I3−I1)/m) etc.; ejes = autovectores (convertidos con C·B·Cᵀ).",
+    "codigo": "extends Node3D\n## InertiaStamped -> caja de inercia equivalente (densidad uniforme) en el CoM, ejes principales por Jacobi.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\nconst C := Basis(Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0))\nvar tf\nvar marco_fijo := \"base_link\"\nvar _caja: MeshInstance3D\n\nfunc _on_inercia(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tvar i = m.inertia\n\tif fijo == null or i.m <= 0.0: return\n\tvar a := [[i.ixx, i.ixy, i.ixz], [i.ixy, i.iyy, i.iyz], [i.ixz, i.iyz, i.izz]]\n\tvar v := Basis()                                       # columnas = autovectores (ejes ROS)\n\tfor barrido in 10:                                     # Jacobi cíclico 3x3\n\t\tfor pq in [[0, 1], [0, 2], [1, 2]]:\n\t\t\tvar p: int = pq[0]; var q: int = pq[1]\n\t\t\tif absf(a[p][q]) < 1e-12: continue\n\t\t\tvar th := 0.5 * atan2(2.0 * a[p][q], a[q][q] - a[p][p])\n\t\t\tvar c := cos(th); var s := sin(th)\n\t\t\tfor k in 3:                                    # A <- A·J\n\t\t\t\tvar akp: float = a[k][p]; var akq: float = a[k][q]\n\t\t\t\ta[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq\n\t\t\tfor k in 3:                                    # A <- Jᵀ·A\n\t\t\t\tvar apk: float = a[p][k]; var aqk: float = a[q][k]\n\t\t\t\ta[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk\n\t\t\tvar vp := v[p]; var vq := v[q]\n\t\t\tv[p] = c * vp - s * vq; v[q] = s * vp + c * vq\n\tvar l := Vector3(a[0][0], a[1][1], a[2][2])\n\tvar lados := Vector3(l.y + l.z - l.x, l.x + l.z - l.y, l.x + l.y - l.z) * (6.0 / i.m)\n\tlados = Vector3(sqrt(maxf(lados.x, 0.0)), sqrt(maxf(lados.y, 0.0)), sqrt(maxf(lados.z, 0.0)))\n\tvar com := rclgd.ros_to_godot_vector(Vector3(i.com.x, i.com.y, i.com.z))\n\t_caja.transform = fijo * Transform3D(C * v.scaled_local(lados) * C.transposed(), com)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "mostrar caja de inercia",
+      "mostrar CoM (masa)",
+      "alfa (PC)"
+    ],
+    "evidencia": "Caja sólida de lados (a,b,c) y masa m: I1 = m(b²+c²)/12 … ⇒ a² = 6(I2+I3−I1)/m [V, física]. Jacobi cíclico converge en ≤ 10 barridos para 3×3 [I]. `v[p]` sobre Basis accede a columnas en GDScript (Basis[i] = columna i) [V, doc Godot]. Sin display de topic en RViz (no aparece en plugins_description.xml).",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/geometry_msgs/msg/Inertia.msg",
+      "https://docs.godotengine.org/en/stable/classes/class_basis.html",
+      "toolchains/godot4-vita/engine/core/variant/variant_call.cpp:2490-2507"
+    ],
+    "confianza": "[V] fórmulas; [I] Jacobi en GDScript (no probado aún) y apariencia RViz",
+    "coste_estimado": "108 B/msg; Jacobi ≈ 10×3×40 ops (≈ 1 ms en la Vita [I], por mensaje raro); 12 tri, 1 draw.",
+    "como_se_mediria_en_hardware": "Test headless en el PC: inercia de una caja 1×2×3 m, m = 6 ⇒ la caja dibujada mide 1×2×3 (± 1e-4). Vita: solo comprobar que el display no baja FPS (< 59) al recibir 1 msg/s."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "nav_msgs/msg/Odometry",
+    "equivalente": "RViz2 Odometry display (Position Tolerance 0.1, Angle Tolerance 0.1, Keep 100, Shape Arrow|Axes, Covariance)",
+    "candidato": "Rastro de flechas como RViz: se añade una flecha solo si la pose se mueve más de la tolerancia (posición o ángulo) respecto de la ÚLTIMA FLECHA dibujada; pool circular de `keep` instancias reutilizadas (nunca se crean/destruyen nodos por mensaje); covarianza opcional (ficha PoseWithCovariance). En la Vita: planta 2D con polilínea + flecha (g6-hmi).",
+    "pc_rclgd": "3D: pool de flechas (keep 100). `create_subscription(\"/odom\", \"nav_msgs/msg/Odometry\", cb)`; pose en header.frame_id (odom), twist en child_frame_id (base_link).",
+    "vita_ros2_vita": "724 B: NO cabe en BE; en fiable llega en 2 fragmentos (G6 OK a 20–30 Hz, doc 27:80). Recomendado: relay `/vita/pose2d` [x,y,yaw,vx,vy,wz] = 40 B BE a 30 Hz (vita_relay.py:11). Propuesta (hueco): ampliar a [.., σxx, σxy, σyy, σyaw] (56 B) para la elipse 2D. Render: planta 2D (`draw_polyline` del rastro + triángulo, validado en hardware en G6 y en el minimapa del G1); 3D: keep ≤ 20 → ≤ 21 instancias, ≤ 900 tri (doc 31:135). Marco fijo = odom: no hace falta TF.",
+    "campos": "pose.pose → Prim.pose_godot; pose.covariance (36) → elipse; twist.twist en child_frame_id (vx, wz) → HUD; tolerancia de ángulo con Quaternion.angle_to (≈ ogreQuaternionAngularDistance).",
+    "codigo": "extends Node3D\n## Display Odometry como RViz: flecha nueva solo si se mueve > tolerancia; pool circular de `keep`.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/odom\"\n@export var marco_fijo := \"odom\"\n@export var tol_pos := 0.1                 # m (RViz Position Tolerance)\n@export var tol_ang := 0.1                 # rad (RViz Angle Tolerance)\n@export var keep := 100                    # Vita: <= 20 (doc 31, tabla §3)\n@export var color := Color(1.0, 0.1, 0.0)\nvar tf\nvar sub: RosSubscriber\nvar _pool: Array[MeshInstance3D] = []\nvar _sig := 0\nvar _ultima: Variant = null                # Transform3D de la última flecha dibujada\n\nfunc configurar(nodo: RosNode, listener, qos: RosQoS = null) -> void:\n\ttf = listener\n\tsub = nodo.create_subscription(topic, \"nav_msgs/msg/Odometry\", _on_odom, qos)\n\tfor i in keep:\n\t\tvar f := Prim.flecha(color); f.visible = false; add_child(f); _pool.append(f)\n\nfunc _on_odom(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar t: Transform3D = fijo * Prim.pose_godot(m.pose.pose)\n\tif _ultima != null:\n\t\tvar u: Transform3D = _ultima\n\t\tif t.origin.distance_to(u.origin) < tol_pos and \\\n\t\t\t\tt.basis.get_rotation_quaternion().angle_to(u.basis.get_rotation_quaternion()) < tol_ang:\n\t\t\treturn\n\t_ultima = t\n\tvar f := _pool[_sig]\n\t_sig = (_sig + 1) % keep\n\tf.transform = t\n\tf.visible = true",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "tol_pos (0.1)",
+      "tol_ang (0.1)",
+      "keep (100; Vita ≤ 20)",
+      "forma (flecha|ejes)",
+      "color",
+      "covarianza (bool) + escalas",
+      "fuente Vita (odom fiable | /vita/pose2d)"
+    ],
+    "evidencia": "odometry_display.cpp: compara con last_used_message_ (la última flecha, no el último mensaje), descarta mensajes con NaN o cuaternión no unitario, transforma con el FrameManager y recorta los deques en update(); Keep 0 = todos. Tamaño 724 B medido (doc 27). g6-hmi ya pinta rastro + flecha de /odom en 2D en hardware.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/odometry/odometry_display.cpp (setupProperties, processMessage, messageIsSimilarToPrevious, update)",
+      "docs/27-xrce-limites-y-relay.md:80",
+      "docker/scripts/vita_relay.py:11,203-215",
+      "docs/31-render-visualizacion-vita.md:135",
+      "godot/g6-hmi/main.gd:66,176-182"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "724 B fiable (2 frag) o 40 B BE; 3D: keep × 24 tri, keep draws; 2D: 1 polilínea + 1 polígono.",
+    "como_se_mediria_en_hardware": "TurtleBot3 simulado en la estación a 30 Hz: en la Vita con /vita/pose2d, rastro 2D estable y FPS ≥ 59; variante 3D keep = 20: `drawn=` +20 y FPS ≥ 55; en el PC, rastro idéntico a RViz2 con las mismas tolerancias."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "nav_msgs/msg/Path",
+    "equivalente": "RViz2 Path display (Line Style Lines|Billboards, Line Width 0.03, Color (25,255,0), Buffer Length 1, Offset, Pose Style None|Axes|Arrows)",
+    "candidato": "Polilínea transformada al marco fijo UNA vez por mensaje (como RViz): cinta plana de 2 tri/segmento en 3D (válida en PC y Vita) o `draw_polyline` en planta 2D; poses opcionales como flechas/ejes del pool solo en el PC.",
+    "pc_rclgd": "3D: cinta ArrayMesh o ImmediateMesh LINE_STRIP (el PC sí tiene líneas). `m.poses` = Array de PoseStamped (copia: leer una vez).",
+    "vita_ros2_vita": "Path 100 poses = 7 228 B: no cabe ni en fiable de forma estable (doc 27:67). Usar relay `/vita/path_compacto` [n, x0, y0, …] ≤ 57 pts, Douglas-Peucker ε 5 cm, 2 Hz, 476 B BE (vita_relay.py:18, 87-110). Render: cinta reconstruida a ≤ 2 Hz (ADR 0011 §4; ≤ 112 tri, doc 31:133) o `draw_polyline` 2D (validado: minimapa del G1). Path no está en TIPOS (no hace falta con el relay).",
+    "campos": "poses[i].pose.position → ros_to_godot_vector; el frame del header se aplica una vez (transform del nodo); las poses de un Path comparten frame.",
+    "codigo": "extends MeshInstance3D\n## Display Path: cinta (2 tri/segmento) en PC y Vita (H1: sin líneas 3D). Dos entradas: Path o path_compacto.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var marco_fijo := \"map\"\n@export var ancho := 0.03                  # RViz Line Width\n@export var color := Color(0.1, 1.0, 0.0)\nvar tf\nvar _malla := ArrayMesh.new()\n\nfunc _ready() -> void:\n\tmesh = _malla\n\tmaterial_override = Prim.material(color)\n\nfunc on_path(m: RosMsg) -> void:           # nav_msgs/msg/Path (PC)\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\ttransform = fijo                        # un lookup por mensaje, como RViz\n\tvar pts := PackedVector3Array()\n\tfor ps in m.poses:\n\t\tvar p = ps.pose.position\n\t\tpts.append(rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\t_construir(pts)\n\nfunc on_path_compacto(m: RosMsg) -> void:  # Vita: /vita/path_compacto [n, x0, y0, ...] en `map`, 2 Hz\n\tvar d: PackedFloat32Array = m.data\n\tvar pts := PackedVector3Array()\n\tfor i in mini(int(d[0]) if d.size() > 0 else 0, (d.size() - 1) / 2):\n\t\tpts.append(rclgd.ros_to_godot_vector(Vector3(d[1 + 2 * i], d[2 + 2 * i], 0.02)))\n\t_construir(pts)\n\nfunc _construir(pts: PackedVector3Array) -> void:\n\t_malla.clear_surfaces()\n\tif pts.size() < 2: return\n\tvar st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)\n\tfor i in pts.size() - 1:\n\t\tvar a := pts[i]; var b := pts[i + 1]\n\t\tvar lado := (b - a).cross(Vector3.UP).normalized() * ancho * 0.5\n\t\tfor v in [a - lado, a + lado, b - lado, b - lado, a + lado, b + lado]: st.add_vertex(v)\n\tst.commit(_malla)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "estilo (cinta|líneas PC)",
+      "ancho (0.03)",
+      "color",
+      "alfa (PC)",
+      "buffer (1)",
+      "offset",
+      "estilo de pose (ninguno|ejes|flechas, PC)"
+    ],
+    "evidencia": "path_display.cpp: una sola búsqueda de frame por mensaje y una matriz aplicada a cada pose; offset en el nodo de escena. doc 27 mide Path 100 = 7 228 B; vita_relay ya implementa path_compacto con Douglas-Peucker.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/path/path_display.cpp (constructor, processMessage)",
+      "docs/27-xrce-limites-y-relay.md:67-68,106",
+      "docker/scripts/vita_relay.py:18,87-110,271-279",
+      "docs/31-render-visualizacion-vita.md:89,133",
+      "docs/adr/0011-presupuesto-render-vita.md:39-40",
+      "godot/g1-unitree/minimapa.gd:49"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "476 B BE a 2 Hz (Vita); cinta ≤ 112 tri, 1 draw, reconstrucción ≤ 2 Hz (consume 60 B × tri del arena por reconstrucción, H9).",
+    "como_se_mediria_en_hardware": "Nav2 con un plan de 300 poses + relay path: la cinta en la Vita sigue el plan de RViz2 (error < ε 5 cm visual), FPS ≥ 59 y sin tirones > 33 ms al reconstruir (E-W8-2)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "tf2_msgs/msg/TFMessage (/tf, /tf_static) — display TF",
+    "equivalente": "RViz2 TF display (Show Names false, Show Axes true, Show Arrows true (hijo→padre), Marker Scale 1, Update Interval 0, Frame Timeout 15 s, árbol de frames)",
+    "candidato": "Display que NO se suscribe a /tf: consulta el listener (RosTfListener en el PC, TfLigero en la Vita) a 10 Hz, dibuja ejes por frame en el marco fijo, una flecha de cada hijo a su padre y los nombres en 2D proyectados con Camera3D.unproject_position; oculta los frames sin actualizar en `timeout` s (los estáticos nunca caducan).",
+    "pc_rclgd": "`tf = nodo.create_tf_listener()`; `get_frame_names()`, `get_frame_parent(f)`, `lookup_transform(fijo, f)` (Transform3D en ejes de Godot o null), `get_frame_latest_time(f)` (0 = estático), `all_frames_as_yaml()` para el panel de árbol. Ejes compartidos (36 tri) por frame; nombres como `draw_string` en un CanvasItem.",
+    "vita_ros2_vita": "Sin RosTfListener (API_PARITY.md:36): TfLigero (ficha siguiente) con la misma API. Tope de 32 frames (modules/tf-tree) y presupuesto TF de ADR 0011: 1 200 tri y 32 instancias; nombres ≤ 10 en 2D (doc 31:130). Label3D prohibido (ADR 0011 §4): nombres siempre en 2D. Flechas hijo→padre en 3D = prisma estirado (H1), o 2 líneas por frame en planta 2D.",
+    "campos": "lookup_transform(fijo, f) → Transform3D Godot (ya convertido); edad = now − get_frame_latest_time(f) (stamp en s); padre = get_frame_parent(f) ('' en la raíz).",
+    "codigo": "extends Node3D\n## Display TF: ejes por frame + flecha hijo->padre, a 10 Hz, desde un listener (RosTfListener o TfLigero).\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var marco_fijo := \"map\"\n@export var escala := 0.3                  # RViz Marker Scale\n@export var timeout_s := 15.0              # RViz Frame Timeout\n@export var periodo := 0.1\nvar tf\nvar nodo: RosNode\nvar _ejes := {}                            # frame -> MeshInstance3D\nvar _flechas := {}                         # frame -> MeshInstance3D (hijo -> padre)\nvar posiciones := {}                       # frame -> Vector3, para los nombres 2D\nvar _t := 0.0\n\nfunc _process(dt: float) -> void:\n\t_t += dt\n\tif tf == null or _t < periodo: return\n\t_t = 0.0\n\tvar st = nodo.now()\n\tvar ahora: float = st.sec + st.nanosec * 1e-9\n\tfor f in tf.get_frame_names():\n\t\tif not _ejes.has(f):\n\t\t\t_ejes[f] = Prim.ejes(); _flechas[f] = Prim.flecha(Color(1, 0.9, 0.2))\n\t\t\tadd_child(_ejes[f]); add_child(_flechas[f])\n\t\tvar t = tf.lookup_transform(marco_fijo, f)\n\t\tvar ultimo: float = tf.get_frame_latest_time(f)\n\t\tvar vivo: bool = t != null and (ultimo == 0.0 or ahora - ultimo < timeout_s)\n\t\t_ejes[f].visible = vivo\n\t\t_flechas[f].visible = false\n\t\tif not vivo: continue\n\t\t_ejes[f].transform = t.scaled_local(Vector3.ONE * escala)\n\t\tposiciones[f] = t.origin\n\t\tvar padre: String = tf.get_frame_parent(f)\n\t\tvar tp = tf.lookup_transform(marco_fijo, padre) if padre != \"\" else null\n\t\tif tp != null and tp.origin.distance_to(t.origin) > 1e-3:\n\t\t\t_flechas[f].transform = Transform3D(Prim.flecha_hacia(tp.origin - t.origin).basis, t.origin)\n\t\t\t_flechas[f].visible = true",
+    "parametros": [
+      "marco_fijo",
+      "escala (1)",
+      "mostrar_nombres (false)",
+      "mostrar_ejes (true)",
+      "mostrar_flechas (true)",
+      "periodo (RViz Update Interval)",
+      "timeout_s (15)",
+      "filtro de frames (lista blanca)"
+    ],
+    "evidencia": "tf_display.cpp: propiedades y valores, ocultación dura al pasar el timeout (con degradado a gris antes), flecha «from child to parent», pose en el marco fijo vía FrameManager. RosTfListener: get_frame_names, get_frame_parent, get_frame_latest_time (0 para estáticos), lookup_transform → Transform3D convertido o null. Ojo: tf_display.cpp compara update_timer_ (s) con update_rate × 1e9: un Update Interval ≠ 0 parece no funcionar en RViz (posible fallo de unidades) [I].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/tf/tf_display.cpp (constructor, updateFrame, update)",
+      "skills/rclgd/references/api/RosTfListener.md",
+      "skills/rclgd/references/api/RosNode.md:48-51,91",
+      "godot/ros2_vita/API_PARITY.md:35-36,84",
+      "docs/31-render-visualizacion-vita.md:116,130",
+      "docs/adr/0011-presupuesto-render-vita.md:38-47",
+      "modules/tf-tree/README.md"
+    ],
+    "confianza": "[V] API y RViz; [I] coste en la Vita",
+    "coste_estimado": "N frames: 2N lookups a 10 Hz (PC trivial; Vita con TfLigero O(N·profundidad) ≈ 32×5 composiciones a 10 Hz [I]); 3D 36N + 24N tri, 2N draws (N ≤ 32 en la Vita ⇒ ≤ 1 920 tri, 64 draws: por encima del presupuesto TF de 32 instancias, así que en la Vita las flechas hijo→padre van a la planta 2D o se desactivan por defecto).",
+    "como_se_mediria_en_hardware": "TurtleBot3 (≈ 8 frames) por relay de TF: los ejes coinciden con RViz2; `drawn=` +16; FPS ≥ 59; G1 completo (≈ 40 frames, filtrado a 32): FPS ≥ 55 con flechas desactivadas."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "tf2_msgs/msg/TFMessage en la Vita — TfLigero (sustituto de RosTfListener)",
+    "equivalente": "tf2_ros::TransformListener + Buffer (sin historial), espejo GDScript de modules/tf-tree",
+    "candidato": "Clase GDScript con el SUBCONJUNTO de la API de RosTfListener que usan los displays (lookup_transform, get_frame_names, get_frame_parent, frame_exists, get_frame_latest_time, get_last_error): se suscribe a /tf (BE) y /tf_static (fiable + TRANSIENT_LOCAL), guarda el último transform de cada hijo y compone la cadena hasta la raíz común. `time` se ignora (como tf-tree). Más tarde se sustituye por el RosTfListener nativo sobre modules/tf-tree (P0) sin tocar los displays.",
+    "pc_rclgd": "No se usa: en el PC, RosTfListener nativo (interpola con el stamp, timeout). Se puede probar en el PC con el módulo ros2_vita en loopback.",
+    "vita_ros2_vita": "TFMessage ya en TIPOS (generar_esquemas.py:36). Tamaños: 1 transform = 108 B, 3 = 316 B (BE ⇒ ≤ 4 transforms por mensaje); el TF del G1 (~40 frames, 4 796 B) solo en fiable fragmentado y a ≤ 5 Hz (doc 27:73-75). Decisión: el relay (hueco: no hay módulo tf en vita_relay.py, modulos = scan,pose,joints,mapa,path) reparte /tf filtrado por lista blanca en trozos de ≤ 4 transforms a 30 Hz BE en `/vita/tf`, y /tf_static entero en fiable + TRANSIENT_LOCAL en `/vita/tf_static`. Para robots con URDF horneado no hace falta TF de links: JointState compacto + FK local (ficha JointState). Coste de decodificar: cada mensaje se decodifica entero a árbol RosMsg (H25).",
+    "campos": "transforms[i]: header.frame_id (padre), child_frame_id, transform.translation/rotation → Transform3D Godot (ros_to_godot_*); quitar '/' inicial; stamp sec+nanosec·1e-9 (0 si estático).",
+    "codigo": "extends RefCounted\n## TfLigero: subconjunto de RosTfListener para la Vita (último valor por frame, `time` ignorado, como tf-tree).\nvar _padre := {}                          # hijo -> padre\nvar _local := {}                          # hijo -> Transform3D (Godot) del hijo en el padre\nvar _sello := {}                          # hijo -> s (0.0 = estático)\nvar _error := \"\"\nvar subs: Array[RosSubscriber] = []\n\nfunc _init(nodo: RosNode, topic_tf := \"/tf\", topic_static := \"/tf_static\") -> void:\n\tvar be := RosQoS.new(); be.set_reliability(RosQoS.BEST_EFFORT)\n\tvar fijo := RosQoS.new(); fijo.set_reliability(RosQoS.RELIABLE); fijo.set_durability(RosQoS.TRANSIENT_LOCAL)\n\tsubs = [nodo.create_subscription(topic_tf, \"tf2_msgs/msg/TFMessage\", _on_tf.bind(false), be),\n\t\t\tnodo.create_subscription(topic_static, \"tf2_msgs/msg/TFMessage\", _on_tf.bind(true), fijo)]\n\nfunc _on_tf(m: RosMsg, estatico: bool) -> void:\n\tfor ts in m.transforms:\n\t\tvar hijo: String = ts.child_frame_id.trim_prefix(\"/\")\n\t\tvar r = ts.transform.rotation; var p = ts.transform.translation\n\t\t_padre[hijo] = ts.header.frame_id.trim_prefix(\"/\")\n\t\t_local[hijo] = Transform3D(Basis(rclgd.ros_to_godot_quat(Quaternion(r.x, r.y, r.z, r.w).normalized())),\n\t\t\t\trclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\t\t_sello[hijo] = 0.0 if estatico else ts.header.stamp.sec + ts.header.stamp.nanosec * 1e-9\n\nfunc _a_raiz(f: String) -> Array:         # [Transform3D de f en la raíz, nombre de la raíz]\n\tvar t := Transform3D.IDENTITY\n\tfor n in 32:                          # tope de modules/tf-tree; corta ciclos\n\t\tif _padre.has(f): t = _local[f] * t; f = _padre[f]\n\treturn [t, f]\n\nfunc lookup_transform(target: String, source: String, _time = null, _timeout := 0.0) -> Variant:\n\tvar a := _a_raiz(source); var b := _a_raiz(target)\n\tif a[1] != b[1] or not (frame_exists(source) and frame_exists(target)):\n\t\t_error = \"%s y %s no están conectados\" % [target, source]; return null\n\t_error = \"\"; return (b[0] as Transform3D).affine_inverse() * a[0]\n\nfunc frame_exists(f: String) -> bool: return _padre.has(f) or _padre.values().has(f)\nfunc get_frame_names() -> PackedStringArray: return PackedStringArray(_padre.keys())\nfunc get_frame_parent(f: String) -> String: return _padre.get(f, \"\")\nfunc get_frame_latest_time(f: String) -> float: return _sello.get(f, 0.0)\nfunc get_last_error() -> String: return _error",
+    "parametros": [
+      "topic_tf (/vita/tf con relay)",
+      "topic_static",
+      "lista blanca de frames (en el relay)"
+    ],
+    "evidencia": "RosTfListener: firma lookup_transform(target, source, time=null, timeout_sec=0.0) → Variant, get_frame_names → PackedStringArray, get_frame_parent → '' en la raíz, get_frame_latest_time → 0 para estáticos. tf-tree: último valor, sin historial, 32 frames, /tf y /tf_static iguales. Sin create_tf_listener en ros2_vita (register_types.cpp:16-22 solo registra rclgd, RosMsg, RosQoS, RosNode, RosPublisher, RosSubscriber, RosTimer). Composición: T_raíz←fuente = Π local; T_destino←fuente = T_raíz←destino⁻¹ · T_raíz←fuente; la conversión C·T·C⁻¹ conserva la composición [V, álgebra]. get_frame_names devuelve solo hijos: la raíz (p. ej. map) no aparece, añadirla si hace falta [I].",
+    "fuentes": [
+      "skills/rclgd/references/api/RosTfListener.md",
+      "godot/ros2_vita/register_types.cpp:16-22",
+      "godot/ros2_vita/API_PARITY.md:35-36",
+      "modules/tf-tree/README.md",
+      "modules/tf-tree/include/tf_tree.h:54-80",
+      "godot/plantillas/generar_esquemas.py:36",
+      "docs/27-xrce-limites-y-relay.md:73-75",
+      "docker/scripts/vita_relay.py:21,138",
+      "docs/31-render-visualizacion-vita.md:57 (H25)"
+    ],
+    "confianza": "[V] API y tamaños; [I] que Callable.bind funcione igual como callback en ros2_vita; [?] coste de _a_raiz en la Vita",
+    "coste_estimado": "Por mensaje: n transforms × (2 conversiones + 1 Transform3D); lookup O(profundidad) ≤ 32 composiciones. BE ≤ 4 transforms/datagrama (≤ 432 B).",
+    "como_se_mediria_en_hardware": "Test en el PC con ros2_vita en loopback: cadena world→odom→base_link(R90°)→laser igual que tests/parity_test.c de tf-tree (± 1e-5). En la Vita: 8 frames a 30 Hz por /vita/tf, `[perfil-gd] tf=` ≤ 500 µs/fotograma y lookup de 8 frames ≤ 200 µs."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "sensor_msgs/msg/JointState + URDF (RobotModel)",
+    "equivalente": "RViz2 RobotModel display (robot_description + TF de cada link de robot_state_publisher) y Effort display (JointState)",
+    "candidato": "Escena horneada en el PC por tools/urdf2godot (ADR 0009) con nombres de link/joint; el display aplica JointState por nombre con `set_joints(nombres, posiciones)` (FK local, sin TF de links) y coloca la base con TF (PC) o /vita/pose2d (Vita). Modo alternativo PC «como RViz»: cada link desde TF (cuando no hay /joint_states). Esfuerzo (Effort display): color/anillo por junta en HUD.",
+    "pc_rclgd": "Escena LOD PC (~60 k tri). `create_subscription(\"/joint_states\", \"sensor_msgs/msg/JointState\", cb)`: `m.name` (PackedStringArray) y `m.position` (PackedFloat64Array) van directos a set_joints, que cachea los índices si la lista de nombres no cambia. Base: RosTfListener.lookup_transform(fijo, link_raiz).",
+    "vita_ros2_vita": "JointState de 29 juntas = 1 668 B (pos+vel+eff) / 1 196 B (solo pos): no cabe en BE (doc 27:76-77). Relay: `/vita/joints` Float32MultiArray en el orden de `/vita/joints_orden` (String fiable + TRANSIENT_LOCAL, nombres separados por comas), 25 Hz, ≤ 118 juntas (vita_relay.py:12-13). JointState pequeño (2 ruedas pos+vel ≈ 120 B; 6 juntas UR solo pos ≈ 212 B) sí cabe en BE directo. LOD Vita ~12 k tri; G1 a 60 FPS en hardware (ADR 0009). /robot_description descartado en la Vita (XML + STL, no cabe por XRCE; docs/25 §5).",
+    "campos": "name[i] ↔ position[i] (rad o m); velocity/effort opcionales (arrays vacíos permitidos); joints mimic los resuelve urdf_robot.gd; base: pose del link raíz en el marco fijo (ROS) → el nodo display recibe el Transform3D de Godot y el robot (RosFrame interno) sigue en ejes ROS.",
+    "codigo": "extends Node3D\n## RobotModel: escena de tools/urdf2godot (ADR 0009) + JointState -> set_joints (FK local, sin TF de links).\n@export var escena_robot: PackedScene                 # p. ej. el LOD Vita o el LOD PC del robot\n@export var topic_joints := \"/joint_states\"\n@export var marco_fijo := \"odom\"\n@export var link_raiz := \"base_link\"\nvar tf                                                # RosTfListener (PC) o TfLigero / null (Vita)\nvar robot                                             # urdf_robot.gd (set_joints, set_base_pose_ros)\nvar subs: Array[RosSubscriber] = []\nvar _orden := PackedStringArray()\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\trobot = escena_robot.instantiate(); add_child(robot)\n\tvar be := RosQoS.new(); be.set_reliability(RosQoS.BEST_EFFORT)\n\tif OS.has_feature(\"vita\"):                        # 29 juntas = 1 668 B: no cabe en BE (doc 27)\n\t\tvar latched := RosQoS.new(); latched.set_reliability(RosQoS.RELIABLE)\n\t\tlatched.set_durability(RosQoS.TRANSIENT_LOCAL)\n\t\tsubs.append(nodo.create_subscription(\"/vita/joints_orden\", \"std_msgs/msg/String\", _on_orden, latched))\n\t\tsubs.append(nodo.create_subscription(\"/vita/joints\", \"std_msgs/msg/Float32MultiArray\", _on_compacto, be))\n\t\tsubs.append(nodo.create_subscription(\"/vita/pose2d\", \"std_msgs/msg/Float32MultiArray\", _on_pose2d, be))\n\telse:\n\t\tsubs.append(nodo.create_subscription(topic_joints, \"sensor_msgs/msg/JointState\", _on_js))\n\nfunc _on_js(m: RosMsg) -> void: robot.set_joints(m.name, m.position)\nfunc _on_orden(m: RosMsg) -> void: _orden = m.data.split(\",\")\nfunc _on_compacto(m: RosMsg) -> void: if _orden.size() > 0: robot.set_joints(_orden, m.data)\n\nfunc _on_pose2d(m: RosMsg) -> void:                   # [x, y, yaw, vx, vy, wz] en odom (ROS)\n\tvar d: PackedFloat32Array = m.data\n\tif d.size() >= 3: robot.set_base_pose_ros(Vector3(d[0], d[1], 0.0), Quaternion(Vector3(0, 0, 1), d[2]))\n\nfunc _process(_dt: float) -> void:                    # PC: base del robot desde TF\n\tif tf == null or OS.has_feature(\"vita\"): return\n\tvar t = tf.lookup_transform(marco_fijo, link_raiz)\n\tif t != null: transform = t",
+    "parametros": [
+      "escena_robot (LOD PC/Vita)",
+      "topic_joints",
+      "marco_fijo",
+      "link_raiz",
+      "modo (JointState+FK | TF por link, solo PC)",
+      "alfa (PC)",
+      "mostrar esfuerzo (Effort display)",
+      "respetar_limites (urdf_robot.gd)"
+    ],
+    "evidencia": "urdf_robot.gd: set_joints acepta un JointState tal cual y cachea índices si llega PackedStringArray; set_base_pose_ros pone la base en ejes ROS dentro de RosFrame. ADR 0009: hornear en el PC, runtime solo cinemático; G1 a 60 FPS. Effort display de RViz consume sensor_msgs/JointState. Ojo: no mezclar las dos fuentes de pose de la base (en el PC el nodo display recibe T de TF y la base interna queda en identidad).",
+    "fuentes": [
+      "godot/g1-unitree/robot/urdf_robot.gd:6,72-105",
+      "docs/adr/0009-urdf-horneado-en-pc.md",
+      "docs/25-urdf-godot.md:60-70",
+      "docs/27-xrce-limites-y-relay.md:76-77",
+      "docker/scripts/vita_relay.py:11-13,162,217-230",
+      "godot/g1-unitree/main.gd:296-318",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/plugins_description.xml (RobotModel, Effort)",
+      "skills/rclgd/references/mensajes-y-tipos.md:22-24"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "Vita: 132 B BE (29 pos) a 25 Hz; set_joints 29 juntas (E-W8-0 lo mide); render ≤ 15 000 tri, ≤ 40 instancias (+40 con luz) (doc 31:129).",
+    "como_se_mediria_en_hardware": "g1_sim + relay joints: el robot de la Vita replica la pose de RViz2 (5 posturas, error visual < 2°), FPS ≥ 59 (ya 60 en el G1 con /g1/estado); `[perfil-gd] robot=` ≤ 2 000 µs."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "sensor_msgs/msg/Imu",
+    "equivalente": "rviz_imu_plugin de imu_tools (no está en rviz_default_plugins): caja/ejes con la orientación, vector de aceleración; Foxglove: Plot",
+    "candidato": "Ejes (o el modelo) con la orientación absoluta + flecha de aceleración lineal (amarilla, m/s² × escala) + flecha de velocidad angular (cian) en el frame del IMU; HUD con |a|, RPY y Hz; series en el trazador genérico.",
+    "pc_rclgd": "3D: 3 instancias. BE obligatorio si el publicador es BE (g7b-imu3d). orientation_covariance[0] = −1 ⇒ el mensaje no trae orientación (Imu.msg): se ocultan los ejes o se estima con un filtro (g7b-imu3d/filtro.gd).",
+    "vita_ros2_vita": "316–324 B: cabe en BE a 30–60 Hz (doc 27:83); esquema en TIPOS. La Vita es sobre todo PUBLICADORA de Imu (su propio IMU, TX verificado; plantillas/sensores/imu.gd). Visualizar: 3 instancias ≈ 84 tri, o el modelo 3D de la Vita (G7c, 59 FPS). Planta 2D: brújula de yaw + nivel de burbuja (roll/pitch).",
+    "campos": "orientation (x,y,z,w) → ros_to_godot_quat (orientación del frame del IMU respecto al mundo, no se compone con TF [I]); angular_velocity (rad/s) y linear_acceleration (m/s², incluye −g en reposo: +9,81 en Z) → ros_to_godot_vector en el frame del header; covarianzas 9 → solo HUD.",
+    "codigo": "extends Node3D\n## Display Imu: ejes con la orientación + flechas de aceleración lineal y velocidad angular.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/imu/data\"\n@export var marco_fijo := \"base_link\"\n@export var escala_acel := 0.05            # m por m/s² (gravedad ≈ 0,5 m)\n@export var escala_giro := 0.5             # m por rad/s\nvar tf\nvar sub: RosSubscriber\nvar _ejes: MeshInstance3D\nvar _acel: MeshInstance3D\nvar _giro: MeshInstance3D\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)   # los IMU publican en BE\n\tsub = nodo.create_subscription(topic, \"sensor_msgs/msg/Imu\", _on_imu, qos)\n\t_ejes = Prim.ejes(); _acel = Prim.flecha(Color(1, 0.8, 0)); _giro = Prim.flecha(Color(0, 0.8, 1))\n\tfor n in [_ejes, _acel, _giro]: add_child(n)\n\nfunc _on_imu(m: RosMsg) -> void:\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tif fijo == null: return\n\tvar o = m.orientation\n\t_ejes.visible = m.orientation_covariance[0] != -1.0          # -1 = sin orientación (Imu.msg)\n\tif _ejes.visible:                                             # orientación absoluta en la posición del IMU\n\t\tvar q := Quaternion(o.x, o.y, o.z, o.w).normalized()\n\t\t_ejes.transform = Transform3D(Basis(rclgd.ros_to_godot_quat(q)), fijo.origin)\n\tvar a = m.linear_acceleration; var w = m.angular_velocity\n\t_poner(_acel, fijo, rclgd.ros_to_godot_vector(Vector3(a.x, a.y, a.z)) * escala_acel)\n\t_poner(_giro, fijo, rclgd.ros_to_godot_vector(Vector3(w.x, w.y, w.z)) * escala_giro)\n\nfunc _poner(f: MeshInstance3D, fijo: Transform3D, v: Vector3) -> void:\n\tf.visible = v.length() > 1e-3\n\tif f.visible: f.transform = fijo * Prim.flecha_hacia(v)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "escala_acel",
+      "escala_giro",
+      "mostrar ejes/caja/modelo",
+      "restar gravedad (bool)",
+      "qos (BE)"
+    ],
+    "evidencia": "Imu.msg: covarianza con elemento 0 = −1 indica que no hay estimación de ese dato. g7b-imu3d ya visualiza la orientación (filtro propio) suscrito en BE; el IMU de plantillas publica con covarianzas diagonales. rviz_imu_plugin vive en imu_tools, no en rviz_default_plugins (no aparece en la lista).",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/Imu.msg",
+      "godot/g7b-imu3d/main.gd:78-99,109-114",
+      "godot/plantillas/sensores/imu.gd:25-29",
+      "docs/27-xrce-limites-y-relay.md:83",
+      "https://github.com/CCNYRoboticsLab/imu_tools/tree/humble/rviz_imu_plugin",
+      "https://github.com/ros2/rviz/tree/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays"
+    ],
+    "confianza": "[V] tamaños y campos; [I] semántica orientación absoluta sin componer con TF (como rviz_imu_plugin)",
+    "coste_estimado": "324 B BE; 3 draws (≈ 84 tri); ~8 llamadas al motor por mensaje.",
+    "como_se_mediria_en_hardware": "Vita publicando su IMU a 30 Hz y el PC visualizando: en reposo la flecha de aceleración apunta arriba con |a| = 9,8 ± 0,3; girar la Vita 90° en yaw ⇒ ejes giran 90° (± 3°) igual que g7b-imu3d."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "sensor_msgs/msg/MagneticField",
+    "equivalente": "Sin display en rviz_default_plugins (jazzy); Foxglove: Plot / Raw Messages",
+    "candidato": "Flecha del campo (µT × escala) en el frame del sensor + brújula 2D en el HUD (rumbo = atan2(−By, Bx) en un sensor nivelado, ENU) con el módulo |B| (≈ 25–65 µT en la Tierra) como validez.",
+    "pc_rclgd": "3D: 1 flecha; HUD: aguja `draw_line` + texto. Unidades del mensaje: tesla (convertir a µT ×1e6).",
+    "vita_ros2_vita": "124 B: cabe en BE; esquema en TIPOS (generar_esquemas.py:33). La Vita no tiene magnetómetro accesible por la API usada en G7 [?]; uso típico: ver el de un robot. Brújula 2D (H17: 1–2 comandos).",
+    "campos": "magnetic_field (T) → ×1e6 µT → ros_to_godot_vector × escala; magnetic_field_covariance[0] = 0 ⇒ desconocida (MagneticField.msg).",
+    "codigo": "extends Node3D\n## MagneticField -> flecha (µT) en el frame del sensor + rumbo para una brújula 2D.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/imu/mag\"\n@export var marco_fijo := \"base_link\"\n@export var escala := 0.01                 # m por µT\nvar tf\nvar sub: RosSubscriber\nvar _f: MeshInstance3D\nvar rumbo_grados := 0.0                    # para el HUD (sensor nivelado, X delante)\nvar modulo_ut := 0.0\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\tsub = nodo.create_subscription(topic, \"sensor_msgs/msg/MagneticField\", _on_mag, qos)\n\t_f = Prim.flecha(Color(0.9, 0.3, 0.9)); add_child(_f)\n\nfunc _on_mag(m: RosMsg) -> void:\n\tvar b := Vector3(m.magnetic_field.x, m.magnetic_field.y, m.magnetic_field.z) * 1e6   # T -> µT\n\tmodulo_ut = b.length()\n\trumbo_grados = fposmod(rad_to_deg(atan2(-b.y, b.x)), 360.0)\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\tvar v := rclgd.ros_to_godot_vector(b) * escala\n\t_f.visible = fijo != null and v.length() > 1e-3\n\tif _f.visible: _f.transform = fijo * Prim.flecha_hacia(v)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "escala (m/µT)",
+      "declinación magnética (°) para rumbo verdadero",
+      "rango válido de |B|"
+    ],
+    "evidencia": "MagneticField.msg en tesla con covarianza 3×3 (0 = desconocida). Ningún display de RViz lo consume. Rumbo con atan2 asume sensor horizontal; con IMU se compensa inclinación (tilt compensation) [I].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/MagneticField.msg",
+      "godot/plantillas/generar_esquemas.py:33",
+      "godot/plantillas/sensores/magnetometro.gd",
+      "https://github.com/ros2/rviz/tree/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays"
+    ],
+    "confianza": "[V] mensaje; [I] fórmula de rumbo y signos (depende del montaje); [?] magnetómetro de la Vita",
+    "coste_estimado": "124 B BE; 1 draw; HUD 2D 2 comandos.",
+    "como_se_mediria_en_hardware": "Con el magnetómetro simulado de plantillas (magnetometro.gd) girando el robot 360°: el rumbo recorre 0–360° monótono y |B| constante ± 1 µT."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "sensor_msgs/msg/NavSatFix, sensor_msgs/msg/NavSatStatus",
+    "equivalente": "Sin display en rviz_default_plugins; terceros: rviz_satellite (AerialMapDisplay, teselas sobre NavSatFix) y Foxglove Map panel (Leaflet + NavSatFix)",
+    "candidato": "Vista planta 2D: rastro ENU local (plano tangente desde el primer fix) con `draw_polyline` + círculo de 2σ horizontal coloreado por estado (rojo NO_FIX, verde FIX, azul SBAS/GBAS); en el PC, fondo opcional de teselas OSM (slippy map) descargadas por HTTPRequest y cacheadas; la Vita usa teselas prehorneadas en el .pck o ninguna.",
+    "pc_rclgd": "2D (o textura en el suelo 3D). Suscripción BE. Teselas: z/x/y → ImageTexture; política de uso de OSM (User-Agent, caché) [I].",
+    "vita_ros2_vita": "125 B: cabe en BE; esquema en TIPOS (generar_esquemas.py:23). Solo 2D (H16-H17: 1 polilínea + 1 arco por fotograma). Precisión: lat/lon en float64 (los float de GDScript son de 64 bits) pero Vector2 es float32: NO guardar grados en Vector2 (1e-5° ≈ 1 m de error); guardar origen en dos float y convertir a metros antes de pasar a Vector2. Teselas como texturas: cada una ≥ 256 KiB de CDRAM y ≤ 48 texturas (H19, ADR 0011 §6): ≤ 9 teselas 256² visibles.",
+    "campos": "latitude/longitude (°, WGS84, float64), altitude (m); status.status (−1 NO_FIX, 0 FIX, 1 SBAS_FIX, 2 GBAS_FIX), status.service (bitmask GPS/GLONASS/COMPASS/GALILEO); position_covariance en ENU (m²), position_covariance_type 0 desconocida…3 conocida. ENU local: este = Δlon·R·cos(lat0), norte = Δlat·R.",
+    "codigo": "extends Node2D\n## NavSatFix -> rastro ENU local (planta 2D) + círculo 2σ coloreado por el estado del fix.\nconst R_TIERRA := 6378137.0\n@export var topic := \"/gps/fix\"\n@export var px_por_m := 4.0\n@export var max_puntos := 300\nvar sub: RosSubscriber\nvar _lat0 := NAN                            # float de GDScript = 64 bits; NO usar Vector2 (float32)\nvar _lon0 := 0.0\nvar _rastro := PackedVector2Array()\nvar _sigma := 0.0\nvar _estado := -1\n\nfunc configurar(nodo: RosNode) -> void:\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\tsub = nodo.create_subscription(topic, \"sensor_msgs/msg/NavSatFix\", _on_fix, qos)\n\nfunc _on_fix(m: RosMsg) -> void:\n\t_estado = m.status.status                              # -1 NO_FIX, 0 FIX, 1 SBAS, 2 GBAS\n\tif _estado < 0 or is_nan(m.latitude): return\n\tif is_nan(_lat0):\n\t\t_lat0 = m.latitude; _lon0 = m.longitude\n\tvar este: float = deg_to_rad(m.longitude - _lon0) * R_TIERRA * cos(deg_to_rad(_lat0))\n\tvar norte: float = deg_to_rad(m.latitude - _lat0) * R_TIERRA\n\t_rastro.append(Vector2(este, -norte) * px_por_m)       # pantalla: y hacia abajo\n\tif _rastro.size() > max_puntos: _rastro.remove_at(0)\n\tvar c: PackedFloat64Array = m.position_covariance\n\t_sigma = sqrt(maxf(c[0], c[4])) if m.position_covariance_type > 0 else 0.0\n\tqueue_redraw()\n\nfunc _draw() -> void:\n\tif _rastro.size() >= 2: draw_polyline(_rastro, Color(0.2, 0.8, 1.0), 2.0)   # H17: un comando\n\tif _rastro.is_empty(): return\n\tvar col := Color.RED if _estado < 0 else (Color.GREEN if _estado == 0 else Color.DODGER_BLUE)\n\tdraw_arc(_rastro[-1], maxf(2.0 * _sigma * px_por_m, 3.0), 0.0, TAU, 24, col, 1.0)",
+    "parametros": [
+      "topic",
+      "px_por_m (zoom)",
+      "max_puntos",
+      "origen fijo (lat0, lon0) o primer fix",
+      "teselas (URL, zoom, caché; PC)",
+      "colores por estado"
+    ],
+    "evidencia": "NavSatFix/NavSatStatus: constantes de estado y servicio, covarianza ENU y tipos 0..3. Aproximación equirectangular local: error ≪ 1 % a pocos km [I]. draw_polyline y draw_arc son una llamada cada una (H17). Teselas: H19 (redondeo a 256 KiB por textura) y presupuesto de 48 texturas.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/NavSatFix.msg",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/NavSatStatus.msg",
+      "godot/plantillas/generar_esquemas.py:23",
+      "godot/plantillas/sensores/gps.gd",
+      "docs/31-render-visualizacion-vita.md:48-49,51",
+      "docs/adr/0011-presupuesto-render-vita.md:44-45",
+      "https://github.com/nobleo/rviz_satellite",
+      "https://docs.foxglove.dev/docs/visualization/panels/map"
+    ],
+    "confianza": "[V] mensaje y límites; [I] precisión de la proyección y terceros",
+    "coste_estimado": "125 B BE; 2 comandos 2D; ≤ 300 vértices en la polilínea (≈ 300 quads de CPU por fotograma, H16).",
+    "como_se_mediria_en_hardware": "gps.gd de plantillas recorriendo un cuadrado de 20 m: el rastro dibuja un cuadrado de 20 m ± 0,1 m en la escala; FPS ≥ 59 con 300 puntos; `[gxm2d-canvas] avg_canvas_us` < 500."
+  },
+  {
+    "workshop": "W13",
+    "autor": "geometria-tf-robot (opus)",
+    "tipo": "sensor_msgs/msg/Range",
+    "equivalente": "RViz2 Range display (cono por mensaje: ancho 2·r·tan(fov/2), largo r; Color blanco, Alpha 0.5, Buffer Length 1)",
+    "candidato": "Cono unidad compartido (8 lados, 8–16 tri) apuntando a +X de ROS (−Z de Godot), escalado por transform a (ancho, ancho, r); r fuera de [min, max] ⇒ oculto, salvo −Inf en sensor de distancia fija (min = max) ⇒ min_range, igual que RViz.",
+    "pc_rclgd": "3D: pool de `buffer` conos. En el PC con alfa 0,5 (RViz); BE.",
+    "vita_ros2_vita": "52 B (frame 'sonar_front'): cabe en BE a 60 Hz; esquema en TIPOS (generar_esquemas.py:31). Cono opaco (sin orden de transparencias, doc 31 §2.4): pintar solo el perímetro (cinta) o un cono con color tenue; 16 tri, 1 draw por sensor. Planta 2D: sector `draw_colored_polygon` de 3–6 vértices.",
+    "campos": "range, min_range, max_range (m), field_of_view (rad), radiation_type (0 ULTRASOUND, 1 INFRARED → color), variance (Jazzy) → banda ±σ opcional; header.frame_id → marco fijo.",
+    "codigo": "extends Node3D\n## Display Range como RViz: cono de largo r y ancho 2·r·tan(fov/2); fuera de rango -> oculto.\nconst Prim = preload(\"res://comun/viz/primitivas.gd\")\n@export var topic := \"/range\"\n@export var marco_fijo := \"base_link\"\n@export var color := Color(1, 1, 1)        # RViz: blanco, alfa 0,5 (en la Vita, opaco)\nvar tf\nvar sub: RosSubscriber\nvar _cono: MeshInstance3D                  # cono unidad: vértice en el origen, base en z = -1, radio 0,5\n\nfunc configurar(nodo: RosNode, listener) -> void:\n\ttf = listener\n\tvar qos := RosQoS.new(); qos.set_reliability(RosQoS.BEST_EFFORT)\n\tsub = nodo.create_subscription(topic, \"sensor_msgs/msg/Range\", _on_range, qos)\n\t_cono = Prim.cono(color); _cono.visible = false; add_child(_cono)\n\nfunc _on_range(m: RosMsg) -> void:\n\tvar r: float = m.range\n\tvar mostrado := 0.0                                      # range_display.cpp getDisplayedRange\n\tif r >= m.min_range and r <= m.max_range:\n\t\tmostrado = r\n\telif m.min_range == m.max_range and is_inf(r) and r < 0.0:\n\t\tmostrado = m.min_range\n\tvar fijo = Prim.en_marco_fijo(tf, marco_fijo, m.header)\n\t_cono.visible = fijo != null and mostrado > 0.0\n\tif not _cono.visible: return\n\tvar ancho := 2.0 * mostrado * tan(m.field_of_view * 0.5)\n\t_cono.transform = fijo * Transform3D(Basis.from_scale(Vector3(ancho, ancho, mostrado)), Vector3.ZERO)",
+    "parametros": [
+      "topic",
+      "marco_fijo",
+      "color (por radiation_type)",
+      "alfa (PC 0.5)",
+      "buffer (1)",
+      "mostrar varianza"
+    ],
+    "evidencia": "range_display.cpp: escala (ancho, r, ancho) con ancho = 2·r·tan(fov/2), ocultación de valores fuera de rango, NaN y +Inf, −Inf con min = max ⇒ min_range; Range.msg de jazzy incluye `variance`.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/range/range_display.cpp (getDisplayedRange, processMessage)",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/Range.msg",
+      "godot/plantillas/generar_esquemas.py:31",
+      "godot/plantillas/sensores/rango.gd",
+      "docs/31-render-visualizacion-vita.md:108-113"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "52 B BE; 16 tri, 1 draw por sensor; CPU trivial.",
+    "como_se_mediria_en_hardware": "rango.gd de plantillas frente a una pared a 1 m: el cono mide 1 m y su ancho coincide con RViz2 para fov 0,5 rad; 4 sonares a 20 Hz en la Vita: FPS ≥ 59."
+  }
+]
