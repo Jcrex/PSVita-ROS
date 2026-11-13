@@ -9,6 +9,25 @@ El estado vivo está en el primer bloque (2026-11-01); las fechas anteriores, un
 
 ---
 
+## 2026-11-13 (PC, noche) — `g1-sensores` en la Vita: 23,5 FPS, diagnóstico y primer arreglo (Estado para retomar)
+
+- **Topics en vivo desde la Vita** (perfil XRCE de las plantillas): `/g1s/estado` 10 Hz; `/vita/g1s/pose2d`,
+  `/vita/g1s/joints`, `/tf`, 3 IMU 5 Hz; `scan_compacto` 2 Hz; `mapa_tesela` 1 Hz. ~45 msg/s, ritmos exactos, sin
+  pérdidas (colas y frecuencias corregidas validadas en hardware). `/cmd_vel` sin datos en modo local (normal).
+- **Rendimiento medido** (log del motor, `docs/ia/revision-kimi/g1-sensores-vita-2026-11-13.log`): 42 ms/fotograma
+  (23,5 FPS) = scripts de física **22,0 ms** + render 12,4 ms (~29 000 triángulos, 67 instancias, 224 draws 2D) +
+  `_process` 5,8 ms + física del motor 0,8 ms. Causa principal: física a 60 ticks con fotogramas de 42 ms ⇒ ~2,5 ticks
+  por fotograma (espiral), cada uno con marcha (29 juntas) + `move_and_slide` + 13 sensores + rayos.
+- **Arreglo aplicado (sin probar aún):** `g1-sensores/project.godot` con `physics_ticks_per_second.vita=30` y
+  `max_physics_steps_per_frame.vita=2` (sobrescritura por la característica «vita»; el PC sigue a 60). `.vpk` subido
+  a `ux0:/g1-sensores.vpk` (sha256 fbfa43d5…). Estimación: ~27 ms ⇒ 30 FPS estables.
+- **Cómo retomar:**
+  1. El usuario instala `ux0:/g1-sensores.vpk`, la usa 1–2 min, cierra y activa el FTP; descargar
+     `ux0:/data/gxm3d/godot_stderr.log` y comparar `[vita-prof]`/`[gxm3d]`/`[gxm2d-perf]` con el log guardado.
+  2. Para 60 FPS (render 12,4 + process 5,8 ≈ 18 ms > 16,7): perfil «Vita ligero» del mundo de las plantillas
+     (≤ 15 000 triángulos y ≤ 150 draws, ADR 0011), HUD con menos draws 2D, abaratar marcha/sensores por tick.
+  3. Pendiente de push: commits desde `688cc3c` (rama `ccr-44e2db2a-mr6xqr`); PR a `main` sin abrir.
+
 ## 2026-11-13 (PC, tarde) — Reconexión automática de `ros2_vita` y `g1-sensores` igual que `g1-unitree`
 
 - **Reconexión automática** (`xrce_transport.cpp`): tras reiniciar la estación las apps dejaban de publicar (el

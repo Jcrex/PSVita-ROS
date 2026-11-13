@@ -46,3 +46,11 @@ domain_id=0
 [threading]
 
 worker_pool/max_threads=2
+
+[physics]
+
+; Solo en la Vita (sobrescritura por característica «vita», OS::has_feature): 30 ticks de física y como mucho 2 por
+; fotograma. Medido en hardware (2026-11-13, log [vita-prof]): con 60 ticks y fotogramas de 42 ms se ejecutaban
+; ~2,5 ticks por fotograma y los scripts de física costaban 22 ms (espiral). El PC sigue a 60.
+common/physics_ticks_per_second.vita=30
+common/max_physics_steps_per_frame.vita=2
