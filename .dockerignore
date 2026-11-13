@@ -8,12 +8,11 @@ web/.astro/
 mcp/ros2-introspection/.venv/
 mcp/ros2-introspection/.pytest_cache/
 modules/*/impl-rust/target/
-vita-app/rust-modules/target/
-vita-app/third_party/
+modules/paraguas-rust/target/
 build-host/
 # Godot: el clon local de rclgd y los artefactos del proyecto 3.5 histórico
 godot/rclgd/
-godot/godot35/build/
-godot/godot35/versiones/
-godot/godot35/.import/
+archivo/godot/godot35/build/
+archivo/godot/godot35/versiones/
+archivo/godot/godot35/.import/
 toolchains/

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# netlog-listen.sh — escucha el log UDP que manda vita-app (src/netlog.c) y lo
+# netlog-listen.sh — escucha el log UDP que manda tools/hwprobe (src/netlog.c; antes la app
+# histórica archivo/vita-app/) y lo
 # muestra en vivo con timestamp y color (FATAL en rojo, hitos en verde).
 #
 # Uso:
 #   tools/netlog-listen.sh [puerto] [archivo_de_salida]
 #
 # Debe correr en la máquina cuya IP quedó "baked-in" como NETLOG_IP al
-# compilar el .vpk (ver vita-app/CMakeLists.txt). La Vita debe estar en la
+# compilar el .vpk (ver tools/hwprobe/CMakeLists.txt). La Vita debe estar en la
 # misma red WiFi.
 #
 # Filtro de ruido: al 9999 también llegan paquetes binarios de otros

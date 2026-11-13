@@ -271,7 +271,7 @@ Fuente: [Rust platform support: armv7-sony-vita-newlibeabihf](https://raw.github
   GDExtension/enlace dinámico **[I]**. Rust entra en Godot **solo vía
   staticlib con ABI C** (el crate paraguas actual), igual que hoy.
 
-**Hallazgo accionable:** nuestro `vita-app/CMakeLists.txt` no pasa
+**Hallazgo accionable:** nuestro `archivo/vita-app/CMakeLists.txt` no pasa
 `ATTRIBUTE2=12` a `mksfoex` (grep del 2026-10-27), mientras que
 cargo-vita y godot4-vita lo usan para ampliar la memoria de usuario
 (~365 MiB) **[V]**. La app actual no lo necesita; **una app Godot sí**

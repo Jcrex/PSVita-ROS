@@ -16,6 +16,8 @@
 #   GODOT_VITA_REF  commit/rama del port; por defecto el estudiado (d1a5f29, 2026-10-27)
 #   GODOT_WORK      carpeta de trabajo (por defecto toolchains/godot4-vita, gitignorada)
 #   RUST_PIC_LIB    opcional: libvita_modules_rust.a construida con tools/build-rust-pic.sh
+#                   (crate paraguas modules/paraguas-rust/)
+#   ROS2_VITA_SIN_XRCE=1  compila aunque falten las libs XRCE (plantilla SIN transporte; ver paso 3)
 set -euo pipefail
 
 VITASDK_='\$VITASDK'
@@ -65,9 +67,25 @@ else
     echo "  (dlfcn.h ya tiene RTLD_NEXT)"
 fi
 
+# Guarda (ADR 0014, decision-fable §2.2): el SCsub de ros2_vita compila IGUAL sin las libs XRCE y da una
+# plantilla que arranca pero no conecta. Desde el 2026-11-13 las libs viven en toolchains/xrce/ (antes
+# vita-app/third_party/): si faltan, se aborta aquí en vez de producir una plantilla sin transporte.
+XRCE_PIC_LIB="$REPO/toolchains/xrce/xrce-vita-pic/lib/libmicroxrcedds_client.a"
+if [[ -f "$XRCE_PIC_LIB" ]]; then
+    echo "  (cliente XRCE PIC: $XRCE_PIC_LIB)"
+elif [[ "${ROS2_VITA_SIN_XRCE:-0}" == 1 ]]; then
+    echo "  AVISO: falta $XRCE_PIC_LIB; ROS2_VITA_SIN_XRCE=1 -> plantilla SIN transporte XRCE"
+else
+    echo "ERROR: falta $XRCE_PIC_LIB" >&2
+    echo "  compílalo con: XRCE_PIC=1 tools/build-xrce-client-vita.sh (PC)" >&2
+    echo "  o fuerza una plantilla sin transporte con ROS2_VITA_SIN_XRCE=1" >&2
+    exit 1
+fi
+
 echo "== 3. Motor + módulo ros2_vita (≈1–2 h) =="
-# custom_modules apunta al módulo mismo: con "$REPO/godot" SCons busca recursivamente
-# y recoge también godot/godot35/modules/microros (3.5, solo se activa con platform=vita).
+# custom_modules apunta al módulo mismo: con "$REPO/godot" SCons busca recursivamente y recogía
+# godot/godot35/modules/microros (3.5; archivado en archivo/godot/godot35/ el 2026-11-13, ADR 0014).
+# Se mantiene apuntando al módulo para no recoger nada más que caiga en godot/.
 EXTRA=()
 [[ -n "${RUST_PIC_LIB:-}" ]] && EXTRA+=("ros2_vita_rust_lib=$RUST_PIC_LIB")
 ( cd "$WORK/engine" 2>/dev/null || true

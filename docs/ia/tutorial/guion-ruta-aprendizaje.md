@@ -151,7 +151,7 @@ XRCE directamente.
   publisher, datawriter, subscriber, datareader) creadas por XML → **streams** (fiable y best
   effort; historial; MTU) → **transporte propio** (callbacks open/close/write/read).
 - Leer el código, en este orden:
-  1. `vita-app/src/` (Fase 1, C puro): el ejemplo más pequeño de una sesión XRCE completa.
+  1. `archivo/vita-app/src/` (Fase 1, C puro): el ejemplo más pequeño de una sesión XRCE completa.
   2. `modules/microros-transport/` y `modules/net-udp/` (con sus README).
   3. `godot/ros2_vita/xrce_transport.cpp`: lo mismo dentro de Godot, con fragmentación y dos streams.
      Los comentarios explican tres fallos reales de G6.

@@ -16,7 +16,7 @@
 - Todo el aprendizaje vive en la branch **`tutorial-vita`**; no se toca `main` ni `docs/06-bitacora-estado.md` ni `web/src/data/fases.ts`.
 - El usuario es **principiante en Rust** y punteros/C le cuestan: cada construcción nueva de C (punteros, memoria, structs) y **toda** construcción de Rust se explica; enlazar a `docs/rust/` para profundizar en vez de duplicar.
 - Compilación PC/Vita: **siempre la ejecuta el usuario** (por decisión suya). El tutorial da los comandos exactos y marca "validar en el PC / hardware".
-- El código de práctica del usuario va en `practica/` (gitignored), nunca dentro de `modules/` ni `vita-app/`.
+- El código de práctica del usuario va en `practica/` (gitignored), nunca dentro de `modules/` ni `archivo/vita-app/`.
 - Estilo web: los markdown de `docs/` **no** llevan frontmatter; el título sale del primer `# encabezado` y la descripción del primer párrafo (ver `web/src/lib/docs.ts`).
 
 ---
@@ -287,9 +287,9 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 **Files:** Create `docs/tutorial/05-app-vita-el-sdk-y-main.md`
 
-**Cobertura** (recorriendo `vita-app/src/`: `main.c`, `uxr_glue.c/.h`, `netlog.c/.h`, `teleop.c/.h`, `ui.c`/`viz/`, y `vita-app/rust-modules/`):
+**Cobertura** (recorriendo `archivo/vita-app/src/`: `main.c`, `uxr_glue.c/.h`, `netlog.c/.h`, `teleop.c/.h`, `ui.c`/`viz/`, y `modules/paraguas-rust/`):
 - El bucle principal de una app homebrew Vita y las llamadas al **SDK real** (entrada de controles, red, framebuffer/UI, hilos).
-- Cómo la app **enlaza el Rust** vía el crate umbrella `vita-app/rust-modules/` (un staticlib Rust por binario) y el FFI Rust→C.
+- Cómo la app **enlaza el Rust** vía el crate umbrella `modules/paraguas-rust/` (un staticlib Rust por binario) y el FFI Rust→C.
 - `netlog` (logging por UDP), `teleop` (mapear controles → cmd_vel), `uxr_glue` (pegamento con micro-ROS).
 - Qué de esto es 🎮 solo-PC/Vita y por qué (marcado "validar en el PC / hardware").
 **Retos:**
@@ -304,7 +304,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 **Files:** Create `docs/tutorial/06-compilar-y-empaquetar-vpk.md`
 
-**Cobertura** (recorriendo `vita-app/CMakeLists.txt`, `vita-app/scripts/`, `docs/05-setup-entorno-cachyos.md`):
+**Cobertura** (recorriendo `archivo/vita-app/CMakeLists.txt`, `archivo/vita-app/scripts/`, `docs/05-setup-entorno-cachyos.md`):
 - La toolchain VitaSDK: target `armv7-sony-vita-newlibeabihf`, `newlib` (no Linux).
 - CMake de la app paso a paso: cómo se declaran fuentes C, cómo se enlaza el staticlib Rust, cómo se produce el `.vpk`.
 - El cross-compile de Rust a la Vita: `cargo +nightly rustc -Zbuild-std=std,panic_abort --target ...` (enlazar `docs/rust/00`).

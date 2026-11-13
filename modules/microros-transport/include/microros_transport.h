@@ -12,7 +12,7 @@
  * uxrCustomTransport con firmas casi idénticas a estas. Este módulo NO
  * incluye headers de micro-ROS (no existen en la laptop): expone funciones
  * propias con la misma semántica, y un pegamento trivial en la app
- * (vita-app/src/uxr_glue.c) las adapta a uxr_set_custom_transport_callbacks
+ * (archivo/vita-app/src/uxr_glue.c) las adapta a uxr_set_custom_transport_callbacks
  * cuando se compila en el PC con la lib real.
  *
  * Semántica de errcode (convención uxr):

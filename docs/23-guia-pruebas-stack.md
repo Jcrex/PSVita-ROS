@@ -70,7 +70,7 @@ razonable, ver cabecera de `tools/vita-stack.sh`):
 - La Vita debe estar en la misma red WiFi que la laptop.
 - Desde la LiveArea, lanzar la app instalada (`vita-ros2-hello`).
 - La app manda su netlog UDP a la IP grabada en el binario al compilar
-  (por defecto la laptop, `192.168.1.108` — ver `vita-app/CMakeLists.txt`)
+  (por defecto la laptop, `192.168.1.108` — ver `archivo/vita-app/CMakeLists.txt`)
   y abre la sesión XRCE contra el Agent en el puerto 8888.
 
 ## 3. Verificar en la web (desde la laptop)
@@ -107,8 +107,8 @@ source tools/env-devpc.sh        # VitaSDK/cargo-vita/cmake locales a toolchains
 tools/run-parity-tests.sh        # opcional: valida C+Rust en host antes de tocar la Vita
 ```
 
-A partir de ahí, compilar `vita-app/` (CMake+VitaSDK o `cargo-vita`, ver
-`vita-app/README.md`) y desplegar por FTP a la Vita, o hacerlo desde la
+A partir de ahí, compilar `archivo/vita-app/` (CMake+VitaSDK o `cargo-vita`, ver
+`archivo/vita-app/README.md`) y desplegar por FTP a la Vita, o hacerlo desde la
 web con el taller (`/taller/compilador`, requiere `TALLER_ENABLED=1`).
 El taller solo tiene sentido activarlo **en el PC** (ejecuta procesos
 locales: cmake, gdb, curl FTP) — nunca en la laptop ni en despliegues

@@ -6,8 +6,9 @@
 #   - VITASDK exportado (source tools/env-devpc.sh) y arm-vita-eabi-gcc en PATH
 #   - git, cmake
 #
-# Instala en vita-app/third_party/xrce-vita/{include,lib} (xrce-vita-pic con XRCE_PIC=1,
-# xrce-vita-host con XRCE_HOST=1).
+# Instala en toolchains/xrce/xrce-vita/{include,lib} (xrce-vita-pic con XRCE_PIC=1,
+# xrce-vita-host con XRCE_HOST=1). toolchains/ no se versiona: son artefactos regenerables del PC.
+# Movido desde vita-app/scripts/ el 2026-11-13 (ADR 0014); antes instalaba en vita-app/third_party/.
 #
 # Por qué NO usamos el superbuild de eProsima (UCLIENT_SUPERBUILD=ON):
 #   el ExternalProject_Add(uclient) de cmake/SuperBuild.cmake NO reenvía
@@ -37,16 +38,17 @@
 #    ("Invalid relocation type 25!" al empaquetar el .vpk). El homebrew de la
 #    Vita es estático/position-dependent, así que apagamos PIC en ambas libs.
 #  - XRCE_PIC=1 (Godot 4, puerta G2 de docs/18): compila las MISMAS libs con PIC=ON
-#    y las instala en third_party/xrce-vita-pic. Las necesita el módulo ros2_vita,
+#    y las instala en toolchains/xrce/xrce-vita-pic. Las necesita el módulo ros2_vita,
 #    que vive dentro de libgodot.so (un .so PIC que reubica el loader de
 #    godot4-vita). Allí la relocación 25 no molesta: no pasa por vita-elf-create,
-#    sino por verify_runtime.py. La variante sin PIC (vita-app) no se toca.
+#    sino por verify_runtime.py. La variante sin PIC (app histórica
+#    archivo/vita-app/) no se toca.
 #  - Si la compilación choca con algo de newlib, documentar el muro en
 #    docs/02 (sección incógnita dura) antes de parchear.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 XRCE_PIC="${XRCE_PIC:-0}"
 # XRCE_HOST=1: mismas versiones y perfil, pero para Linux (sin VitaSDK). Lo usan las pruebas de
 # host del XrceTransport de godot/ros2_vita (puerta G5, docs/18 §8) contra un agente en docker.
@@ -56,10 +58,10 @@ if [[ "$XRCE_HOST" == 1 ]]; then
 elif [[ "$XRCE_PIC" == 1 ]]; then
     PIC=ON; SUFFIX="-pic"   # para libgodot.so (Godot 4)
 else
-    PIC=OFF; SUFFIX=""      # para el ELF estático de vita-app
+    PIC=OFF; SUFFIX=""      # para el ELF estático de la app histórica (archivo/vita-app/)
 fi
-PREFIX="$APP_DIR/third_party/xrce-vita$SUFFIX"
-WORK="$APP_DIR/third_party/_build"
+PREFIX="$REPO/toolchains/xrce/xrce-vita$SUFFIX"
+WORK="$REPO/toolchains/xrce/_build"
 XRCE_TAG="${XRCE_TAG:-v2.4.3}"
 CDR_TAG="${CDR_TAG:-v2.0.1}"
 

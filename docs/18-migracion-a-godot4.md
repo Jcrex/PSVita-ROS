@@ -59,7 +59,7 @@ Hechos adicionales **[V]**:
   el repositorio es **honesto sobre su alcance**, y nosotros debemos serlo igual.
 
 **Consecuencia para nosotros:** una app de control/HMI **2D con Control nodes** es el mejor
-encaje; el mini-rviz 3D con vitaGL seguirá en `vita-app/` (ADR 0007) y **no** se mueve a Godot.
+encaje; el mini-rviz 3D con vitaGL seguirá en `archivo/vita-app/` (ADR 0007) y **no** se mueve a Godot.
 
 ---
 
@@ -173,7 +173,7 @@ power, touch).
 
 | Artefacto PIC (ARM) | Script | Tamaño (text / bss) | Imports ausentes |
 |---|---|---|---|
-| `libmicroxrcedds_client.a` v2.4.3 (+ microcdr) | `XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh` | 25 KB / 0 | **0** |
+| `libmicroxrcedds_client.a` v2.4.3 (+ microcdr) | `XRCE_PIC=1 tools/build-xrce-client-vita.sh` | 25 KB / 0 | **0** |
 | `libmicrocdr.a` v2.0.1 | (el mismo) | 24 KB / 0 | **0** |
 | Los 8 módulos C (`libvita_modules_c_pic.a`) | `tools/build-c-pic.sh` | 8,5 KB / 1 MiB* | **0** |
 | Staticlib Rust umbrella (`core`, PIC) | `tools/build-rust-pic.sh` | 279 KB† / 1 MiB* | **0** |
@@ -219,7 +219,7 @@ aceptado por upstream), `net_udp_init` solo debe detectar «ya inicializada» y 
 
 ### 4.4 Herramientas entregadas
 `tools/check-vita-imports.py` (esta comprobación, con `--nm arm-vita-eabi-nm` en el PC),
-`tools/build-rust-pic.sh`, `tools/build-c-pic.sh`, `XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh`,
+`tools/build-rust-pic.sh`, `tools/build-c-pic.sh`, `XRCE_PIC=1 tools/build-xrce-client-vita.sh`,
 `tools/build-godot-template.sh` (aplica el parche, compila, ejecuta `verify_runtime.py`; reutiliza clon y parche si ya están),
 `tools/build-pcre2-vita.sh` (la `pcre2-32` que pide el loader y no trae vitasdk; G3).
 
@@ -238,7 +238,8 @@ están en el `.so`.
    (está en el repo oficial), `git apply platform/vita/vitagl/vitagl-vita-port.patch`, y `make` con las opciones de
    `dependency.json` (+ `VGL_GIT_HASH=df63ce8`) → `libvitaGL.a` 5,8 MB.
 2. **`custom_modules=<repo>/godot/ros2_vita`** (no `<repo>/godot`): SCons de Godot 4 busca módulos de forma recursiva y
-   recogía `godot/godot35/modules/microros` (solo se activa con `platform=vita`; por eso en G1 no salió).
+   recogía el módulo `microros` de la app Godot 3.5, entonces en `godot/` (solo se activa con `platform=vita`; por eso
+   en G1 no salió). Desde el 2026-11-13 esa app está en `archivo/godot/godot35/` (ADR 0014); el argumento no cambia.
 3. **Librerías del SDK** (el port compila con `builtin_*=False`): `vdpm libwebp zstd bzip2 kubridge`.
    **`pcre2-32` no existe en vitasdk/packages** → `tools/build-pcre2-vita.sh` (PCRE2 10.47, la de Godot; solo 32 bits,
    estática, sin JIT y **sin PIC**: la enlaza el eboot del loader y con PIC sale `vita-elf-create: Invalid relocation
@@ -434,5 +435,5 @@ PC (CachyOS, Linux)                   Vita
   `detect.py`, `SCsub`, `loader/{main.c,default_dynlib.c,CMakeLists.txt,tls_stubs.c}`, `tools/{verify_runtime.py,build_release_template.sh}`,
   `editor/addons/psvita/platform.gd`.
 - rclgd y roomba_ws: ver `docs/17`.
-- Micro-XRCE-DDS-Client v2.4.3 y Micro-CDR v2.0.1: compilados en host (perfil de `vita-app/scripts/build-xrce-client-vita.sh`) para analizar símbolos.
+- Micro-XRCE-DDS-Client v2.4.3 y Micro-CDR v2.0.1: compilados en host (perfil de `tools/build-xrce-client-vita.sh`) para analizar símbolos.
 - Godot (in-tree): `core/object/class_db.h` (`GDREGISTER_*`), `core/config/engine.h` (`add_singleton`), `modules/jsonrpc` (módulo de referencia), `methods.py` (`add_source_files`).

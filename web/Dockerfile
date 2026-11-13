@@ -26,8 +26,11 @@ RUN pnpm install --frozen-lockfile
 COPY web/ ./
 COPY docs/ /app/docs/
 COPY modules/ /app/modules/
-COPY vita-app/ /app/vita-app/
+# ADR 0014 (2026-11-13): la app de la Fase 1 y Godot 3.5 están en archivo/; se copian a su ruta antigua
+# dentro de la imagen para no tocar web/src (web en pausa).
+COPY archivo/vita-app/ /app/vita-app/
 COPY godot/ /app/godot/
+COPY archivo/godot/godot35/README.md /app/godot/godot35/README.md
 COPY tools/hwprobe/README.md /app/tools/hwprobe/README.md
 COPY mcp/ /app/mcp/
 COPY docker/README.md /app/docker/README.md

@@ -14,7 +14,7 @@ Contrato: `include/microros_transport.h`. Implementaciones equivalentes en
 `microxrcedds_client` no existe en la laptop. El módulo expone funciones
 propias con la **misma semántica** que `uxrCustomTransport`; el pegamento
 trivial hacia `uxr_set_custom_transport_callbacks()` vive en la app
-(`vita-app/src/uxr_glue.c`) y se compila solo en el PC, donde la lib real
+(`archivo/vita-app/src/uxr_glue.c`) y se compila solo en el PC, donde la lib real
 está disponible. Así el módulo es testeable hoy y conectable mañana.
 
 ## Convención de errores (la de uxr)

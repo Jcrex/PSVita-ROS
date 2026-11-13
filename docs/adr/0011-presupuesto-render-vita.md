@@ -55,7 +55,7 @@ ADR 0008 §5 que delega el 3D en Godot. Hechos verificados en el código del por
 - **Parchear ya el rasterizador** (color por vértice, líneas 3D): viable con lo que vita2d ya ofrece, pero exige
   mantener un parche del motor y recompilar la plantilla; la paleta y el 2D cubren la Fase 1. Queda registrado
   (P1 actualización en sitio, P2 color y líneas, P3 MSAA).
-- **vitaGL de `vita-app/`** (ADR 0007): no convive con Godot en la GPU y duplicaría toda la aplicación.
+- **vitaGL de `archivo/vita-app/`** (ADR 0007): no convive con Godot en la GPU y duplicaría toda la aplicación.
 - **Solo vista 2D cenital:** deja fuera RobotModel y TF en 3D, que G7c y el G1 ya demuestran; se conserva como
   una de las dos vistas.
 - **Todo lo dinámico como ArrayMesh 3D:** ruta sin validar, con consumo de arena y riesgo con la pasada de luz;

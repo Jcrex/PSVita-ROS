@@ -71,7 +71,7 @@ desarrollo, que no siempre comparte WiFi con la consola):
    ```
 5. Copia el `.vpk`:
    ```bash
-   cp vita-app/build/vita-ros2-hello.vpk /run/media/$USER/*/
+   cp archivo/vita-app/build/vita-ros2-hello.vpk /run/media/$USER/*/
    ```
 6. Desmonta limpio **antes** de tocar nada en la Vita:
    ```bash
@@ -85,7 +85,7 @@ desarrollo, que no siempre comparte WiFi con la consola):
 
 > Nota: el `.vpk` de este proyecto trae **la IP del agente/netlog
 > baked-in** (por defecto `192.168.1.108`, la laptop — ver
-> `vita-app/CMakeLists.txt`). Instalarlo desde el PC por USB no cambia
+> `archivo/vita-app/CMakeLists.txt`). Instalarlo desde el PC por USB no cambia
 > eso: para ver la sesión XRCE en marcha (criterios de Fase 1) necesitas
 > tener el agente micro-ROS y el listener de netlog corriendo en la
 > laptop y ambas máquinas en la misma WiFi (pasos 6-9 de

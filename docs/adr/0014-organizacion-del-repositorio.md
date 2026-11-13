@@ -15,7 +15,7 @@
 
 1. **Decisiones descartadas sin limpiar** [V]. El producto vivo es Godot 4 + `ros2_vita` (ADR 0008), pero la raíz
    aún presenta como vigentes la app de la Fase 1 (`vita-app/`: teleop vita2d, mini-rviz con vitaGL, CMake) y
-   `godot/godot35/`; seis documentos numerados describen planes sustituidos (10, 11, 16, 19, 20, 21) y los ADR
+   `godot35/` (en `godot/`); seis documentos numerados describen planes sustituidos (10, 11, 16, 19, 20, 21) y los ADR
    0005–0007 dicen «Aceptado» aunque los superaron los ADR 0007, 0008 y 0013
    (`docs/ia/organizacion/O1c-clasificacion-docs.md` §1).
 2. **`vita-app/` no se puede archivar entera** [V]: el build vigente de Godot 4 lee tres piezas suyas — las libs
@@ -40,7 +40,7 @@
 | `toolchains/` (sin versionar) | SDKs, clones y artefactos regenerables del PC; **`toolchains/xrce/xrce-vita{,-pic,-host}`** (libs del cliente XRCE); `toolchains/auditoria-rviz2/` | libs desde `vita-app/third_party/`; clones desde `auditoria/` |
 | `godot/` | **Plana**, con grupos declarados en `godot/README.md` (§3) | sale `godot35/`; se borra `comun/` |
 | `docs/` | Numerados vigentes, `adr/`, `bitacora/`, `guias-vita/`, `ia/`, `informes/`, `rust/`, `tutorial/` e índice `docs/README.md` (§4) | índice y `bitacora/` nuevos |
-| `archivo/` | Lo archivado, con su ruta original debajo (§2) | entran `vita-app/`, `godot/godot35/`, 6 docs, 2 guiones, 3 logs |
+| `archivo/` | Lo archivado, con su ruta original debajo (§2) | entran `vita-app/`, `godot35/` (de `godot/`), 6 docs, 2 guiones, 3 logs |
 | `docker/`, `mcp/`, `skills/`, `media/`, `web/` | Sin cambios | — |
 
 `vita-app/` deja de existir en la raíz. Ya no hay `auditoria/` en la raíz.

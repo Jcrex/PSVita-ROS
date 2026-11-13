@@ -35,8 +35,8 @@ citado como fuente técnica; lleva una línea de estado bajo el título) · **Su
 | 17 | [rclgd: estado del arte](17-rclgd-estado-del-arte-godot-ros2.md) | Vigente | — | 2026-10-27 |
 | 18 | [Migración a Godot 4](18-migracion-a-godot4.md) | Vigente | — | 2026-10-27 |
 | 19 | — | Archivado | Ver «Archivados» | — |
-| 20 | [(Godot 3.5) Diseño de la migración](20-godot35-migracion-historico.md) | Superado (se archiva en O2c con `godot/godot35/`) | ADR 0008 (Godot 4) | 2026-07-13 |
-| 21 | [(Godot 3.5) Plan de implementación](21-godot35-plan-implementacion-historico.md) | Superado (se archiva en O2c con `godot/godot35/`) | ADR 0008 (Godot 4) | 2026-07-13 |
+| 20 | — | Archivado | Ver «Archivados» | — |
+| 21 | — | Archivado | Ver «Archivados» | — |
 | 22 | [Acceso remoto al PC](22-acceso-remoto-pc.md) | Vigente (sin aplicar) | — | 2026-10-29 |
 | 23 | [Guía de pruebas del stack](23-guia-pruebas-stack.md) | Vigente | — | 2026-10-29 |
 | 24 | [Portabilidad Ozuba (gdviz…)](24-portabilidad-ozuba.md) | Vigente | — | 2026-11-11 |
@@ -95,5 +95,7 @@ Movidos a `archivo/docs/` el 2026-11-13 (ADR 0014 §2) sin cambiar su contenido.
 | 11 | [`archivo/docs/11-diseno-mini-rviz.md`](../archivo/docs/11-diseno-mini-rviz.md) | Superado por ADR 0013 (visor propio en Godot) |
 | 16 | [`archivo/docs/16-paginas-pendientes-de-leer.md`](../archivo/docs/16-paginas-pendientes-de-leer.md) | Superado: lista de lectura para Godot 3.5 (rclgd ya leído en doc 17) |
 | 19 | [`archivo/docs/19-plan-multiagente-migracion-godot4.md`](../archivo/docs/19-plan-multiagente-migracion-godot4.md) | Plan ejecutado (G1–G7 verdes); método vigente en `ia/workshops/README.md` |
+| 20 | [`archivo/docs/20-godot35-migracion-historico.md`](../archivo/docs/20-godot35-migracion-historico.md) | (Godot 3.5) Diseño de la migración; superado por ADR 0008 (Godot 4). Archivado con `archivo/godot/godot35/` |
+| 21 | [`archivo/docs/21-godot35-plan-implementacion-historico.md`](../archivo/docs/21-godot35-plan-implementacion-historico.md) | (Godot 3.5) Plan de implementación; superado por ADR 0008. Archivado con `archivo/godot/godot35/` |
 | — | [`archivo/docs/ia/guion-guia-tutorial-original.md`](../archivo/docs/ia/guion-guia-tutorial-original.md) | Superado por `tutorial/00` + `07` |
 | — | [`archivo/docs/ia/prompt-siguiente-sesion.md`](../archivo/docs/ia/prompt-siguiente-sesion.md) | Prompt del 2026-11-13 ya consumido |
