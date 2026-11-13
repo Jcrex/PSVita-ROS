@@ -79,7 +79,7 @@ La Vita (homebrew) no tiene consola accesible. Cómo se ve lo que pasa depende d
 | Flujo | Dónde mirar |
 |---|---|
 | **Godot 4** (`godot/g5-xrce`, `g6-hmi`, `g7-imu`…; vivo) | Agente micro-ROS de la estación `docker/` + topics ROS 2 |
-| **Fase 1** (`vita-app/`) y `tools/hwprobe/` | Netlog UDP al puerto 9999 |
+| **Fase 1** (`archivo/vita-app/`) y `tools/hwprobe/` | Netlog UDP al puerto 9999 |
 
 ### Godot 4 — agente de la estación y topics
 
@@ -106,9 +106,9 @@ docker/vita-ros.sh echo /cmd_vel   # ros2 topic echo <topic>
 
 ### Fase 1 y hwprobe — netlog UDP 9999
 
-`vita-app/src/netlog.c` (socket UDP propio, sin PrincessLog) manda cada `LOG(...)` por
+`archivo/vita-app/src/netlog.c` (copia viva en `tools/hwprobe/src/netlog.c`; socket UDP propio, sin PrincessLog) manda cada `LOG(...)` por
 `sceClibPrintf` y por UDP a `NETLOG_IP:NETLOG_PORT` (por defecto `192.168.1.108:9999`, la laptop;
-`vita-app/CMakeLists.txt`). `tools/hwprobe/` usa el mismo `netlog.c`. **Validado en hardware el
+`archivo/vita-app/CMakeLists.txt`). `tools/hwprobe/` usa su copia de `netlog.c`. **Validado en hardware el
 2026-07-01** (`docs/06`: el netlog mostró `*** SESION XRCE ESTABLECIDA ***` en 4 lanzamientos).
 
 En la máquina cuya IP quedó como `NETLOG_IP`, antes de lanzar la app:

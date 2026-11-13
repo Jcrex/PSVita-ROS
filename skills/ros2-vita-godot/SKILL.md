@@ -5,15 +5,17 @@ description: "Use when building or porting a Godot 4 + ROS 2 app to the PS Vita 
 
 # ros2_vita: la API de rclgd en la PS Vita (Godot 4 / godot4-vita)
 
-**Estado (2026-10-27): escrito, SIN COMPILAR.** Solo funciona el transporte `loopback`; el XRCE real
-está pendiente (`XrceTransport` es un stub). Lee el estado al día antes de prometer nada:
-`docs/06-bitacora-estado.md` (último bloque), `docs/19` §8 (tablero de puertas).
+**Estado (2026-11-13): G1–G7c verdes, en hardware desde G4.** Transportes `loopback` y `xrce` (micro-ROS por
+UDP, `xrce_transport.cpp`) funcionando en la Vita; apps vivas `godot/g1-unitree`, `g1-sensores`, `rbkairos-plus` y
+`dron-mapeo` sobre la biblioteca `godot/plantillas/` (mapa por grupos en `godot/README.md`). Lee el estado al día
+antes de prometer nada: `docs/06-bitacora-estado.md` (primer bloque), `docs/18` §8 (puertas); índice de docs en
+`docs/README.md`. El plan multiagente de la migración (`docs/19`) está archivado en `archivo/docs/`.
 
 ## 0. Documentarse en este repo (comandos)
 ```bash
-sed -n '/2026-10-27, 4.ª sesión/,$p' docs/06-bitacora-estado.md   # estado y siguiente paso
+sed -n '1,60p' docs/06-bitacora-estado.md   # estado vivo (primer bloque) y siguiente paso
 less docs/18-migracion-a-godot4.md        # internals del port, enlace, red, riesgos (R1-R11), backlog
-less docs/19-plan-multiagente-migracion-godot4.md   # mapa de tareas T*, agentes, oleadas, briefs
+less archivo/docs/19-plan-multiagente-migracion-godot4.md   # (archivado) mapa de tareas T*, agentes, oleadas
 less godot/ros2_vita/API_PARITY.md        # qué de rclgd existe en la Vita y qué no
 tools/run-parity-tests.sh                 # módulos duales C/Rust (deben seguir verdes)
 tools/vita-doctor.sh                      # entorno del PC (VitaSDK, SCons, clon godot4-vita)
@@ -55,8 +57,9 @@ Los módulos C/Rust (`modules/*`) **no dependen de Godot**.
    `/tmp/rbvenv/bin/python tools/gen_msg_schema.py -o <proyecto>/ros/schema.rsch geometry_msgs/msg/Twist nav_msgs/msg/Odometry …`
    (`--dump <tipo>` muestra la definición). Servicios/acciones: listar sus `*_Request/_Response/_Goal…`.
 3. Exportar con el **editor 4.8-dev7 Linux** + addon `psvita` + plantilla propia (`vita_release.zip`),
-   sobre una **copia** del proyecto (headless). Filtros de no-recursos: `*.rsch`, `package.xml`.
-4. Instalar el VPK con VitaShell; agente `microros/micro-ros-agent:jazzy` con `--net=host --ipc=host`.
+   sobre una **copia** del proyecto (headless): `tools/export-vita-vpk.sh godot/<proyecto>`. Filtros de no-recursos: `*.rsch`, `package.xml`.
+4. Instalar el VPK (`tools/deploy-vpk-ftp.sh` o VitaShell); agente de la estación `docker/vita-ros.sh up`
+   (`microros/micro-ros-agent:jazzy` con `--net=host --ipc=host`).
 
 ## 5. Reglas del repo al tocar esto
 - Paridad C/Rust nunca en rojo; docs/comentarios/commits en español (`feat(godot4): …`).
