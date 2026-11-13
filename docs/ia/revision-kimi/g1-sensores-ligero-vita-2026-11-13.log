@@ -1,0 +1,342 @@
+ERROR: Warning, don't know how to obtain executable path on this OS! Please override this function properly.
+   at: get_executable_path (drivers/unix/os_unix.cpp:1168)
+[vita-worker] forcing zero background WorkerThreadPool threads (requested=2)
+[gxm2d] vita2d_init=1 texture_format=RGBA8888
+[vita-memory] stage=renderer_init result=0x00000000 user_free=26214400 cdram_free=92274688 phycont_free=27262976 textures=0
+[vita-pad] init driver=1 mode_rc=0 device=0 native_mapping=1
+[gxm3d] experimental static mesh renderer enabled
+[gxm2d] native canvas v3: RGBA8->RGBA4444 loader upload; flexible viewport canvas; ninepatch/polygon/primitive; no GLES shaders
+[vita-audio] mixer_thread running capunlocker=0 cpu3_affinity_rc=0x00000000
+_gain=-1 volume_rc=0x00000000
+[vita-audio] thread_start id=5 started=1
+[vita-audio] mixer_thread running capunlocker=0 cpu3_affinity_rc=0x00000000
+[vita-audio] blocks=1 peak=0 active=1
+[vita-memory] stage=frame result=0x00000000 user_free=25165824 cdram_free=92274688 phycont_free=27262976 textures=0
+[gxm2d] texture uploads=1 last=800x600 format=RGBA8888 allocation=2097152 budget=2097152
+[gxm2d] boot splash shown image=800x600
+[vita-audio] blocks=121 peak=0 active=1
+[dllp-thorvg] initializing SVG renderer with 0 worker threads
+[dllp-start] 00 enter Main::start
+[dllp-start] 10 resolve main scene
+[dllp-start] 20 create SceneTree
+[dllp-start] 30 SceneTree installed
+[dllp-start] 40 custom loaders
+[dllp-start] 50 autoloads enumerated
+[dllp-start] 55 autoload instances
+[dllp-start] 70 before scene load
+[vita-load] slow self_ms=359 total_ms=359 depth=3 path=res://comun/mundo/mundo_base.gd
+[vita-audio] blocks=241 peak=0 active=1
+[vita-audio] blocks=361 peak=0 active=1
+[vita-load] slow self_ms=2042 total_ms=2424 depth=1 path=res://comun/aplicacion_robot.gd
+[vita-load] summary total_ms=2451 path=res://.godot/exported/133200997/export-3070c538c03ee49b7677ff960a3f5195-main.scn
+[vita-load]   ext=gd count=2 self_ms=2402
+[dllp-start] 75 scene resource loaded
+[dllp-start] 80 main scene instantiated
+[dllp-start] 85 scene attached
+[dllp-start] 99 Main::start complete
+[vita-loop] initialize begin
+[vita-audio] blocks=481 peak=0 active=1
+[vita-load] slow self_ms=396 total_ms=396 depth=3 path=res://.godot/imported/survivorMaleB.png-4a24cd814f7a4e3e81e9030e22b7e037.ctex
+[vita-audio] blocks=601 peak=0 active=1
+[vita-audio] blocks=721 peak=0 active=1
+[vita-load] slow self_ms=919 total_ms=919 depth=0 path=res://comun/robots/humanoide_g1.gd
+[vita-audio] blocks=841 peak=0 active=1
+[vita-load] slow self_ms=335 total_ms=2670 depth=0 path=res://.godot/exported/133200997/export-34e31feeced8aa37959eea262930fa7a-g1_vita.scn
+[vita-load] summary total_ms=2670 path=res://.godot/exported/133200997/export-34e31feeced8aa37959eea262930fa7a-g1_vita.scn
+[vita-load]   ext=gd count=1 self_ms=117
+[vita-load]   ext=mesh count=35 self_ms=1282
+[vita-load]   ext=obj count=35 self_ms=936
+[vita-load]   ext=scn count=1 self_ms=335
+[vita-audio] blocks=961 peak=0 active=1
+[vita-loop] initialize complete
+[vita-pad] sample=1 buttons=0x00000000 lx=129 ly=132 rx=124 ry=128 frame=1
+[vita-loop] frame 0 begin
+[vita-worker] zero-worker fallback; tasks running synchronously.
+[gxm3d] vertex lighting program rc=0x00000000
+[vita-memory] stage=mesh_arena result=0x00000000 user_free=0 cdram_free=92274688 phycont_free=27262976 textures=0
+[gxm2d] texture uploads=2 last=1024x1024 format=RGBA8888 allocation=4194304 budget=4194304
+[gxm3d] frame=1 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=22 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=492518 avg_submit_us=20304 avg_gpu_wait_us=10 build_us=472214 arena_kb=874 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[vita-loop] frame 0 complete
+[vita-loop] frame 1 begin
+WARNING: d435: sensor solo PC; se desactiva en Vita
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+WARNING: mid360: sensor solo PC; se desactiva en Vita
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+[vita-audio] blocks=1081 peak=0 active=1
+[vita-load] slow self_ms=236 total_ms=236 depth=0 path=res://comun/sensores/unitree_estado.gd
+[gxm3d] frame=2 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=28 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=7773 avg_submit_us=18566 avg_gpu_wait_us=9 build_us=4848 arena_kb=920 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[vita-loop] frame 1 complete
+[vita-loop] frame 2 begin
+[gxm3d] frame=3 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=30 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=7620 avg_submit_us=16981 avg_gpu_wait_us=9 build_us=4902 arena_kb=967 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[vita-loop] frame 2 complete
+[gxm3d] frame=4 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=32 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=7989 avg_submit_us=15587 avg_gpu_wait_us=9 build_us=4943 arena_kb=1013 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] texture uploads=3 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[gxm2d] rect submitted xy=(12.0,12.0) rgba=fffff7f2
+[gxm2d] rect submitted xy=(21.0,12.0) rgba=fffff7f2
+[gxm2d] rect submitted xy=(34.0,12.0) rgba=fffff7f2
+[gxm3d] frame=5 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=32 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=6607 avg_submit_us=14295 avg_gpu_wait_us=8 build_us=3944 arena_kb=1013 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=6 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=32 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=6462 avg_submit_us=13127 avg_gpu_wait_us=8 build_us=3849 arena_kb=1013 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=7 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=32 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=6569 avg_submit_us=12073 avg_gpu_wait_us=7 build_us=3975 arena_kb=1013 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm3d] frame=8 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=32 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=6193 avg_submit_us=11120 avg_gpu_wait_us=7 build_us=3647 arena_kb=1013 invalidations=201
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[gxm2d] canvas target=77309411328 screen=1 viewport=960x544 native=960x544 items=1 scale=(1.000,1.000)
+[vita-audio] blocks=1201 peak=0 active=1
+[gxm2d] texture uploads=4 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[gxm2d] texture uploads=5 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=1321 peak=0 active=1
+[gxm2d] texture uploads=6 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[gxm2d] texture uploads=7 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=1441 peak=0 active=1
+[gxm2d] texture uploads=8 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=1561 peak=0 active=1
+[gxm2d] texture uploads=9 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[gxm2d-perf] frames=300 avg_frame_us=61636 fps=16.2 draws=1 quads=35 clips=1 gpu_wait_us=1047 targets=0
+[perfil-gd] fotogramas=300 camara=432 hud=76 mundo=150 robot=1704 sensor/bateria=24 sensor/imu_mid360=105 sensor/imu_pelvis=106 sensor/imu_torso=120 sensor/joints=87 sensor/mapeo=591 sensor/mid360_scan=644 sensor/odometria=171 sensor/unitree_estado=134 triangulos=14098 mallas=45 superficies=61 luz_vertice=1 ligero=1
+[gxm3d] frame=300 visible_instances=45 candidates=45 drawn=45 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=56 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=6720 avg_submit_us=2639 avg_gpu_wait_us=975 build_us=3879 arena_kb=1317 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=603 avg_items=1
+[vita-prof] avg_us_per_frame process=4907 physics_scripts=4443 navigation=10 physics3d=193 physics2d=1 render=13612 animation=0 skeleton=0 audio3d=0
+[gxm2d] texture uploads=10 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=1681 peak=0 active=1
+[gxm2d] texture uploads=11 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[gxm2d] texture uploads=12 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[gxm2d] texture uploads=13 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=1801 peak=0 active=1
+[vita-audio] blocks=1921 peak=0 active=1
+[gxm2d] texture uploads=14 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=2041 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17983 fps=55.6 draws=2 quads=36 clips=2 gpu_wait_us=1184 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=0 ly=137 rx=172 ry=251 frame=600
+[perfil-gd] fotogramas=300 camara=410 hud=74 mundo=151 robot=1584 sensor/bateria=22 sensor/imu_mid360=101 sensor/imu_pelvis=101 sensor/imu_torso=116 sensor/joints=83 sensor/mapeo=605 sensor/mid360_scan=585 sensor/odometria=164 sensor/unitree_estado=129 triangulos=13149 mallas=42 superficies=42 luz_vertice=1 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=87031808 phycont_free=27262976 textures=4456448
+[gxm3d] frame=600 visible_instances=41 candidates=41 drawn=41 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=37 rays=0 distance_culled=0 submitted_triangles=13147 budget=40000 cpu_submit_us=5826 avg_submit_us=2414 avg_gpu_wait_us=1061 build_us=3792 arena_kb=1327 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=393 avg_items=2
+[vita-prof] avg_us_per_frame process=1406 physics_scripts=4167 navigation=9 physics3d=178 physics2d=1 render=11061 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=2161 peak=0 active=1
+[vita-audio] blocks=2281 peak=0 active=1
+[vita-audio] blocks=2401 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17661 fps=56.6 draws=2 quads=35 clips=2 gpu_wait_us=978 targets=0
+[perfil-gd] fotogramas=300 camara=409 hud=75 mundo=149 robot=1569 sensor/bateria=22 sensor/imu_mid360=105 sensor/imu_pelvis=104 sensor/imu_torso=118 sensor/joints=84 sensor/mapeo=693 sensor/mid360_scan=661 sensor/odometria=167 sensor/unitree_estado=125 triangulos=13698 mallas=44 superficies=60 luz_vertice=1 ligero=1
+[vita-audio] blocks=2521 peak=0 active=1
+[gxm3d] frame=900 visible_instances=44 candidates=44 drawn=44 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=56 rays=0 distance_culled=0 submitted_triangles=13698 budget=40000 cpu_submit_us=6362 avg_submit_us=2491 avg_gpu_wait_us=810 build_us=3693 arena_kb=1339 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=149 avg_items=2
+[vita-prof] avg_us_per_frame process=1276 physics_scripts=4322 navigation=9 physics3d=177 physics2d=1 render=10966 animation=0 skeleton=0 audio3d=0
+[gxm2d] texture uploads=15 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=2641 peak=0 active=1
+[vita-audio] blocks=2761 peak=0 active=1
+[vita-audio] blocks=2881 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17540 fps=57.0 draws=2 quads=36 clips=2 gpu_wait_us=1267 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=66 ly=0 rx=124 ry=129 frame=1200
+[perfil-gd] fotogramas=300 camara=423 hud=75 mundo=149 robot=1594 sensor/bateria=23 sensor/imu_mid360=101 sensor/imu_pelvis=101 sensor/imu_torso=115 sensor/joints=82 sensor/mapeo=508 sensor/mid360_scan=637 sensor/odometria=165 sensor/unitree_estado=128 triangulos=14696 mallas=54 superficies=74 luz_vertice=1 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=87031808 phycont_free=27262976 textures=4456448
+[gxm3d] frame=1200 visible_instances=53 candidates=53 drawn=53 structural=8 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=69 rays=0 distance_culled=0 submitted_triangles=14676 budget=40000 cpu_submit_us=7012 avg_submit_us=3177 avg_gpu_wait_us=1115 build_us=3693 arena_kb=1382 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=244 avg_items=2
+[vita-prof] avg_us_per_frame process=1357 physics_scripts=4126 navigation=9 physics3d=178 physics2d=1 render=10954 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=3001 peak=0 active=1
+[gxm2d] texture uploads=16 last=256x256 format=RGBA8888 allocation=262144 budget=4456448
+[vita-audio] blocks=3121 peak=0 active=1
+[vita-audio] blocks=3241 peak=0 active=1
+[vita-audio] blocks=3361 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17461 fps=57.3 draws=2 quads=36 clips=2 gpu_wait_us=1044 targets=0
+[perfil-gd] fotogramas=300 camara=408 hud=73 mundo=151 robot=1606 sensor/bateria=23 sensor/imu_mid360=100 sensor/imu_pelvis=100 sensor/imu_torso=114 sensor/joints=83 sensor/mapeo=494 sensor/mid360_scan=687 sensor/odometria=165 sensor/unitree_estado=126 triangulos=13496 mallas=46 superficies=50 luz_vertice=1 ligero=1
+[gxm3d] frame=1500 visible_instances=41 candidates=41 drawn=41 structural=4 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=40 rays=0 distance_culled=0 submitted_triangles=13246 budget=40000 cpu_submit_us=5933 avg_submit_us=2106 avg_gpu_wait_us=1010 build_us=3766 arena_kb=1382 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=200 avg_items=2
+[vita-prof] avg_us_per_frame process=1250 physics_scripts=4168 navigation=9 physics3d=178 physics2d=1 render=10951 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=3481 peak=0 active=1
+[vita-audio] blocks=3601 peak=0 active=1
+[vita-audio] blocks=3721 peak=0 active=1
+[vita-audio] blocks=3841 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17350 fps=57.6 draws=2 quads=37 clips=2 gpu_wait_us=911 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=62 ly=0 rx=126 ry=129 frame=1800
+[perfil-gd] fotogramas=300 camara=402 hud=74 mundo=153 robot=1545 sensor/bateria=22 sensor/imu_mid360=101 sensor/imu_pelvis=101 sensor/imu_torso=115 sensor/joints=83 sensor/mapeo=510 sensor/mid360_scan=624 sensor/odometria=164 sensor/unitree_estado=124 triangulos=14684 mallas=53 superficies=73 luz_vertice=1 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=87031808 phycont_free=27262976 textures=4456448
+[gxm3d] frame=1800 visible_instances=51 candidates=51 drawn=51 structural=7 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=67 rays=0 distance_culled=0 submitted_triangles=14662 budget=40000 cpu_submit_us=6913 avg_submit_us=3090 avg_gpu_wait_us=1538 build_us=3694 arena_kb=1382 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=154 avg_items=2
+[vita-prof] avg_us_per_frame process=1300 physics_scripts=4050 navigation=8 physics3d=174 physics2d=1 render=10984 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=3961 peak=0 active=1
+[vita-audio] blocks=4081 peak=0 active=1
+[vita-audio] blocks=4201 peak=0 active=1
+[vita-audio] blocks=4321 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17669 fps=56.6 draws=2 quads=35 clips=2 gpu_wait_us=1344 targets=0
+[perfil-gd] fotogramas=300 camara=408 hud=74 mundo=150 robot=1580 sensor/bateria=22 sensor/imu_mid360=104 sensor/imu_pelvis=105 sensor/imu_torso=118 sensor/joints=85 sensor/mapeo=599 sensor/mid360_scan=696 sensor/odometria=169 sensor/unitree_estado=125 triangulos=14168 mallas=50 superficies=70 luz_vertice=1 ligero=1
+[gxm3d] frame=2100 visible_instances=49 candidates=49 drawn=49 structural=7 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=65 rays=0 distance_culled=0 submitted_triangles=14148 budget=40000 cpu_submit_us=6944 avg_submit_us=2998 avg_gpu_wait_us=1037 build_us=3848 arena_kb=1382 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=149 avg_items=2
+[vita-prof] avg_us_per_frame process=1278 physics_scripts=4273 navigation=9 physics3d=177 physics2d=1 render=11122 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=4441 peak=0 active=1
+[vita-audio] blocks=4561 peak=0 active=1
+[vita-audio] blocks=4681 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17365 fps=57.6 draws=2 quads=35 clips=2 gpu_wait_us=1441 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=67 ly=20 rx=128 ry=128 frame=2400
+[perfil-gd] fotogramas=300 camara=412 hud=76 mundo=150 robot=1614 sensor/bateria=23 sensor/imu_mid360=101 sensor/imu_pelvis=101 sensor/imu_torso=115 sensor/joints=82 sensor/mapeo=486 sensor/mid360_scan=644 sensor/odometria=165 sensor/unitree_estado=125 triangulos=14003 mallas=50 superficies=63 luz_vertice=1 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=85983232 phycont_free=27262976 textures=5505024
+[gxm3d] frame=2400 visible_instances=47 candidates=47 drawn=47 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=56 rays=0 distance_culled=0 submitted_triangles=13997 budget=40000 cpu_submit_us=6686 avg_submit_us=2711 avg_gpu_wait_us=1429 build_us=3877 arena_kb=1389 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=156 avg_items=2
+[vita-prof] avg_us_per_frame process=1310 physics_scripts=4126 navigation=9 physics3d=178 physics2d=1 render=11029 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=4801 peak=0 active=1
+[vita-audio] blocks=4921 peak=0 active=1
+[vita-audio] blocks=5041 peak=0 active=1
+[vita-audio] blocks=5161 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17475 fps=57.2 draws=2 quads=37 clips=2 gpu_wait_us=1403 targets=0
+[perfil-gd] fotogramas=300 camara=423 hud=75 mundo=153 robot=1609 sensor/bateria=23 sensor/imu_mid360=100 sensor/imu_pelvis=101 sensor/imu_torso=115 sensor/joints=83 sensor/mapeo=458 sensor/mid360_scan=711 sensor/odometria=164 sensor/unitree_estado=128 triangulos=14106 mallas=51 superficies=67 luz_vertice=1 ligero=1
+[gxm3d] frame=2700 visible_instances=47 candidates=47 drawn=47 structural=4 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=59 rays=0 distance_culled=0 submitted_triangles=14096 budget=40000 cpu_submit_us=6632 avg_submit_us=2792 avg_gpu_wait_us=1190 build_us=3781 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=155 avg_items=2
+[vita-prof] avg_us_per_frame process=1287 physics_scripts=4160 navigation=9 physics3d=177 physics2d=1 render=11071 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=5281 peak=0 active=1
+[vita-audio] blocks=5401 peak=0 active=1
+[vita-audio] blocks=5521 peak=0 active=1
+[vita-audio] blocks=5641 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17448 fps=57.3 draws=2 quads=36 clips=2 gpu_wait_us=1565 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=130 ly=0 rx=127 ry=129 frame=3000
+[perfil-gd] fotogramas=300 camara=412 hud=75 mundo=152 robot=1600 sensor/bateria=23 sensor/imu_mid360=101 sensor/imu_pelvis=101 sensor/imu_torso=114 sensor/joints=83 sensor/mapeo=470 sensor/mid360_scan=649 sensor/odometria=164 sensor/unitree_estado=125 triangulos=13704 mallas=44 superficies=52 luz_vertice=1 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=85983232 phycont_free=27262976 textures=5505024
+[gxm3d] frame=3000 visible_instances=42 candidates=42 drawn=42 structural=3 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=45 rays=0 distance_culled=0 submitted_triangles=13462 budget=40000 cpu_submit_us=6177 avg_submit_us=2340 avg_gpu_wait_us=904 build_us=3804 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=151 avg_items=2
+[vita-prof] avg_us_per_frame process=1283 physics_scripts=4094 navigation=9 physics3d=179 physics2d=1 render=11270 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=5761 peak=0 active=1
+[vita-audio] blocks=5881 peak=0 active=1
+[vita-audio] blocks=6001 peak=0 active=1
+[vita-audio] blocks=6121 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17622 fps=56.7 draws=2 quads=36 clips=2 gpu_wait_us=789 targets=0
+[perfil-gd] fotogramas=300 camara=409 hud=73 mundo=153 robot=1591 sensor/bateria=23 sensor/imu_mid360=103 sensor/imu_pelvis=105 sensor/imu_torso=115 sensor/joints=84 sensor/mapeo=677 sensor/mid360_scan=668 sensor/odometria=168 sensor/unitree_estado=126 triangulos=13811 mallas=47 superficies=55 luz_vertice=0 ligero=1
+[gxm3d] frame=3300 visible_instances=47 candidates=47 drawn=47 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=13811 budget=40000 cpu_submit_us=1706 avg_submit_us=1680 avg_gpu_wait_us=549 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=162 avg_items=2
+[vita-prof] avg_us_per_frame process=1295 physics_scripts=4333 navigation=9 physics3d=177 physics2d=1 render=11052 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=6241 peak=0 active=1
+[vita-audio] blocks=6361 peak=0 active=1
+[vita-audio] blocks=6481 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17078 fps=58.6 draws=2 quads=35 clips=2 gpu_wait_us=332 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=24 ly=17 rx=123 ry=129 frame=3600
+[perfil-gd] fotogramas=300 camara=403 hud=71 mundo=150 robot=1378 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=102 sensor/imu_torso=110 sensor/joints=81 sensor/mapeo=597 sensor/mid360_scan=587 sensor/odometria=162 sensor/unitree_estado=120 triangulos=14682 mallas=52 superficies=72 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=85983232 phycont_free=27262976 textures=5505024
+[gxm3d] frame=3600 visible_instances=50 candidates=50 drawn=50 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14678 budget=40000 cpu_submit_us=1977 avg_submit_us=1954 avg_gpu_wait_us=184 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=144 avg_items=2
+[vita-prof] avg_us_per_frame process=1216 physics_scripts=3902 navigation=8 physics3d=168 physics2d=1 render=11106 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=6601 peak=0 active=1
+[vita-audio] blocks=6721 peak=0 active=1
+[vita-audio] blocks=6841 peak=0 active=1
+[vita-audio] blocks=6961 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17183 fps=58.2 draws=2 quads=36 clips=2 gpu_wait_us=477 targets=0
+[perfil-gd] fotogramas=300 camara=403 hud=74 mundo=150 robot=1401 sensor/bateria=21 sensor/imu_mid360=96 sensor/imu_pelvis=97 sensor/imu_torso=108 sensor/joints=79 sensor/mapeo=627 sensor/mid360_scan=546 sensor/odometria=157 sensor/unitree_estado=123 triangulos=13244 mallas=40 superficies=43 luz_vertice=0 ligero=1
+[gxm3d] frame=3900 visible_instances=40 candidates=40 drawn=40 structural=3 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=13244 budget=40000 cpu_submit_us=1432 avg_submit_us=1389 avg_gpu_wait_us=477 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=153 avg_items=2
+[vita-prof] avg_us_per_frame process=1314 physics_scripts=3902 navigation=9 physics3d=169 physics2d=1 render=11189 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=7081 peak=0 active=1
+[vita-audio] blocks=7201 peak=0 active=1
+[vita-audio] blocks=7321 peak=0 active=1
+[vita-audio] blocks=7441 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17072 fps=58.6 draws=2 quads=35 clips=2 gpu_wait_us=536 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=255 ly=130 rx=126 ry=128 frame=4200
+[perfil-gd] fotogramas=300 camara=403 hud=71 mundo=147 robot=1381 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=100 sensor/imu_torso=110 sensor/joints=81 sensor/mapeo=527 sensor/mid360_scan=638 sensor/odometria=161 sensor/unitree_estado=119 triangulos=13249 mallas=42 superficies=46 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=85983232 phycont_free=27262976 textures=5505024
+[gxm3d] frame=4200 visible_instances=40 candidates=40 drawn=40 structural=3 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=13245 budget=40000 cpu_submit_us=1495 avg_submit_us=1433 avg_gpu_wait_us=392 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=147 avg_items=2
+[vita-prof] avg_us_per_frame process=1183 physics_scripts=3878 navigation=8 physics3d=169 physics2d=1 render=11222 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=7561 peak=0 active=1
+[vita-audio] blocks=7681 peak=0 active=1
+[vita-audio] blocks=7801 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17128 fps=58.4 draws=2 quads=36 clips=2 gpu_wait_us=477 targets=0
+[perfil-gd] fotogramas=300 camara=405 hud=72 mundo=193 robot=1389 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=100 sensor/imu_torso=111 sensor/joints=81 sensor/mapeo=465 sensor/mid360_scan=606 sensor/odometria=161 sensor/unitree_estado=121 triangulos=13701 mallas=47 superficies=55 luz_vertice=0 ligero=1
+[gxm3d] frame=4500 visible_instances=43 candidates=43 drawn=43 structural=4 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=13601 budget=40000 cpu_submit_us=1526 avg_submit_us=1494 avg_gpu_wait_us=271 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=149 avg_items=2
+[vita-prof] avg_us_per_frame process=1297 physics_scripts=3796 navigation=8 physics3d=169 physics2d=1 render=11161 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=7921 peak=0 active=1
+[vita-audio] blocks=8041 peak=0 active=1
+[vita-audio] blocks=8161 peak=0 active=1
+[vita-audio] blocks=8281 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17128 fps=58.4 draws=2 quads=37 clips=2 gpu_wait_us=526 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=78 ly=0 rx=126 ry=130 frame=4800
+[perfil-gd] fotogramas=300 camara=403 hud=71 mundo=235 robot=1381 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=100 sensor/imu_torso=110 sensor/joints=80 sensor/mapeo=469 sensor/mid360_scan=611 sensor/odometria=161 sensor/unitree_estado=121 triangulos=13468 mallas=44 superficies=51 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=85983232 phycont_free=27262976 textures=5505024
+[gxm3d] frame=4800 visible_instances=41 candidates=41 drawn=41 structural=3 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=13358 budget=40000 cpu_submit_us=1463 avg_submit_us=1458 avg_gpu_wait_us=171 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=151 avg_items=2
+[vita-prof] avg_us_per_frame process=1324 physics_scripts=3794 navigation=8 physics3d=169 physics2d=1 render=11212 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=8401 peak=0 active=1
+[vita-audio] blocks=8521 peak=0 active=1
+[vita-audio] blocks=8641 peak=0 active=1
+[vita-audio] blocks=8761 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17461 fps=57.3 draws=2 quads=37 clips=2 gpu_wait_us=289 targets=0
+[perfil-gd] fotogramas=300 camara=405 hud=74 mundo=154 robot=1437 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=100 sensor/imu_torso=111 sensor/joints=82 sensor/mapeo=697 sensor/mid360_scan=632 sensor/odometria=162 sensor/unitree_estado=123 triangulos=14098 mallas=45 superficies=61 luz_vertice=0 ligero=1
+[gxm3d] frame=5100 visible_instances=45 candidates=45 drawn=45 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14098 budget=40000 cpu_submit_us=1797 avg_submit_us=1618 avg_gpu_wait_us=329 build_us=0 arena_kb=1400 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=150 avg_items=2
+[vita-prof] avg_us_per_frame process=1279 physics_scripts=4117 navigation=8 physics3d=171 physics2d=1 render=10969 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=8881 peak=0 active=1
+[vita-audio] blocks=9001 peak=0 active=1
+[vita-audio] blocks=9121 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17128 fps=58.4 draws=2 quads=36 clips=2 gpu_wait_us=228 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=134 ly=148 rx=131 ry=133 frame=5400
+[perfil-gd] fotogramas=300 camara=407 hud=72 mundo=149 robot=1371 sensor/bateria=22 sensor/imu_mid360=99 sensor/imu_pelvis=100 sensor/imu_torso=110 sensor/joints=81 sensor/mapeo=595 sensor/mid360_scan=571 sensor/odometria=163 sensor/unitree_estado=122 triangulos=15000 mallas=57 superficies=82 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6553600
+[gxm3d] frame=5400 visible_instances=58 candidates=57 drawn=57 structural=9 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=1 submitted_triangles=15000 budget=40000 cpu_submit_us=2457 avg_submit_us=2285 avg_gpu_wait_us=85 build_us=0 arena_kb=1405 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=145 avg_items=2
+[vita-prof] avg_us_per_frame process=1218 physics_scripts=3871 navigation=8 physics3d=167 physics2d=1 render=11028 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=9241 peak=0 active=1
+[vita-audio] blocks=9361 peak=0 active=1
+[vita-audio] blocks=9481 peak=0 active=1
+[vita-audio] blocks=9601 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17210 fps=58.1 draws=2 quads=35 clips=2 gpu_wait_us=189 targets=0
+[perfil-gd] fotogramas=300 camara=405 hud=72 mundo=150 robot=1382 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=100 sensor/imu_torso=111 sensor/joints=82 sensor/mapeo=590 sensor/mid360_scan=594 sensor/odometria=163 sensor/unitree_estado=121 triangulos=14884 mallas=56 superficies=81 luz_vertice=0 ligero=1
+[gxm3d] frame=5700 visible_instances=55 candidates=55 drawn=55 structural=8 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14882 budget=40000 cpu_submit_us=2287 avg_submit_us=2196 avg_gpu_wait_us=103 build_us=0 arena_kb=1405 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=144 avg_items=2
+[vita-prof] avg_us_per_frame process=1219 physics_scripts=3907 navigation=8 physics3d=169 physics2d=1 render=11021 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=9721 peak=0 active=1
+[vita-audio] blocks=9841 peak=0 active=1
+[vita-audio] blocks=9961 peak=0 active=1
+[vita-audio] blocks=10081 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17101 fps=58.5 draws=2 quads=37 clips=2 gpu_wait_us=203 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=255 ly=149 rx=125 ry=129 frame=6000
+[perfil-gd] fotogramas=300 camara=404 hud=74 mundo=150 robot=1409 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=101 sensor/imu_torso=112 sensor/joints=80 sensor/mapeo=640 sensor/mid360_scan=543 sensor/odometria=163 sensor/unitree_estado=122 triangulos=14884 mallas=56 superficies=81 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6553600
+[gxm3d] frame=6000 visible_instances=54 candidates=54 drawn=54 structural=8 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14870 budget=40000 cpu_submit_us=2203 avg_submit_us=2145 avg_gpu_wait_us=190 build_us=0 arena_kb=1405 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=150 avg_items=2
+[vita-prof] avg_us_per_frame process=1277 physics_scripts=3938 navigation=8 physics3d=169 physics2d=1 render=11126 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=10201 peak=0 active=1
+[vita-audio] blocks=10321 peak=0 active=1
+[vita-audio] blocks=10441 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17183 fps=58.2 draws=2 quads=37 clips=2 gpu_wait_us=209 targets=0
+[perfil-gd] fotogramas=300 camara=403 hud=71 mundo=148 robot=1380 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=102 sensor/imu_torso=111 sensor/joints=81 sensor/mapeo=627 sensor/mid360_scan=533 sensor/odometria=162 sensor/unitree_estado=119 triangulos=14864 mallas=55 superficies=80 luz_vertice=0 ligero=1
+[gxm3d] frame=6300 visible_instances=54 candidates=54 drawn=54 structural=7 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14862 budget=40000 cpu_submit_us=2223 avg_submit_us=2150 avg_gpu_wait_us=188 build_us=0 arena_kb=1405 invalidations=201
+[vita-audio] blocks=10561 peak=0 active=1
+[gxm2d-canvas] calls=300 avg_canvas_us=152 avg_items=2
+[vita-prof] avg_us_per_frame process=1204 physics_scripts=3876 navigation=8 physics3d=168 physics2d=1 render=11165 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=10681 peak=0 active=1
+[vita-audio] blocks=10801 peak=0 active=1
+[vita-audio] blocks=10921 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17128 fps=58.4 draws=2 quads=35 clips=2 gpu_wait_us=204 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=131 ly=129 rx=127 ry=129 frame=6600
+[perfil-gd] fotogramas=300 camara=402 hud=71 mundo=153 robot=1360 sensor/bateria=24 sensor/imu_mid360=99 sensor/imu_pelvis=102 sensor/imu_torso=112 sensor/joints=81 sensor/mapeo=715 sensor/mid360_scan=623 sensor/odometria=163 sensor/unitree_estado=121 triangulos=14764 mallas=51 superficies=75 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6553600
+[gxm3d] frame=6600 visible_instances=51 candidates=51 drawn=51 structural=6 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14764 budget=40000 cpu_submit_us=2335 avg_submit_us=2064 avg_gpu_wait_us=77 build_us=0 arena_kb=1405 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=152 avg_items=2
+[vita-prof] avg_us_per_frame process=1261 physics_scripts=4029 navigation=8 physics3d=163 physics2d=1 render=11106 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=11041 peak=0 active=1
+[vita-audio] blocks=11161 peak=0 active=1
+[vita-audio] blocks=11281 peak=0 active=1
+[vita-audio] blocks=11401 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17350 fps=57.6 draws=2 quads=35 clips=2 gpu_wait_us=145 targets=0
+[perfil-gd] fotogramas=300 camara=393 hud=72 mundo=151 robot=1092 sensor/bateria=22 sensor/imu_mid360=97 sensor/imu_pelvis=97 sensor/imu_torso=108 sensor/joints=78 sensor/mapeo=602 sensor/mid360_scan=587 sensor/odometria=156 sensor/unitree_estado=122 triangulos=14764 mallas=51 superficies=75 luz_vertice=0 ligero=1
+[gxm3d] frame=6900 visible_instances=50 candidates=50 drawn=50 structural=5 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=0 submitted_triangles=14762 budget=40000 cpu_submit_us=2046 avg_submit_us=2004 avg_gpu_wait_us=136 build_us=0 arena_kb=1405 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=144 avg_items=2
+[vita-prof] avg_us_per_frame process=1297 physics_scripts=3548 navigation=8 physics3d=143 physics2d=1 render=11264 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=11521 peak=0 active=1
+[vita-audio] blocks=11641 peak=0 active=1
+[vita-audio] blocks=11761 peak=0 active=1
+[vita-audio] blocks=11881 peak=0 active=1
+[gxm2d-perf] frames=300 avg_frame_us=17128 fps=58.4 draws=2 quads=36 clips=2 gpu_wait_us=215 targets=0
+[vita-pad] sample=1 buttons=0x00000000 lx=121 ly=255 rx=120 ry=131 frame=7200
+[perfil-gd] fotogramas=300 camara=407 hud=73 mundo=150 robot=1513 sensor/bateria=22 sensor/imu_mid360=100 sensor/imu_pelvis=101 sensor/imu_torso=111 sensor/joints=81 sensor/mapeo=574 sensor/mid360_scan=606 sensor/odometria=163 sensor/unitree_estado=119 triangulos=14800 mallas=55 superficies=79 luz_vertice=0 ligero=1
+[vita-memory] stage=frame result=0x00000000 user_free=0 cdram_free=84934656 phycont_free=27262976 textures=6553600
+[gxm3d] frame=7200 visible_instances=56 candidates=55 drawn=55 structural=9 skinned=0 skinned_us=0 lights=1 decals=0 glows=0 lit=0 rays=0 distance_culled=1 submitted_triangles=14800 budget=40000 cpu_submit_us=2232 avg_submit_us=2159 avg_gpu_wait_us=174 build_us=0 arena_kb=1405 invalidations=201
+[gxm2d-canvas] calls=300 avg_canvas_us=147 avg_items=2
+[vita-prof] avg_us_per_frame process=1250 physics_scripts=4033 navigation=8 physics3d=167 physics2d=1 render=11076 animation=0 skeleton=0 audio3d=0
+[vita-audio] blocks=12001 peak=0 active=1
+[vita-audio] blocks=12121 peak=0 active=1
+[vita-audio] blocks=12241 peak=0 active=1

@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-13 (perfil «Vita ligero» de las plantillas, doc 34; T1 sigue pendiente del usuario). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-13 (T1 y T2 medidos en la Vita: `g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque; las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
@@ -9,7 +9,20 @@ El estado vivo está en el primer bloque; las fechas anteriores, un bloque por s
 
 ---
 
-## 2026-11-13 (nube, sesión programada) — Perfil «Vita ligero» de las plantillas (T2) (Estado para retomar)
+## 2026-11-13 (PC, mediodía) — T1 y T2 validados en la Vita: 57–58 FPS (Estado para retomar)
+
+- Parche de la sesión en la nube aplicado (`68e75c1`), `g1-sensores.vpk` exportado en el PC y probado por el usuario
+  (1 min con luz V, START, 1 min con luz O). Log: `docs/ia/revision-kimi/g1-sensores-ligero-vita-2026-11-13.log`;
+  tabla y análisis en el doc 34 §7.1.
+- **De 23,5 a 57,0 FPS (luz V) y 58,1 FPS (luz O).** `physics_scripts` de 22 194 a ~4 000 µs; `process` de 5 800 a
+  1 300; triángulos ≤ 15 000. T1 verde. T2 casi: falla `physics_scripts ≤ 2500` y `fps ≥ 58` con luz V.
+- START llega bien; luz O se ve algo más oscura. Quitar la luz solo da +1,1 fps (`render` no baja: el tiempo se
+  va a esperar el fotograma) → **pendiente de que el usuario elija `luz_por_vertice` por aspecto**.
+- **Siguiente paso:** bajar ~0,5–1 ms de scripts de física: `sensor/mapeo` y `sensor/mid360_scan` (~0,6 ms cada
+  uno), robot ~1,5 ms, sensores por turnos (doc 34 §8.4). La hipótesis XRCE del §8.2 queda descartada.
+- Aspecto de los modelos reducidos: sin comentarios del usuario todavía.
+
+## 2026-11-13 (nube, sesión programada) — Perfil «Vita ligero» de las plantillas (T2)
 
 Sesión de Fable 5.2 lanzada por una tarea programada, **en la nube: sin Vita, sin el PC y sin `toolchains/`**. El
 editor de host se compiló allí (`godot4-vita@d1a5f29`, `GODOT_VERSION_STATUS=dev7`, sin XRCE). Informe largo:
