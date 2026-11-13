@@ -50,7 +50,7 @@ Hecho:
    hay rotos; `--baseline f` resta los de una salida anterior (clave sin número de línea de origen).
    **Línea base:** 225 rotos antes de O2b (todos anteriores a la Fase O: planes de cosas aún no creadas como
    `godot/plantillas/visor/`, lecciones 02–06 sin escribir, rutas de Godot 3.5, etc.).
-   Fichero: `/tmp/claude-1000/-home-jcrex-Proyectos-PSVita-ROS/a9b80dcd-e873-449f-81b6-65810b829273/scratchpad/enlaces-antes.txt`
+   Fichero: `…/scratchpad/enlaces-antes.txt` (scratchpad local de la sesión, sin versionar)
    y su versión con los 5 guiones renombrados a `docs/ia/tutorial/`: `…/scratchpad/enlaces-antes-O2b.txt` (úsese
    esta en O2c).
 2. Archivados con `git mv` (contenido intacto, comprobado con `git diff -M`: 0 líneas): docs 10, 11, 16, 19 →
