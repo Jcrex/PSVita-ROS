@@ -54,3 +54,9 @@ godot/rclgd/
 
 # Mallas del G1 copiadas por g1_sim (52 MB, BSD-3 de Unitree; se regeneran solas)
 docker/g1/cache/
+
+# Respaldos locales de chats de IA (no versionar: el repo es público)
+respaldo-chat-claude/
+# Configuración local de otros agentes/editores
+.codex/
+.obsidian/
