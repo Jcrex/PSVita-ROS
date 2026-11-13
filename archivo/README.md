@@ -10,6 +10,7 @@ no código vivo.
 | Qué | Archivado | Motivo |
 |---|---|---|
 | `docs/superpowers/` (planes y especificaciones de junio–julio 2026) | 2026-11-01 | Planes ya ejecutados; no tenían colección en la web |
+| `auditoria/log-*.txt` (3 logs de las compilaciones de prueba de rviz2) | 2026-11-13 | Evidencia del ADR 0006 y del doc 04. Copiados textualmente (con las rutas locales de su fecha); los clones (`ogre`, `vitaGL`, `rcutils`, sin versionar) pasaron a `toolchains/auditoria-rviz2/` (ADR 0014) |
 
 **Pendiente de decisión del usuario** (lote 2b de
 `docs/ia/auditoria/README.md`): `vita-app/` (con el taller web) y

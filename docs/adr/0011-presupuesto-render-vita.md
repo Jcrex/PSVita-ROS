@@ -70,7 +70,7 @@ ADR 0008 §5 que delega el 3D en Godot. Hechos verificados en el código del por
 - **Negativas:** lo superpuesto en 2D no se oculta tras la geometría 3D; cada display denso necesita dibujo para
   las dos vistas; los colores se cuantizan a 256; sin MSAA las cajas finas necesitan un grosor mínimo.
 - **Trabajo derivado:** capa «GXM-safe» de gdviz con estas técnicas (W4, T-W4-4); arreglos baratos de
-  `godot/comun/vita_relay.gd`, `minimapa.gd`, `urdf_robot.gd` y casa horneada; proyecto `godot/w8-bench`; módulo
+  `godot/plantillas/vita_relay.gd`, `minimapa.gd`, `urdf_robot.gd` y casa horneada; proyecto `godot/w8-bench`; módulo
   `viz-decode` cuando toque recompilar la plantilla.
 - **Riesgo asumido:** las cifras del presupuesto son de diseño hasta medir; el único dato real es G7c. El gate
   G8-G1 (≈ 137 *draws* con luz por vértice) es la primera comprobación.

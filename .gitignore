@@ -36,9 +36,6 @@ practica/
 
 # Toolchains locales del PC de desarrollo (VitaSDK, rustup, cargo, cmake)
 toolchains/
-# Solo la carpeta de la raíz (compilaciones de prueba de rviz2, docs/04);
-# sin la barra inicial ignoraría también docs/ia/auditoria/.
-/auditoria/
 Videos/
 
 # Clon local de Ozuba/rclgd (rama jazzy; trae su propio Godot 4.7.1). Repo
@@ -60,3 +57,6 @@ respaldo-chat-claude/
 # Configuración local de otros agentes/editores
 .codex/
 .obsidian/
+
+# Foto generada de referencias (Fase O); caduca con cada movimiento
+docs/ia/organizacion/O1a-mapa-rutas.json

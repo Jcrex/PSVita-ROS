@@ -4,7 +4,7 @@
 **Estado:** **Investigación EJECUTADA (2026-07-10, en el PC)** — decisión:
 rviz2 nativo NO es portable; **Plan B activado** (mini-rviz con vitaGL).
 Decisión formal y evidencia citada en `docs/adr/0006-decision-rviz2-vs-mini-rviz.md`;
-logs completos en `auditoria/` (gitignored). Ejecutada según la Etapa A de
+logs en `archivo/auditoria/`; clones en `toolchains/auditoria-rviz2/` (sin versionar). Ejecutada según la Etapa A de
 `docs/10-plan-objetivos-3-4.md`.
 
 ---
