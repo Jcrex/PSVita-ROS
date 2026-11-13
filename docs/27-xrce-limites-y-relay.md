@@ -117,7 +117,7 @@ Reglas: ninguna salida > 488 B; suma ≤ 100 KB/s (lo anterior ≈ 10×384 + 30�
 
 | Opción | Pros | Contras | Coste |
 |---|---|---|---|
-| A. Subir MTU a ~1 400 (< 1 472 sin fragmentación IP) e historial a 32–64 | techo RX 45–90 KB por mensaje; menos cabeceras; cambio de 2 constantes + `-DUXR_CONFIG_CUSTOM_TRANSPORT_MTU` | recompilar cliente (`vita-app/scripts/`) y plantilla Godot; **el agente fragmenta con su propia MTU** [?]: puede que solo mejore TX; memoria estática 2×64×1 400 ≈ 180 KB; fragmentos más grandes = más pérdida por datagrama en WiFi | 0,5–1 día + prueba |
+| A. Subir MTU a ~1 400 (< 1 472 sin fragmentación IP) e historial a 32–64 | techo RX 45–90 KB por mensaje; menos cabeceras; cambio de 2 constantes + `-DUXR_CONFIG_CUSTOM_TRANSPORT_MTU` | recompilar cliente (`tools/build-xrce-client-vita.sh`) y plantilla Godot; **el agente fragmenta con su propia MTU** [?]: puede que solo mejore TX; memoria estática 2×64×1 400 ≈ 180 KB; fragmentos más grandes = más pérdida por datagrama en WiFi | 0,5–1 día + prueba |
 | B. Zenoh-Pico (UDP o TCP) + `zenoh-bridge-ros2dds`/rmw_zenoh (ya hay puente en `docker/vita-ros.sh:73-78`) | fragmentación propia en BE; TCP da fiabilidad sin ventana de 8 KiB; sin agente XRCE | **portar la capa de plataforma** (hilos, sockets sceNet, reloj) de zenoh-pico a la Vita; reescribir `xrce_transport.cpp` tras la interfaz de transporte; CDR igual de grande: el ancho de banda no cambia | 1–3 semanas [I] |
 | C. Solo relay (este diseño) | sin tocar la Vita; robusto a pérdidas; formatos pensados para GDScript | lógica en el PC; no es "ROS puro" en la Vita | 2–4 días |
 

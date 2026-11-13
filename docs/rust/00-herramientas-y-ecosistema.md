@@ -58,7 +58,7 @@ los crates de módulo son `rlib`, y el `.a` se genera explícitamente con
 `cargo rustc --crate-type staticlib` solo en tres sitios:
 
 1. Tests de paridad de cada módulo (`tools/run-parity-tests.sh`).
-2. El **crate paraguas** `vita-app/rust-modules/`, que junta los ocho
+2. El **crate paraguas** `modules/paraguas-rust/`, que junta los ocho
    módulos en un único `libvita_modules_rust.a` para la app.
 3. `tools/build-rust-pic.sh` (desde G2, 2026-10-29): el mismo paraguas en
    modo PIC y sin `std`, para enlazarlo dentro de `libgodot.so` (`ros2_vita`).
@@ -91,5 +91,5 @@ git). Si `cargo` existe (en el PC), se usa directamente.
 |---|---|
 | Cargo.toml comentado línea a línea | `modules/mem-pool/impl-rust/Cargo.toml` |
 | Dependencia entre crates propios | `modules/microros-transport/impl-rust/Cargo.toml` |
-| Crate paraguas (un solo .a) | `vita-app/rust-modules/` |
+| Crate paraguas (un solo .a) | `modules/paraguas-rust/` |
 | Features (`standalone`) | los ocho `Cargo.toml` de módulos |

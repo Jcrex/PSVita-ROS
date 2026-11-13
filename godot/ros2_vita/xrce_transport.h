@@ -2,7 +2,7 @@
 // Probado en host contra el agente micro-ROS en docker; validado en la Vita 2026-10-30 (G5/G6).
 //
 // Cadena (la misma que vita-app y la app Godot 3.5, ya probadas en hardware):
-//   XrceTransport -> uxr (microxrcedds_client) -> callbacks propios (como vita-app/src/uxr_glue.c)
+//   XrceTransport -> uxr (microxrcedds_client) -> callbacks propios (como archivo/vita-app/src/uxr_glue.c)
 //     -> modules/microros-transport -> modules/net-udp -> sceNet (Vita) / sockets POSIX (host)
 //
 // Solo se compila si SCsub encuentra las libs XRCE de la plataforma (define ROS2_VITA_XRCE).

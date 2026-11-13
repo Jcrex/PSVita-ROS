@@ -65,7 +65,7 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
    `export-vita-vpk.sh` copia el proyecto, le añade el addon `psvita` y `out/vita_release.zip` (variante C) y
    exporta en modo *headless*. Después: instalar el `.vpk` (FTP o modo USB de VitaShell). **Validado en hardware 2026-10-30 (G4 verde).**
 4. **G5 — transporte XRCE.** Libs del cliente: `XRCE_PIC=1` (Vita) o `XRCE_HOST=1` (host)
-   `vita-app/scripts/build-xrce-client-vita.sh`; el SCsub activa el transporte si las encuentra
+   `tools/build-xrce-client-vita.sh`; el SCsub activa el transporte si las encuentra
    (`ros2_vita: transporte XRCE activado` en la salida de SCons). Prueba en el PC:
    ```bash
    docker run -d --name g5-agent --net=host --ipc=host microros/micro-ros-agent:jazzy udp4 --port 8888
@@ -116,8 +116,8 @@ M9 HMI piloto · M10 panel trasero/cámara · M11 TF · M12 servicios · M15 ses
 ## Otras carpetas
 | Ruta | Qué es |
 |---|---|
-| `godot35/` | **Histórico, validado en hardware:** la app teleop en **Godot 3.5** (`godot-vita`) con el módulo `microros` (rama `godot-migration`, fusionada el 2026-10-29). Referencia para la HMI piloto y las lecciones del `.vpk`. Ver `godot35/README.md` y `docs/20`/`21` |
 | `rclgd/` | Clon local de [`Ozuba/rclgd`](https://github.com/Ozuba/rclgd) (rama `jazzy`, Godot **4.7.1**): el editor/entorno de desarrollo del PC (`ros2 rclgd editor`). **No se versiona** (`.gitignore`); es la referencia de la API que imita `ros2_vita` |
 
 > Godot 3.5 se descartó como destino el 2026-10-27 porque `rclgd` exige Godot 4 (`Callable`/`await`);
-> su app sigue funcionando en `godot35/`.
+> su app (teleop con el módulo `microros`, validada en hardware) está archivada en `archivo/godot/godot35/` desde el
+> 2026-11-13 (ADR 0014), con los docs 20–21 en `archivo/docs/`.

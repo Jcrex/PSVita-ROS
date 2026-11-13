@@ -108,7 +108,7 @@ El obstáculo real **no fue newlib** sino el *superbuild* de eProsima: su
 `ExternalProject_Add(uclient)` no reenvía `CMAKE_TOOLCHAIN_FILE` al build
 interno del cliente (solo lo hace para `microcdr`), así que en cross-compilación
 fallaba el `find_package(microcdr)` y, de pasar, habría compilado el cliente
-para el host. Solución en `vita-app/scripts/build-xrce-client-vita.sh`: no usar
+para el host. Solución en `tools/build-xrce-client-vita.sh`: no usar
 el superbuild; compilar `microcdr` y `uclient` como dos configuraciones cmake
 separadas, ambas con el toolchain de VitaSDK, encadenadas por
 `CMAKE_PREFIX_PATH`.

@@ -86,7 +86,7 @@ saltar si ocurre lo imposible; el nuestro: `loop {}`). Además, `core`
 precompilado referencia el símbolo `rust_eh_personality` (del unwinding)
 aunque compilemos con `panic = "abort"`; se satisface con un stub vacío.
 Ambos viven tras la feature `standalone` de cada módulo, y el crate
-paraguas (`vita-app/rust-modules`) los aporta una sola vez para la app —
+paraguas (`modules/paraguas-rust`) los aporta una sola vez para la app —
 la historia completa está en los comentarios de los `Cargo.toml`.
 
 ## Estado global mutable sin malloc: `UnsafeCell` + `Sync`
@@ -112,7 +112,7 @@ cambia.
 `microros_transport_rust` depende de `net_udp_rust` (dependencia de ruta) y
 llama a sus funciones como Rust normal — aunque sean `extern "C"`. El
 binario "todo Rust" se forma con el crate paraguas que re-exporta los ocho
-módulos (`pub use`, `vita-app/rust-modules/src/lib.rs:13-20`) para que el linker conserve sus símbolos `no_mangle`.
+módulos (`pub use`, `modules/paraguas-rust/src/lib.rs:13-20`) para que el linker conserve sus símbolos `no_mangle`.
 Regla aprendida: **un binario, un staticlib de Rust** (cada `.a` arrastra
 su copia de `core`; dos copias = símbolos duplicados).
 

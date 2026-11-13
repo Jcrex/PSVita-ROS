@@ -56,7 +56,7 @@ public:
 
 #ifndef ROS2_VITA_XRCE
 // Compilado sin las libs XRCE (SCsub no las encontró): el transporte xrce no está disponible.
-// Se construyen con vita-app/scripts/build-xrce-client-vita.sh (XRCE_PIC=1 Vita, XRCE_HOST=1 host).
+// Se construyen con tools/build-xrce-client-vita.sh (XRCE_PIC=1 Vita, XRCE_HOST=1 host).
 class XrceUnavailable : public RosTransport {
 public:
 	Error start(const Dictionary &) override {

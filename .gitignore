@@ -43,7 +43,7 @@ Videos/
 godot/rclgd/
 
 # Objetos sueltos de la compilación del template Godot 3.5 (SCons los deja
-# junto a las fuentes: modules/*/impl-c/, vita-app/src/, godot/godot35/modules/)
+# junto a las fuentes: modules/*/impl-c/, archivo/vita-app/src/, archivo/godot/godot35/modules/)
 *.vita.opt.32.o
 
 # Caché del editor de Godot 4 (se regenera al abrir el proyecto)

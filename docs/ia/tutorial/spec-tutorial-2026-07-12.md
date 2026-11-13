@@ -27,7 +27,7 @@ Rust; no se explica desde cero qué es una función o un condicional.
 Toda lección sigue el mismo ritmo, elegido por el usuario:
 
 1. **Leemos** el archivo real del repo (`impl-c/*.c`, `impl-rust/src/lib.rs`,
-   `vita-app/src/*.c`, headers…).
+   `archivo/vita-app/src/*.c`, headers…).
 2. **Explicamos** los conceptos nuevos de C y Rust que aparecen ahí,
    comparándolos entre sí y con lenguajes de alto nivel.
 3. **Retos**: modificaciones sobre ese código real, de menor a mayor
@@ -77,9 +77,9 @@ ciclo real, no solo teoría:
 ## Cobertura (alcance)
 
 **Dentro:** los tres módulos duales (mem-pool, net-udp, microros-transport) en
-C y Rust, y la app Vita (`vita-app/src/`: `main.c`, glue uxr, netlog, teleop,
+C y Rust, y la app Vita (`archivo/vita-app/src/`: `main.c`, glue uxr, netlog, teleop,
 UI/viz, llamadas al SDK, FFI Rust→C vía el crate umbrella
-`vita-app/rust-modules/`, CMake/VitaSDK y empaquetado `.vpk`).
+`modules/paraguas-rust/`, CMake/VitaSDK y empaquetado `.vpk`).
 
 **Fuera:** servidor MCP (Python) y web (Astro/TS). No forman parte de este
 tutorial de C/Rust.

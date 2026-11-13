@@ -68,7 +68,7 @@ struct TransportArgs {
 };
 
 // Los 4 callbacks de uxrCustomTransport: delegan 1:1 en microros-transport, como
-// vita-app/src/uxr_glue.c, pero contando lo que pasa.
+// archivo/vita-app/src/uxr_glue.c, pero contando lo que pasa.
 bool cb_open(uxrCustomTransport *t) {
 	TransportArgs *a = (TransportArgs *)t->args;
 	return a && microros_transport_open(a->ip, a->port);

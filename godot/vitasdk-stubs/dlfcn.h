@@ -8,7 +8,7 @@
  *   NULL y NUNCA miran el handle, así que el valor de RTLD_NEXT/RTLD_DEFAULT da
  *   igual: dlsym(RTLD_NEXT, "iconv") → NULL y Godot sigue sin iconv.
  *
- *   Es un superconjunto del stub de Godot 3.5 (godot/godot35/vitasdk-stubs/),
+ *   Es un superconjunto del stub de Godot 3.5 (archivo/godot/godot35/vitasdk-stubs/),
  *   así que el histórico 3.5 sigue compilando con este instalado.
  *
  * tools/build-godot-template.sh lo copia a $VITASDK/arm-vita-eabi/include/dlfcn.h

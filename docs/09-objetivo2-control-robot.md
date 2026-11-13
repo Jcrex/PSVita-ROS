@@ -63,7 +63,7 @@ Notas del mapeo:
 
 ## Arquitectura (regla del repo: lo verificable en laptop, verificado)
 
-- **`vita-app/src/teleop.h` + `teleop.c` — lógica pura, sin headers de la
+- **`archivo/vita-app/src/teleop.h` + `teleop.c` — lógica pura, sin headers de la
   Vita.** Recibe una foto de los mandos (`teleop_entrada`: sticks crudos
   0–255 + booleanos de botones) y el `dt`, y devuelve el `Twist` +
   gestiona las escalas y los flancos de ✕/△. Compila y se testea en

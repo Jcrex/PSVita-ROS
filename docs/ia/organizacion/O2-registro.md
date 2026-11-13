@@ -103,3 +103,65 @@ Desviaciones y decisiones conservadoras:
 - Docs 20–21 siguen en `docs/` y en la tabla principal de `docs/README.md` («se archiva en O2c»): O2c debe pasarlos a
   la tabla «Archivados» y corregir sus enlaces relativos.
 - `web/`: nada que tocar en O2b (`web/Dockerfile` copia `docs/` entera).
+
+## O2c — godot35 y `vita-app/` · commit «chore(org): archiva vita-app y godot35; extrae paraguas Rust y cliente XRCE»
+
+Mapa regenerado antes de reescribir (`python3 -I …/scratchpad/o1a_mapa.py`). Reescritura con el `mover_ruta` de R-5
+excluyendo, además de lo de O2b, `README.md` raíz (O2d); lista de vivos en `…/scratchpad/o2c-lib.sh`.
+
+Hecho:
+1. **A.** `git mv godot/godot35 archivo/godot/godot35` (se borraron `.import/` y `build/`; `versiones/` con 3 `.vpk`
+   sin versionar viajó). Docs 20–21 → `archivo/docs/`; en `docs/README.md` pasan a «Archivados». A mano: comentario de
+   `tools/build-godot-template.sh` (paso 3), `godot/vitasdk-stubs/dlfcn.h`, `.gitignore`, doc 18 §4.5 punto 2,
+   `godot/README.md` (fila de `godot35/` fuera; nota con la ruta archivada).
+2. **B.** `vita-app/rust-modules` → `modules/paraguas-rust/` (`Cargo.toml`: `../../modules/X` → `../X` + comentario de
+   traslado; crate y lib sin cambiar). `vita-app/scripts/build-xrce-client-vita.sh` → `tools/` (`REPO`, `PREFIX` y
+   `WORK` en `toolchains/xrce/`). `mv` de `xrce-vita{,-pic,-host}` y `_build/` a `toolchains/xrce/` (sin recompilar);
+   **se borraron `_build/build-*`**: su `CMakeCache.txt` guardaba la ruta antigua y haría fallar la próxima ejecución del
+   script (se regeneran; los clones `Micro-CDR` y `Micro-XRCE-DDS-Client` se quedan). `netlog.{c,h}` copiados a
+   `tools/hwprobe/src/`; `tools/hwprobe/CMakeLists.txt` sin `APP_DIR` (sigue «sin compilar: validar en el PC»).
+3. **C.** `godot/ros2_vita/SCsub`: ruta por defecto `toolchains/xrce/xrce-vita-pic|host` + marcador «VALIDAR EN EL PC
+   en la próxima recompilación de la plantilla». `tools/build-godot-template.sh`: **guarda** antes de «== 3.» (aborta si
+   falta `toolchains/xrce/xrce-vita-pic/lib/libmicroxrcedds_client.a`, salvo `ROS2_VITA_SIN_XRCE=1`; documentada en la
+   cabecera). `tools/build-rust-pic.sh` → `modules/paraguas-rust`. `tools/vita-doctor.sh`: `toolchains/xrce/$v` (solo
+   `-pic` y `-host`; la estática era de la app), sin `libvita2d` ni `vita-app/build*`. `tools/netlog-listen.sh`,
+   `ros_runtime.cpp`, `xrce_transport.{h,cpp}`: solo comentarios. `run-parity-tests.sh` no necesitó cambios (salta
+   `paraguas-rust`: «sin parity_test.c, omitido»).
+4. **D.** Borrados `build-c/`, `build-rust/` y `src/*.o` (regenerables); `git mv vita-app archivo/vita-app`. Rutas
+   reescritas en 30 vivos (docs 02, 03, 07, 09, 12, 13, 15, 18, 23, 27, 31, 32; ADR 0005, 0008, 0011; guías `vitasdk-
+   toolchain` y `vitashell`; `docs/rust/00`, `02`; tutorial; README de módulos; `microros_transport.h`; `.gitignore`,
+   `.dockerignore`). A mano: guía `vitasdk-toolchain` (los dos bloques que hacían `cd vita-app && ./scripts/…`), doc 27
+   (cliente → `tools/build-xrce-client-vita.sh`), doc 32 (citas `:63` → `:65` y `:23-27` → `:24-28` por las líneas
+   añadidas a la cabecera del script). Web (§2.3): `web/Dockerfile` copia `archivo/vita-app/` y
+   `archivo/godot/godot35/README.md` a sus rutas antiguas en la imagen; `.dockerignore`; nota en `web/README.md`. No se
+   construyó la web.
+5. `archivo/README.md`: filas de `godot35`, docs 20–21 y `vita-app`; tabla de piezas extraídas; «Cómo recompilar la app
+   de la Fase 1» (worktree en `30b6585`, o `git mv` de vuelta + `-DXRCE_PREFIX` + `RUST_DIR`; sin probar).
+
+Verificación (PC CachyOS):
+- Paridad OK (8 módulos C y Rust; `paraguas-rust` omitido). Host Godot **294/0**. Runner `g1-sensores` **14/14**.
+- Libs XRCE en la ruta nueva: las 4 `.a` existen (`XRCE ok`). `tools/build-godot-template.sh --dry-run` imprime la
+  lib encontrada y `custom_modules=…/godot/ros2_vita`; con `xrce-vita-pic` renombrada aborta (rc 1) y con
+  `ROS2_VITA_SIN_XRCE=1` solo avisa.
+- `tools/build-rust-pic.sh` (tras `cargo clean -p vita_modules_rust -p mem_pool_rust`): compila desde
+  `modules/paraguas-rust`, **0 relocaciones MOVW/MOVT_ABS**. `tools/vita-doctor.sh`: XRCE `-pic` y `-host` OK.
+- `git ls-files | grep -c '^vita-app/\|^godot/godot35/'` = 0. Ninguna ruta viva sin `archivo/` delante, salvo los
+  comentarios «antes vita-app/…».
+- `check-doc-links.py --baseline …/enlaces-antes-O2b.txt`: los **2 transitorios de O2b resueltos**; total 144 (antes
+  184). Quedan **5 rotos nuevos, todos en ficheros de O2d** (no tocados por encargo): `AGENTS.md:68`, `CLAUDE.md:65`,
+  `README.md:13` (`godot/godot35/`) y `README.md:165-166` (docs 20–21).
+
+Pendiente / desviaciones:
+- **Validar en el PC al recompilar la plantilla:** debe imprimir «ros2_vita: transporte XRCE activado
+  (…/toolchains/xrce/xrce-vita-pic)» (marcado en `SCsub`). `tools/hwprobe` sigue sin compilar.
+- **O2d** debe arreglar `CLAUDE.md`, `AGENTS.md`, `README.md` raíz (incluidos los `vita-app/scripts/check-*.sh` y
+  `cd vita-app` de «Common commands») y skills (`vita-build-package`, `ros2-vita-godot`, `vita-dual-module`, …:
+  19 menciones de `vita-app`/`godot35`).
+- **No hecho: §7 O2c parte E (higiene de `godot/`: `informe.json`, `urdf2godot.py` relpath, `godot/README.md` por
+  grupos)**: fuera del encargo de este agente; solo se quitó la fila de `godot35/` del README de `godot/`. Tampoco se
+  ejecutaron las comprobaciones de verde ligadas a E (export de `g1-sensores`, `cmp` de `urdf_robot.gd`, `dron-mapeo`,
+  `rbkairos-plus`): ningún fichero de esos proyectos cambió.
+- ADR 0014 §Contexto y tabla: `godot/godot35/` → «`godot35/` (en/de `godot/`)» para que el comprobador no lo marque;
+  el significado no cambia. Doc 18 §4.5 reformulado igual.
+- Docs 20–21: sus enlaces relativos internos no se tocaron (R-1: dentro de `archivo/` no se arreglan).
+- `docs/06` sin cambios (no tenía referencias); la nota de «validar en el PC» va en `SCsub` y en este registro.
