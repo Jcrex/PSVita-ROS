@@ -7,6 +7,13 @@
 [ext_resource type="Script" path="res://comun/visor/displays/hud/barra_estado.gd" id="5_barra"]
 [ext_resource type="Script" path="res://comun/visor/displays/hud/medidor.gd" id="6_medidor"]
 [ext_resource type="Script" path="res://comun/visor/displays/hud/joy.gd" id="7_joy"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/robot_joints.gd" id="8_robot"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/pose.gd" id="9_pose3d"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/mapa.gd" id="10_mapa3d"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/mapa.gd" id="11_mapa"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/scan.gd" id="12_scan"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/pose.gd" id="13_pose"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/path.gd" id="14_path"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -29,10 +36,50 @@ current = true
 script = ExtResource("1_visor")
 camara = NodePath("../Camara")
 
+[node name="Robot" type="Node3D" parent="VisorRos"]
+script = ExtResource("8_robot")
+topic = "/joint_states"
+tipo = "sensor_msgs/msg/JointState"
+
+[node name="Meta3D" type="Node3D" parent="VisorRos"]
+script = ExtResource("9_pose3d")
+topic = "/goal_pose"
+tipo = "geometry_msgs/msg/PoseStamped"
+topic_vita = ""
+tipo_vita = ""
+solo_pc = true
+
+[node name="Mapa3D" type="Node3D" parent="VisorRos"]
+script = ExtResource("10_mapa3d")
+topic = "/map"
+tipo = "nav_msgs/msg/OccupancyGrid"
+solo_pc = true
+
 [node name="Planta" type="CanvasLayer" parent="VisorRos"]
 
 [node name="Vista" type="Node2D" parent="VisorRos/Planta"]
 position = Vector2(480, 272)
+
+[node name="Mapa" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("11_mapa")
+topic = "/map"
+tipo = "nav_msgs/msg/OccupancyGrid"
+
+[node name="Plan" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("14_path")
+topic = "/plan"
+tipo = "nav_msgs/msg/Path"
+
+[node name="Scan" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("12_scan")
+topic = "/scan"
+tipo = "sensor_msgs/msg/LaserScan"
+frame_id = "base_scan"
+
+[node name="Odom" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("13_pose")
+topic = "/odom"
+tipo = "nav_msgs/msg/Odometry"
 
 [node name="Hud" type="CanvasLayer" parent="VisorRos"]
 layer = 2
