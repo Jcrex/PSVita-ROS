@@ -137,7 +137,7 @@ de ese sensor; `triangulos/mallas/superficies` = el contador del §3 (comparar c
 con `-- perfil` en el PC; `ros/perfil_gd=false` en `project.godot` lo apaga. Lo que **no** mide: el `poll()` de XRCE y
 el resto del motor; sale por diferencia con `[vita-prof]`.
 
-## 7. Prueba en la Vita (pendiente; la tiene el usuario)
+## 7. Prueba en la Vita (hecha el 2026-11-13; resultado en §7.1)
 
 Primero T1 (el `.vpk` ya subido, solo con el arreglo de física). Después, con estos cambios aplicados en el PC:
 
@@ -159,6 +159,33 @@ grep -E "vita-prof|gxm3d\] frame|gxm2d-perf|perfil-gd" /tmp/g1s-ligero.log | tai
 `submitted_triangles ≤ 15000`, `physics_scripts ≤ 2500` y `render + process ≤ 13000` en `[vita-prof]`.
 Qué mirar si no: `build_us` (debe caer a ~0 con «luz O»), `lit=` (debe ser 0 con «luz O»), `draws=`/`quads=` del
 lienzo (deben bajar de 224/307 a menos de 80) y qué sección de `[perfil-gd]` domina.
+
+### 7.1 Resultado en la Vita (2026-11-13, PC) [V]
+
+Log: [`docs/ia/revision-kimi/g1-sensores-ligero-vita-2026-11-13.log`](ia/revision-kimi/g1-sensores-ligero-vita-2026-11-13.log)
+(`.vpk` exportado en el PC desde `68e75c1`; incluye también el arreglo de física a 30 ticks de T1, porque el `.vpk` de
+T1 se sustituyó antes de ejecutarlo). Medias por bloque de 300 fotogramas, sin el primero (carga):
+
+| | bloques | fps (mín–máx) | render | process | physics_scripts | robot | sensores | triángulos máx |
+|---|---|---|---|---|---|---|---|---|
+| Antes (log de 02:42) | 6 | 23,5 | 12 459 | 5 807 | 22 194 | — | — | 19 457 |
+| Luz V (`luz_vertice=1`) | 9 | **57,0** (55,6–57,6) | 11 045 | 1 305 | 4 165 | 1 589 | 1 907 | 14 696 |
+| Luz O (`luz_vertice=0`) | 14 | **58,1** (56,7–58,6) | 11 121 | 1 260 | 3 923 | 1 390 | 1 893 | 15 000 |
+
+(µs por fotograma; `robot` y `sensores` son de `[perfil-gd]`, `sensores` = suma de las 9 secciones `sensor/*`.)
+
+- **T1: verde de sobra** (criterio `fps ≥ 29` y `physics_scripts ≤ 9500`).
+- **T2: ×2,4–2,5 en FPS.** Cumple `triángulos ≤ 15 000` (el máximo toca el límite exacto) y `render + process ≤ 13 000`
+  (~12 350). `fps ≥ 58` solo con luz O, y por poco; **`physics_scripts ≤ 2500` no se cumple** (~3 900–4 200).
+- **START funciona** en el port (`JOY_BUTTON_START`). Con luz O `lit=0` y `build_us=0`, como se esperaba; el usuario ve
+  la escena **algo más oscura**, no plana del todo.
+- **La luz por vértice apenas pesa en FPS** (+1,1 fps al quitarla) aunque `build_us` baja 3,8 ms → 0: `render` no baja
+  (11 045 → 11 121). [I] La hipótesis del §1 (40–60 FPS con luz) era pesimista: el tiempo liberado lo absorbe la
+  espera del fotograma dentro de `render` (sincronía vertical / presentación); el submit 3D real es 1,4–2,3 ms con luz O.
+- **Lo que queda hasta 16,7 ms** (~0,4–0,6 ms de media, fotogramas sueltos que pierden la sincronía): está en los
+  scripts de física. Reparto: robot ~1,4–1,6 ms (marcha + URDF + `move_and_slide`), sensores ~1,9 ms (los dos
+  mayores: `sensor/mapeo` ~0,6 ms y `sensor/mid360_scan` ~0,6 ms), cámara 0,4 ms. `process` ya es 1,3 ms: la
+  hipótesis del §8.2 (XRCE `poll()` de 4,7 ms) **queda descartada** para esta escena.
 
 ## 8. Qué queda si no llega a 60 FPS
 
