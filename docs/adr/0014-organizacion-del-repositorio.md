@@ -1,6 +1,6 @@
 # ADR 0014: Organización del repositorio — qué se archiva, dónde vive cada cosa y qué no se mueve
 
-- **Estado:** Aceptada (juez Fable 5.2, 2026-11-13).
+- **Estado:** Aceptada (juez Fable 5.2, 2026-11-13) y **ejecutada** el mismo día (pasos O2.0–O2d, revisión O3 VERIFICADO: `docs/ia/organizacion/O2-registro.md`, `O3-revision.md`).
   - Decidida, **pendiente de ejecutar** por los pasos O2a–O2d del plan
     `docs/ia/plan-organizacion-y-visor-2026-11-13.md`. Al cerrarlos, esta línea pasa a «ejecutada (commits …)».
   - Detalle de cada decisión (coste en referencias, riesgo, reversión y comandos):

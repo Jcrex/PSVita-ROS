@@ -13,7 +13,23 @@ fichero del mes en `docs/bitacora/`.
 
 ---
 
-## 2026-11-13 (PC, noche) — W13: visualizar todos los tipos de topic en Godot (Estado para retomar)
+## 2026-11-13 (PC, noche) — Fase O: organización del repositorio (Estado para retomar)
+
+- **Petición del usuario:** sacar `respaldo-chat-claude/`, archivar decisiones descartadas sin limpiar y ejecutar el
+  plan de subagentes (`docs/ia/plan-organizacion-y-visor-2026-11-13.md`). Decisiones del juez Fable 5.2:
+  [`ADR 0014`](adr/0014-organizacion-del-repositorio.md) y `docs/ia/organizacion/decision-fable.md`.
+- **Hecho:** `respaldo-chat-claude/` fuera del repo (`ef760eb`; **sigue en el historial público** de `main` desde el
+  PR #2: purgarlo exige *force-push*, solo si el usuario lo pide). `vita-app/`, `godot/godot35/` y docs 10, 11, 16, 19,
+  20, 21 en `archivo/`; piezas vivas en `modules/paraguas-rust/`, `tools/build-xrce-client-vita.sh`,
+  `toolchains/xrce/` (ignorado) y `tools/hwprobe/src/`. Índice [`docs/README.md`](README.md), bitácora vieja en
+  `docs/bitacora/`, doc 36 + 36a, `tools/check-doc-links.py`, `godot/README.md` por grupos, README raíz, `CLAUDE.md`
+  (solo rutas), `AGENTS.md` como puntero, skills al día.
+- **Verificado (O3):** paridad OK, host 294/0, runner g1-sensores 14/14, exportación `.vpk` OK, 0 enlaces rotos nuevos.
+- **Por validar en el PC al recompilar la plantilla:** que el SCsub de `ros2_vita` encuentre las libs XRCE en
+  `toolchains/xrce/` (la guarda de `build-godot-template.sh` aborta si faltan).
+- **Siguiente:** Fase V del visor W13 (V1 núcleo → V2 primitivas ∥ V4 HUD → V3 displays), plan §3.
+
+## 2026-11-13 (PC, noche) — W13: visualizar todos los tipos de topic en Godot
 
 - **Petición del usuario:** investigación exhaustiva, con subagentes en paralelo y rclgd como referencia, de cómo
   visualizar todos los tipos de topic en Godot, para traducirlo después a código. **Regla nueva del usuario:** no se
