@@ -1,6 +1,7 @@
 # `godot/` — módulo `ros2_vita` para Godot 4 (godot4-vita 4.8-dev7)
 
-> **Estado (2026-10-31): G1–G6 VERDES, G7a en curso** — compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
+> **Estado (2026-11-13): G1–G7c VERDES; apps vivas `g1-unitree`, `g1-sensores`, `rbkairos-plus` y `dron-mapeo`
+> sobre `plantillas/`; siguiente: visor de topics (ADR 0013).** Historia de las puertas: compila en host (294/0) y para la Vita (`verify_runtime.py` PASS) y
 > **corre en la Vita** en *loopback* (G4) y con **transporte XRCE publica en ROS 2 Jazzy desde la Vita** (G5,
 > 2026-10-30: `/vita_hello` y `/cmd_vel` a 10 Hz en `ros2 topic echo`). **G6:** la HMI `g6-hmi` teleopera turtlesim y
 > dibuja `/odom` en hardware (`/cmd_vel` 19,5 Hz, `/odom` 62,5 Hz). Decisión y razones:
@@ -20,27 +21,64 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
                                          loopback (pruebas)  |  xrce (micro-ROS por UDP; host y Vita)
 ```
 
-## Contenido
+## Contenido por grupos (ADR 0014; `docs/ia/organizacion/decision-fable.md` §3)
 
-| Ruta | Qué es |
+Estructura **plana**: no se agrupa en subcarpetas porque `SCsub`, `test/run_host_tests.sh` y
+`tools/build-godot-template.sh` calculan la raíz del repo desde aquí (un nivel más rompe el build).
+
+| Grupo | Carpeta | Qué es |
+|---|---|---|
+| Motor | `ros2_vita/` | El módulo: `config.py`, `SCsub`, `register_types.*`, `ros_msg.*` (mensajes dinámicos), `ros_runtime.*` (singleton, nodo, pub/sub/timer), `xrce_transport.*` (micro-ROS, G5). Paridad con rclgd: `ros2_vita/API_PARITY.md` |
+| Motor | `loader-patches/` | `0001-ros2-vita-imports.patch`: imports que faltan en `default_dynlib.c` del loader (red y helpers); **aplica en `d1a5f29`** |
+| Motor | `vitasdk-stubs/` | `dlfcn.h` que se copia al SDK (docs/18 §4.5) |
+| Motor | `test/` | Pruebas de host del módulo en GDScript (`test/project/runner.gd`) + `run_host_tests.sh` |
+| Biblioteca compartida | `plantillas/` | Robots, sensores ROS 2, mundo 3D (`mundo/mundo.tscn`), esquemas y pruebas comunes. En los proyectos se ve como `res://comun` (enlace simbólico). `plantillas` es nombre histórico |
+| Apps vivas | `g1-unitree/` | Unitree G1 (URDF → escena, marcha, 60 FPS en la Vita) |
+| Apps vivas | `g1-sensores/` | G1 con D435, Mid-360, 3 IMU, joints y topics propietarios Unitree (57–58 FPS en la Vita, perfil ligero) |
+| Apps vivas | `rbkairos-plus/` | RB-KAIROS+ con UR10e, IMU, 2×SICK S300, D435, sensores extra del bridge Gazebo y mapa |
+| Apps vivas | `dron-mapeo/` | Dron 6DOF con RGB-D frontal/cenital, LiDAR 3D/2D, GNSS, barómetro, magnetómetro, sonar y mapa |
+| Puertas cerradas (regresión y lecciones) | `g4-smoke/` | G4: proyecto mínimo (loopback + `Twist`, sin red) |
+| Puertas cerradas | `g5-xrce/` | G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
+| Puertas cerradas | `g6-hmi/` | G6: teleop `/cmd_vel` con el mapeo de docs/09 + vista cenital de `/odom` |
+| Puertas cerradas | `g7-imu/` | G7a: IMU de la Vita → `sensor_msgs/Imu` en `/vita/imu` (lección `docs/tutorial/08`); G7c: modelo 3D en la propia Vita a 59 FPS |
+| Puertas cerradas | `g7b-imu3d/` | G7b: visor 3D de la IMU de la Vita en el PC |
+| Externo, sin versionar | `rclgd/` | Clon local de [`Ozuba/rclgd`](https://github.com/Ozuba/rclgd) (rama `jazzy`, Godot **4.7.1**): editor del PC y referencia de la API que imita `ros2_vita` (`.gitignore`) |
+
+Una puerta cerrada se archiva cuando otra app la **sustituye** como prueba, no por estar cerrada (ADR 0014).
+Herramientas relacionadas (en `tools/`): `build-godot-template.sh` (receta de la plantilla), `build-rust-pic.sh`
+(staticlib Rust PIC), `check-vita-imports.py`, `export-vita-vpk.sh`, `urdf2godot/` (genera las escenas
+`*_pc.tscn`/`*_vita.tscn` y `informe.json` de los robots).
+
+### Enlaces simbólicos versionados
+
+| Enlace | Apunta a |
 |---|---|
-| `ros2_vita/` | El módulo: `config.py`, `SCsub`, `register_types.*`, `ros_msg.*` (mensajes dinámicos), `ros_runtime.*` (singleton, nodo, pub/sub/timer, transportes) |
-| `ros2_vita/API_PARITY.md` | rclgd ↔ Vita, método a método |
-| `test/` | Pruebas de host en GDScript (`runner.gd`) + `run_host_tests.sh` |
-| `loader-patches/0001-ros2-vita-imports.patch` | Imports que faltan en `default_dynlib.c` del loader (red y helpers); **aplica en `d1a5f29`** |
-| `../tools/build-godot-template.sh` | Receta completa: clonar, parchear, compilar con el módulo, verificar, empaquetar |
-| `../tools/build-rust-pic.sh` | Staticlib Rust PIC `core` para enlazar en `libgodot.so` (opcional) |
-| `../tools/check-vita-imports.py` | Comprueba los imports de cualquier `.a/.o` contra la tabla del loader |
-| `../tools/export-vita-vpk.sh` | Exporta un proyecto Godot 4 a `.vpk` con el addon `psvita` y nuestra plantilla (G4) |
-| `g4-smoke/` | Proyecto mínimo de la puerta G4 (loopback + `Twist`, sin red) |
-| `ros2_vita/xrce_transport.*` | Transporte micro-ROS (G5): sesión XRCE, entidades por XML, streams fiable/best effort |
-| `g5-xrce/` | Proyecto de la puerta G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
-| `g6-hmi/` | HMI piloto (G6): teleop `/cmd_vel` con el mapeo de docs/09 + vista cenital de `/odom` (rejilla, robot, rastro, panel) |
-| `g7-imu/` | G7a: IMU de la Vita → `sensor_msgs/Imu` en `/vita/imu` (best effort, 30 Hz, parámetros de escala y ejes). Probado en host y **corre en la Vita** (2026-10-31); **validar en hardware** unidades y ejes. Lección: `docs/tutorial/08` |
-| `plantillas/` | Biblioteca de robots, sensores ROS 2, mundo 3D, generación de esquemas y pruebas comunes. Guía de registro en su README |
-| `rbkairos-plus/` | RB-KAIROS+ oficial con UR10e, IMU, 2×SICK S300, D435, sensores extra del bridge Gazebo y mapa |
-| `g1-sensores/` | Unitree G1 con D435, Mid-360, 3 IMU, joints y topics propietarios Unitree |
-| `dron-mapeo/` | Dron 6DOF con RGB-D frontal/cenital, LiDAR 3D/2D, GNSS, barómetro, magnetómetro, sonar y mapa |
+| `g1-unitree/comun` | `../plantillas` |
+| `g1-sensores/comun` | `../plantillas` |
+| `rbkairos-plus/comun` | `../plantillas` |
+| `dron-mapeo/comun` | `../plantillas` |
+| `g1-sensores/robot` | `../g1-unitree/robot` |
+| `g1-sensores/anim` | `../g1-unitree/anim` |
+| `g1-sensores/marcha.gd` | `../g1-unitree/marcha.gd` |
+
+> **Advertencia:** con `git config core.symlinks false` (Windows, algunos clones) los enlaces se convierten en
+> ficheros de texto con la ruta y los proyectos dejan de abrir. `tools/export-vita-vpk.sh` copia el proyecto
+> resolviendo los enlaces (hallazgo G3); no los sustituyas por copias. Herramientas que reescriben ficheros en
+> masa (`perl -pi`, `sed -i`) también los convierten en ficheros: exclúyelos (`find … -type l`).
+
+### Pruebas y comprobaciones
+
+```bash
+GH=toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+godot/test/run_host_tests.sh "$GH"                                                  # módulo (test/project/runner.gd)
+"$GH" --headless --path godot/g1-sensores --script res://comun/pruebas/runner.gd    # plantillas (plantillas/pruebas/runner.gd)
+cmp godot/g1-unitree/robot/urdf_robot.gd godot/rbkairos-plus/robot/urdf_robot.gd    # deben seguir idénticos
+```
+
+Hay **dos `runner.gd`** a propósito: `test/project/runner.gd` prueba el módulo C++; `plantillas/pruebas/runner.gd`
+prueba la biblioteca dentro de un proyecto. `urdf_robot.gd` está duplicado en `g1-unitree/robot/` y
+`rbkairos-plus/robot/` (lo copia el generador); se unificará en `plantillas/robots/` la primera vez que la Fase V
+lo cambie. Los `informe.json` de `*/robot/mallas_*/` guardan rutas relativas al repo (sin rutas de la máquina).
 
 ## Puertas de verificación (docs/18 §8)
 
@@ -96,28 +134,26 @@ GDScript ── RosNode / RosPublisher / RosSubscriber / RosMsg ──►  ros_r
 - Los *arrays* de un mensaje son copias: asignar el array entero.
 
 ## Esquema de mensajes (`ros/schema.rsch`)
-Cada app lleva su `res://ros/schema.rsch` (Godot exige que esté dentro de `res://`). Hoy hay **4 copias
-idénticas** (`g4-smoke`, `g5-xrce`, `g6-hmi`, `g7-imu`; 4928 B, mismo md5) y son el mismo blob que
-`modules/msg-schema/tests/fixtures/schema.rsch` (40 tipos: `std_msgs`, `geometry_msgs`, `sensor_msgs`,
-`nav_msgs`, `tf2_msgs`, `visualization_msgs`…). Regenerar (laptop o PC, con `rosbags`):
+Cada app lleva su `res://ros/schema.rsch` (Godot exige que esté dentro de `res://`); un esquema por proyecto es
+intencionado (cada app exporta sus tipos dentro del `.vpk`). Hoy hay **4 versiones**: las 5 puertas (`g4-smoke`,
+`g5-xrce`, `g6-hmi`, `g7-imu`, `g7b-imu3d`) llevan el mismo blob que `modules/msg-schema/tests/fixtures/schema.rsch`
+(40 tipos: `std_msgs`, `geometry_msgs`, `sensor_msgs`, `nav_msgs`, `tf2_msgs`, `visualization_msgs`…);
+`rbkairos-plus` y `dron-mapeo` comparten otra; `g1-unitree` y `g1-sensores` tienen la suya (generadas con
+`plantillas/generar_esquemas.py`). Regenerar (laptop o PC, con `rosbags`):
 ```bash
 python3 -m venv /tmp/rbvenv && /tmp/rbvenv/bin/pip install rosbags numpy
 /tmp/rbvenv/bin/python modules/msg-schema/tests/gen_fixtures.py          # blob completo de las pruebas
 /tmp/rbvenv/bin/python tools/gen_msg_schema.py -o schema.rsch geometry_msgs/msg/Twist sensor_msgs/msg/Imu  # a medida
 /tmp/rbvenv/bin/python tools/gen_msg_schema.py --dump geometry_msgs/msg/Twist                          # inspeccionar
 ```
-Después **copiar el mismo fichero a las 4 apps** (si se añade un tipo en una y no en las otras, esas no
-lo sabrán codificar). Automatizarlo en la exportación es M8 (`docs/18:335`).
+Después copiar el fichero a cada app que use esos tipos (si se añade un tipo en una y no en otra, esa no lo
+sabrá codificar). Automatizarlo en la exportación es M8 (`docs/18:335`).
 
 ## Pendientes (docs/18 §10)
 M5 compilar en host · M6 cruzada · M7 red + transporte XRCE · M8 exportación de `.rsch` y clases sombra ·
 M9 HMI piloto · M10 panel trasero/cámara · M11 TF · M12 servicios · M15 sesgo 4.7.1↔4.8-dev7.
 
-## Otras carpetas
-| Ruta | Qué es |
-|---|---|
-| `rclgd/` | Clon local de [`Ozuba/rclgd`](https://github.com/Ozuba/rclgd) (rama `jazzy`, Godot **4.7.1**): el editor/entorno de desarrollo del PC (`ros2 rclgd editor`). **No se versiona** (`.gitignore`); es la referencia de la API que imita `ros2_vita` |
-
+## Histórico
 > Godot 3.5 se descartó como destino el 2026-10-27 porque `rclgd` exige Godot 4 (`Callable`/`await`);
 > su app (teleop con el módulo `microros`, validada en hardware) está archivada en `archivo/godot/godot35/` desde el
 > 2026-11-13 (ADR 0014), con los docs 20–21 en `archivo/docs/`.
