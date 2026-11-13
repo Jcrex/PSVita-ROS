@@ -1,8 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://u0cwthgi7jpe"]
 
-[ext_resource type="Script" path="res://comun/mundo/mundo_base.gd" id="1_bvejl"]
-[ext_resource type="Script" path="res://comun/mundo/caja_mundo.gd" id="2_fepxa"]
-[ext_resource type="Script" path="res://comun/mundo/asset_mundo.gd" id="3_wlwtt"]
+[ext_resource type="Script" uid="uid://clsoktrsq3iay" path="res://comun/mundo/mundo_base.gd" id="1_bvejl"]
+[ext_resource type="Script" uid="uid://crbwxutifnly2" path="res://comun/mundo/caja_mundo.gd" id="2_fepxa"]
+[ext_resource type="Script" uid="uid://cx3oft2bkiggx" path="res://comun/mundo/asset_mundo.gd" id="3_wlwtt"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qf1vl"]
 albedo_color = Color(0.32, 0.48, 0.24, 1)
@@ -143,19 +143,19 @@ size = Vector3(5, 2.5, 0.15)
 
 [sub_resource type="BoxMesh" id="BoxMesh_rv0p8"]
 material = SubResource("StandardMaterial3D_dy5kj")
-size = Vector3(0.15, 2.5, 5)
+size = Vector3(0.15, 2.5, 4.098633)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_7t3vm"]
 size = Vector3(0.5, 1.8, 0.5)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_assuy"]
-size = Vector3(1.1, 0.8, 1.9)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_0kaog"]
 size = Vector3(0.5, 0.9, 0.5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_5p1v7"]
 size = Vector3(0.5, 0.9, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_assuy"]
+size = Vector3(1.0245117, 0.8, 1.9)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_bnlrv"]
 size = Vector3(0.9, 0.9, 0.9)
@@ -390,7 +390,7 @@ script = ExtResource("2_fepxa")
 [node name="Casa" type="Node3D" parent="." unique_id=1099416436]
 
 [node name="CasaSuelo" type="MeshInstance3D" parent="Casa" unique_id=262988369]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0.08, -10)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.010327, 0.089788035, -10.003219)
 mesh = SubResource("BoxMesh_wpwd7")
 script = ExtResource("2_fepxa")
 
@@ -420,12 +420,12 @@ mesh = SubResource("BoxMesh_cfxvr")
 script = ExtResource("2_fepxa")
 
 [node name="CasaTabiqueA" type="MeshInstance3D" parent="Casa" unique_id=1664378886]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.25, -10)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.457239, 1.25, -10)
 mesh = SubResource("BoxMesh_qy6fi")
 script = ExtResource("2_fepxa")
 
 [node name="CasaTabiqueB" type="MeshInstance3D" parent="Casa" unique_id=748302583]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 1.25, -7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 1.3966022, -6.114942)
 mesh = SubResource("BoxMesh_rv0p8")
 script = ExtResource("2_fepxa")
 
@@ -443,42 +443,75 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("BoxShape3D_7t3vm")
 
 [node name="table" type="Node3D" parent="Casa" unique_id=746539706]
-transform = Transform3D(2.3, 0, 0, 0, 2.3, 0, 0, 0, 2.3, 12, 0.16, -7)
+transform = Transform3D(2.3, 0, 0, 0, 2.3, 0, 0, 0, 2.3, 17.532753, 0.16, -13.966062)
 script = ExtResource("3_wlwtt")
 modelo = "res://comun/mundo/assets/furniture/table.obj"
 
-[node name="Colision" type="StaticBody3D" parent="Casa/table" unique_id=2143881731]
-transform = Transform3D(0.43478262, 0, 0, 0, 0.43478262, 0, 0, 0, 0.43478262, 0, 0, 0)
-
-[node name="Caja" type="CollisionShape3D" parent="Casa/table/Colision" unique_id=67473506]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
-shape = SubResource("BoxShape3D_assuy")
-
-[node name="chair" type="Node3D" parent="Casa" unique_id=820539269]
-transform = Transform3D(5.650496e-07, 0, 1.8, 0, 1.8, 0, -1.8, 0, 5.650496e-07, 12, 0.16, -6)
+[node name="chair" type="Node3D" parent="Casa/table" unique_id=820539269]
+transform = Transform3D(2.4567376e-07, 0, 0.7826087, 0, 0.7826087, 0, -0.7826087, 0, 2.4567376e-07, -0.38895702, 0, 0.4347825)
 script = ExtResource("3_wlwtt")
 modelo = "res://comun/mundo/assets/furniture/chair.obj"
 modelo_vita = "res://comun/mundo/assets/furniture/chair_vita.obj"
 
-[node name="Colision" type="StaticBody3D" parent="Casa/chair" unique_id=1521167069]
+[node name="Colision" type="StaticBody3D" parent="Casa/table/chair" unique_id=1521167069]
 transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
 
-[node name="Caja" type="CollisionShape3D" parent="Casa/chair/Colision" unique_id=1442615581]
+[node name="Caja" type="CollisionShape3D" parent="Casa/table/chair/Colision" unique_id=1442615581]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
 shape = SubResource("BoxShape3D_0kaog")
 
-[node name="chair_2" type="Node3D" parent="Casa" unique_id=269561505]
-transform = Transform3D(5.650496e-07, 0, -1.8, 0, 1.8, 0, 1.8, 0, 5.650496e-07, 12, 0.16, -8)
+[node name="chair_2" type="Node3D" parent="Casa/table" unique_id=269561505]
+transform = Transform3D(2.4567376e-07, 0, -0.7826087, 0, 0.7826087, 0, 0.7826087, 0, 2.4567376e-07, -0.38895702, 0, -0.43478298)
 script = ExtResource("3_wlwtt")
 modelo = "res://comun/mundo/assets/furniture/chair.obj"
 modelo_vita = "res://comun/mundo/assets/furniture/chair_vita.obj"
 
-[node name="Colision" type="StaticBody3D" parent="Casa/chair_2" unique_id=1971631588]
+[node name="Colision" type="StaticBody3D" parent="Casa/table/chair_2" unique_id=1971631588]
 transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
 
-[node name="Caja" type="CollisionShape3D" parent="Casa/chair_2/Colision" unique_id=511230754]
+[node name="Caja" type="CollisionShape3D" parent="Casa/table/chair_2/Colision" unique_id=511230754]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
 shape = SubResource("BoxShape3D_5p1v7")
+
+[node name="apple" type="Node3D" parent="Casa/table" unique_id=899943453]
+transform = Transform3D(0.21739131, 0, 0, 0, 0.21739131, 0, 0, 0, 0.21739131, -0.38895702, 0.3304348, 0.13043451)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/apple.obj"
+modelo_vita = "res://comun/mundo/assets/food/apple_vita.obj"
+dibujar_en_vita = false
+
+[node name="bread" type="Node3D" parent="Casa/table" unique_id=53632188]
+transform = Transform3D(0.21739131, 0, 0, 0, 0.21739131, 0, 0, 0, 0.21739131, -0.38895702, 0.3304348, -0.043478012)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/bread.obj"
+dibujar_en_vita = false
+
+[node name="burger" type="Node3D" parent="Casa/table" unique_id=1689962279]
+transform = Transform3D(0.21739131, 0, 0, 0, 0.21739131, 0, 0, 0, 0.21739131, -0.38895702, 0.3304348, -0.21739149)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/burger.obj"
+modelo_vita = "res://comun/mundo/assets/food/burger_vita.obj"
+dibujar_en_vita = false
+
+[node name="plate" type="Node3D" parent="Casa/table" unique_id=259074147]
+transform = Transform3D(0.2608696, 0, 0, 0, 0.2608696, 0, 0, 0, 0.2608696, -0.38895702, 0.326087, -0.21739149)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/plate.obj"
+modelo_vita = "res://comun/mundo/assets/food/plate_vita.obj"
+dibujar_en_vita = false
+
+[node name="books" type="Node3D" parent="Casa/table" unique_id=751996096]
+transform = Transform3D(0.3478261, 0, 0, 0, 0.3478261, 0, 0, 0, 0.3478261, -0.38895702, 0.3304348, 0)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/books.obj"
+dibujar_en_vita = false
+
+[node name="Colision" type="StaticBody3D" parent="Casa/table" unique_id=2143881731]
+transform = Transform3D(-1.9004954e-08, 0, 0.43478268, 0, 0.43478262, 0, -0.43478268, 0, -1.9004954e-08, -0.42512798, 0.16448665, 0.22686386)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/table/Colision" unique_id=67473506]
+transform = Transform3D(0.99999446, 0, 0, 0, 1, 0, 0, 0, 0.99999446, 0, 0, 0)
+shape = SubResource("BoxShape3D_assuy")
 
 [node name="kitchenCabinet" type="Node3D" parent="Casa" unique_id=457082068]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 10, 0.16, -13)
@@ -524,26 +557,6 @@ script = ExtResource("3_wlwtt")
 modelo = "res://comun/mundo/assets/furniture/kitchenMicrowave.obj"
 modelo_vita = "res://comun/mundo/assets/furniture/kitchenMicrowave_vita.obj"
 
-[node name="apple" type="Node3D" parent="Casa" unique_id=899943453]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 12, 0.92, -6.7)
-script = ExtResource("3_wlwtt")
-modelo = "res://comun/mundo/assets/food/apple.obj"
-modelo_vita = "res://comun/mundo/assets/food/apple_vita.obj"
-dibujar_en_vita = false
-
-[node name="bread" type="Node3D" parent="Casa" unique_id=53632188]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 12, 0.92, -7.1)
-script = ExtResource("3_wlwtt")
-modelo = "res://comun/mundo/assets/food/bread.obj"
-dibujar_en_vita = false
-
-[node name="burger" type="Node3D" parent="Casa" unique_id=1689962279]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 12, 0.92, -7.5)
-script = ExtResource("3_wlwtt")
-modelo = "res://comun/mundo/assets/food/burger.obj"
-modelo_vita = "res://comun/mundo/assets/food/burger_vita.obj"
-dibujar_en_vita = false
-
 [node name="bowl-soup" type="Node3D" parent="Casa" unique_id=1731835332]
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 10, 1.08, -13)
 script = ExtResource("3_wlwtt")
@@ -555,13 +568,6 @@ dibujar_en_vita = false
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 10, 1.08, -13.4)
 script = ExtResource("3_wlwtt")
 modelo = "res://comun/mundo/assets/food/bottle-oil.obj"
-dibujar_en_vita = false
-
-[node name="plate" type="Node3D" parent="Casa" unique_id=259074147]
-transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 12, 0.91, -7.5)
-script = ExtResource("3_wlwtt")
-modelo = "res://comun/mundo/assets/food/plate.obj"
-modelo_vita = "res://comun/mundo/assets/food/plate_vita.obj"
 dibujar_en_vita = false
 
 [node name="bear" type="Node3D" parent="Casa" unique_id=440162571]
@@ -588,12 +594,6 @@ transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0,
 [node name="Caja" type="CollisionShape3D" parent="Casa/bedDouble/Colision" unique_id=316996888]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
 shape = SubResource("BoxShape3D_ru2he")
-
-[node name="books" type="Node3D" parent="Casa" unique_id=751996096]
-transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 12, 0.92, -7)
-script = ExtResource("3_wlwtt")
-modelo = "res://comun/mundo/assets/furniture/books.obj"
-dibujar_en_vita = false
 
 [node name="Ciudad" type="Node3D" parent="." unique_id=1464399887]
 
