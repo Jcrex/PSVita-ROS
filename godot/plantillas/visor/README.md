@@ -2,7 +2,8 @@
 
 Visor propio y portable: **el mismo GDScript** en el PC (rclgd, o el editor de host con `ros2_vita`) y en la PS Vita
 (`ros2_vita`). Diseño en `docs/adr/0013-visualizacion-topics-godot.md` y `docs/36-visualizacion-topics-godot.md`
-(§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1 (núcleo) hecho y verde en host**; V2–V15 pendientes.
+(§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); V6–V15
+pendientes.
 Lo que no se puede ver en el host (render GXM, FPS, XRCE real, reconexión) está sin validar en hardware.
 
 | Archivo | Pieza | Papel |
@@ -187,10 +188,10 @@ que cuentan `glifos_dibujados` y `quads_dibujados` del último `_draw()` (estima
 texto = 1 *quad* por carácter, polilínea fina de n puntos = n − 1). `_coste().quads` es la cota que se suma por
 zona y la prueba comprueba que lo dibujado no la pasa. `mouse_filter = IGNORE` por defecto (el `.tscn` lo cambia).
 
-**Tipos sin esquema `.rsch`** (Vita y editor de host, mismo `ros/schema.rsch`) → **V5** (`TIPOS_VISOR`):
-`sensor_msgs/Joy`, `Temperature`, `Illuminance`, `RelativeHumidity`, `action_msgs/GoalStatusArray` y
-`nav2_msgs/action/NavigateToPose_FeedbackMessage` (este, registro manual). Hasta entonces esos widgets quedan en
-«sin esquema: …» sin suscribir (T20). Con esquema hoy: `BatteryState`, `FluidPressure`.
+**Esquemas:** desde V5 todos los tipos del HUD están en el `.rsch` de `visor-ros` (`TIPOS_VISOR`): `Joy`,
+`Temperature`, `Illuminance`, `RelativeHumidity`, `GoalStatusArray` y `NavigateToPose_FeedbackMessage` (registro
+manual, `ros/msg/nav2_msgs/action/`). Una app con el visor que no use `--visor` deja esos widgets en «sin esquema: …»
+sin suscribir (T20).
 
 ### Decisiones de V4 no cubiertas por el ADR 0013 (las más conservadoras)
 
@@ -254,8 +255,8 @@ Decisiones de V3 no cubiertas (las más conservadoras):
 4. **Robot sin TF en la Vita:** `pose2d` mueve el robot en el plano solo si `visor.tf` es null; sin `escena_robot`
    se dibujan unos EJES. `visor-ros` no trae robot horneado (el G1 vive en `godot/g1-unitree`): se asigna
    `escena_robot` en el `.tscn` del proyecto que lo tenga.
-5. **`nav_msgs/Path` no está en el esquema** de `visor-ros`: en el host con ros2_vita el Path estándar queda «sin
-   esquema» (el `ERROR: … Path no esta en el esquema` del log de la prueba es esperado); en la Vita va por el relay.
+5. ~~`nav_msgs/Path` no está en el esquema~~ → en `TIPOS_VISOR` desde V5 (directo hasta 6 poses en 488 B; en la
+   Vita un plan real sigue yendo por el relay `path_compacto`).
 6. Con dos displays de mapa en la Vita, cada uno decodifica sus teselas (por eso Mapa3D es `solo_pc` en el ejemplo).
 7. Medida en hardware: `displays/2d/mapa.gd` escribe cada 5 s `[visor-mapa] teselas= media_us= max_us=` en la Vita
    (o con `-- perfil`).
@@ -283,3 +284,76 @@ decisiones anotadas arriba y comandos de hardware). Cambios:
   (`banco_primitivas.gd`, gate E-W8-1: 80 instancias con Select o la tecla B; apagado al arrancar).
 - Estación: `docker/vita-ros.sh fuente-visor` (`docker/scripts/fuente_prueba_visor.py`, la fuente sintética de V3,
   ahora versionada, con batería, presión y temperatura).
+
+## Esquema `TIPOS_VISOR` y displays directos (V5)
+
+Estado: **hecho y verde en host** (`pruebas/visor_directos.gd`, 228/228) y **probado en vivo en el host** contra la
+estación (`docker/vita-ros.sh up` + `ros2 topic pub` desde `vita_station`, `transporte=xrce`, `agente=127.0.0.1`):
+`PointStamped`, `Range`, `Marker`, `WrenchStamped`, `NavSatFix`, `PoseWithCovarianceStamped` y `PolygonStamped`
+llegan (60/60 a 5 Hz) y se pintan. **Sin validar en hardware** (gate V5 de doc 36 §10: cada tipo publicado desde el
+PC se ve en la Vita, sin `ERR_FAIL` de esquema).
+
+**Esquema.** `godot/plantillas/generar_esquemas.py` tiene `TIPOS_VISOR` (lista D10 + `nav_msgs/Path` +
+`nav2_msgs/action/NavigateToPose_FeedbackMessage`); se añade con `--visor`:
+
+```fish
+toolchains/rosbags-venv/bin/python godot/plantillas/generar_esquemas.py --visor --salida godot/visor-ros/ros/schema.rsch
+```
+
+`visor-ros/ros/schema.rsch`: 85 tipos, 10 545 B (antes 44 tipos, 6 030 B). Los demás proyectos **no cambian** (sin
+`--visor` el blob sale idéntico byte a byte al de `rbkairos-plus`/`dron-mapeo`; comprobado con `cmp`). Tamaños CDR
+típicos sin encapsulación (la prueba los imprime): `PointStamped` 48, `Range` 44, `NavSatFix` 129, `Imu` 320,
+`PoseWithCovarianceStamped` 360, `Marker` 225 (10 puntos caben, 11 no), `Path` de 5 poses 384, `Log` 124,
+`DiagnosticArray` (1 estado, 2 valores) 148, feedback de NavigateToPose 112. Todos ≤ 488.
+
+| Display | Archivo | Tipos | Capa · coste | Dato intermedio |
+|---|---|---|---|---|
+| Punto | `displays/3d/punto.gd` | `PointStamped` (y `Point` con `frame_id`) | poses · `historial` inst. ESFERA | Vector3 Godot |
+| Vector | `displays/3d/vector.gd` | `Vector3Stamped` (y `Vector3`) | poses · 1 FLECHA | Vector3 Godot × `escala` |
+| Ejes | `displays/3d/ejes.gd` | `QuaternionStamped`, `TransformStamped` | poses · EJES + FLECHA | `[Transform3D, hijo]` |
+| Imu | `displays/3d/imu.gd` | `Imu` | poses · EJES + 2 FLECHA | `[quat o null, acel, giro]` |
+| Fuerza | `displays/3d/fuerza.gd` | `WrenchStamped`, `AccelStamped`, `TwistStamped`, `Twist` | poses · 2 FLECHA + ANILLO | `[lineal, angular]` |
+| Rango | `displays/3d/rango.gd` | `Range` | poses · 1 CONO | `[r, ancho, radiation]` o 0.0 |
+| MarcadorSimple | `displays/3d/marcador_simple.gd` | `Marker` (ARROW por pose, CUBE, SPHERE, CYLINDER, TEXT) | marcadores · `max_marcadores` | diccionario de acción |
+| Poligono | `displays/2d/poligono.gd` | `PolygonStamped` | sensores_2d · `max_puntos` quads | PackedVector2Array m |
+| Covarianza | `displays/2d/covarianza.gd` | `PoseWithCovarianceStamped` (+ `<p>/pose_cov` opcional) | sensores_2d · 30 | `[centro, yaw, λ1, λ2, θ, σyaw]` |
+| Gps | `displays/2d/gps.gd` | `NavSatFix` | sensores_2d · `max_puntos` + 24 | Vector2 ENU m |
+
+Todos van **en directo también en la Vita** (sin `topic_vita`: el canal no usa el camino compacto). Reglas nuevas en
+`RegistroDisplays` (Marker: el gestor `3d/marcadores.gd` de V8 cuando exista; hasta entonces el simple).
+
+### Decisiones de V5 no cubiertas (las más conservadoras)
+
+1. **`--visor` opcional:** `TIPOS_VISOR` solo entra en las apps que lo piden; regenerar las demás no cambia su blob
+   (un `.rsch` por app, T20; cada tipo más alarga la búsqueda lineal P1).
+2. **Feedback de NavigateToPose por registro manual** (`ros/msg/nav2_msgs/action/*.msg`, Nav2 Jazzy) aunque D10 deja
+   `nav2_msgs` fuera: lo pedía V4 (`estado_meta.gd`) y es un solo tipo (112 B). `generar_esquemas.py` registra solo
+   cualquier `.msg` de `ros/msg/<paquete>/<msg|action>/`. Validar contra el Nav2 real (orden de campos).
+3. **`nav_msgs/Path` en `TIPOS_VISOR`** (no está en D10): V3 lo usa en directo en el PC con ros2_vita.
+4. **`std_msgs/Empty` sigue fuera** (D10 [?]); la prueba comprueba que no está.
+5. **Nombres de la sentencia:** `ejes.gd` = orientación + transformada (doc 36a §4.2.7–4.2.8) y `fuerza.gd` = tornillo
+   (§4.2.6), como dice doc 36 §10.
+6. **Anillo del par perpendicular al eje** angular y de radio |par|/4 a mitad de la flecha: el esqueleto de §4.2.6
+   lo escalaba en los ejes de la flecha y quedaba en el plano que contiene el eje (el ANILLO unidad tiene eje +Y).
+7. **Cupo parcial:** con menos instancias que las pedidas, imu/fuerza/ejes crean sus piezas por orden (ejes →
+   aceleración → giro; lineal → angular → anillo) en lugar de quedarse sin nada.
+8. **MarcadorSimple** no es el gestor de V8: sin `frame_locked`, sin listas/líneas/puntos/mallas ni ARROW por 2 puntos
+   (los cuenta en `ignorados`); alfa < 0,01 o escala nula = invisible (como RViz); ancho de la ARROW = 10 × `scale.y`
+   (cabeza de diámetro 2·`scale.y`, como `arrow_marker.cpp`). Cada marcador es `top_level` en el marco fijo para que
+   convivan marcos distintos. `canal.coalescer = false` (no perder ADD/DELETE).
+9. **Covarianza:** sin elipsoide 3D (solo planta); abanico de yaw recortado a ±3 rad y sustituido por una raya si
+   σ_yaw ≈ 0 (un polígono degenerado da «Invalid polygon»). `topic_vita` vacío por defecto: `pose_cov` llega con V6.
+10. **GPS:** sin teselas de fondo; rastro solo si el fix se aleja `tol_pos` (0,5 m, como `2d/pose.gd`); marco = el fijo
+    si la escena no pone `frame_id`.
+11. **Polígono:** relleno solo si `Geometry2D.triangulate_polygon` triangula (evita el error con autocortes).
+12. **Twist sin cabecera** → `frame_id = "base_link"` si la escena no pone otro.
+13. Los displays V5 **no** se añaden aún a `visor-ros/main.tscn` (el ejemplo queda como en V1–V4; regla doc 35:
+    se colocan como nodos en el `.tscn` de cada app); la prueba los monta en código.
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_directos.gd   # RESULTADO: 228/228
+```
+
+El `ERROR: RosMsg: tipo 'std_msgs/msg/Empty' no esta en el esquema` del log es el caso negativo (decisión 4). Con V5,
+`pruebas/visor_hud.gd` comprueba que Joy, medidores, GoalStatusArray y el feedback **suscriben** (antes «sin
+esquema») y `pruebas/visor_displays.gd` ve el Path estándar en «ok».

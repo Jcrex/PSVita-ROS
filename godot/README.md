@@ -137,11 +137,11 @@ lo cambie. Los `informe.json` de `*/robot/mallas_*/` guardan rutas relativas al 
 
 ## Esquema de mensajes (`ros/schema.rsch`)
 Cada app lleva su `res://ros/schema.rsch` (Godot exige que esté dentro de `res://`); un esquema por proyecto es
-intencionado (cada app exporta sus tipos dentro del `.vpk`). Hoy hay **4 versiones**: las 5 puertas (`g4-smoke`,
+intencionado (cada app exporta sus tipos dentro del `.vpk`). Hoy hay **5 versiones**: las 5 puertas (`g4-smoke`,
 `g5-xrce`, `g6-hmi`, `g7-imu`, `g7b-imu3d`) llevan el mismo blob que `modules/msg-schema/tests/fixtures/schema.rsch`
 (40 tipos: `std_msgs`, `geometry_msgs`, `sensor_msgs`, `nav_msgs`, `tf2_msgs`, `visualization_msgs`…);
-`rbkairos-plus` y `dron-mapeo` comparten otra; `g1-unitree` y `g1-sensores` tienen la suya (generadas con
-`plantillas/generar_esquemas.py`). Regenerar (laptop o PC, con `rosbags`):
+`rbkairos-plus` y `dron-mapeo` comparten otra; `g1-unitree` y `g1-sensores` tienen la suya, y `visor-ros` la
+suya con `TIPOS_VISOR` (85 tipos, `--visor`, V5) (generadas con `plantillas/generar_esquemas.py`). Regenerar (laptop o PC, con `rosbags`):
 ```bash
 python3 -m venv /tmp/rbvenv && /tmp/rbvenv/bin/pip install rosbags numpy
 /tmp/rbvenv/bin/python modules/msg-schema/tests/gen_fixtures.py          # blob completo de las pruebas

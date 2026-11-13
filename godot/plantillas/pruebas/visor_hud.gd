@@ -9,11 +9,12 @@ extends SceneTree
 ##   set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
 ##   $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_hud.gd
 ##
-## Tipos SIN esquema `.rsch` (en la Vita y en el editor de host, que usa el mismo `ros/schema.rsch`):
-## `sensor_msgs/Joy`, `Temperature`, `Illuminance`, `RelativeHumidity`, `action_msgs/GoalStatusArray` y
-## `nav2_msgs/action/NavigateToPose_FeedbackMessage` ⇒ el canal no suscribe («sin esquema: …», T20) y esos widgets
-## se prueban entregándoles un mensaje falso con los mismos campos (`Falso`). Entran con `TIPOS_VISOR` (V5).
-## Con esquema y por loopback de verdad: `BatteryState`, `FluidPressure` y `Float32MultiArray` (camino compacto).
+## Desde V5 (`TIPOS_VISOR` en `generar_esquemas.py --visor`) `sensor_msgs/Joy`, `Temperature`, `Illuminance`,
+## `RelativeHumidity`, `action_msgs/GoalStatusArray` y `nav2_msgs/action/NavigateToPose_FeedbackMessage` tienen
+## esquema `.rsch` y el canal suscribe («ok»); el contenido de esos widgets se sigue probando entregándoles un mensaje
+## falso con los mismos campos (`Falso`); la ida y vuelta CDR de los tipos reales está en `pruebas/visor_directos.gd`.
+## Por loopback de verdad: `BatteryState`, `FluidPressure` y `Float32MultiArray` (camino compacto).
+## «Sin esquema» (T20) se comprueba en `pruebas/visor.gd` con un tipo falso.
 
 const VisorRos = preload("res://comun/visor/visor_ros.gd")
 const GestorHud = preload("res://comun/visor/gestor_hud.gd")
@@ -140,8 +141,8 @@ func _estado_meta(sec: int, st: int) -> Falso:
 	return Falso.new({"status": st, "goal_info": Falso.new({"stamp": Falso.new({"sec": sec, "nanosec": 0})})})
 
 
-func _sin_esquema(w: Node, tipo: String) -> bool:
-	return w.estado == "sin esquema: " + tipo and not w.canal.abierto()
+func _suscrito(w: Node) -> bool:
+	return w.estado == "ok" and w.canal.abierto()
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -206,16 +207,16 @@ func _probar_hud() -> void:
 	check(tab_estado.visible and not tab_mando.visible and not tab_mucho.visible, "gestor: una sola pestaña visible")
 	check(tab_mando.process_mode == Node.PROCESS_MODE_DISABLED, "gestor: la pestaña oculta no procesa")
 
-	# Estados: con esquema = ok; sin esquema = no suscribe (V5).
+	# Estados: todos con esquema desde V5 (TIPOS_VISOR) ⇒ suscritos.
 	check(bat.estado == "ok" and pres.estado == "ok", "estado: BatteryState y FluidPressure suscritos")
-	check(_sin_esquema(temp, "sensor_msgs/msg/Temperature"), "V5: Temperature sin esquema, no suscribe")
-	check(_sin_esquema(ilum, "sensor_msgs/msg/Illuminance"), "V5: Illuminance sin esquema, no suscribe")
-	check(_sin_esquema(hum, "sensor_msgs/msg/RelativeHumidity"), "V5: RelativeHumidity sin esquema, no suscribe")
-	check(_sin_esquema(joy, "sensor_msgs/msg/Joy") and joy.canal.topic_abierto == "", "V5: Joy sin esquema, no suscribe")
-	check(_sin_esquema(meta, "action_msgs/msg/GoalStatusArray") and meta.topic == "/navigate_to_pose/_action/status",
-			"V5: GoalStatusArray sin esquema; topic oculto de la acción")
-	check(meta.estado_feedback.begins_with("sin esquema") and not meta.canal_fb.abierto(),
-			"V5: FeedbackMessage de NavigateToPose sin esquema, no suscribe")
+	check(_suscrito(temp), "V5: Temperature con esquema, suscrito")
+	check(_suscrito(ilum), "V5: Illuminance con esquema, suscrito")
+	check(_suscrito(hum), "V5: RelativeHumidity con esquema, suscrito")
+	check(_suscrito(joy) and joy.canal.topic_abierto != "", "V5: Joy con esquema, suscrito")
+	check(_suscrito(meta) and meta.topic == "/navigate_to_pose/_action/status",
+			"V5: GoalStatusArray con esquema; topic oculto de la acción")
+	check(meta.estado_feedback == "ok" and meta.canal_fb.abierto(),
+			"V5: FeedbackMessage de NavigateToPose con esquema (registro manual), suscrito")
 	check(est.estado == "sin topic", "barra de estado: sin topic propio (relay_bw opcional)")
 
 	# Mensajes reales por loopback.

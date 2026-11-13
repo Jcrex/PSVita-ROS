@@ -15,6 +15,8 @@ const D := "res://comun/visor/displays/"
 ## Claves: `tipo`, `topic` (patrón; "" = cualquiera), `script`, `capa`, y opcionales `solo_pc` (el display no
 ## existe en la Vita) y `orbital` (vista 3D: es el defecto del PC, pero en la Vita se salta para que gane la
 ## planta 2D de la regla siguiente, D7; el script 3D sigue funcionando en la Vita si la escena lo pone).
+## V5 (2026-11-13): reglas de los displays directos pequeños (punto, vector, ejes, fuerza, imu, rango, marcador
+## simple, polígono, covarianza y gps).
 ## V3 (2026-11-13): reglas de robot_joints, pose (2D y 3D) y mapa 3D; `2d/pose.gd` hace de odometría hasta que
 ## exista `2d/odometria.gd` (`regla()` toma la primera cuyo script exista).
 const REGLAS := [
@@ -35,6 +37,23 @@ const REGLAS := [
 	{"tipo": "nav_msgs/msg/OccupancyGrid", "script": D + "2d/mapa.gd", "capa": "sensores_2d"},
 	{"tipo": "geometry_msgs/msg/PoseStamped", "script": D + "3d/pose.gd", "capa": "poses", "orbital": true},
 	{"tipo": "geometry_msgs/msg/PoseStamped", "script": D + "2d/pose.gd", "capa": "sensores_2d"},
+	# V5: tipos directos pequeños (caben en 488 B; esquema en TIPOS_VISOR). Marker: el gestor (V8) si existe y si no,
+	# el marcador simple.
+	{"tipo": "geometry_msgs/msg/PointStamped", "script": D + "3d/punto.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/Vector3Stamped", "script": D + "3d/vector.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/QuaternionStamped", "script": D + "3d/ejes.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/TransformStamped", "script": D + "3d/ejes.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/WrenchStamped", "script": D + "3d/fuerza.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/AccelStamped", "script": D + "3d/fuerza.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/TwistStamped", "script": D + "3d/fuerza.gd", "capa": "poses"},
+	{"tipo": "geometry_msgs/msg/Twist", "script": D + "3d/fuerza.gd", "capa": "poses"},
+	{"tipo": "sensor_msgs/msg/Imu", "script": D + "3d/imu.gd", "capa": "poses"},
+	{"tipo": "sensor_msgs/msg/Range", "script": D + "3d/rango.gd", "capa": "poses"},
+	{"tipo": "visualization_msgs/msg/Marker", "script": D + "3d/marcadores.gd", "capa": "marcadores"},
+	{"tipo": "visualization_msgs/msg/Marker", "script": D + "3d/marcador_simple.gd", "capa": "marcadores"},
+	{"tipo": "geometry_msgs/msg/PolygonStamped", "script": D + "2d/poligono.gd", "capa": "sensores_2d"},
+	{"tipo": "geometry_msgs/msg/PoseWithCovarianceStamped", "script": D + "2d/covarianza.gd", "capa": "sensores_2d"},
+	{"tipo": "sensor_msgs/msg/NavSatFix", "script": D + "2d/gps.gd", "capa": "sensores_2d"},
 	{"tipo": "std_msgs/msg/*MultiArray", "script": D + "hud/multiarray.gd", "capa": "hud"},
 	{"tipo": "*", "script": D + "hud/inspector_texto.gd", "capa": "hud"},
 ]
