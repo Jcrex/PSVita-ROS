@@ -1,8 +1,7 @@
 # Fase O — registro de ejecución de O2 (2026-11-13)
 
 > Orden de trabajo: `decision-fable.md` §0, §1, §4, §5 y §7; regla: `docs/adr/0014-organizacion-del-repositorio.md`.
-> Este registro cubre **O2.0, O2a y O2b** (un agente). O2c (godot35 + `vita-app/`) y O2d (README, `CLAUDE.md`,
-> `AGENTS.md`, skills) son de otros agentes y deben ampliar este fichero. Sin push.
+> Este registro cubre **O2.0, O2a y O2b** (un agente), **O2c** (otro) y **O2c parte E + O2d** (un tercero). Sin push.
 
 ## O2.0 — línea base (antes de tocar nada)
 
@@ -165,3 +164,62 @@ Pendiente / desviaciones:
   el significado no cambia. Doc 18 §4.5 reformulado igual.
 - Docs 20–21: sus enlaces relativos internos no se tocaron (R-1: dentro de `archivo/` no se arreglan).
 - `docs/06` sin cambios (no tenía referencias); la nota de «validar en el PC» va en `SCsub` y en este registro.
+
+## O2c parte E — higiene de `godot/` · commit `c533152` «chore(org): higiene de godot/ — README por grupos, informe.json sin rutas absolutas»
+
+Hecho:
+- `godot/README.md`: tabla «Contenido por grupos» (motor / biblioteca compartida / apps vivas / puertas cerradas /
+  externo sin versionar) con una fila por carpeta, motivo de la estructura plana (§3.1), tabla de los **7 enlaces
+  simbólicos** con la advertencia de `core.symlinks=false` y de `perl -pi`/`sed -i`, los **dos `runner.gd`** con su
+  comando, el `cmp` de `urdf_robot.gd`. §«Esquema» corregido: **4 versiones** (las 5 puertas = blob del módulo;
+  `rbkairos-plus` = `dron-mapeo`; `g1-unitree` y `g1-sensores` propias; comprobado con `md5sum`). «Otras carpetas» fuera
+  (`rclgd/` pasa a la tabla); nota de Godot 3.5 en «Histórico». Estado de cabecera al 2026-11-13.
+- `godot/plantillas/README.md`: primera línea «`plantillas` es nombre histórico» (§3.3); añade `g1-unitree` a la lista
+  de proyectos que la usan (también la enlaza como `comun`).
+- `informe.json` ×4: rutas relativas al repo; el URDF del G1 (estaba en un *scratchpad* de `/tmp`) queda solo con el
+  nombre del fichero. `grep "/home/jcrex\|/tmp/claude"` sobre ellos: vacío.
+- `tools/urdf2godot/urdf2godot.py`: `ruta_informe()` (relativa a `RAIZ_REPO` si está dentro; si no, el nombre).
+  **Desviación de §4:** la línea 147 (`trabajos` para Blender) **sigue con `os.path.abspath`**: Blender recibe la ruta
+  de salida y una relativa dependería de su directorio de trabajo; se relativiza solo al escribir el informe (`salida`
+  de cada malla, `urdf`, `escena`). No se regeneró ninguna escena.
+- Lectores de `informe.json`: solo `godot/g1-unitree/main.gd:112` (lee `triangulos_escena`, que no cambia). La
+  hipótesis [?] de §4 («nada los lee») era falsa, pero el cambio no le afecta.
+
+Verificación: paridad OK; host 294/0; runner `g1-sensores` 14/14; `dron-mapeo` `escena.gd -- sin_ros lod=vita` rc 0
+(58 mallas, 8 524 triángulos); `rbkairos-plus --quit-after 300 -- transporte=loopback` y `g1-unitree --quit-after 120 --
+sin_ros` sin `ERROR`; `tools/export-vita-vpk.sh godot/g1-sensores` → `.vpk` de 24 MB en el *scratchpad* (enlaces
+resueltos); `cmp` de `urdf_robot.gd`: iguales.
+
+## O2d — guías del agente · commit «docs(org): README, CLAUDE.md, AGENTS.md y skills al día (ADR 0014)»
+
+Hecho:
+- **`README.md` raíz** (§6): Estado al 2026-11-13 (G1–G7c, apps vivas + `plantillas`, siguiente visor W13 → doc 36/36a
+  y ADR 0013, web en pausa; enlace a `docs/README.md`); hitos 2026-11-01/12/13; «Mapa del repo» nuevo (sin `vita-app/`
+  ni `godot35/`; con `modules/paraguas-rust/`, grupos de `godot/`, `toolchains/`, `archivo/`); «Verificación rápida»
+  con paridad, host Godot, runner de plantillas y `check-doc-links.py`; «Compilar» con el flujo Godot 4 (incluye
+  `tools/build-xrce-client-vita.sh`) y la Fase 1 reducida a un enlace a `archivo/vita-app/README.md`;
+  «Documentación» = enlace a `docs/README.md` + docs 06, 18, 24–36 y ADR 0014; quitada la frase de la web.
+- **`CLAUDE.md`** (solo hechos de rutas, §6): «What this repo is» (índice `docs/README.md`, `docs/bitacora/`, ADR 0014;
+  quitada la mención a `fases.ts`); paraguas → `modules/paraguas-rust/`; «Common commands» + 2 pruebas de Godot y el
+  comprobador; «Layout»: viñeta `vita-app/` fuera, `godot/` como tabla de grupos + herramientas, nueva viñeta `docs/`,
+  `archivo/` con lo archivado; «Conventions» + «Archivar y mover: ADR 0014». **Intactas** (comprobado con `git diff`):
+  roles de máquinas, viñeta `web/` (pausa), método autónomo, shells fish/zsh, regla de escenas, resto de convenciones
+  y «Sync».
+- **`AGENTS.md`**: puntero de 8 líneas a `CLAUDE.md` (§4).
+- **Skills**: `vita-dual-module` (paraguas ×3), `vita-build-package` (estado G1–G7c; libs XRCE en `toolchains/xrce/`
+  y la guarda del script; Fase 1 = *worktree* en `30b6585`), `vita-deploy-logs` (netlog: `archivo/vita-app/` y la
+  copia de `tools/hwprobe/src/`), `ros2-vita-godot` (estado: ya no «SIN COMPILAR»; `sed` del 06 por el primer bloque;
+  `docs/19` → `archivo/docs/19-…`; export/deploy con `tools/`). `~/.claude/skills` son enlaces simbólicos al repo:
+  `tools/install-skills.sh --check` OK y `diff -rq` sin diferencias (no hizo falta reinstalar).
+- `godot/ros2_vita/API_PARITY.md` (único `.md` del módulo): sin rutas movidas.
+
+Verificación:
+- `check-doc-links.py --baseline …/enlaces-antes-O2b.txt` → **0 rotos nuevos (138 en total**; 144 tras O2c): los 5 de
+  `CLAUDE.md:65`, `AGENTS.md:68`, `README.md:13,165,166` resueltos. Los 4 que quedan en `skills/` (`docker/.env`,
+  `docs/*.rst` de rclgd) ya estaban en la línea base. Salida completa: `…/scratchpad/enlaces-O2d.txt`.
+- `grep -rn "vita-app/\|godot35" CLAUDE.md README.md AGENTS.md skills | grep -v archivo/` vacío.
+- Paridad OK; host 294/0; runner `g1-sensores` 14/14.
+
+Pendiente (fuera de este encargo; §7 O2d puntos 3–6): entrada de la Fase O y nuevo «Estado para retomar» en
+`docs/06`; líneas en `docs/ia/workshops/tablero-parches.log`; marcar la Fase O cerrada en el plan; memoria
+`estado-proyecto.md`; borrar el `O1a-mapa-rutas.json` local al cerrar O3; O3 (verificación).

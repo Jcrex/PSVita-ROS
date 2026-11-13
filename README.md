@@ -5,14 +5,15 @@ publica y recibe topics vía micro-ROS (XRCE-DDS) sobre WiFi/UDP, con cada
 módulo de bajo nivel implementado **dos veces** (Rust y C/C++) tras un mismo
 header C. Proyecto experimental de largo plazo con vocación de publicarse.
 
-**Estado:** Objetivo 1 (topics) y **Objetivo 2 (teleoperación) CERRADOS y
-validados en hardware real** · Objetivos 3/4 (mini-rviz 3D) **en ejecución**
-con las dos primeras etapas hechas · **Godot 4** (`godot4-vita` + API de `rclgd`; ADR 0008,
-`docs/18`–`19`): puertas **G1–G6 verdes**, G4–G6 **en hardware** (el módulo `ros2_vita` habla
-XRCE con ROS 2 Jazzy y la HMI teleopera turtlesim dibujando `/odom`); siguiente G7 (IMU, panel
-trasero, cámara). El teleop en Godot 3.5 (`godot/godot35/`) queda como histórico · web del
-proyecto operativa (taller, monitor, visor 3D). Detalle vivo en
-[`docs/06-bitacora-estado.md`](docs/06-bitacora-estado.md).
+**Estado (2026-11-13):** Objetivos 1 (topics) y 2 (teleoperación) **cerrados en hardware** · **Godot 4**
+(`godot4-vita` + la API de `rclgd` en el módulo estático `ros2_vita`; ADR 0008, `docs/18`): puertas **G1–G7c
+verdes**, todas en hardware desde G4 (ida y vuelta XRCE con ROS 2 Jazzy, HMI de teleop con `/odom`, IMU calibrada y
+primer 3D en la Vita a 59 FPS) · **producto vivo:** las apps Godot 4 `g1-unitree` (60 FPS en la Vita),
+`g1-sensores` (57–58 FPS, perfil ligero), `rbkairos-plus` y `dron-mapeo`, sobre la biblioteca compartida
+`godot/plantillas/` (robots, sensores ROS 2, mundo editable; docs 29, 34, 35) · **siguiente:** el visor de topics
+en Godot (workshop W13 → doc 36/36a y ADR 0013, tareas V1–V15) · web del proyecto **en pausa** (decisión del
+usuario, 2026-11-01). Detalle vivo en [`docs/06-bitacora-estado.md`](docs/06-bitacora-estado.md); índice de
+toda la documentación en [`docs/README.md`](docs/README.md).
 
 ---
 
@@ -43,6 +44,9 @@ velocidad y el Twist publicado:
 | 2026-07-10 | **Modo VIZ 3D en la consola** (vitaGL, ADR 0007) + IP del agente editable desde la Vita + **robot móvil real controlado** (vídeo de arriba) |
 | 2026-07-13 | **Migración a Godot (rama `godot-migration`):** módulo `microros` como módulo custom del engine, template `.vpk` compilado en el PC, y **teleop en Godot publicando `/cmd_vel` en hardware** (variante C completa, G1-G3) |
 | 2026-10-30 | **Godot 4, G1–G6 verdes:** `ros2_vita` dentro de godot4-vita, ida y vuelta con ROS 2 Jazzy desde la Vita y HMI de teleop con `/odom` en hardware |
+| 2026-11-01 | **G7a–G7c verdes:** IMU de la Vita calibrada en `/vita/imu`, visor 3D en el PC y primer 3D de Godot 4 en la propia Vita (59 FPS) |
+| 2026-11-12 | Plantillas de robots y sensores ROS 2 (RB-KAIROS+, Unitree G1, dron) con diagnóstico de rendimiento XRCE (docs 29–30) |
+| 2026-11-13 | `g1-sensores` de 23,5 a 57–58 FPS en la Vita (perfil ligero, doc 34); regla de escenas editables (doc 35); W13 → diseño del visor de topics (doc 36, ADR 0013); organización del repo (ADR 0014) |
 
 ---
 
@@ -65,111 +69,80 @@ compilación para la Vita ocurre en el PC.
 
 ```
 PSVita-ROS/
-├── docs/                  # 00-23 + adr/ (8 ADRs) + rust/ + guias-vita/ + tutorial/ + ia/
-├── modules/               # 8 módulos duales (paridad C/Rust en host)
+├── docs/                  # 00-36 (+36a) + adr/ (14 ADRs) + bitacora/ + rust/ + guias-vita/ + tutorial/ + ia/
+│                          #   índice: docs/README.md · estado vivo: docs/06-bitacora-estado.md
+├── modules/               # 8 módulos duales (paridad C/Rust en host) + el paraguas Rust
 │   ├── mem-pool/          #   asignador de bloques fijos sin malloc
 │   ├── net-udp/           #   sockets UDP: sceNet (Vita) / POSIX (host)
 │   ├── microros-transport/#   los 4 callbacks XRCE (la ex-incógnita dura)
 │   ├── msg-ring/          #   cola circular SPSC sin bloqueos (entre hilos)
-│   ├── viz-math/          #   matemática 3D (vec3, quaternion, mat4) del mini-rviz
+│   ├── viz-math/          #   matemática 3D (vec3, quaternion, mat4)
 │   ├── msg-cdr/           #   deserializadores CDR (TF, JointState, mapas, Marker)
 │   ├── tf-tree/           #   árbol de transformadas (TF)
-│   └── msg-schema/        #   codec CDR genérico guiado por esquema (.rsch)
-├── vita-app/              # Fase 1: app C "Vita ROS2 Teleop" (.vpk, se compila en el PC)
-│   ├── src/               #   main + teleop + UI declarativa (vitaGL) + config IP
-│   ├── src/viz/           #   mini-rviz: cámara orbital + escena 3D (Objetivos 3/4)
-│   ├── ui/layout.json     #   la pantalla, editable desde la web (/taller/ui)
-│   └── scripts/           #   checks host + cross-compilación del cliente XRCE
-├── godot/                 # Godot 4: módulo ros2_vita (G1–G6 verdes, en hardware) + apps + pruebas
-│   ├── ros2_vita/         #   módulo estático con la API de rclgd (RosNode, RosMsg...)
-│   ├── g4-smoke … g7-imu/ #   apps de cada puerta (G6 = HMI teleop, G7a = IMU)
-│   ├── loader-patches/    #   imports que faltan en el loader de godot4-vita
-│   ├── test/              #   pruebas GDScript en host
-│   ├── rclgd/             #   clon local de rclgd (jazzy, Godot 4.7.1) — no versionado
-│   └── godot35/           #   HISTÓRICO: app teleop Godot 3.5 (microros), validada en hardware
-├── docker/                # estación ROS 2 Jazzy (vita-ros.sh): agente micro-ROS, monitor, turtlesim, Zenoh
-├── archivo/               # material archivado, con su ruta original (ver archivo/README.md)
+│   ├── msg-schema/        #   codec CDR genérico guiado por esquema (.rsch)
+│   └── paraguas-rust/     #   crate que produce la única staticlib Rust por binario
+├── godot/                 # Godot 4 (detalle por grupos en godot/README.md)
+│   ├── ros2_vita/ loader-patches/ vitasdk-stubs/ test/   # motor: módulo estático con la API de rclgd + pruebas
+│   ├── plantillas/        #   biblioteca compartida (res://comun): robots, sensores, mundo, pruebas
+│   ├── g1-unitree/ g1-sensores/ rbkairos-plus/ dron-mapeo/   # apps vivas
+│   ├── g4-smoke/ g5-xrce/ g6-hmi/ g7-imu/ g7b-imu3d/   # puertas cerradas (regresión y lecciones)
+│   └── rclgd/             #   clon local de rclgd (jazzy, Godot 4.7.1) — no versionado
+├── docker/                # estación ROS 2 Jazzy (vita-ros.sh): agente micro-ROS, monitor, turtlesim, Zenoh, G1
+├── tools/                 # paridad, build/export/deploy de Godot, cliente XRCE, urdf2godot, check-doc-links.py…
+├── toolchains/            # (sin versionar) motor godot4-vita, VitaGL, cliente XRCE en toolchains/xrce/
+├── archivo/               # material archivado con su ruta original: app C de la Fase 1, Godot 3.5,
+│                          #   docs superados (ver archivo/README.md; reglas en ADR 0014)
 ├── mcp/ros2-introspection/# servidor MCP: el grafo ROS2 visible para Claude
 ├── media/                 # fotos y vídeos de los hitos
 ├── skills/                # skills de IA (instalar: skills/INSTALAR.md · tools/install-skills.sh)
-├── tools/                 # run-parity-tests.sh, netlog-listen.sh, vita-doctor.sh, check-vita-imports.py, build-*.sh
-└── web/                   # Astro+SQLite+Docker: guías, progreso, monitor,
-                           # dashboard, comparador C↔Rust, visor 3D URDF,
-                           # taller (compilar .vpk, deploy FTP, editor de UI)
+└── web/                   # Astro+SQLite+Docker (EN PAUSA desde 2026-11-01)
 ```
 
-Cada módulo y la app tienen su propio `README.md` con API, diseño y estado.
+Cada módulo, `godot/` y `godot/plantillas/` tienen su propio `README.md` con API, diseño y estado.
 
 ---
 
-## Verificación rápida (laptop o PC)
+## Verificación rápida
 
 ```bash
-tools/run-parity-tests.sh                # paridad C/Rust de los 8 módulos
-bash vita-app/scripts/check-teleop.sh    # mapeo mandos -> Twist (39 checks)
-bash vita-app/scripts/check-viz-host.sh  # cámara orbital del mini-rviz
-bash vita-app/scripts/check-config.sh    # persistencia de la IP del agente
-bash vita-app/scripts/check-ui-layout.sh # codegen de la UI declarativa
+tools/run-parity-tests.sh                # paridad C/Rust de los 8 módulos (Rust vía docker)
+GH=toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64        # (PC)
+godot/test/run_host_tests.sh "$GH"       # pruebas de host del módulo ros2_vita (294 comprobaciones)
+"$GH" --headless --path godot/g1-sensores --script res://comun/pruebas/runner.gd   # plantillas
+python3 tools/check-doc-links.py         # enlaces y rutas citadas en la documentación
 cd mcp/ros2-introspection && .venv/bin/python -m pytest tests/ -q
-cd web && docker compose up -d --build   # la web en localhost:4321
 ```
 
 ## Compilar para la Vita (PC)
 
-Godot 4 (flujo actual; detalle en la skill `vita-build-package` y `docs/18`):
+Godot 4 (detalle en la skill `vita-build-package` y `docs/18`):
 
 ```bash
 source tools/env-devpc.sh                # (fish: tools/env-devpc.fish)
+tools/build-xrce-client-vita.sh          # una vez: cliente micro-XRCE en toolchains/xrce/ (XRCE_PIC=1 para Godot)
 VITAGL_ROOT=$PWD/toolchains/vitagl-src tools/build-godot-template.sh   # plantilla con ros2_vita
-tools/export-vita-vpk.sh godot/g6-hmi    # -> build/g6-hmi.vpk (editor 4.8-dev7)
-tools/deploy-vpk-ftp.sh build/g6-hmi.vpk 192.168.1.94
+tools/export-vita-vpk.sh godot/g1-sensores   # -> build/g1-sensores.vpk (editor 4.8-dev7)
+tools/deploy-vpk-ftp.sh build/g1-sensores.vpk 192.168.1.94
 docker/vita-ros.sh up                    # agente micro-ROS + estación ROS 2
 ```
 
-Fase 1 (`vita-app/`, histórico):
-
-```bash
-source tools/env-devpc.sh                # VitaSDK + cmake + rustup del repo
-cd vita-app
-./scripts/build-xrce-client-vita.sh      # una vez: micro-XRCE para armv7/newlib
-cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake \
-      -DVITA_IMPL=c -B build-c && cmake --build build-c    # -> .vpk
-# deploy: curl -T build-c/vita-ros2-hello.vpk ftp://<ip-vita>:1337/ux0:/
-```
-
-`-DVITA_IMPL=rust` genera la variante con los módulos en Rust (ADR 0003).
-La IP del agente por defecto se hornea con `-DAGENT_IP=…`, pero desde la
-v03.00 **se puede cambiar desde la propia consola** al arrancar la app.
+La app C de la Fase 1 («Vita ROS2 Teleop», CMake + VitaSDK) está archivada; cómo recompilarla:
+[`archivo/vita-app/README.md`](archivo/vita-app/README.md) y [`archivo/README.md`](archivo/README.md).
 
 ---
 
 ## Documentación
 
-| Doc | Contenido |
-|---|---|
-| `docs/00-vision-y-objetivos.md` | Los 6 objetivos y las restricciones |
-| `docs/01` … `docs/05` | Hardware, arquitectura micro-ROS, estrategia dual, investigación rviz2, setup del PC |
-| `docs/06-bitacora-estado.md` | **Dónde estamos y próximos pasos exactos** |
-| `docs/09-objetivo2-control-robot.md` | Diseño del teleop `/cmd_vel` (mapeo de mandos) |
-| `archivo/docs/10-plan-objetivos-3-4.md` | **Guía operativa de los Objetivos 3/4** (etapas A-F) |
-| `archivo/docs/11-diseno-mini-rviz.md` | Diseño del mini-rviz y formato VBM |
-| `docs/12-investigacion-godot-ros2-vita.md` | Investigación web: Godot en la Vita, micro-ROS, Rust nativo (con fuentes) |
-| `docs/13-infraestructura-desarrollo-vita.md` | Mapa del entorno completo, librerías de optimización y pendientes por dependencia |
-| `docs/14-hardware-vita-memoria-hilos-optimizacion.md` | Hardware de la Vita: memoria, hilos, CPU/GPU y experimentos |
-| `docs/15-rust-nativo-y-optimizacion-vita.md` | Rust nativo: modos de uso, target, perfil y optimización |
-| `docs/17-rclgd-estado-del-arte-godot-ros2.md` | Estudio del código de `rclgd` y `roomba_ws` (ROSCon) y qué aprovechar en la Vita |
-| `archivo/docs/16-paginas-pendientes-de-leer.md` | Páginas que no se pudieron abrir (para leer en el PC) |
-| `archivo/docs/19-plan-multiagente-migracion-godot4.md` | **Plan multiagente** de la migración: mapa jerárquico, ramas, agentes y oleadas |
-| `docs/18-migracion-a-godot4.md` | **Migración a Godot 4** (godot4-vita): qué cambia, enlace de Rust, red, riesgos y backlog |
-| `docs/adr/0001-0008` | Decisiones registradas (toolchain, transporte, Rust, vpk, UI, rviz2→mini-rviz, vitaGL, Godot) |
-| `docs/20-godot35-migracion-historico.md` | *(Histórico)* Migración a **Godot 3.5** validada en hardware: prerrequisitos del VitaSDK y requisitos del `.vpk` |
-| `docs/21-godot35-plan-implementacion-historico.md` | *(Histórico)* Plan de tareas de la migración a Godot 3.5 |
-| `docs/23-guia-pruebas-stack.md` | Guía de pruebas: levantar el stack Vita ↔ ROS2 con `tools/vita-stack.sh` y la estación `docker/` |
-| `docs/rust/` | Aprendizaje de Rust ligado al código del repo |
-| `docs/guias-vita/` | Instalar el homebrew de la consola (también en la web) |
+Índice completo con el estado de cada doc (vigente, histórico, archivado), los ADR 0001–0014 y las carpetas:
+**[`docs/README.md`](docs/README.md)**. Lo más usado:
 
-Toda la documentación se publica también en la **web del proyecto**
-(`cd web && docker compose up -d --build` → `localhost:4321`).
+- [`docs/06-bitacora-estado.md`](docs/06-bitacora-estado.md) — dónde estamos y el siguiente paso exacto.
+- [`docs/18-migracion-a-godot4.md`](docs/18-migracion-a-godot4.md) — el port a Godot 4 y sus puertas.
+- Docs 24–36 — estación robótica: URDF, XRCE y relay, sensores, plantillas, render, perfil ligero, escenas
+  editables y el visor de topics ([`docs/36`](docs/36-visualizacion-topics-godot.md) +
+  [`36a`](docs/36a-catalogo-displays.md)).
+- [`docs/adr/`](docs/adr/) — decisiones; la última, [ADR 0014](docs/adr/0014-organizacion-del-repositorio.md)
+  (dónde vive cada cosa y cómo se archiva).
 
 ## Transferencia laptop ↔ PC
 

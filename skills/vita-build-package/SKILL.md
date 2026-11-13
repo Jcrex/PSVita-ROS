@@ -9,8 +9,8 @@ Cada vez que haya que compilar para la Vita y obtener un `.vpk` instalable. Hay 
 
 | Flujo | Estado | Qué produce |
 |---|---|---|
-| **Godot 4** (`ros2_vita` dentro del motor) | **Vivo** (G1–G6 verdes, G4–G6 en hardware) | `build/<proyecto>.vpk` |
-| **Fase 1** (`vita-app/`, C + CMake) | Histórico (Objetivos 1–2) | `vita-app/build-*/vita-ros2-hello.vpk` |
+| **Godot 4** (`ros2_vita` dentro del motor) | **Vivo** (G1–G7c verdes, en hardware desde G4) | `build/<proyecto>.vpk` |
+| **Fase 1** (`archivo/vita-app/`, C + CMake) | Archivado (Objetivos 1–2) | `build-*/vita-ros2-hello.vpk` |
 
 Para desplegar y leer logs, después: skill `vita-deploy-logs`. Para Godot 4 en detalle: skill
 `ros2-vita-godot` y `docs/18-migracion-a-godot4.md`.
@@ -44,8 +44,8 @@ VITAGL_ROOT=<repo>/toolchains/vitagl-src tools/build-godot-template.sh [salida]
 - Pasos: clona godot4-vita, aplica `godot/loader-patches/`, instala el stub `dlfcn.h` en el SDK,
   compila con SCons (`custom_modules=godot/ros2_vita`, ≈1–2 h), pasa `verify_runtime.py` y genera
   `<salida>/vita_release.zip` (por defecto `toolchains/godot4-vita/out/`).
-- Requiere SCons (`python3 -m SCons`) y las libs XRCE PIC (`vita-app/scripts/build-xrce-client-vita.sh`
-  con `XRCE_PIC=1`; sin ellas el módulo compila pero el transporte XRCE da `ERR_UNAVAILABLE`).
+- Requiere SCons (`python3 -m SCons`) y las libs XRCE PIC en `toolchains/xrce/xrce-vita-pic/` (`tools/build-xrce-client-vita.sh`
+  con `XRCE_PIC=1`; el script de la plantilla aborta si faltan, salvo `ROS2_VITA_SIN_XRCE=1`; sin ellas el módulo compila pero el transporte XRCE da `ERR_UNAVAILABLE`).
 
 ### 2. Exportar el proyecto a `.vpk`
 
@@ -67,7 +67,14 @@ tools/export-vita-vpk.sh <dir_proyecto> [salida.vpk]
 
 ## Flujo Fase 1 — CMake + VitaSDK (histórico)
 
-App `vita-app/` (Objetivos 1–2). Se conserva como referencia; no es el flujo actual.
+App archivada en `archivo/vita-app/` (Objetivos 1–2) desde el 2026-11-13 (ADR 0014); no es el flujo actual.
+No compila dentro de `archivo/`: se usa un *worktree* en `30b6585` (último commit con la app en su sitio), donde
+las rutas de abajo siguen siendo las originales. Pasos y alternativa en `archivo/README.md` («Cómo recompilar la app
+de la Fase 1», sin probar).
+
+```bash
+git worktree add ../psvita-fase1 30b6585 && cd ../psvita-fase1   # árbol aparte con la app en su sitio
+```
 
 ```bash
 cd vita-app
@@ -78,7 +85,7 @@ cmake --build build-c                                  # -> build-c/vita-ros2-he
 ```
 
 - `-DVITA_IMPL=c` (por defecto) o `rust`. En `rust`, CMake compila el crate paraguas
-  `vita-app/rust-modules` con `cargo +nightly rustc --release --crate-type staticlib`
+  `rust-modules` de la app (hoy `modules/paraguas-rust/`) con `cargo +nightly rustc --release --crate-type staticlib`
   (`-Zbuild-std`; el target `armv7-sony-vita-newlibeabihf` es tier 3 y no se instala con
   `rustup target add`).
 - Otras opciones de caché: `AGENT_IP`, `NETLOG_IP`, `NETLOG_PORT` (por defecto la laptop
@@ -98,7 +105,7 @@ staticlib explícita (regla de CLAUDE.md).
 
 ```bash
 ls -lh build/<proyecto>.vpk              # Godot 4
-ls -lh vita-app/build-c/vita-ros2-hello.vpk  # Fase 1
+ls -lh build-c/vita-ros2-hello.vpk     # Fase 1 (en ../psvita-fase1/vita-app)
 ```
 
 Tamaño 0 o ausente = falló el empaquetado (ver el log de exportación o de CMake). Que el `.vpk`
@@ -115,6 +122,6 @@ exista no prueba que funcione: la verificación real es instalarlo y ejecutarlo 
 | `export-vita-vpk.sh`: `hace falta 4.8.dev7` | Editor equivocado | Apuntar `GODOT4_DEV7` al editor 4.8-dev7 |
 | `export-vita-vpk.sh`: `ERROR: falta …` | Falta plantilla, addon o preset | Ejecutar antes `build-godot-template.sh`; revisar `export_presets.cfg` |
 | `verify_runtime.py`: `Imports missing` | Símbolo no resuelto por el loader | docs/18 §4.2; `tools/check-vita-imports.py` |
-| `ros2_vita: SIN transporte XRCE` en el log de SCons | Faltan libs `xrce-vita-pic` | `XRCE_PIC=1 vita-app/scripts/build-xrce-client-vita.sh` |
+| `ros2_vita: SIN transporte XRCE` en el log de SCons | Faltan libs `xrce-vita-pic` | `XRCE_PIC=1 tools/build-xrce-client-vita.sh` |
 | Fase 1, Rust: `can't find crate for 'std'` | Falta `-Zbuild-std` | Usar el `CMakeLists.txt` del repo, no `cargo build` a mano |
 | `CMake Error: could not load cache` | `build*/` corrupto | Borrar el directorio de build y reconfigurar |
