@@ -36,6 +36,7 @@ Estructura **plana**: no se agrupa en subcarpetas porque `SCsub`, `test/run_host
 | Apps vivas | `g1-unitree/` | Unitree G1 (URDF → escena, marcha, 60 FPS en la Vita) |
 | Apps vivas | `g1-sensores/` | G1 con D435, Mid-360, 3 IMU, joints y topics propietarios Unitree (57–58 FPS en la Vita, perfil ligero) |
 | Apps vivas | `rbkairos-plus/` | RB-KAIROS+ con UR10e, IMU, 2×SICK S300, D435, sensores extra del bridge Gazebo y mapa |
+| Apps vivas | `visor-ros/` | Visor de topics ROS 2 portable PC/Vita (ADR 0013): núcleo V1 en `plantillas/visor/`, escena `main.tscn` vacía; prueba `comun/pruebas/visor.gd` |
 | Apps vivas | `dron-mapeo/` | Dron 6DOF con RGB-D frontal/cenital, LiDAR 3D/2D, GNSS, barómetro, magnetómetro, sonar y mapa |
 | Puertas cerradas (regresión y lecciones) | `g4-smoke/` | G4: proyecto mínimo (loopback + `Twist`, sin red) |
 | Puertas cerradas | `g5-xrce/` | G5: `/vita_hello`, `/cmd_vel` (stick) y suscripción a `/pc_hello` |
@@ -57,6 +58,7 @@ Herramientas relacionadas (en `tools/`): `build-godot-template.sh` (receta de la
 | `g1-sensores/comun` | `../plantillas` |
 | `rbkairos-plus/comun` | `../plantillas` |
 | `dron-mapeo/comun` | `../plantillas` |
+| `visor-ros/comun` | `../plantillas` |
 | `g1-sensores/robot` | `../g1-unitree/robot` |
 | `g1-sensores/anim` | `../g1-unitree/anim` |
 | `g1-sensores/marcha.gd` | `../g1-unitree/marcha.gd` |
