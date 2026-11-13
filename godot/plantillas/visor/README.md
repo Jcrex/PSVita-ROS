@@ -106,3 +106,53 @@ $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor.gd    #
 `pruebas/visor.gd` (loopback): recibe en las tres bases, «el último gana», tope de Hz y aviso D8, caducidad,
 estados, cupos (Vita simulada con `en_vita = true`), `solo_pc`, camino compacto con `hz_vita`, RegistroDisplays,
 TiempoRos y arranque de `main.tscn`. El `ERROR: RosMsg: tipo 'paquete_falso/msg/Nada'` del log es el caso negativo.
+
+## V2: primitivas, paleta y texto superpuesto
+
+Estado: **hecho y verde en host** (`pruebas/visor_primitivas.gd`, 110/110). Sin validar en hardware: gate
+**E-W8-1** (80 instancias: `[gxm3d] lit=` = 0 y `drawn` = 80) y captura con colores exactos.
+
+| Archivo | Pieza | Papel |
+|---|---|---|
+| `paleta_viz.gd` | PaletaViz (estático) | textura-paleta 16×16, UN material, `indice(color)`, `uv(i)`, `color(i)`, `de_ros`, OK/WARN/ERROR/STALE, `rampa_mapa()`, `lut16_costmap()` |
+| `primitivas_viz.gd` | PrimitivasViz (estático) | mallas unidad compartidas por (forma, color), `instancia`, `cinta`, `pose_godot`, `escala_ros`, `flecha_hacia`, `a_godot`, `grosor_minimo` |
+| `texto_superpuesto.gd` | TextoSuperpuesto (`Control`) | todo el texto anclado al 3D en un `_draw()`; tope de 40 glifos en la Vita (D11) |
+
+```gdscript
+const Prim = preload("res://comun/visor/primitivas_viz.gd")
+const Paleta = preload("res://comun/visor/paleta_viz.gd")
+var mi := Prim.instancia(Prim.FLECHA, Paleta.color(Paleta.FLECHA_RVIZ))   # una vez (pool)
+add_child(mi)
+mi.transform = Prim.pose_godot(msg.pose)                                   # por mensaje: solo transform
+```
+
+Formas (ejes de Godot; −Z = +X de ROS) y triángulos (tabla D2, iguales en PC y Vita): `CUBO` 12, `ESFERA` 8
+(octaedro), `CILINDRO` 32, `CONO` 16, `FLECHA` 24, `EJES` 36, `DISCO` 12, `ANILLO` 56. Medidas unidad: cubo de lado 1,
+esfera/cilindro/disco de diámetro 1, flecha y cono de largo 1 sobre −Z con el vértice/origen en 0.
+
+Decisiones de V2 no cubiertas (las más conservadoras):
+
+1. **Tope de 64 variantes estricto:** 56 huecos para colores y 8 reservados para el blanco de cada forma; con el
+   cupo de color lleno se devuelve la variante blanca (un aviso). `EJES` ignora el color (una sola variante).
+   `cinta()` no se cachea ni cuenta (quien la use limita su Hz).
+2. **Triángulos:** la tabla D2 dice «8 lados, sin tapas» para el cilindro pero 32 triángulos; 8 lados sin tapas son
+   16, así que lleva **tapas** (abanico 8 + 8), que es además lo que dibuja RViz. Cono y punta de flecha: un
+   triángulo por lado + tapa de la base (mismo número que el esqueleto de doc 36 §3.4, sin triángulos degenerados).
+3. **Anillo:** el arco de `wrench_visual.cpp` (i = 4..32 de 36 pasos: 40°→320°, 280°); el «315°» de doc 36 §3.2 no
+   casa con i = 4..32. Cinta plana r 0,45–0,5 en el plano XY de ROS.
+4. **Esfera:** octaedro también en el PC (un solo camino de código; la icosfera de 80 tri queda como mejora).
+5. **Material:** unshaded, NEAREST y **sin culling** también en el PC (H15). Sin normales ni color por vértice.
+   La opción «sombreado» (D2, reversión) no se implementa.
+6. **Paleta en 8 bit con redondeo** (`Color.r8`): `set_pixel` trunca y el texel no casaba con `color(i)`.
+   La caché `indice()` se vacía al llegar a 1 024 colores.
+7. **Rampas de mapa:** `umbral` por defecto 100 en los tres esquemas (el de RViz), no 65.
+8. **TextoSuperpuesto:** sin `camara` usa la del viewport; `mouse_filter = IGNORE`; `max_glifos` (0 = automático)
+   para simular la Vita en host. No se ha añadido a `visor-ros/main.tscn` (lo hará el primer display que lo use).
+9. **HUD:** el gris provisional `COLOR_CADUCADO` de `display_ros_hud.gd` sigue ahí (V4 trabaja ese archivo);
+   sustituirlo por `Paleta.STALE` es un cambio de una línea para quien lo cierre.
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_primitivas.gd   # RESULTADO: 110/110
+```
+
+El `ERROR: PrimitivasViz: forma desconocida 99` y el aviso de «más de 64 variantes» del log son casos negativos.
