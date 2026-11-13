@@ -1,6 +1,8 @@
 # Plantillas Godot + ROS 2 para PC y PS Vita
 
-Biblioteca compartida por `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/dron-mapeo/`. Usa únicamente la API portable de `ros2_vita`: tipos ROS por texto, `RosMsg`, `RosNode`, `RosPublisher`, `RosSubscriber` y `RosQoS`. No usa GDExtension, clases tipadas, shaders propios, MultiMesh ni SubViewport fuera del sensor de cámara de PC.
+> Biblioteca compartida de los proyectos (enlace `res://comun`); `plantillas` es nombre histórico (ADR 0014).
+
+Biblioteca compartida por `godot/g1-unitree/`, `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/dron-mapeo/`. Usa únicamente la API portable de `ros2_vita`: tipos ROS por texto, `RosMsg`, `RosNode`, `RosPublisher`, `RosSubscriber` y `RosQoS`. No usa GDExtension, clases tipadas, shaders propios, MultiMesh ni SubViewport fuera del sensor de cámara de PC.
 
 ## Registro de componentes
 
