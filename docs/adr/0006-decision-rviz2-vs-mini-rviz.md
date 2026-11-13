@@ -1,6 +1,6 @@
 # ADR 0006: rviz2 nativo descartado — se activa el Plan B (mini-rviz con vitaGL)
 
-- **Estado:** Aceptado
+- **Estado:** Aceptado en su primera mitad (rviz2 nativo descartado). **Plan B (mini-rviz) superado** por ADR 0008 §5 (enmienda 2026-11-11) y ADR 0013 (2026-11-13).
 - **Fecha:** 2026-07-10
 
 ## Contexto
@@ -14,7 +14,7 @@ teoría, y decidir según un árbol de decisión explícito.
 
 La auditoría se ejecutó el 2026-07-10 en el PC de desarrollo (CachyOS,
 VitaSDK v2.540, gcc 15.2.0, cmake 4.3.3), según la Etapa A de
-`docs/10-plan-objetivos-3-4.md`. Los logs están en
+`archivo/docs/10-plan-objetivos-3-4.md`. Los logs están en
 `archivo/auditoria/`; clones en `toolchains/auditoria-rviz2/` (sin versionar); la evidencia citada abajo está copiada
 textualmente de ellos y volcada también en docs/04.
 
@@ -78,7 +78,7 @@ textualmente de ellos y volcada también en docs/04.
 **Se descarta portar rviz2 nativo a la Vita. Se activa el Plan B de
 docs/04: un visualizador propio ("mini-rviz") con vitaGL**, alimentado
 por el cliente micro-ROS/XRCE ya validado en hardware, según la
-arquitectura de `docs/10-plan-objetivos-3-4.md` §2 (etapas B–E):
+arquitectura de `archivo/docs/10-plan-objetivos-3-4.md` §2 (etapas B–E):
 
 - Los datos (deserialización CDR de `/tf`, `/joint_states`, markers,
   mapa; árbol TF; matemáticas 3D) van en **módulos duales C+Rust**

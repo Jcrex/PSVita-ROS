@@ -1,5 +1,7 @@
 # 13 — Infraestructura del entorno de desarrollo PS Vita ↔ ROS2
 
+> **Estado (2026-11-13):** Histórico. La tabla de objetivos (§2) está superada por doc 33 y doc 18; §3 sigue útil.
+
 **Fecha:** 2026-10-27 · **Estado:** mapa maestro; complementa `docs/12`
 (investigación Godot) y `docs/06` (bitácora). Marcas: **[V]** verificado en
 fuente o en test · **[I]** inferencia · **[?]** sin confirmar.

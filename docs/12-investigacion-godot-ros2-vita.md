@@ -1,5 +1,7 @@
 # 12 — Investigación: Godot + ROS2 en la PS Vita
 
+> **Estado (2026-11-13):** Histórico. Godot 3.5 y rosbridge descartados (ADR 0008); §4 (XRCE) sigue siendo referencia.
+
 > **DECISIÓN 2026-10-27:** el usuario priorizó **Godot 4** (`godot4-vita`); todo lo que esta página dice
 > de Godot 3.5 (`godot-vita`, plantillas 3.5, vía B de rosbridge) queda **descartado**: ver
 > `docs/18-migracion-a-godot4.md` y el ADR 0008 (Aceptado).

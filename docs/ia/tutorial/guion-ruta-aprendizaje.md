@@ -59,10 +59,10 @@ Memoriza este dibujo: casi cualquier pregunta del proyecto se responde sabiendo 
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Lecturas del mapa: [docs/02](../02-arquitectura-fase1-microros.md) (por qué micro-ROS),
-[docs/12 §4](../12-investigacion-godot-ros2-vita.md) (la pila por dentro),
-[docs/18 §0–2](../18-migracion-a-godot4.md) (Godot 4 en la Vita), y
-[`godot/README.md`](../../godot/README.md).
+Lecturas del mapa: [docs/02](../../02-arquitectura-fase1-microros.md) (por qué micro-ROS),
+[docs/12 §4](../../12-investigacion-godot-ros2-vita.md) (la pila por dentro),
+[docs/18 §0–2](../../18-migracion-a-godot4.md) (Godot 4 en la Vita), y
+[`godot/README.md`](../../../godot/README.md).
 
 ---
 
@@ -74,9 +74,9 @@ Cada pista tiene ✅ **lo dominas cuando…**: frases que deberías poder decir 
 
 **Objetivo:** saber qué máquina hace qué, mover código entre ellas y levantar todo tú solo.
 
-- Leer: [CLAUDE.md](../../CLAUDE.md) («Machine roles»), [docs/05](../05-setup-entorno-cachyos.md),
-  [docs/13 §1](../13-infraestructura-desarrollo-vita.md), [`docker/README.md`](../../docker/README.md),
-  la guía [VitaShell](../guias-vita/vitashell.md) y el primer bloque de [docs/06](../06-bitacora-estado.md).
+- Leer: [CLAUDE.md](../../../CLAUDE.md) («Machine roles»), [docs/05](../../05-setup-entorno-cachyos.md),
+  [docs/13 §1](../../13-infraestructura-desarrollo-vita.md), [`docker/README.md`](../../../docker/README.md),
+  la guía [VitaShell](../../guias-vita/vitashell.md) y el primer bloque de [docs/06](../../06-bitacora-estado.md).
 - Practicar:
   - `docker/vita-ros.sh` sin argumentos: lee la ayuda y lanza `up`, `status`, `topics`, `logs agent`,
     `down`.
@@ -111,7 +111,7 @@ Cada pista tiene ✅ **lo dominas cuando…**: frases que deberías poder decir 
 **Objetivo:** escribir tus propios scripts y escenas, no solo colocar nodos.
 
 - Leer: documentación oficial de Godot 4 («Getting started» → «Step by step» y «Scripting»);
-  [`skills/godot4-ros-scripting/references/godot4-esencial.md`](../../skills/godot4-ros-scripting/references/godot4-esencial.md).
+  [`skills/godot4-ros-scripting/references/godot4-esencial.md`](../../../skills/godot4-ros-scripting/references/godot4-esencial.md).
   Conceptos: nodo, escena, árbol, `_ready`/`_process`/`_physics_process`/`_input`, señales,
   `@onready`, `@export`, tipos, `await`, `Callable`, recursos (`.tres`).
 - Practicar con el repo:
@@ -127,10 +127,10 @@ Cada pista tiene ✅ **lo dominas cuando…**: frases que deberías poder decir 
 
 **Objetivo:** escribir apps Godot + ROS 2 portables entre el PC y la Vita.
 
-- Leer: [`skills/rclgd/SKILL.md`](../../skills/rclgd/SKILL.md) (reglas y esqueleto),
-  [`godot/ros2_vita/API_PARITY.md`](../../godot/ros2_vita/API_PARITY.md) (qué funciona en la Vita),
-  [docs/17](../17-rclgd-estado-del-arte-godot-ros2.md) (rclgd y roomba_ws) y
-  [`skills/ros2-vita-godot/SKILL.md`](../../skills/ros2-vita-godot/SKILL.md).
+- Leer: [`skills/rclgd/SKILL.md`](../../../skills/rclgd/SKILL.md) (reglas y esqueleto),
+  [`godot/ros2_vita/API_PARITY.md`](../../../godot/ros2_vita/API_PARITY.md) (qué funciona en la Vita),
+  [docs/17](../../17-rclgd-estado-del-arte-godot-ros2.md) (rclgd y roomba_ws) y
+  [`skills/ros2-vita-godot/SKILL.md`](../../../skills/ros2-vita-godot/SKILL.md).
 - Practicar:
   - Reglas de oro: guardar las referencias `Ros*`, tipos como texto, arrays enteros, callbacks en el
     hilo principal, QoS compatible.
@@ -145,7 +145,7 @@ Cada pista tiene ✅ **lo dominas cuando…**: frases que deberías poder decir 
 **Objetivo:** entender qué pasa entre `publish()` y `ros2 topic echo`, y programar con el cliente
 XRCE directamente.
 
-- Conceptos (en este orden): DDS y RTPS → por qué no cabe en la Vita ([docs/01](../01-hardware-y-plataforma.md),
+- Conceptos (en este orden): DDS y RTPS → por qué no cabe en la Vita ([docs/01](../../01-hardware-y-plataforma.md),
   «Por qué ROS2 completo no entra») → **cliente-agente XRCE**: el agente crea las entidades DDS en
   nombre del cliente → **sesión** (clave de cliente) → **entidades** (participante, topic,
   publisher, datawriter, subscriber, datareader) creadas por XML → **streams** (fiable y best
@@ -163,17 +163,17 @@ XRCE directamente.
 
 > **micro-ROS ≠ micro-XRCE-DDS.** micro-ROS es la pila completa (`rclc` + `rmw_microxrcedds`) para
 > microcontroladores. Aquí usamos **solo el cliente XRCE** por debajo, con nuestra propia capa tipo
-> rclgd encima. Por qué: [docs/02](../02-arquitectura-fase1-microros.md) y
-> [ADR 0008](../adr/0008-godot-via-modulo-estatico.md).
+> rclgd encima. Por qué: [docs/02](../../02-arquitectura-fase1-microros.md) y
+> [ADR 0008](../../adr/0008-godot-via-modulo-estatico.md).
 
 ### P6 — El hardware de la Vita: CPU, memoria, hilos, GPU
 
 **Objetivo:** razonar sobre límites (unos 365 MiB para la app, 4 núcleos de los que el sistema se
 reserva uno, sin procesos ni memoria virtual al estilo Linux) y decidir dónde va cada trabajo.
 
-- Leer: [docs/01](../01-hardware-y-plataforma.md) y, a fondo,
-  [docs/14](../14-hardware-vita-memoria-hilos-optimizacion.md) (CPU, memoria, hilos, GPU, qué
-  construir). Luego [`tools/hwprobe/`](../../tools/hwprobe) (la sonda para cerrar los `[?]`).
+- Leer: [docs/01](../../01-hardware-y-plataforma.md) y, a fondo,
+  [docs/14](../../14-hardware-vita-memoria-hilos-optimizacion.md) (CPU, memoria, hilos, GPU, qué
+  construir). Luego [`tools/hwprobe/`](../../../tools/hwprobe) (la sonda para cerrar los `[?]`).
 - Preguntas guía:
   - ¿Por qué el proyecto evita `malloc` en los módulos (mem-pool, buffers estáticos)?
   - ¿Qué es *newlib* y qué falta respecto a Linux (procesos, `fork`, señales)?
@@ -189,8 +189,8 @@ reserva uno, sin procesos ni memoria virtual al estilo Linux) y decidir dónde v
 **Objetivo:** leer, cambiar y optimizar los módulos de `modules/` en C y en Rust.
 
 - Lecciones 01–06 de este tutorial (C → Rust → red → transporte → app → `.vpk`) y la serie de
-  referencia [docs/rust](../rust/00-herramientas-y-ecosistema.md).
-  [docs/03](../03-estrategia-dual-rust-cpp.md) explica el patrón dual.
+  referencia [docs/rust](../../rust/00-herramientas-y-ecosistema.md).
+  [docs/03](../../03-estrategia-dual-rust-cpp.md) explica el patrón dual.
 - Orden de módulos: `mem-pool` → `msg-ring` (hilos y atómicos) → `net-udp` → `microros-transport`
   → `msg-cdr` / `msg-schema` (serialización) → `tf-tree` y `viz-math`.
 - Practicar: `tools/run-parity-tests.sh <módulo>` tras cada cambio. Crea un módulo nuevo con la
@@ -202,9 +202,9 @@ reserva uno, sin procesos ni memoria virtual al estilo Linux) y decidir dónde v
 
 **Objetivo:** tocar `ros2_vita` (C++) y recompilar la plantilla de la Vita sin ayuda.
 
-- Leer: [docs/18](../18-migracion-a-godot4.md) entero (sobre todo §2, «cómo funciona por dentro»,
-  y §4, «cierre de imports»), [`godot/README.md`](../../godot/README.md) y
-  [docs/15 §10](../15-rust-nativo-y-optimizacion-vita.md) (Rust dentro de `libgodot.so`).
+- Leer: [docs/18](../../18-migracion-a-godot4.md) entero (sobre todo §2, «cómo funciona por dentro»,
+  y §4, «cierre de imports»), [`godot/README.md`](../../../godot/README.md) y
+  [docs/15 §10](../../15-rust-nativo-y-optimizacion-vita.md) (Rust dentro de `libgodot.so`).
 - Conceptos: módulo en árbol frente a GDExtension (la Vita no admite GDExtension), `ClassDB` y
   `_bind_methods` (cómo una función C++ aparece en GDScript), `libgodot.so` cargado por un cargador
   con una **tabla de imports** (por qué cada función nueva del SDK necesita entrada), PIC.
@@ -220,7 +220,7 @@ reserva uno, sin procesos ni memoria virtual al estilo Linux) y decidir dónde v
 
 - Hechos de partida: renderizador **GL Compatibility** sobre VitaGL; 960×544; GPU con memoria
   propia limitada (docs/14 §5).
-- Leer: [docs/11](../11-diseno-mini-rviz.md) (mini-rviz, presupuestos), docs/18 (estado del
+- Leer: [docs/11](../../../archivo/docs/11-diseno-mini-rviz.md) (mini-rviz, presupuestos), docs/18 (estado del
   renderizado del port) y la documentación de Godot sobre importar **glTF** y LOD.
 - Practicar (cuando lleguemos a la puerta 3D): una escena 3D con un modelo del ejemplo de rclgd en
   el PC → exportar a la Vita → medir fps (`Engine.get_frames_per_second()`) → reducir polígonos y
@@ -276,8 +276,8 @@ Herramientas: `git diff`, `git log -p <archivo>`, `git blame`, la skill `/code-r
 - Temas: separar la app en escenas reutilizables (robot, sensor, HMI), autoload ROS (un único
   `rclgd.init`), parámetros en `project.godot` frente a la línea de órdenes, muchos topics con un
   ancho de banda limitado, pruebas automáticas (`godot/test/`, `skills/godot4-ros-scripting/templates/test_runner.gd`),
-  CI ([docs/19](../19-plan-multiagente-migracion-godot4.md) T4.7) y documentación (ADRs en `docs/adr/`).
-- Leer: [docs/19](../19-plan-multiagente-migracion-godot4.md) (el mapa de todo lo que falta) y los
+  CI ([docs/19](../../../archivo/docs/19-plan-multiagente-migracion-godot4.md) T4.7) y documentación (ADRs en `docs/adr/`).
+- Leer: [docs/19](../../../archivo/docs/19-plan-multiagente-migracion-godot4.md) (el mapa de todo lo que falta) y los
   ADRs (`docs/adr/`): cada uno explica una decisión grande y su porqué.
 - ✅ Lo dominas cuando: sabes escribir un ADR propio para una decisión (por ejemplo, la cámara en
   G7) con alternativas, costes y criterio.

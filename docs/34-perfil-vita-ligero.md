@@ -8,7 +8,7 @@
 
 ## 1. Resumen
 
-1. **Dónde se va el tiempo** (log de la Vita del 2026-11-13, `docs/ia/revision-kimi/g1-sensores-vita-2026-11-13.log`,
+1. **Dónde se va el tiempo** (log de la Vita del 2026-11-13, `docs/ia/medidas/g1-sensores-vita-2026-11-13.log`,
    tabla en §2): 42 ms por fotograma = scripts de física 22,2 + render 12,4 + `_process` 5,8 + física 0,8 [V].
    Con el robot mirando a la nada (13 093 triángulos) el render sigue costando **9,65 ms** y `_process` 4,7 ms [V]:
    el mundo solo explica ~2,7 ms del render.
@@ -162,7 +162,7 @@ lienzo (deben bajar de 224/307 a menos de 80) y qué sección de `[perfil-gd]` d
 
 ### 7.1 Resultado en la Vita (2026-11-13, PC) [V]
 
-Log: [`docs/ia/revision-kimi/g1-sensores-ligero-vita-2026-11-13.log`](ia/revision-kimi/g1-sensores-ligero-vita-2026-11-13.log)
+Log: [`docs/ia/medidas/g1-sensores-ligero-vita-2026-11-13.log`](ia/medidas/g1-sensores-ligero-vita-2026-11-13.log)
 (`.vpk` exportado en el PC desde `68e75c1`; incluye también el arreglo de física a 30 ticks de T1, porque el `.vpk` de
 T1 se sustituyó antes de ejecutarlo). Medias por bloque de 300 fotogramas, sin el primero (carga):
 

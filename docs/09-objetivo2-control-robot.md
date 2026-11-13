@@ -1,6 +1,7 @@
 # 09 — Objetivo 2: control de robot (`/cmd_vel` desde los mandos de la Vita)
 
-**Estado:** en implementación (2026-07-07, en el PC).
+**Estado (2026-11-13):** Histórico: Objetivo 2 cerrado en hardware. El mapeo de mandos lo reutiliza `godot/g6-hmi/main.gd`.
+(Antes: en implementación, 2026-07-07, en el PC.)
 **Prerrequisito:** Fase 1 completa (sesión XRCE + pub/sub confirmados en
 hardware — ver `docs/06-bitacora-estado.md`).
 

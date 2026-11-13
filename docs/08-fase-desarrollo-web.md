@@ -1,7 +1,7 @@
 # 08 — Fase de desarrollo: la web como panel de control del proyecto
 
 **Fecha de inicio:** 2026-07-06
-**Estado:** En curso — **primer hito alcanzado el 2026-07-06** (los cuatro
+**Estado:** **EN PAUSA con la web (usuario, 2026-11-01).** Antes: en curso — **primer hito alcanzado el 2026-07-06** (los cuatro
 puntos del criterio de abajo, más el compilador base y el debug en host,
 operativos y verificados; detalle en `docs/06-bitacora-estado.md`). Queda
 dentro de la fase: capa remota del compilador y debug en hardware real.

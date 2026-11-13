@@ -16,7 +16,7 @@ Aprendes leyendo y modificando **el código real** del repo. Empieza por la
 | 07 | **Ruta de aprendizaje** | el mapa y el método |
 | 08 | **IMU con Godot (G7a)** | editor, GDScript, ROS 2, QoS |
 
-Las lecciones 02–06 están **pendientes de escribir** (su guion: `docs/ia/plan-tutorial-2026-07-12.md`).
+Las lecciones 02–06 están **pendientes de escribir** (su guion: `docs/ia/tutorial/plan-tutorial-2026-07-12.md`).
 
 ## El patrón dual
 

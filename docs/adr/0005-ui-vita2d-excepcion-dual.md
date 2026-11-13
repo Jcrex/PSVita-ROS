@@ -1,6 +1,6 @@
 # ADR 0005: UI de la app con vita2d + layout declarativo (excepción a la regla dual)
 
-- **Estado:** Aceptado
+- **Estado:** **Superado** por ADR 0007 (2026-07-10, vitaGL sustituye a vita2d) y por ADR 0008 (2026-10-27, la UI se hace en Godot).
 - **Fecha:** 2026-07-07
 
 ## Contexto

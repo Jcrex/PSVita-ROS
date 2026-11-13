@@ -414,7 +414,7 @@ PC (CachyOS, Linux)                   Vita
    solo se reconsideraría como PR a upstream si se quisiera la red propia de Godot (ENet).
 
 **Plan de ejecución:** el reparto completo por agentes, el mapa jerárquico y las oleadas están en
-`docs/19-plan-multiagente-migracion-godot4.md`.
+`archivo/docs/19-plan-multiagente-migracion-godot4.md`.
 
 ## 11b. Hallazgos de la ronda de ramas (2026-10-27, detalle en docs/19 §2)
 - **rclgd `feature/native-msg-classes`** (2026-10-26): clases tipadas nativas desde `package.xml`; elimina
