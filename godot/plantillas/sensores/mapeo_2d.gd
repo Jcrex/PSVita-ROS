@@ -3,6 +3,7 @@ extends Node3D
 const Contexto = preload("res://comun/ros/contexto_ros.gd")
 const Util = preload("res://comun/ros/util_ros.gd")
 const VC1 = preload("res://comun/ros/vc1.gd")
+const Perfil = preload("res://comun/ros/perfil.gd")
 
 @export var scan_topic := "/scan"
 @export var map_topic := "/map"
@@ -99,6 +100,15 @@ func reiniciar_mapa() -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if Perfil.activo:
+		var t := Perfil.t0()
+		_tick(dt)
+		Perfil.sumar("sensor/mapeo", t)
+	else:
+		_tick(dt)
+
+
+func _tick(dt: float) -> void:
 	_acumulado += dt
 	var periodo := 1.0 / hz
 	if _acumulado < periodo:
@@ -174,16 +184,25 @@ func _integrar(rangos: PackedFloat32Array, angulo_min: float, incremento: float,
 		var dy := -absi(c1.y - c0.y)
 		var sy := 1 if c0.y < c1.y else -1
 		var err := dx + dy
-		var c := c0
-		while c != c1:
-			_marcar(c.x, c.y, false)
+		# Celdas libres del rayo, con `_marcar(x, y, false)` escrito en línea y enteros sueltos en vez de Vector2i:
+		# son ~40 celdas por rayo y la llamada a función era lo más caro del barrido en la Vita [I]. Mismo resultado.
+		var cx := c0.x
+		var cy := c0.y
+		var x1 := c1.x
+		var y1 := c1.y
+		while cx != x1 or cy != y1:
+			if cx >= 0 and cy >= 0 and cx < tamano and cy < tamano:
+				var k := cy * tamano + cx
+				var oc := maxf(_ocupacion[k] - 0.4, -4.0)
+				_ocupacion[k] = oc
+				_valores[k] = int(round(100.0 / (1.0 + exp(-oc))))
 			var e2 := 2 * err
 			if e2 >= dy:
 				err += dy
-				c.x += sx
+				cx += sx
 			if e2 <= dx:
 				err += dx
-				c.y += sy
+				cy += sy
 		if impacto:
 			_marcar(c1.x, c1.y, true)
 

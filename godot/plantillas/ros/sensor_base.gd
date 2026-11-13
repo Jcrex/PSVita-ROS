@@ -1,6 +1,7 @@
 extends Node3D
 
 const Contexto = preload("res://comun/ros/contexto_ros.gd")
+const Perfil = preload("res://comun/ros/perfil.gd")
 
 @export var topic := ""
 @export var tipo := ""
@@ -18,10 +19,12 @@ var pub: RosPublisher
 var mensajes_publicados := 0
 var _acumulado := 0.0
 var _en_vita := false
+var _seccion_perfil := ""
 
 
 func _ready() -> void:
 	_en_vita = OS.has_feature("vita")
+	_seccion_perfil = "sensor/" + name
 	if _en_vita and solo_pc:
 		habilitado = false
 		push_warning("%s: sensor solo PC; se desactiva en Vita" % name)
@@ -53,6 +56,15 @@ func _sensor_listo() -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if Perfil.activo:
+		var t := Perfil.t0()
+		_tick(dt)
+		Perfil.sumar(_seccion_perfil, t)
+	else:
+		_tick(dt)
+
+
+func _tick(dt: float) -> void:
 	_actualizar_sensor(dt)
 	if hz <= 0.0:
 		return

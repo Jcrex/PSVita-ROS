@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://mpuons32jq65"
+path="res://.godot/imported/kitchenStove_vita.obj-4ce6cfe97549ff75bbd6e0c99a02a9dc.mesh"
+
+[deps]
+
+files=["res://.godot/imported/kitchenStove_vita.obj-4ce6cfe97549ff75bbd6e0c99a02a9dc.mesh"]
+
+source_file="res://comun/mundo/assets/furniture/kitchenStove_vita.obj"
+dest_files=["res://.godot/imported/kitchenStove_vita.obj-4ce6cfe97549ff75bbd6e0c99a02a9dc.mesh", "res://.godot/imported/kitchenStove_vita.obj-4ce6cfe97549ff75bbd6e0c99a02a9dc.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

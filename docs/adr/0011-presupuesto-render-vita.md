@@ -78,3 +78,22 @@ ADR 0008 §5 que delega el 3D en Godot. Hechos verificados en el código del por
   hardware».
 
 ---
+
+## Medidas y enmienda del 2026-11-13 (perfil «Vita ligero», doc 34)
+
+La decisión no cambia. Se añaden datos de hardware y una consecuencia que el diseño no preveía:
+
+- **Coste de envío 3D medido en la Vita** (`g1-sensores`, log `[gxm3d]`): 2,0 ms a 13 093 triángulos y 41
+  instancias; 4,7–5,9 ms a 28 800–31 000 triángulos y 67–84 instancias. A 30 000 triángulos el fotograma completo
+  fue de 42–47 ms por culpa de los scripts de física, no del render (doc 34 §2).
+- **La pasada de luz por vértice (hecho 3 del contexto) cuesta ~3,9 ms fijos por fotograma con un robot articulado:**
+  el caché de colores se invalida cuando el origen de la instancia se mueve ≥ 1 cm y se recalcula en la CPU con un
+  tope de 3 000 vértices por fotograma (`rasterizer_scene_gxm_vita.inc:591-593, 602-696, 868`). `build_us` vale
+  3,7–4,6 ms en todas las muestras del log. El presupuesto de «9 / 6 ms de envío 3D» del punto 6 debe leerse
+  **incluyendo** ese coste mientras `rendering/vita/vertex_lighting` esté activo.
+- **Se cumple el presupuesto HMI (15 000 triángulos, 80 instancias)** en las tres plantillas con el perfil ligero,
+  medido en el PC con un contador calibrado contra la Vita (19 469 frente a 19 457 triángulos). Falta medir los FPS.
+- **Ajuste nuevo por aplicación** (no fijo todavía): `rendering/vita/vertex_lighting`, que las plantillas pueden
+  alternar en marcha (START). Si la prueba de hardware confirma que hace falta desactivarlo para 60 FPS, el punto 3
+  (paleta con UV por triángulo) pasa de «color» a «color + sombreado horneado» y este ADR se actualizará con esa
+  decisión.
