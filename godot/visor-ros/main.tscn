@@ -16,6 +16,10 @@
 [ext_resource type="Script" path="res://comun/visor/displays/2d/path.gd" id="14_path"]
 [ext_resource type="Script" path="res://comun/visor/texto_superpuesto.gd" id="15_texto"]
 [ext_resource type="Script" path="res://banco_primitivas.gd" id="16_banco"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/teleop.gd" id="17_teleop"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/meta.gd" id="18_meta_h"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/pose_inicial.gd" id="19_pose_ini"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/punto.gd" id="20_punto"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -36,6 +40,7 @@ current = true
 
 [node name="BancoPrimitivas" type="Node3D" parent="."]
 script = ExtResource("16_banco")
+boton = 6
 
 [node name="VisorRos" type="Node" parent="." node_paths=PackedStringArray("camara", "texto")]
 script = ExtResource("1_visor")
@@ -104,6 +109,7 @@ mouse_filter = 2
 script = ExtResource("2_gestor")
 barra = NodePath("Barra")
 pestanas = NodePath("Pestanas")
+boton_siguiente = -1
 
 [node name="Barra" type="Control" parent="VisorRos/Hud/GestorHud"]
 offset_right = 960.0
@@ -179,3 +185,20 @@ mouse_filter = 2
 offset_right = 320.0
 offset_bottom = 160.0
 script = ExtResource("7_joy")
+
+[node name="Herramientas" type="Node2D" parent="VisorRos/Hud"]
+
+[node name="Teleop" type="Node2D" parent="VisorRos/Hud/Herramientas"]
+script = ExtResource("17_teleop")
+
+[node name="Meta" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("planta")]
+script = ExtResource("18_meta_h")
+planta = NodePath("../../../Planta/Vista")
+
+[node name="PoseInicial" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("planta")]
+script = ExtResource("19_pose_ini")
+planta = NodePath("../../../Planta/Vista")
+
+[node name="Punto" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("planta")]
+script = ExtResource("20_punto")
+planta = NodePath("../../../Planta/Vista")
