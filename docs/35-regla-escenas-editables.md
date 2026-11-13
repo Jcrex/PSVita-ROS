@@ -110,7 +110,7 @@ Corolarios:
   - `escena.gd` y `movimiento_g1.gd` sin fallos;
   - `rbkairos-plus` en loopback y `g1-unitree` sin ROS, sin errores.
 - **Editor:** `main.tscn` de `g1-sensores` abierto con `--editor` en modo headless, sin errores de script. La vista
-  previa gráfica (modelos visibles en el visor 3D) queda **por comprobar por el usuario** con el editor `.gui`.
+  previa gráfica **la ha comprobado el usuario** con el editor `.gui` (2026-11-13): ve el mundo y el robot en `main.tscn`.
 - **`generar-lod-vita.py`** ejecutado sobre la escena nueva: deja `mundo.tscn` y los 25 `*_vita.obj` byte a byte
   iguales.
 - **Falta en la Vita:** exportar y comprobar que el `.vpk` arranca igual. No debería cambiar nada: mismos nodos y
