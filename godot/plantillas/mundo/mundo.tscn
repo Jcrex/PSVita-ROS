@@ -1,6 +1,1058 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://comun/mundo/mundo_base.gd" id="1"]
+[ext_resource type="Script" path="res://comun/mundo/mundo_base.gd" id="1_bvejl"]
+[ext_resource type="Script" path="res://comun/mundo/caja_mundo.gd" id="2_fepxa"]
+[ext_resource type="Script" path="res://comun/mundo/asset_mundo.gd" id="3_wlwtt"]
 
-[node name="Mundo" type="Node3D"]
-script = ExtResource("1")
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qf1vl"]
+albedo_color = Color(0.32, 0.48, 0.24, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_nelmy"]
+material = SubResource("StandardMaterial3D_qf1vl")
+size = Vector3(52, 0.3, 52)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ihny5"]
+albedo_color = Color(0.18, 0.34, 0.16, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_yw8n2"]
+material = SubResource("StandardMaterial3D_ihny5")
+size = Vector3(24, 0.03, 24)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1uv2v"]
+albedo_color = Color(0.48, 0.48, 0.43, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_saavg"]
+material = SubResource("StandardMaterial3D_1uv2v")
+size = Vector3(24, 0.04, 24)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mrtgl"]
+albedo_color = Color(0.35, 0.55, 0.25, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1x352"]
+material = SubResource("StandardMaterial3D_mrtgl")
+size = Vector3(24, 0.04, 24)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ljj2n"]
+albedo_color = Color(0.12, 0.13, 0.15, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_dheqf"]
+material = SubResource("StandardMaterial3D_ljj2n")
+size = Vector3(24, 0.04, 4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_aai1q"]
+material = SubResource("StandardMaterial3D_ljj2n")
+size = Vector3(4, 0.04, 24)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_k3jvk"]
+albedo_color = Color(0.85, 0.85, 0.78, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_26845"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_33iyw"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gnim0"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_vr8qx"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1kqia"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_24bt8"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_xah5j"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_g8jae"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5nxi5"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_trvsw"]
+material = SubResource("StandardMaterial3D_k3jvk")
+size = Vector3(2, 0.02, 0.35)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wtcuc"]
+albedo_color = Color(0.65, 0.53, 0.36, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_eaias"]
+material = SubResource("StandardMaterial3D_wtcuc")
+size = Vector3(20, 0.03, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mp6b1"]
+albedo_color = Color(0.25, 0.4, 0.18, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_fxpai"]
+material = SubResource("StandardMaterial3D_mp6b1")
+size = Vector3(6, 0.7, 7)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_48h8d"]
+albedo_color = Color(0.62, 0.4, 0.18, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_x7yhr"]
+material = SubResource("StandardMaterial3D_48h8d")
+size = Vector3(1, 0.4, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1r3pr"]
+albedo_color = Color(0.55, 0.37, 0.22, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wpwd7"]
+material = SubResource("StandardMaterial3D_1r3pr")
+size = Vector3(10, 0.16, 12)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dy5kj"]
+albedo_color = Color(0.82, 0.78, 0.68, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_h481k"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(0.18, 2.5, 12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1f8bu"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(0.18, 2.5, 3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ew5x8"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(0.18, 2.5, 5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_fgjhb"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(10, 2.5, 0.18)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cfxvr"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(10, 2.5, 0.18)
+
+[sub_resource type="BoxMesh" id="BoxMesh_qy6fi"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(5, 2.5, 0.15)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rv0p8"]
+material = SubResource("StandardMaterial3D_dy5kj")
+size = Vector3(0.15, 2.5, 5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_7t3vm"]
+size = Vector3(0.5, 1.8, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_assuy"]
+size = Vector3(1.1, 0.8, 1.9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0kaog"]
+size = Vector3(0.5, 0.9, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5p1v7"]
+size = Vector3(0.5, 0.9, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bnlrv"]
+size = Vector3(0.9, 0.9, 0.9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hyjtd"]
+size = Vector3(0.9, 0.9, 0.9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_la7sv"]
+size = Vector3(0.9, 1.8, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ru2he"]
+size = Vector3(2.1, 0.7, 1.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_b601d"]
+size = Vector3(4.2, 3.4, 5.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_n8w3r"]
+size = Vector3(4.6, 4.6, 7.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gtde8"]
+size = Vector3(4.2, 4.2, 5.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2r0jc"]
+size = Vector3(2.6, 1.3, 1.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_y8dmu"]
+size = Vector3(2.6, 1.3, 1.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_j422s"]
+size = Vector3(0.3, 1, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_xv1lv"]
+size = Vector3(0.5, 1.8, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_g2t4k"]
+size = Vector3(0.7, 2.6, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_b334h"]
+size = Vector3(0.7, 2.7, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_74e1e"]
+size = Vector3(0.8, 2.6, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qcfmg"]
+size = Vector3(0.7, 2.7, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ojtal"]
+size = Vector3(0.7, 2.4, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_05f3u"]
+size = Vector3(0.8, 2.6, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bi46x"]
+size = Vector3(0.7, 2.6, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_g7llu"]
+size = Vector3(0.7, 2.7, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hap16"]
+size = Vector3(0.7, 2.6, 0.7)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p6gqv"]
+size = Vector3(0.8, 2.6, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_7rjb2"]
+size = Vector3(2.1, 0.6, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ged0k"]
+size = Vector3(1, 0.7, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lwv8p"]
+size = Vector3(0.4, 0.7, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_duoox"]
+size = Vector3(0.6, 2.3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ue4x4"]
+size = Vector3(0.6, 2.3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8s5n0"]
+size = Vector3(0.6, 2.3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_yt5fm"]
+size = Vector3(0.6, 2.3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cjycq"]
+size = Vector3(0.5, 0.9, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lb3h6"]
+size = Vector3(0.5, 0.9, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vypt8"]
+size = Vector3(0.5, 1.8, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_mpg45"]
+size = Vector3(0.5, 1.8, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_r8m7r"]
+size = Vector3(0.6, 1, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_73axn"]
+size = Vector3(0.4, 0.7, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_br4ql"]
+size = Vector3(0.7, 1.2, 1.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_yn0ts"]
+size = Vector3(0.45, 0.45, 0.45)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_o20mh"]
+size = Vector3(0.4, 0.7, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_d5hbr"]
+size = Vector3(0.4, 0.7, 0.4)
+
+[node name="Mundo" type="Node3D" unique_id=714959119]
+script = ExtResource("1_bvejl")
+
+[node name="Terreno" type="Node3D" parent="." unique_id=1459477498]
+
+[node name="Suelo" type="MeshInstance3D" parent="Terreno" unique_id=153867421]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
+mesh = SubResource("BoxMesh_nelmy")
+script = ExtResource("2_fepxa")
+
+[node name="Bosque" type="MeshInstance3D" parent="Terreno" unique_id=427068152]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0.01, 13)
+mesh = SubResource("BoxMesh_yw8n2")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="Ciudad" type="MeshInstance3D" parent="Terreno" unique_id=864058545]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0.02, -13)
+mesh = SubResource("BoxMesh_saavg")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="Parque" type="MeshInstance3D" parent="Terreno" unique_id=1105000505]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0.02, 13)
+mesh = SubResource("BoxMesh_1x352")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="CarreteraNS" type="MeshInstance3D" parent="Terreno" unique_id=1166087972]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.05, -12)
+mesh = SubResource("BoxMesh_dheqf")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="CarreteraEO" type="MeshInstance3D" parent="Terreno" unique_id=1079486789]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.06, -12)
+mesh = SubResource("BoxMesh_aai1q")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones0" type="MeshInstance3D" parent="Terreno" unique_id=1438969068]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -9)
+mesh = SubResource("BoxMesh_26845")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones1" type="MeshInstance3D" parent="Terreno" unique_id=1529037823]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -9.65)
+mesh = SubResource("BoxMesh_33iyw")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones2" type="MeshInstance3D" parent="Terreno" unique_id=319680954]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -10.3)
+mesh = SubResource("BoxMesh_gnim0")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones3" type="MeshInstance3D" parent="Terreno" unique_id=1022838614]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -10.95)
+mesh = SubResource("BoxMesh_vr8qx")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones4" type="MeshInstance3D" parent="Terreno" unique_id=1399671252]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -11.6)
+mesh = SubResource("BoxMesh_1kqia")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones5" type="MeshInstance3D" parent="Terreno" unique_id=1926524017]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -12.25)
+mesh = SubResource("BoxMesh_24bt8")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones6" type="MeshInstance3D" parent="Terreno" unique_id=1731347173]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -12.9)
+mesh = SubResource("BoxMesh_xah5j")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones7" type="MeshInstance3D" parent="Terreno" unique_id=14663655]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -13.55)
+mesh = SubResource("BoxMesh_g8jae")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones8" type="MeshInstance3D" parent="Terreno" unique_id=357971624]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -14.2)
+mesh = SubResource("BoxMesh_5nxi5")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="PasoPeatones9" type="MeshInstance3D" parent="Terreno" unique_id=68291825]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.09, -14.85)
+mesh = SubResource("BoxMesh_trvsw")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="SenderoParque" type="MeshInstance3D" parent="Terreno" unique_id=1629982098]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.06, 12)
+mesh = SubResource("BoxMesh_eaias")
+script = ExtResource("2_fepxa")
+solido = false
+
+[node name="Colina" type="MeshInstance3D" parent="Terreno" unique_id=1499278196]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.35, 20)
+mesh = SubResource("BoxMesh_fxpai")
+script = ExtResource("2_fepxa")
+
+[node name="ObstaculoRampa" type="MeshInstance3D" parent="Terreno" unique_id=1404000596]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.2, 4)
+mesh = SubResource("BoxMesh_x7yhr")
+script = ExtResource("2_fepxa")
+
+[node name="Casa" type="Node3D" parent="." unique_id=1099416436]
+
+[node name="CasaSuelo" type="MeshInstance3D" parent="Casa" unique_id=262988369]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0.08, -10)
+mesh = SubResource("BoxMesh_wpwd7")
+script = ExtResource("2_fepxa")
+
+[node name="CasaNorte" type="MeshInstance3D" parent="Casa" unique_id=1228161481]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.25, -10)
+mesh = SubResource("BoxMesh_h481k")
+script = ExtResource("2_fepxa")
+
+[node name="CasaSurIzq" type="MeshInstance3D" parent="Casa" unique_id=1654903062]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 1.25, -5.5)
+mesh = SubResource("BoxMesh_1f8bu")
+script = ExtResource("2_fepxa")
+
+[node name="CasaSurDer" type="MeshInstance3D" parent="Casa" unique_id=1764469377]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 1.25, -13.5)
+mesh = SubResource("BoxMesh_ew5x8")
+script = ExtResource("2_fepxa")
+
+[node name="CasaOeste" type="MeshInstance3D" parent="Casa" unique_id=1465443762]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.25, -4)
+mesh = SubResource("BoxMesh_fgjhb")
+script = ExtResource("2_fepxa")
+
+[node name="CasaEste" type="MeshInstance3D" parent="Casa" unique_id=1228535969]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.25, -16)
+mesh = SubResource("BoxMesh_cfxvr")
+script = ExtResource("2_fepxa")
+
+[node name="CasaTabiqueA" type="MeshInstance3D" parent="Casa" unique_id=1664378886]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.25, -10)
+mesh = SubResource("BoxMesh_qy6fi")
+script = ExtResource("2_fepxa")
+
+[node name="CasaTabiqueB" type="MeshInstance3D" parent="Casa" unique_id=748302583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 1.25, -7)
+mesh = SubResource("BoxMesh_rv0p8")
+script = ExtResource("2_fepxa")
+
+[node name="persona_4" type="Node3D" parent="Casa" unique_id=278566250]
+transform = Transform3D(0.25934508, 0, 0.40390605, 0, 0.48, 0, -0.40390605, 0, 0.25934508, 16, 0.16, -8)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/persona.obj"
+lod_vita = -1.0
+
+[node name="Colision" type="StaticBody3D" parent="Casa/persona_4" unique_id=1124271443]
+transform = Transform3D(2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/persona_4/Colision" unique_id=892068336]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("BoxShape3D_7t3vm")
+
+[node name="table" type="Node3D" parent="Casa" unique_id=746539706]
+transform = Transform3D(2.3, 0, 0, 0, 2.3, 0, 0, 0, 2.3, 12, 0.16, -7)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/table.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/table" unique_id=2143881731]
+transform = Transform3D(0.43478262, 0, 0, 0, 0.43478262, 0, 0, 0, 0.43478262, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/table/Colision" unique_id=67473506]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("BoxShape3D_assuy")
+
+[node name="chair" type="Node3D" parent="Casa" unique_id=820539269]
+transform = Transform3D(5.650496e-07, 0, 1.8, 0, 1.8, 0, -1.8, 0, 5.650496e-07, 12, 0.16, -6)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/chair.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/chair_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/chair" unique_id=1521167069]
+transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/chair/Colision" unique_id=1442615581]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_0kaog")
+
+[node name="chair_2" type="Node3D" parent="Casa" unique_id=269561505]
+transform = Transform3D(5.650496e-07, 0, -1.8, 0, 1.8, 0, 1.8, 0, 5.650496e-07, 12, 0.16, -8)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/chair.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/chair_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/chair_2" unique_id=1971631588]
+transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/chair_2/Colision" unique_id=511230754]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_5p1v7")
+
+[node name="kitchenCabinet" type="Node3D" parent="Casa" unique_id=457082068]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 10, 0.16, -13)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/kitchenCabinet.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/kitchenCabinet" unique_id=629831472]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/kitchenCabinet/Colision" unique_id=1971018262]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_bnlrv")
+
+[node name="kitchenStove" type="Node3D" parent="Casa" unique_id=1985378149]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 10, 0.16, -15)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/kitchenStove.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/kitchenStove_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/kitchenStove" unique_id=673331927]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/kitchenStove/Colision" unique_id=98073551]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_hyjtd")
+
+[node name="kitchenFridge" type="Node3D" parent="Casa" unique_id=817435282]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 12, 0.16, -15)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/kitchenFridge.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/kitchenFridge_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/kitchenFridge" unique_id=977686317]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/kitchenFridge/Colision" unique_id=477577958]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("BoxShape3D_la7sv")
+
+[node name="kitchenMicrowave" type="Node3D" parent="Casa" unique_id=2109151234]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 10, 1.08, -13)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/kitchenMicrowave.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/kitchenMicrowave_vita.obj"
+
+[node name="apple" type="Node3D" parent="Casa" unique_id=899943453]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 12, 0.92, -6.7)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/apple.obj"
+modelo_vita = "res://comun/mundo/assets/food/apple_vita.obj"
+dibujar_en_vita = false
+
+[node name="bread" type="Node3D" parent="Casa" unique_id=53632188]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 12, 0.92, -7.1)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/bread.obj"
+dibujar_en_vita = false
+
+[node name="burger" type="Node3D" parent="Casa" unique_id=1689962279]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 12, 0.92, -7.5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/burger.obj"
+modelo_vita = "res://comun/mundo/assets/food/burger_vita.obj"
+dibujar_en_vita = false
+
+[node name="bowl-soup" type="Node3D" parent="Casa" unique_id=1731835332]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 10, 1.08, -13)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/bowl-soup.obj"
+modelo_vita = "res://comun/mundo/assets/food/bowl-soup_vita.obj"
+dibujar_en_vita = false
+
+[node name="bottle-oil" type="Node3D" parent="Casa" unique_id=961009006]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 10, 1.08, -13.4)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/bottle-oil.obj"
+dibujar_en_vita = false
+
+[node name="plate" type="Node3D" parent="Casa" unique_id=259074147]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 12, 0.91, -7.5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/food/plate.obj"
+modelo_vita = "res://comun/mundo/assets/food/plate_vita.obj"
+dibujar_en_vita = false
+
+[node name="bear" type="Node3D" parent="Casa" unique_id=440162571]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 16, 0.16, -6.5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/bear.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/bear_vita.obj"
+dibujar_en_vita = false
+
+[node name="pottedPlant" type="Node3D" parent="Casa" unique_id=1117015821]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0.16, -5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/pottedPlant.obj"
+
+[node name="bedDouble" type="Node3D" parent="Casa" unique_id=1087460678]
+transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 10.5, 0.16, -6)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/bedDouble.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/bedDouble_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Casa/bedDouble" unique_id=758746510]
+transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Casa/bedDouble/Colision" unique_id=316996888]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_ru2he")
+
+[node name="books" type="Node3D" parent="Casa" unique_id=751996096]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 12, 0.92, -7)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/books.obj"
+dibujar_en_vita = false
+
+[node name="Ciudad" type="Node3D" parent="." unique_id=1464399887]
+
+[node name="building-type-a" type="Node3D" parent="Ciudad" unique_id=332785707]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, -5, 0, -5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/building-type-a.obj"
+modelo_vita = "res://comun/mundo/assets/city/building-type-a_vita.obj"
+lod_vita = 0.2
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/building-type-a" unique_id=993649248]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/building-type-a/Colision" unique_id=660221014]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+shape = SubResource("BoxShape3D_b601d")
+
+[node name="building-type-b" type="Node3D" parent="Ciudad" unique_id=1913812504]
+transform = Transform3D(1.2556659e-06, 0, 4, 0, 4, 0, -4, 0, 1.2556659e-06, -5, 0, -19)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/building-type-b.obj"
+modelo_vita = "res://comun/mundo/assets/city/building-type-b_vita.obj"
+lod_vita = 0.2
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/building-type-b" unique_id=397687541]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/building-type-b/Colision" unique_id=2117533234]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0)
+shape = SubResource("BoxShape3D_n8w3r")
+
+[node name="building-type-c" type="Node3D" parent="Ciudad" unique_id=1952693315]
+transform = Transform3D(-4, 0, -1.3033655e-06, 0, 4, 0, 1.3033655e-06, 0, -4, -19, 0, -5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/building-type-c.obj"
+modelo_vita = "res://comun/mundo/assets/city/building-type-c_vita.obj"
+lod_vita = 0.2
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/building-type-c" unique_id=1229531160]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/building-type-c/Colision" unique_id=901786864]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+shape = SubResource("BoxShape3D_gtde8")
+
+[node name="sedan" type="Node3D" parent="Ciudad" unique_id=20119871]
+transform = Transform3D(3.1391647e-07, 0, 1, 0, 1, 0, -1, 0, 3.1391647e-07, -5, 0.05, -12)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/cars/sedan.obj"
+modelo_vita = "res://comun/mundo/assets/cars/sedan_vita.obj"
+lod_vita = 0.2
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/sedan" unique_id=851697062]
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/sedan/Colision" unique_id=427096891]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("BoxShape3D_2r0jc")
+
+[node name="taxi" type="Node3D" parent="Ciudad" unique_id=1665367468]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.05, -12)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/cars/taxi.obj"
+modelo_vita = "res://comun/mundo/assets/cars/taxi_vita.obj"
+lod_vita = 0.2
+radio_movimiento = 2.5
+velocidad_movimiento = 0.18
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/taxi" unique_id=1847688263]
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/taxi/Colision" unique_id=934046229]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("BoxShape3D_y8dmu")
+
+[node name="fence-low" type="Node3D" parent="Ciudad" unique_id=738239640]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, -20)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/fence-low.obj"
+modelo_vita = "res://comun/mundo/assets/city/fence-low_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/fence-low" unique_id=1550566128]
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/fence-low/Colision" unique_id=1988513557]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_j422s")
+
+[node name="persona_3" type="Node3D" parent="Ciudad" unique_id=1219950235]
+transform = Transform3D(0.48, 0, 0, 0, 0.48, 0, 0, 0, 0.48, -15, 0, -16)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/persona.obj"
+lod_vita = -1.0
+radio_movimiento = 1.0
+velocidad_movimiento = 0.3
+fase_movimiento = 2.0
+
+[node name="Colision" type="StaticBody3D" parent="Ciudad/persona_3" unique_id=1154817343]
+transform = Transform3D(2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Ciudad/persona_3/Colision" unique_id=851273660]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("BoxShape3D_xv1lv")
+
+[node name="Bosque" type="Node3D" parent="." unique_id=131078099]
+
+[node name="tree_default" type="Node3D" parent="Bosque" unique_id=1214589543]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -5, 0, 5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_default.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_default" unique_id=1083836181]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_default/Colision" unique_id=648215906]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_g2t4k")
+
+[node name="tree_cone" type="Node3D" parent="Bosque" unique_id=1425001694]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, -5, 0, 10)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_cone.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_cone" unique_id=1511982168]
+transform = Transform3D(0.625, 0, 0, 0, 0.625, 0, 0, 0, 0.625, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_cone/Colision" unique_id=1899191323]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+shape = SubResource("BoxShape3D_b334h")
+
+[node name="tree_fat" type="Node3D" parent="Bosque" unique_id=865241463]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -5, 0, 16)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_fat.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_fat" unique_id=1424016583]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_fat/Colision" unique_id=2017517051]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_74e1e")
+
+[node name="tree_default_2" type="Node3D" parent="Bosque" unique_id=1891633810]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, -6, 0, 21)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_default.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_default_2" unique_id=1878837079]
+transform = Transform3D(0.625, 0, 0, 0, 0.625, 0, 0, 0, 0.625, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_default_2/Colision" unique_id=9288259]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+shape = SubResource("BoxShape3D_qcfmg")
+
+[node name="tree_cone_2" type="Node3D" parent="Bosque" unique_id=12442679]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, -12, 0, 5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_cone.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_cone_2" unique_id=1423763986]
+transform = Transform3D(0.71428573, 0, 0, 0, 0.71428573, 0, 0, 0, 0.71428573, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_cone_2/Colision" unique_id=2134911638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("BoxShape3D_ojtal")
+
+[node name="tree_fat_2" type="Node3D" parent="Bosque" unique_id=1098741619]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -14, 0, 11)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_fat.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_fat_2" unique_id=1589122383]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_fat_2/Colision" unique_id=244778620]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_05f3u")
+
+[node name="tree_default_3" type="Node3D" parent="Bosque" unique_id=1746826318]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -13, 0, 18)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_default.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_default_3" unique_id=1426164885]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_default_3/Colision" unique_id=1153899173]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_bi46x")
+
+[node name="tree_cone_3" type="Node3D" parent="Bosque" unique_id=426838478]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, -20, 0, 6)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_cone.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_cone_3" unique_id=1813219397]
+transform = Transform3D(0.625, 0, 0, 0, 0.625, 0, 0, 0, 0.625, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_cone_3/Colision" unique_id=1910123837]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+shape = SubResource("BoxShape3D_g7llu")
+
+[node name="tree_default_4" type="Node3D" parent="Bosque" unique_id=2083341506]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -21, 0, 14)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_default.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_default_4" unique_id=944451657]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_default_4/Colision" unique_id=212895352]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_hap16")
+
+[node name="tree_fat_3" type="Node3D" parent="Bosque" unique_id=1111085997]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -18, 0, 21)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/tree_fat.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/tree_fat_3" unique_id=763620361]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/tree_fat_3/Colision" unique_id=1190010422]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_p6gqv")
+
+[node name="rock_largeA" type="Node3D" parent="Bosque" unique_id=1257805635]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, -18, 0, 9)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/rock_largeA.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/rock_largeA" unique_id=1202029681]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/rock_largeA/Colision" unique_id=307080508]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+shape = SubResource("BoxShape3D_7rjb2")
+
+[node name="rock_smallA" type="Node3D" parent="Bosque" unique_id=985589001]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -9, 0, 18)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/rock_smallA.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/rock_smallA" unique_id=1294461949]
+transform = Transform3D(0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0, 0.6666667, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/rock_smallA/Colision" unique_id=2066519524]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_ged0k")
+
+[node name="plant_bush" type="Node3D" parent="Bosque" unique_id=667621972]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -16, 0, 3)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/plant_bush.obj"
+
+[node name="plant_bush_2" type="Node3D" parent="Bosque" unique_id=1722352539]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -17, 0, 16)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/plant_bush.obj"
+
+[node name="cone_2" type="Node3D" parent="Bosque" unique_id=1624929770]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, -2, 0, 2)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/cars/cone.obj"
+modelo_vita = "res://comun/mundo/assets/cars/cone_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Bosque/cone_2" unique_id=496633736]
+transform = Transform3D(1.6666666, 0, 0, 0, 1.6666666, 0, 0, 0, 1.6666666, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Bosque/cone_2/Colision" unique_id=377512946]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_lwv8p")
+
+[node name="Parque" type="Node3D" parent="." unique_id=702869033]
+
+[node name="tree-small" type="Node3D" parent="Parque" unique_id=2132161763]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 5, 0, 5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/tree-small.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/tree-small" unique_id=640215861]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/tree-small/Colision" unique_id=1594717954]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+shape = SubResource("BoxShape3D_duoox")
+
+[node name="tree-small_2" type="Node3D" parent="Parque" unique_id=764222211]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 5, 0, 20)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/tree-small.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/tree-small_2" unique_id=361453258]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/tree-small_2/Colision" unique_id=983467421]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+shape = SubResource("BoxShape3D_ue4x4")
+
+[node name="tree-small_3" type="Node3D" parent="Parque" unique_id=1956298712]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 20, 0, 20)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/tree-small.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/tree-small_3" unique_id=362262887]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/tree-small_3/Colision" unique_id=2128982400]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+shape = SubResource("BoxShape3D_8s5n0")
+
+[node name="tree-small_4" type="Node3D" parent="Parque" unique_id=1430485907]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 20, 0, 5)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/city/tree-small.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/tree-small_4" unique_id=999365842]
+transform = Transform3D(0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/tree-small_4/Colision" unique_id=1717668747]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+shape = SubResource("BoxShape3D_yt5fm")
+
+[node name="bench" type="Node3D" parent="Parque" unique_id=1749335233]
+transform = Transform3D(5.650496e-07, 0, 1.8, 0, 1.8, 0, -1.8, 0, 5.650496e-07, 8, 0, 8)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/bench.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/bench_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/bench" unique_id=2098160411]
+transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/bench/Colision" unique_id=972970957]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_cjycq")
+
+[node name="bench_2" type="Node3D" parent="Parque" unique_id=1984054762]
+transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 15, 0, 16)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/furniture/bench.obj"
+modelo_vita = "res://comun/mundo/assets/furniture/bench_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/bench_2" unique_id=1220211494]
+transform = Transform3D(0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0, 0.5555556, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/bench_2/Colision" unique_id=229890471]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_lb3h6")
+
+[node name="persona" type="Node3D" parent="Parque" unique_id=622974037]
+transform = Transform3D(0.48, 0, 0, 0, 0.48, 0, 0, 0, 0.48, 10, 0, 10)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/persona.obj"
+lod_vita = -1.0
+radio_movimiento = 1.2
+velocidad_movimiento = 0.45
+
+[node name="Colision" type="StaticBody3D" parent="Parque/persona" unique_id=1150840981]
+transform = Transform3D(2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/persona/Colision" unique_id=1419956719]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("BoxShape3D_vypt8")
+
+[node name="persona_2" type="Node3D" parent="Parque" unique_id=2020257126]
+transform = Transform3D(-0.19975048, 0, 0.43646276, 0, 0.48, 0, -0.43646276, 0, -0.19975048, 7, 0, 17)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/persona.obj"
+lod_vita = -1.0
+
+[node name="Colision" type="StaticBody3D" parent="Parque/persona_2" unique_id=1131477601]
+transform = Transform3D(2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0, 2.0833335, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/persona_2/Colision" unique_id=2141520048]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("BoxShape3D_mpg45")
+
+[node name="perro" type="Node3D" parent="Parque" unique_id=1332541202]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 14)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/perro.obj"
+modelo_vita = "res://comun/mundo/assets/generados/perro_vita.obj"
+radio_movimiento = 1.5
+velocidad_movimiento = 0.55
+
+[node name="Colision" type="StaticBody3D" parent="Parque/perro" unique_id=955127561]
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/perro/Colision" unique_id=64628679]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_r8m7r")
+
+[node name="gato" type="Node3D" parent="Parque" unique_id=1068827447]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, 7)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/gato.obj"
+modelo_vita = "res://comun/mundo/assets/generados/gato_vita.obj"
+radio_movimiento = 0.8
+velocidad_movimiento = 0.35
+
+[node name="Colision" type="StaticBody3D" parent="Parque/gato" unique_id=1264972943]
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/gato/Colision" unique_id=679959751]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_73axn")
+
+[node name="oveja" type="Node3D" parent="Parque" unique_id=1806832404]
+transform = Transform3D(0.7648422, 0, 0.64421767, 0, 1, 0, -0.64421767, 0, 0.7648422, 18, 0, 17)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/oveja.obj"
+modelo_vita = "res://comun/mundo/assets/generados/oveja_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/oveja" unique_id=1094592874]
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/oveja/Colision" unique_id=1272496566]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("BoxShape3D_br4ql")
+
+[node name="pelota" type="Node3D" parent="Parque" unique_id=1731892741]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 10)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/generados/pelota.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Parque/pelota" unique_id=122259095]
+
+[node name="Caja" type="CollisionShape3D" parent="Parque/pelota/Colision" unique_id=2083720768]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, 0)
+shape = SubResource("BoxShape3D_yn0ts")
+
+[node name="flower_redA" type="Node3D" parent="Parque" unique_id=75905790]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 10, 0, 6)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/flower_redA.obj"
+
+[node name="flower_redA_2" type="Node3D" parent="Parque" unique_id=1952659850]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 12, 0, 18)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/nature/flower_redA.obj"
+
+[node name="Exterior" type="Node3D" parent="." unique_id=1053773848]
+
+[node name="cone" type="Node3D" parent="Exterior" unique_id=2059890896]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 2, 0, -2)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/cars/cone.obj"
+modelo_vita = "res://comun/mundo/assets/cars/cone_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Exterior/cone" unique_id=852178032]
+transform = Transform3D(1.6666666, 0, 0, 0, 1.6666666, 0, 0, 0, 1.6666666, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Exterior/cone/Colision" unique_id=354468736]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_o20mh")
+
+[node name="cone_3" type="Node3D" parent="Exterior" unique_id=1736618483]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 6, 0, -1)
+script = ExtResource("3_wlwtt")
+modelo = "res://comun/mundo/assets/cars/cone.obj"
+modelo_vita = "res://comun/mundo/assets/cars/cone_vita.obj"
+
+[node name="Colision" type="StaticBody3D" parent="Exterior/cone_3" unique_id=460509772]
+transform = Transform3D(1.6666666, 0, 0, 0, 1.6666666, 0, 0, 0, 1.6666666, 0, 0, 0)
+
+[node name="Caja" type="CollisionShape3D" parent="Exterior/cone_3/Colision" unique_id=1695135333]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_d5hbr")

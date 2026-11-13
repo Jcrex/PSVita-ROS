@@ -18,6 +18,14 @@ static var _us := {}      # sección -> µs acumulados desde el último volcado
 static var _veces := {}   # sección -> llamadas desde el último volcado
 
 
+## ¿Perfil «Vita ligero» (doc 34)? En la Vita, o en el PC con `-- lod=vita`; `-- mundo=completo` lo anula para
+## comparar. Lo consultan la aplicación y el mundo (mundo_base.gd), que ahora está dentro de main.tscn y hace su
+## _ready() antes que la aplicación, así que no puede esperar a que esta se lo diga.
+static func es_ligero() -> bool:
+	var args := OS.get_cmdline_user_args()
+	return (OS.has_feature("vita") or args.has("lod=vita")) and not args.has("mundo=completo")
+
+
 static func t0() -> int:
 	return Time.get_ticks_usec()
 

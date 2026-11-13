@@ -1,6 +1,25 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://comun/aplicacion_robot.gd" id="1"]
+[ext_resource type="PackedScene" path="res://comun/mundo/mundo.tscn" id="2_h2yge"]
+[ext_resource type="Script" path="res://comun/inicio_robot.gd" id="3_1bvp3"]
 
-[node name="RBKairosPlus" type="Node3D"]
+[sub_resource type="Environment" id="Environment_lquwl"]
+ambient_light_source = 2
+ambient_light_color = Color(0.58, 0.62, 0.68, 1)
+ambient_light_energy = 0.8
+
+[node name="RBKairosPlus" type="Node3D" unique_id=370285532]
 script = ExtResource("1")
+
+[node name="Mundo" parent="." unique_id=714959119 instance=ExtResource("2_h2yge")]
+
+[node name="Ambiente" type="WorldEnvironment" parent="." unique_id=843516818]
+environment = SubResource("Environment_lquwl")
+
+[node name="Luz" type="DirectionalLight3D" parent="." unique_id=1501650452]
+transform = Transform3D(0.81915206, -0.46984634, 0.32898995, 0, 0.57357645, 0.81915206, -0.57357645, -0.6710101, 0.46984634, 0, 0, 0)
+
+[node name="InicioRobot" type="Marker3D" parent="." unique_id=701418834]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0.16, -9)
+script = ExtResource("3_1bvp3")

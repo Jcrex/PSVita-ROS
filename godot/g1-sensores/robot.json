@@ -4,7 +4,6 @@
   "script": "res://comun/robots/humanoide_g1.gd",
   "visual_pc": "res://robot/g1_pc.tscn",
   "visual_vita": "res://robot/g1_vita.tscn",
-  "spawn_ros": [9.0, -17.0, 0.0, 0.0],
   "radio_colision": 0.28,
   "altura_colision": 1.45,
   "altura_objetivo": 1.0,

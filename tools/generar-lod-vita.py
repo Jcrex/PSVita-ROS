@@ -2,10 +2,11 @@
 """generar-lod-vita.py — variantes de pocos triángulos de los OBJ del mundo de las plantillas (perfil «Vita ligero»).
 
 Uso (desde la raíz del repo; necesita `numpy` y `pillow`):
-    python3 tools/generar-lod-vita.py                 # regenera todos los `*_vita.obj` y anota assets.json
+    python3 tools/generar-lod-vita.py                 # regenera todos los `*_vita.obj` y anota mundo.tscn
     python3 tools/generar-lod-vita.py --min-tris 250 --objetivo 0.35   # los valores por defecto
 
-Qué hace con cada modelo de `godot/plantillas/mundo/assets.json` que pasa de `--min-tris` triángulos:
+Qué hace con cada modelo de `godot/plantillas/mundo/mundo.tscn` (nodos `asset_mundo.gd`) que pasa de `--min-tris`
+triángulos:
  1. Lee el OBJ y agrupa las caras por COLOR: el `Kd` de su material o, si el material tiene textura (los
     «colormap» de Kenney), el texel bajo el centro de la cara. Los kits de Kenney pintan cada cara de un color
     plano, así que el grupo conserva el aspecto.
@@ -15,13 +16,14 @@ Qué hace con cada modelo de `godot/plantillas/mundo/assets.json` que pasa de `-
     (pyfqmr) se probó y se descartó: por grupos de color rompía paredes enteras.
  3. Escribe `<modelo>_vita.obj` junto al original, con los mismos materiales (mismo `.mtl`, misma textura): cada
     cara usa UNA coordenada de textura constante (su color), y no sube el número de superficies (draws).
- 4. Añade `"modelo_vita"` a la entrada de assets.json. `mundo_base.gd` lo usa solo con el perfil ligero.
+ 4. Escribe la propiedad `modelo_vita` del nodo en mundo.tscn. `asset_mundo.gd` la usa solo con el perfil ligero.
+    Desde el 2026-11-13 la escena es la fuente de verdad del mundo (doc 35); antes esto anotaba `assets.json`.
+    Con el editor de Godot cerrado (si no, al guardar la escena pisaría el cambio).
 
 El 3D GXM de la Vita no tiene LOD de malla (rasterizer_scene_gxm_vita.inc: «this backend has no mesh LOD»), así
 que el LOD se hornea aquí, en el PC (misma idea que el ADR 0009 para los URDF).
 """
 import argparse
-import json
 import pathlib
 import re
 
@@ -169,36 +171,42 @@ def main() -> None:
     ap.add_argument("--min-tris", type=int, default=250, help="solo modelos con más triángulos que esto")
     ap.add_argument("--objetivo", type=float, default=0.35, help="fracción máxima de triángulos que se conserva")
     args = ap.parse_args()
-    ruta_json = MUNDO / "assets.json"
-    texto = ruta_json.read_text()
-    assets = json.loads(texto)
+    ruta_tscn = MUNDO / "mundo.tscn"
+    texto = ruta_tscn.read_text()
+    # La escena se edita como texto, sección a sección ("[node …]" y sus propiedades), para no tocar nada más.
+    secciones = re.split(r"(?m)^(?=\[)", texto)
     hechos = {}
-    for e in assets:
-        modelo = e["modelo"]
-        # "lod_vita": false en la entrada = este modelo no se reduce (p. ej. la persona: brazos y piernas finos
-        # que el agrupamiento deja en hilos).
-        if not modelo.endswith(".obj") or modelo in hechos or e.get("lod_vita", True) is False:
+    for sec in secciones:
+        m = re.search(r'(?m)^modelo = "([^"]*)"$', sec)
+        if not m:
+            continue
+        modelo = m.group(1)
+        l = re.search(r"(?m)^lod_vita = (-?[0-9.]+)$", sec)
+        lod = float(l.group(1)) if l else 0.0
+        # lod_vita < 0 en el nodo = este modelo no se reduce (p. ej. la persona: brazos y piernas finos que el
+        # agrupamiento deja en hilos).
+        if not modelo.endswith(".obj") or modelo in hechos or lod < 0:
             continue
         ruta = MUNDO / modelo.replace("res://comun/mundo/", "")
-        n = sum(len(l.split()) - 3 for l in ruta.read_text(errors="ignore").splitlines() if l.startswith("f "))
+        n = sum(len(x.split()) - 3 for x in ruta.read_text(errors="ignore").splitlines() if x.startswith("f "))
         if n <= args.min_tris:
             continue
         salida = ruta.with_name(ruta.stem + "_vita.obj")
-        # "lod_vita": 0.2 en la entrada = otra fracción para ese modelo (edificios y coches, los más pesados).
-        fraccion = e["lod_vita"] if isinstance(e.get("lod_vita"), float) else args.objetivo
+        # lod_vita = 0.2 en el nodo = otra fracción para ese modelo (edificios y coches, los más pesados).
+        fraccion = lod if lod > 0 else args.objetivo
         antes, despues = procesar(ruta, salida, fraccion)
         hechos[modelo] = modelo[:-4] + "_vita.obj"
         print(f"{ruta.name}: {antes} -> {despues} triángulos ({salida.name})")
-    # assets.json se edita como texto para conservar su formato de una entrada por línea.
-    lineas = []
-    for linea in texto.split("\n"):
-        linea = re.sub(r'"modelo_vita":"[^"]*",', "", linea)
-        m = re.search(r'"modelo":"([^"]*)",', linea)
-        if m and m.group(1) in hechos and '"lod_vita":false' not in linea:
-            linea = linea.replace(m.group(0), m.group(0) + f'"modelo_vita":"{hechos[m.group(1)]}",', 1)
-        lineas.append(linea)
-    ruta_json.write_text("\n".join(lineas))
-
+    nuevas = []
+    for sec in secciones:
+        m = re.search(r'(?m)^modelo = "([^"]*)"$', sec)
+        if m:
+            sec = re.sub(r'(?m)^modelo_vita = "[^"]*"\n', "", sec)
+            l = re.search(r"(?m)^lod_vita = (-?[0-9.]+)$", sec)
+            if m.group(1) in hechos and not (l and float(l.group(1)) < 0):
+                sec = sec.replace(m.group(0), m.group(0) + f'\nmodelo_vita = "{hechos[m.group(1)]}"', 1)
+        nuevas.append(sec)
+    ruta_tscn.write_text("".join(nuevas))
 
 if __name__ == "__main__":
     main()

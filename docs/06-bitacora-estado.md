@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-13 (T1 y T2 medidos en la Vita: `g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-13 (regla de escenas editables, doc 35: el mundo y el punto de salida del robot pasan a `main.tscn`). Antes, el mismo día: T1 y T2 medidos en la Vita (`g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque; las fechas anteriores, un bloque por sesión más abajo.
 **Para qué sirve este documento:** retomar el proyecto en frío. Responde:
@@ -9,7 +9,22 @@ El estado vivo está en el primer bloque; las fechas anteriores, un bloque por s
 
 ---
 
-## 2026-11-13 (PC, mediodía) — T1 y T2 validados en la Vita: 57–58 FPS (Estado para retomar)
+## 2026-11-13 (PC, tarde) — Regla de escenas editables (Estado para retomar)
+
+- **Petición del usuario:** que `main.tscn` no esté vacía en el editor y que sea una regla. Informe:
+  [`docs/35-regla-escenas-editables.md`](35-regla-escenas-editables.md); regla también en `CLAUDE.md`.
+- **Mundo común:** `plantillas/mundo/mundo.tscn` con 27 cajas (`caja_mundo.gd`) y 56 modelos (`asset_mundo.gd`, `@tool`
+  con vista previa) agrupados por zonas; **`assets.json` borrado**; `mundo_base.gd` solo adapta la escena (perfil ligero
+  igual que antes); `generar-lod-vita.py` anota la escena. Mundo **compartido** (decisión del usuario).
+- **Escenas principales:** `Mundo`, `Ambiente`, `Luz` e `InicioRobot` en `main.tscn` de g1-sensores, rbkairos-plus y
+  dron-mapeo (`spawn_ros` quitado de `robot.json`); `Casa`, `Luz` y `Ambiente` en `g1-unitree/main.tscn` (la casa se
+  sigue editando en `docker/g1/casa.json`).
+- **Verificado en host:** mundo idéntico (volcado de mallas y colisiones en los dos perfiles), runner 14/12/12,
+  `perfil_ligero` 18/12/12, `presupuesto` OK con las mismas cifras, g1-unitree y loopback sin errores.
+- **Pendiente:** que el usuario abra el editor gráfico y vea los modelos; exportar y probar el `.vpk` en la Vita
+  (no debería cambiar nada); elegir `luz_por_vertice` (doc 34 §7.1).
+
+## 2026-11-13 (PC, mediodía) — T1 y T2 validados en la Vita: 57–58 FPS
 
 - Parche de la sesión en la nube aplicado (`68e75c1`), `g1-sensores.vpk` exportado en el PC y probado por el usuario
   (1 min con luz V, START, 1 min con luz O). Log: `docs/ia/revision-kimi/g1-sensores-ligero-vita-2026-11-13.log`;

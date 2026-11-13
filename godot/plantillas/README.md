@@ -19,8 +19,25 @@ Biblioteca compartida por `godot/rbkairos-plus/`, `godot/g1-sensores/` y `godot/
 | Mapa | `sensores/mapeo_2d.gd` | OccupancyGrid y teselas 2 bits de 260 B |
 | Unitree | `sensores/unitree_estado.gd`, `unitree_control.gd` | LowState/LowCmd, SportModeState, API sport y formato G1 compacto |
 | Seguridad | `sensores/estop.gd` | Suscripción Bool que detiene el robot |
-| Mundo | `mundo/mundo_base.gd`, `mundo/assets.json` | Bosque, ciudad, parque y casa; colisiones y agentes móviles |
-| Aplicación | `aplicacion_robot.gd` | Lee `robot.json`, crea modelo, sensores, cámara y HUD |
+| Mundo | `mundo/mundo.tscn` + `mundo_base.gd`, `caja_mundo.gd`, `asset_mundo.gd` | Bosque, ciudad, parque y casa como nodos editables; colisiones y agentes móviles |
+| Aplicación | `aplicacion_robot.gd`, `inicio_robot.gd` | Lee `robot.json`, crea robot, sensores, cámara y HUD en el `InicioRobot` de `main.tscn` |
+
+## Regla de escenas: la escena manda en lo que se ve y dónde (doc 35)
+
+Abre `main.tscn` en Godot: el mundo (`Mundo`, instancia de `comun/mundo/mundo.tscn`), el `Ambiente`, la `Luz` y el
+punto de salida del robot (`InicioRobot`, con vista previa del modelo de PC) son nodos. Se editan con el gizmo y el
+inspector. `robot.json` queda para lo que NO es colocar cosas: script de control, ROS (topics, Hz, QoS), sensores
+montados en links del URDF, cámara de seguimiento y presupuesto. Detalle y motivos en
+`docs/35-regla-escenas-editables.md`.
+
+- **El mundo es compartido** por los tres proyectos (`comun -> ../plantillas`): editar `Mundo` en uno lo cambia en
+  todos. Para editarlo, abre `comun/mundo/mundo.tscn` (o «Editable Children» en el nodo `Mundo`).
+- **Cajas** (`Terreno/*`, `Casa/*`; script `caja_mundo.gd`): mueve con el gizmo, tamaño en `mesh → size`, color en
+  `mesh → material`; `solido` = choca. No escales el nodo.
+- **Modelos** (`Ciudad/*`, `Bosque/*`…; script `asset_mundo.gd`): rutas `modelo` / `modelo_vita`, `dibujar_en_vita`,
+  `lod_vita` y movimiento en el inspector; la colisión es el hijo `Colision`. Para añadir uno, duplica uno parecido.
+- **Al cambiar el mundo:** `pruebas/presupuesto.gd` y `pruebas/perfil_ligero.gd` (límite de la Vita) y, si añades
+  un `.obj` nuevo de más de 250 triángulos, `python3 tools/generar-lod-vita.py` con el editor cerrado.
 
 ## Contrato de formatos compactos (VC/1)
 
@@ -34,14 +51,14 @@ para no chocar con `docker/g1/g1_sim.py` (`/g1/estado`, `/odom`, `/tf`).
 
 1. Copia uno de los tres proyectos y conserva el enlace `comun -> ../plantillas`. El exportador ya lo copia con `cp -rL`.
 2. Sustituye `visual_pc` y `visual_vita` por escenas horneadas con `tools/urdf2godot/`. No se parsea URDF en la Vita.
-3. Edita `robot.json`: script de control, topics, `spawn_ros`, colisión y sensores. `pos_ros` y `rpy_ros` usan REP-103; la aplicación hace la conversión a Godot. En `mundo/assets.json`, `colision` contiene `[ancho_ROS_X, largo_ROS_Y, alto, centro_x, centro_y, centro_z]` ya escalado en metros; el cuerpo compensa la escala visual del asset.
+3. Edita `robot.json`: script de control, topics, colisión y sensores. `pos_ros` y `rpy_ros` usan REP-103; la aplicación hace la conversión a Godot. El punto de salida es el nodo `InicioRobot` de `main.tscn` (sin él, se usa `spawn_ros` de `robot.json`).
 4. Si el robot necesita otro comportamiento, hereda de `robots/robot_ros.gd`. Si necesita otro sensor, hereda de `ros/sensor_base.gd` o usa un `Node3D` con `contexto` y `robot`.
 5. Genera el esquema CDR:
    ```fish
    toolchains/rosbags-venv/bin/python godot/plantillas/generar_esquemas.py --salida godot/<robot>/ros/schema.rsch
    ```
    Para Unitree añade `--unitree godot/g1-sensores/ros/msg`.
-6. Incluye `robot.json`, `ros/topics.json`, `ros/*.rsch` y `comun/mundo/assets.json` en el preset. Excluye el modelo PC del VPK.
+6. Incluye `robot.json`, `ros/topics.json` y `ros/*.rsch` en el preset. Excluye el modelo PC del robot del VPK.
 
 ## Perfiles de plataforma
 
@@ -60,9 +77,9 @@ para no chocar con `docker/g1/g1_sim.py` (`/g1/estado`, `/odom`, `/tf`).
 Activo en la Vita y con `-- lod=vita` en el PC (`-- mundo=completo` lo anula para comparar). Cambia lo que se
 dibuja, no lo que choca. Detalle, medidas y prueba de hardware en `docs/34-perfil-vita-ligero.md`.
 
-- **Mundo** (`mundo/mundo_base.gd`): cajas fundidas por color, `"modelo_vita"` (variante de pocos triángulos generada
-  con `tools/generar-lod-vita.py`), `"vita": false` (adorno que no se dibuja), `"lod_vita": false | fracción` (no
-  reducir, u otra fracción) y visibilidad por distancia al robot.
+- **Mundo** (`mundo/mundo_base.gd` sobre `mundo.tscn`): cajas fundidas por color, `modelo_vita` (variante de pocos
+  triángulos generada con `tools/generar-lod-vita.py`), `dibujar_en_vita = false` (adorno que no se dibuja),
+  `lod_vita` (< 0 no reducir, > 0 otra fracción) y visibilidad por distancia al robot.
 - **`robot.json`, clave `mundo`:** `radio_visible` (m; 14 por defecto), `luz_por_vertice` (true por defecto) y
   `presupuesto` (`triangulos`, `mallas`; 15 000 y 80 por defecto, ADR 0011 §6).
 - **HUD:** dos líneas cortas; SELECT/H muestra el completo. START/L alterna la luz por vértice del 3D GXM.

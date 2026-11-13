@@ -5,7 +5,6 @@
   "script": "res://comun/robots/rbkairos.gd",
   "visual_pc": "res://robot/rbkairos_pc.tscn",
   "visual_vita": "res://robot/rbkairos_vita.tscn",
-  "spawn_ros": [9.0, -17.0, 0.16, 0.0],
   "radio_colision": 0.45,
   "altura_colision": 0.65,
   "altura_objetivo": 0.75,

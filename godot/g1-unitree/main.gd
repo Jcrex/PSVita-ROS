@@ -87,8 +87,12 @@ func _ready() -> void:
 	var lod := "g1_vita" if OS.has_feature("vita") else "g1_pc"
 	if lod_forzado != "":
 		lod = lod_forzado
-	casa = load("res://casa/casa.tscn").instantiate()
-	add_child(casa)
+	# Regla de escenas (doc 35): la casa, la luz y el ambiente están en main.tscn para verlos en el editor. OJO: la
+	# casa se GENERA desde docker/g1/casa.json (la misma de MuJoCo y de casa/mapa.pgm); cámbiala allí, no aquí.
+	casa = get_node_or_null("Casa")
+	if casa == null:
+		casa = load("res://casa/casa.tscn").instantiate()
+		add_child(casa)
 	inicio = casa.get_meta("inicio_robot", Vector3.ZERO)
 	colision.cargar(casa)
 	robot = load("res://robot/%s.tscn" % lod).instantiate()
@@ -113,14 +117,18 @@ func _leer_tris(lod: String) -> String:
 
 
 func _montar_escena() -> void:
-	var luz := DirectionalLight3D.new()
-	luz.rotation = Vector3(deg_to_rad(-55), deg_to_rad(35), 0)
-	add_child(luz)
-	var amb := WorldEnvironment.new()
-	amb.environment = Environment.new()
-	amb.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	amb.environment.ambient_light_color = Color(0.5, 0.52, 0.58)
-	add_child(amb)
+	if get_node_or_null("Luz") == null:
+		var luz := DirectionalLight3D.new()
+		luz.name = "Luz"
+		luz.rotation = Vector3(deg_to_rad(-55), deg_to_rad(35), 0)
+		add_child(luz)
+	if get_node_or_null("Ambiente") == null:
+		var amb := WorldEnvironment.new()
+		amb.name = "Ambiente"
+		amb.environment = Environment.new()
+		amb.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		amb.environment.ambient_light_color = Color(0.5, 0.52, 0.58)
+		add_child(amb)
 	camara = Camera3D.new()
 	camara.fov = 55
 	camara.far = 60
