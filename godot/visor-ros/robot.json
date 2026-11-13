@@ -1,0 +1,5 @@
+{
+  "titulo": "Visor ROS 2 (PC y Vita)",
+  "prefijo_compacto": "/vita",
+  "_nota": "Solo lo que no es colocar cosas (doc 35). VisorRos lee prefijo_compacto: /vita o /vita/<robot> del relay (docker/scripts/vita_relay.py). Los displays y su posición están en main.tscn."
+}

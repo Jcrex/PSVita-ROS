@@ -1,0 +1,163 @@
+extends Node
+## VisorRos (ADR 0013 §1; doc 36 §2.9.1): contexto único de los displays (≈ rviz_common::DisplayContext).
+##
+## Vive en el `.tscn` (regla doc 35) y conecta, al arrancar, cada nodo del grupo "display_ros" que cuelga de él:
+## les da el nodo ROS (`contexto`), el marco fijo, el TF, el prefijo compacto del relay y los cupos de render.
+## El mismo script corre en el PC (rclgd o el editor de host con ros2_vita) y en la PS Vita.
+##
+## Decisiones de V1 no cubiertas por el ADR 0013 (las más conservadoras; anotadas en visor/README.md):
+##   - TF: en V1 no hay `TfLigero` (tarea V9). Si el nodo tiene `create_tf_listener` (rclgd del PC) se usa; si no,
+##     `tf` queda en null y `transformada()` supone que todo está ya en el marco fijo (D3).
+##   - Transporte: argumento `transporte=` > `@export transporte` > `ros/transport` del proyecto SOLO con ros2_vita
+##     (con rclgd «xrce» no significa nada y activaría el camino compacto en el PC por error).
+##   - Si ROS no arranca (agente caído al abrir), se reintenta cada `reintento_s`. Las caídas posteriores las
+##     resuelve ya el transporte XRCE (reconexión en xrce_transport.cpp). «validar en hardware».
+
+signal listo                                   # displays conectados (o ROS no disponible y sin reintentos)
+
+const Contexto = preload("res://comun/ros/contexto_ros.gd")
+
+enum Perfil { HMI, VIZ }
+
+## Cupos por capa (ADR 0013 §4; ADR 0011 §6; docs/31:255). Instancias 3D en las capas 3D y *quads* en las 2D.
+## Solo se aplican en la Vita (en el PC `reservar()` concede todo).
+const CUPOS := {
+	Perfil.HMI: {"robot": 40, "mundo": 12, "tf": 8, "marcadores": 12, "poses": 4, "lento": 0, "reserva": 4,
+		"hud": 400, "sensores_2d": 800, "resto_2d": 300},
+	Perfil.VIZ: {"robot": 40, "mundo": 12, "tf": 32, "marcadores": 32, "poses": 16, "lento": 4, "reserva": 14,
+		"hud": 400, "sensores_2d": 800, "resto_2d": 300},
+}
+
+@export var nombre_nodo := "visor"
+@export var transporte := ""                   # "" = argumento, o el de la plataforma (ver cabecera)
+@export var marco_fijo := "map"
+@export var prefijo_compacto := "/vita"        # /vita o /vita/<robot> (vita_relay.py:21); robot.json lo cambia
+@export var perfil: Perfil = Perfil.HMI
+@export var px_por_m := 40.0                   # escala de la planta 2D
+@export var forzar_compacto := false           # probar en el PC el camino de la Vita (igual que `-- compacto=1`)
+@export var camara: Camera3D
+@export var texto: Control                     # TextoSuperpuesto (V2); opcional
+@export_file("*.json") var config_json := "res://robot.json"   # solo `prefijo_compacto` en V1
+@export var reintento_s := 3.0                 # 0 = no reintentar si ROS no arranca
+
+var contexto = Contexto.new()
+var tf = null                                  # RosTfListener (PC) o null: SIN anotar (no existe en la Vita, T7)
+var en_vita := OS.has_feature("vita")          # las pruebas de host lo ponen a true para simular la Vita
+var ros_listo := false
+var estado := "sin conectar"
+var displays: Array = []                       # los conectados por este visor
+var _usados := {}                              # capa -> unidades reservadas
+var _avisados := {}                            # quien -> true (aviso de cupo una sola vez)
+var _args_compacto := false
+
+
+func _ready() -> void:
+	_leer_argumentos()
+	_leer_config()
+	# Se conecta dos fotogramas después, como aplicacion_robot.gd: abrir la sesión XRCE puede tardar y así se ve
+	# la primera imagen antes.
+	_conectar_deferred.call_deferred()
+
+
+func _leer_argumentos() -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("transporte="):
+			transporte = a.substr(11)
+		elif a == "compacto=1":
+			_args_compacto = true
+		elif a.begins_with("agente="):
+			ProjectSettings.set_setting("ros/agent_ip", a.substr(7))
+		elif a.begins_with("puerto="):
+			ProjectSettings.set_setting("ros/agent_port", a.substr(7).to_int())
+	if transporte == "" and rclgd.has_method("get_transport_info"):   # solo ros2_vita tiene este método
+		transporte = String(ProjectSettings.get_setting("ros/transport", ""))
+
+
+func _leer_config() -> void:
+	if config_json == "" or not FileAccess.file_exists(config_json):
+		return
+	var datos = JSON.parse_string(FileAccess.get_file_as_string(config_json))
+	if datos is Dictionary and datos.has("prefijo_compacto"):
+		prefijo_compacto = String(datos["prefijo_compacto"])
+
+
+func _conectar_deferred() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	if contexto.iniciar(nombre_nodo, "", transporte) != OK:
+		estado = "ROS no arranca (%s)" % transporte
+		push_warning("VisorRos: " + estado)
+		if reintento_s > 0.0:
+			get_tree().create_timer(reintento_s).timeout.connect(_conectar_deferred)
+		else:
+			listo.emit()
+		return
+	ros_listo = true
+	estado = "ok"
+	if contexto.nodo.has_method("create_tf_listener"):
+		tf = contexto.nodo.call("create_tf_listener", 10.0)
+	for d in get_tree().get_nodes_in_group("display_ros"):
+		if is_ancestor_of(d):
+			d.conectar(self)
+			displays.append(d)
+			print("[visor] %s: %s" % [d.name, d.estado])
+	listo.emit()
+
+
+## Camino compacto (relay /vita/*): Vita, transporte XRCE, `-- compacto=1` o `forzar_compacto`.
+func usa_compactos() -> bool:
+	return forzar_compacto or _args_compacto or en_vita or contexto.transporte == "xrce"
+
+
+## Reserva n unidades de la capa (instancias 3D o *quads* 2D); devuelve lo concedido. En el PC, todo.
+func reservar(capa: String, n: int, quien: String) -> int:
+	if not en_vita or n <= 0:
+		return n
+	var tope: int = CUPOS[perfil].get(capa, 0)
+	var usado: int = _usados.get(capa, 0)
+	var dado := clampi(tope - usado, 0, n)
+	_usados[capa] = usado + dado
+	if dado < n and not _avisados.has(quien):
+		_avisados[quien] = true
+		push_warning("VisorRos: %s pide %d en «%s» y recibe %d" % [quien, n, capa, dado])
+	return dado
+
+
+func liberar(capa: String, n: int) -> void:
+	if n <= 0:
+		return
+	var usado: int = _usados.get(capa, 0)
+	_usados[capa] = maxi(0, usado - n)
+
+
+func usado(capa: String) -> int:
+	return _usados.get(capa, 0)
+
+
+## Pose de `frame` en el marco fijo (ejes Godot); null si TF no la conoce.
+func transformada(frame: String):
+	if frame == "" or frame == marco_fijo or tf == null:
+		return Transform3D.IDENTITY              # D3: sin TF se supone que el frame ya es el fijo
+	if not tf.can_transform(marco_fijo, frame):
+		return null
+	return tf.lookup_transform(marco_fijo, frame)
+
+
+## Transform3D (ejes Godot) → Transform2D de la planta: x = ROS x, y = −ROS y (norte arriba), en px.
+func planta_desde(t: Transform3D) -> Transform2D:
+	var adelante: Vector3 = t.basis * Vector3.FORWARD          # +X de ROS = −Z de Godot
+	var yaw := atan2(-adelante.x, -adelante.z)                  # yaw ROS
+	return Transform2D(-yaw, Vector2(-t.origin.z, t.origin.x) * px_por_m)
+
+
+func _exit_tree() -> void:
+	for d in displays:
+		if is_instance_valid(d):
+			d.desconectar()
+	displays.clear()
+	tf = null
+	if ros_listo:
+		contexto.cerrar()
+	ros_listo = false

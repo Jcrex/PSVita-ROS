@@ -22,6 +22,7 @@ Biblioteca compartida por `godot/g1-unitree/`, `godot/rbkairos-plus/`, `godot/g1
 | Unitree | `sensores/unitree_estado.gd`, `unitree_control.gd` | LowState/LowCmd, SportModeState, API sport y formato G1 compacto |
 | Seguridad | `sensores/estop.gd` | Suscripción Bool que detiene el robot |
 | Mundo | `mundo/mundo.tscn` + `mundo_base.gd`, `caja_mundo.gd`, `asset_mundo.gd` | Bosque, ciudad, parque y casa como nodos editables; colisiones y agentes móviles |
+| Visor de topics | `visor/` (README propio) | Displays ROS 2 portables PC/Vita (ADR 0013): `VisorRos`, `CanalDisplay`, bases 3D/2D/HUD; prueba `pruebas/visor.gd` |
 | Aplicación | `aplicacion_robot.gd`, `inicio_robot.gd` | Lee `robot.json`, crea robot, sensores, cámara y HUD en el `InicioRobot` de `main.tscn` |
 
 ## Regla de escenas: la escena manda en lo que se ve y dónde (doc 35)
