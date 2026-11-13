@@ -25,7 +25,7 @@ const TiempoRos = preload("res://comun/visor/tiempo_ros.gd")   # Canal ya viene 
 
 ## action_msgs/GoalStatus STATUS_* (0..6).
 const FASE := ["sin meta", "aceptada", "ejecutando", "cancelando", "LLEGÓ", "cancelada", "ABORTADA"]
-const COLOR_FASE := [COLOR_CADUCADO, COLOR_TEXTO, Color(0.3, 0.7, 1.0), COLOR_AVISO, COLOR_OK, COLOR_CADUCADO,
+const COLOR_FASE := [COLOR_CADUCADO, COLOR_TEXTO, COLOR_INFO, COLOR_AVISO, COLOR_OK, COLOR_CADUCADO,
 		COLOR_ERROR]
 ## Fases del puente VAB/1 (docs/32:61) → (texto, índice de color de COLOR_FASE).
 const FASE_PUENTE := [["reposo", 0], ["comprobando", 1], ["enviada", 1], ["RECHAZADA", 6], ["ejecutando", 2],

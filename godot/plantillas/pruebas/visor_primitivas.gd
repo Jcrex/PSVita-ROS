@@ -35,6 +35,7 @@ func _correr() -> void:
 	_probar_variantes()
 	_probar_conversiones()
 	await _probar_texto()
+	await _probar_banco()
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
 	quit(0 if fallos == 0 else 1)
 
@@ -186,3 +187,35 @@ func _probar_texto() -> void:
 	await process_frame
 	tx.queue_free()
 	cam.queue_free()
+
+
+## Banco del gate E-W8-1 (godot/visor-ros/banco_primitivas.gd; revisión V1): 80 instancias, todas delante de la
+## cámara de main.tscn y dentro de la pantalla, sin pasar de 64 variantes. Solo si el proyecto lo trae.
+func _probar_banco() -> void:
+	if not ResourceLoader.exists("res://banco_primitivas.gd"):
+		return
+	Prim.vaciar()
+	var cam := Camera3D.new()
+	cam.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0.70710677, -0.70710677),
+			Vector3(0, 0.70710677, 0.70710677)), Vector3(0, 6, 6))           # la Camara de visor-ros/main.tscn
+	root.add_child(cam)
+	cam.current = true
+	var banco: Node3D = load("res://banco_primitivas.gd").new()
+	root.add_child(banco)
+	check(not banco.visible and banco.creadas == 0, "banco: apagado al arrancar (la .vpk mide G-W13-H0 sin él)")
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_B
+	ev.pressed = true
+	banco._unhandled_input(ev)
+	await process_frame
+	var mallas := banco.find_children("*", "MeshInstance3D", false, false)
+	check(banco.visible and mallas.size() == 80, "banco: 80 instancias al encenderlo (%d)" % mallas.size())
+	check(Prim.variantes() <= Prim.MAX_VARIANTES, "banco: %d variantes ≤ 64" % Prim.variantes())
+	var fuera := 0
+	for m in mallas:
+		if not cam.is_position_in_frustum((m as Node3D).global_position):
+			fuera += 1
+	check(fuera == 0, "banco: las 80 delante de la cámara y en pantalla (fuera %d)" % fuera)
+	banco.queue_free()
+	cam.queue_free()
+	Prim.vaciar()

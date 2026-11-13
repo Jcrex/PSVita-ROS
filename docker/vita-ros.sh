@@ -75,6 +75,10 @@ case "${1:-help}" in
         # Adaptador PC → Vita (doc 27): topics grandes → mensajes compactos ≤ 488 B en best effort.
         # $2 = módulos, $3 = prefijo de salida (contrato VC/1: /vita/<robot>, p. ej. /vita/g1).
         run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]' -p prefijo:=${3:-/vita}" ;;
+    fuente-visor)
+        # Datos sintéticos para godot/visor-ros (map, scan, odom, joint_states, plan, battery_state, barometer,
+        # temperature). Con `relay` en otra terminal, la Vita los ve por /vita/* (revisión V1 del visor).
+        run "python3 /scripts/fuente_prueba_visor.py" ;;
     rviz)    run "rviz2" ;;
     rqt)     run "rqt_graph" ;;
     teleop)  run "ros2 run teleop_twist_keyboard teleop_twist_keyboard" ;;
@@ -115,6 +119,7 @@ Uso: docker/vita-ros.sh <comando>
   g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
   g1-rviz             RViz del G1: casa (/map), modelo (/robot_description), odometría
   relay [mód] [pref]  vita_relay: scan/pose/joints/mapa/path compactos para la Vita (doc 27)
+  fuente-visor        datos sintéticos para godot/visor-ros (mapa, scan, odom, joints, plan, batería…)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
   bridge-client <IP>  puente Zenoh: conectar al servidor (otro equipo)

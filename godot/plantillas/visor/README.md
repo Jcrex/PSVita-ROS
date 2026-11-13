@@ -81,7 +81,8 @@ compacto), `hz` / `hz_vita` (tope de entrega; `hz_vita` = 0 ⇒ el mismo), `fiab
 
 1. **TF:** `TfLigero` llega con V9. Hasta entonces `visor.tf` es el `RosTfListener` de rclgd si el nodo tiene
    `create_tf_listener`, y si no `null`: `transformada()` supone que todo está en el marco fijo (D3).
-2. **Paleta:** `PaletaViz` llega con V2. El HUD usa un gris provisional `COLOR_CADUCADO` en lugar de `Paleta.STALE`.
+2. **Paleta:** ~~gris provisional~~ → integrada en la revisión V1: `COLOR_CADUCADO` es el gris 242 de la rampa de
+   `PaletaViz` (no `Paleta.STALE`, ver «Revisión V1»).
 3. **Transporte:** `ros/transport` del proyecto solo se aplica con `ros2_vita` (detectado por
    `rclgd.get_transport_info`); con rclgd en el PC, «xrce» no tiene sentido y activaría el camino compacto.
 4. **Caducidad:** se cuenta desde la última **llegada** (no desde la última entrega al display), para que un tope
@@ -100,7 +101,7 @@ compacto), `hz` / `hz_vita` (tope de entrega; `hz_vita` = 0 ⇒ el mismo), `fiab
 
 ```fish
 set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
-$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor.gd    # RESULTADO: 56/56
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor.gd    # RESULTADO: 57/57
 ```
 
 `pruebas/visor.gd` (loopback): recibe en las tres bases, «el último gana», tope de Hz y aviso D8, caducidad,
@@ -147,12 +148,12 @@ Decisiones de V2 no cubiertas (las más conservadoras):
    La caché `indice()` se vacía al llegar a 1 024 colores.
 7. **Rampas de mapa:** `umbral` por defecto 100 en los tres esquemas (el de RViz), no 65.
 8. **TextoSuperpuesto:** sin `camara` usa la del viewport; `mouse_filter = IGNORE`; `max_glifos` (0 = automático)
-   para simular la Vita en host. No se ha añadido a `visor-ros/main.tscn` (lo hará el primer display que lo use).
-9. **HUD:** el gris provisional `COLOR_CADUCADO` de `display_ros_hud.gd` sigue ahí (V4 trabaja ese archivo);
-   sustituirlo por `Paleta.STALE` es un cambio de una línea para quien lo cierre.
+   para simular la Vita en host. Está en `visor-ros/main.tscn` (`VisorRos/Hud/Texto`, `VisorRos.texto`) desde la
+   revisión V1.
+9. **HUD:** colores integrados con `PaletaViz` en la revisión V1 (caducado = gris de la rampa, no STALE).
 
 ```fish
-$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_primitivas.gd   # RESULTADO: 110/110
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_primitivas.gd   # RESULTADO: 114/114
 ```
 
 El `ERROR: PrimitivasViz: forma desconocida 99` y el aviso de «más de 64 variantes» del log son casos negativos.
@@ -193,10 +194,9 @@ zona y la prueba comprueba que lo dibujado no la pasa. `mouse_filter = IGNORE` p
 
 ### Decisiones de V4 no cubiertas por el ADR 0013 (las más conservadoras)
 
-1. **Paleta:** colores provisionales `COLOR_OK/AVISO/ERROR` (rqt_robot_monitor), `COLOR_TEXTO/FONDO/ACENTO` y
-   `COLOR_CADUCADO` como constantes de `display_ros_hud.gd`. **Pendiente de integrar con `paleta_viz.gd` (V2)**: se
-   cambian ahí y ningún widget toca colores sueltos (salvo `COLOR_APAGADO` de joy y el azul de «ejecutando» de
-   estado_meta).
+1. **Paleta:** `COLOR_OK/AVISO/ERROR/ACENTO/INFO/CADUCADO` de `display_ros_hud.gd` salen de `paleta_viz.gd`
+   (revisión V1); `COLOR_TEXTO`/`COLOR_FONDO` siguen propios del HUD. Ningún widget toca colores sueltos salvo
+   `COLOR_APAGADO` de joy.
 2. **Recuento de glifos** como cota alta: cuentan también los espacios. La medida buena es G-W13-H0.
 3. **Medidor con 24 muestras** (el catálogo decía 60, que daba > 70 *quads*): así 6 medidores caben en 240.
 4. **Joy:** circunferencias de 16 segmentos y botones siempre rellenos (un marco cuesta 4 *quads*); ≤ 17 botones.
@@ -262,5 +262,24 @@ Decisiones de V3 no cubiertas (las más conservadoras):
 
 ```fish
 set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
-$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_displays.gd    # RESULTADO: 104/104
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_displays.gd    # RESULTADO: 105/105
 ```
+
+## Revisión V1 (2026-11-13)
+
+Revisión escéptica y de código de V1–V4: `docs/ia/workshops/posts/V1-revision.md` (hallazgos, veredictos de las
+decisiones anotadas arriba y comandos de hardware). Cambios:
+
+- `vita_relay.gd`: la primera subida de la textura del mapa ya no espera 250 ms desde el arranque del motor (hacía
+  fallar a ratos `visor_displays.gd`, 103/104).
+- `robot_joints.gd`: `pose2d` conserva la escala propia del robot (los EJES de respaldo volvían a tamaño 1).
+- `2d/pose.gd`, `3d/pose.gd`, `robot_joints.gd`: poses con NaN/Inf se ignoran (T2).
+- HUD con colores de `PaletaViz`; dato viejo en gris (no `Paleta.STALE`: azul ilegible como texto, DESAFÍO a
+  doc 36 §2.9.5).
+- `VisorRos` activa `Perfil` en la Vita (o con `-- perfil`) y vuelca cada 300 fotogramas
+  `[perfil-gd] … visor/<display>=µs … hud_barra_q= hud_pestana_q= hud_glifos=`; la sección de cada display se fija
+  en `_enter_tree` (antes salía una sección vacía).
+- `godot/visor-ros/main.tscn`: `TextoSuperpuesto` (`VisorRos/Hud/Texto`) y `BancoPrimitivas`
+  (`banco_primitivas.gd`, gate E-W8-1: 80 instancias con Select o la tecla B; apagado al arrancar).
+- Estación: `docker/vita-ros.sh fuente-visor` (`docker/scripts/fuente_prueba_visor.py`, la fuente sintética de V3,
+  ahora versionada, con batería, presión y temperatura).

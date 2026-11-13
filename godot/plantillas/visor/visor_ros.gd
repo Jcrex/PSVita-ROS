@@ -16,6 +16,7 @@ extends Node
 signal listo                                   # displays conectados (o ROS no disponible y sin reintentos)
 
 const Contexto = preload("res://comun/ros/contexto_ros.gd")
+const PerfilGd = preload("res://comun/ros/perfil.gd")   # contadores [perfil-gd] (≠ enum Perfil)
 
 enum Perfil { HMI, VIZ }
 
@@ -49,11 +50,22 @@ var displays: Array = []                       # los conectados por este visor
 var _usados := {}                              # capa -> unidades reservadas
 var _avisados := {}                            # quien -> true (aviso de cupo una sola vez)
 var _args_compacto := false
+var _perfil_propio := false                    # este visor activó PerfilGd y vuelca `[perfil-gd]` (revisión V1)
+var _perfil_n := 0
+var _gestor: Node = null                       # GestorHud bajo el visor (para el informe de *quads* del HUD)
 
 
 func _ready() -> void:
 	_leer_argumentos()
 	_leer_config()
+	# Medida en hardware (revisión V1): sin aplicacion_robot.gd nadie activaba Perfil en visor-ros, así que los
+	# `Perfil.sumar` de las bases no se volcaban. En la Vita o con `-- perfil`, y si otro no lo activó ya, este
+	# visor escribe cada PerfilGd.CADA fotogramas `[perfil-gd] … visor/<display>=µs … hud_barra= hud_pestana= …`.
+	if not PerfilGd.activo and (OS.has_feature("vita") or OS.get_cmdline_user_args().has("perfil")) \
+			and ProjectSettings.get_setting("ros/perfil_gd", true):
+		PerfilGd.activo = true
+		_perfil_propio = true
+	set_process(_perfil_propio)
 	# Se conecta dos fotogramas después, como aplicacion_robot.gd: abrir la sesión XRCE puede tardar y así se ve
 	# la primera imagen antes.
 	_conectar_deferred.call_deferred()
@@ -103,7 +115,24 @@ func _conectar_deferred() -> void:
 			d.conectar(self)
 			displays.append(d)
 			print("[visor] %s: %s" % [d.name, d.estado])
+	for g in find_children("*", "Control", true, false):
+		if g.has_method("informe") and "pestanas" in g:
+			_gestor = g
+			break
 	listo.emit()
+
+
+func _process(_dt: float) -> void:
+	_perfil_n += 1
+	if _perfil_n < PerfilGd.CADA:
+		return
+	var extra := "displays=%d" % displays.size()
+	if is_instance_valid(_gestor):
+		var h: Dictionary = _gestor.informe()
+		extra += " hud_pestana=%s hud_barra_q=%d hud_pestana_q=%d hud_glifos=%d" % [h["pestana"], h["barra_quads"],
+				h["pestana_quads"], h["barra_glifos"] + h["pestana_glifos"]]
+	printerr(PerfilGd.volcar(_perfil_n, extra))
+	_perfil_n = 0
 
 
 ## Camino compacto (relay /vita/*): Vita, transporte XRCE, `-- compacto=1` o `forzar_compacto`.
@@ -161,3 +190,6 @@ func _exit_tree() -> void:
 	if ros_listo:
 		contexto.cerrar()
 	ros_listo = false
+	if _perfil_propio:
+		PerfilGd.activo = false
+		_perfil_propio = false

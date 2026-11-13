@@ -13,17 +13,23 @@ extends Control
 const Canal = preload("res://comun/visor/canal_display.gd")
 const Perfil = preload("res://comun/ros/perfil.gd")
 
-## Gris de dato viejo. Provisional hasta PaletaViz (V2), que tendrá `STALE`; mismo papel.
-const COLOR_CADUCADO := Color(0.45, 0.45, 0.48)
-## Colores de estado de rqt_robot_monitor (`util_robot_monitor.py:48-54`; doc 36a §4.4.5) y de fondo/texto del HUD.
-## PROVISIONALES (V4): PaletaViz (V2) los tendrá como OK/WARN/ERROR; al integrarla se cambian aquí y en ningún
-## otro sitio (los widgets solo usan estas constantes).
-const COLOR_OK := Color8(85, 178, 76)
-const COLOR_AVISO := Color8(222, 213, 17)
-const COLOR_ERROR := Color8(178, 23, 46)
-const COLOR_TEXTO := Color(0.9, 0.9, 0.9)
+const Paleta = preload("res://comun/visor/paleta_viz.gd")
+
+## Colores del HUD, sacados de PaletaViz (revisión V1, 2026-11-13). Los widgets solo usan estas constantes.
+## OK/AVISO/ERROR = los de rqt_robot_monitor (`util_robot_monitor.py:48-54`; doc 36a §4.4.5) vía PaletaViz.
+const COLOR_OK := Paleta.OK
+const COLOR_AVISO := Paleta.WARN
+const COLOR_ERROR := Paleta.ERROR
+## Dato viejo: un gris de la rampa de PaletaViz, NO `Paleta.STALE`. Decisión de la revisión V1 (DESAFÍO a doc 36
+## §2.9.5, que pedía STALE): STALE es el azul oscuro de rqt (40, 23, 176), pensado como relleno de un icono de
+## estado; como color de TEXTO sobre el fondo del HUD (≈ 0,08) da un contraste ≈ 1,6:1 y no se lee. Este gris da
+## ≈ 3,8:1 y se distingue del texto vivo (0,9). `Paleta.STALE` queda para los indicadores de diagnóstico (V6).
+const I_CADUCADO := 242                         # índice de la rampa de grises (232 + 10 → 10/22 ≈ 0,45)
+const COLOR_CADUCADO := Color(10.0 / 22.0, 10.0 / 22.0, 10.0 / 22.0)   # = Paleta.color(I_CADUCADO)
+const COLOR_TEXTO := Color(0.9, 0.9, 0.9)       # casi blanco: menos deslumbrante que BLANCO en la pantalla OLED
 const COLOR_FONDO := Color(0.08, 0.09, 0.12, 0.85)
-const COLOR_ACENTO := Color(1.0, 0.75, 0.2)
+const COLOR_ACENTO: Color = Paleta.NOMBRADOS[Paleta.NARANJA]
+const COLOR_INFO: Color = Paleta.NOMBRADOS[Paleta.CIAN]   # «en curso» (p. ej. meta ejecutándose)
 const TAM_TEXTO := 12                          # una fuente, un tamaño, sin contorno (docs/34:52)
 
 @export var habilitado := true
@@ -75,6 +81,7 @@ func _init() -> void:
 
 func _enter_tree() -> void:
 	add_to_group("display_ros")
+	_seccion = "visor/" + name          # ya aquí: `_process` corre antes de `conectar` (revisión V1: sección «»)
 
 
 func conectar(v) -> void:
