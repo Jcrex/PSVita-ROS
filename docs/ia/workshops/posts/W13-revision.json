@@ -1,0 +1,953 @@
+[
+ {
+  "ficha": "nucleo-generico#(pieza) Introspección de RosMsg: enumerar campos y tipos en tiempo de ejecución",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Receta portable (ClassDB.class_get_property_list para tipadas, get_property_list para dinámico, prototipo vacío por tipo) coherente con API_PARITY.md (Vita solo dinámico). Duda [I] del propio post (ClassDB y clases GDExtension) sigue abierta: gate en rclgd/test/project.",
+  "fuentes": [
+   "godot/ros2_vita/API_PARITY.md:52-60",
+   "godot/ros2_vita/ros_msg.cpp:14-24 (esquema único, comprobado)"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(arquitectura) Registro tipo → visualizador",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA",
+  "motivo": "Registro (tipo, patrón de topic) → escena bien motivado por la reutilización de MultiArray en el relay (vita_relay.py:10-19, comprobado). Pero gdviz ya tiene registro y contrato de plugins; además las otras familias no lo usan (ver contradicciones C1). Alternativa no buscada por ningún post W13: Ozuba/gdviz (MIT, docs/24 §1–§4) ya trae registro de displays (core/viz_registry.gd:65-102), TopicDisplay/Tool/View y la tarea T-W4-4 «capa GXM-safe» (docs/24:286).",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:10-19",
+   "docs/24-portabilidad-ozuba.md:229-240"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(arquitectura) VisorRos: contexto común de los displays (= rviz_common::DisplayContext)",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA",
+  "motivo": "VisorRos con tf por has_method/call (correcto: RosTfListener no existe en la Vita, register_types.cpp:16-22). Choca con geom (TfLigero + Prim.en_marco_fijo) y mapas (tf: RosTfListener anotado). Un solo proveedor de TF debe decidirlo el juez (D3). Alternativa no buscada por ningún post W13: Ozuba/gdviz (MIT, docs/24 §1–§4) ya trae registro de displays (core/viz_registry.gd:65-102), TopicDisplay/Tool/View y la tarea T-W4-4 «capa GXM-safe» (docs/24:286).",
+  "fuentes": [
+   "godot/ros2_vita/register_types.cpp:16-22",
+   "docs/24-portabilidad-ozuba.md:286"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(arquitectura) DisplayRos: clase base de los displays (= rviz_common::RosTopicDisplay / MessageFilterDisplay)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Compila como base 3D, pero la afirmación «las de 2D y HUD son idénticas salvo extends» es falsa: con extends Control falla «Identifier transform not declared» (Control no tiene transform 3D). La variante HUD necesita otro _al_mensaje sin TF. Corrección: separar la parte TF a un método virtual _aplicar_frame(t) que solo implementa la 3D/2D.",
+  "fuentes": [
+   "check-only: comun/visor/display_ros_hud.gd derivado de esta ficha"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(arquitectura) CanalDisplay: suscripción, coalescencia y medida de Hz (= `ros2 topic hz` por display)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "«El último gana» en GDScript correcto, pero en la Vita no ahorra la decodificación (ros_runtime.cpp:118-133 decodifica antes del callback, comprobado); el propio post lo reconoce y propone P1 en C++.",
+  "fuentes": [
+   "godot/ros2_vita/ros_runtime.cpp:118-133",
+   "godot/ros2_vita/ros_runtime.cpp:473-484 (cola 256, comprobado)"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(arquitectura) Displays como nodos de escena editable (regla doc 35)",
+  "veredicto": "VERIFICADO",
+  "check_only": "NO APLICA",
+  "motivo": "Extracto conceptual de árbol .tscn (comentarios), no GDScript. Coherente con la regla de doc 35 (lo generado sin owner).",
+  "fuentes": [
+   "docs/35-regla-escenas-editables.md"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#* (cualquier tipo): Inspector genérico en árbol",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Tree solo PC, perezoso; coherente con H16 (glifos = quads cada fotograma) para excluirlo en la Vita.",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:48 (H16)"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#* (cualquier tipo): Inspector de texto para la Vita (lista plana paginada)",
+  "veredicto": "Por medir",
+  "check_only": "PASA",
+  "motivo": "Límite de 12 filas a 4 Hz basado en ≈6 µs/quad extrapolado de doc 34 (305 quads ≈ 1,85 ms, doc 34:52). Pero aquellos 1,85 ms iban con 222 draws: el coste puede ser por lote, no por quad [I]. Gate: [gxm2d-canvas] con 12 filas.",
+  "fuentes": [
+   "docs/34-perfil-vita-ligero.md:52"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#* campos numéricos: Trazador de series (rqt_plot / Foxglove Plot / PlotJuggler)",
+  "veredicto": "Por medir",
+  "check_only": "PASA",
+  "motivo": "Polilínea fina = 1 comando (H17, comprobado en docs/31:49). La duda de draw_set_transform escalado + ancho -1 es real [I]; gate propuesto por el post es correcto.",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:49 (H17)"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(pieza) Descubrimiento de topics y tipos en el PC (grafo ROS)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "get_topic_names_and_types por has_method/call: portable (no existe en la Vita, API_PARITY ❌).",
+  "fuentes": [
+   "godot/ros2_vita/API_PARITY.md (fila get_topic_names_and_types ❌)"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(pieza) Descubrimiento de topics y tipos en la Vita (sin grafo)",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA (envuelto en extends RefCounted: la ficha no trae extends)",
+  "motivo": "/vita/catalogo es un topic nuevo del relay más (ver C4). Alternativa más barata: catálogo estático res://ros/catalogo.json generado al exportar (ya es el respaldo del post) o reutilizar VC/1 (plantillas/ros/vc1.gd). Decide el juez (D9).",
+  "fuentes": [
+   "godot/plantillas/ros/vc1.gd:1-12"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(pieza) Suscribirse en la Vita a un tipo sin esquema .rsch",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia display_ros_hud.gd; ver DESAFÍO de nucleo#3)",
+  "motivo": "Comportamiento verificado: from_type falla con ERR_FAIL_COND y el callback no se llama (ros_runtime.cpp:122-123). Bien no suscribir.",
+  "fuentes": [
+   "godot/ros2_vita/ros_runtime.cpp:122-123"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#std_msgs/msg/{Bool, Byte, Char, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64, String, Empty}",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia display_ros_hud.gd)",
+  "motivo": "generar_esquemas.py solo tiene Bool y String de los escalares std_msgs (comprobado). Empty [?] sigue abierto.",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:12-40"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#std_msgs/msg/{Byte,Int8,Int16,Int32,Int64,UInt8,UInt16,UInt32,UInt64,Float32,Float64}MultiArray (+ MultiArrayLayout, MultiArrayDimension)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia display_ros_hud.gd)",
+  "motivo": "MultiArrays son el formato base del relay y baratos de recibir (H25).",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:57 (H25)"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#std_msgs/msg/ColorRGBA",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA (con dependencia display_ros_hud.gd)",
+  "motivo": "Define color_ros/indice_paleta que «reutilizan Marker y MarkerArray», pero mapas usa su propio Paleta.color/uv (fabrica.gd) y geom material(c) con a=0,99. Tres utilidades de color distintas (C2).",
+  "fuentes": [
+   "docs/ia/workshops/posts/W13-mapas-marcadores-borrador.md §3"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#std_msgs/msg/Header + builtin_interfaces/msg/{Time, Duration}",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "now() = hora del agente en la Vita (API_PARITY.md fila now()); rclgd now() devuelve RosMsg (class_rosnode.rst:327-331).",
+  "fuentes": [
+   "godot/rclgd/docs/classes/class_rosnode.rst:327-331"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(pieza) Monitor de topic: Hz, ancho de banda, latencia (`ros2 topic hz/bw/delay`)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Duplica la barra fija de HMI (enlace con get_transport_info, hmi borrador §3) y el contador relay_bw ya existente (/vita/relay_bw). Hay que decidir un único monitor (C5).",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:19"
+  ]
+ },
+ {
+  "ficha": "nucleo-generico#(huecos) Lo que falta en ros2_vita para el núcleo genérico",
+  "veredicto": "VERIFICADO",
+  "check_only": "NO APLICA",
+  "motivo": "Esbozo C++ (no GDScript). Huecos P1 coinciden con el código: decodificación antes del callback y búsqueda por nombre en cada mensaje (from_type en deliver, ros_runtime.cpp:122).",
+  "fuentes": [
+   "godot/ros2_vita/ros_runtime.cpp:118-133"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#(común) conversión ROS↔Godot, marco fijo y primitivas 3D (flecha) de toda la familia",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Compila, pero primitivas.gd solo define material/flecha/flecha_hacia/pose_godot/en_marco_fijo: faltan esfera, ejes, disco, anillo y cono que llaman las fichas 1–21. Además duplica la fábrica de mapas (fabrica.gd) con otra convención de color (material por color a=0,99 frente a paleta UV de ADR 0011 §3) (C2). Alternativa no buscada por ningún post W13: Ozuba/gdviz (MIT, docs/24 §1–§4) ya trae registro de displays (core/viz_registry.gd:65-102), TopicDisplay/Tool/View y la tarea T-W4-4 «capa GXM-safe» (docs/24:286).",
+  "fuentes": [
+   "check-only",
+   "docs/adr/0011-presupuesto-render-vita.md:37-38",
+   "docs/24-portabilidad-ozuba.md:286"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Point, geometry_msgs/msg/PointStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Vector3, geometry_msgs/msg/Vector3Stamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Vector3Stamped 52 B; RViz2 sin display de serie (correcto).",
+  "fuentes": [
+   "rviz_default_plugins plugins_description.xml (jazzy)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Pose, geometry_msgs/msg/PoseStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/PoseArray",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (tras resolver primitivas.gd)",
+  "motivo": "PoseArray 28+56·8 = 476 ≤ 488 coherente. El relay [x,y,yaw]·n no tiene nombre de topic (C4).",
+  "fuentes": [
+   "check-only"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/PoseWithCovariance, geometry_msgs/msg/PoseWithCovarianceStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Twist, TwistStamped, TwistWithCovariance(Stamped)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "geom#6, #7 y #8 tienen el MISMO código (screw display): aceptable, pero las tres fichas no son independientes.",
+  "fuentes": [
+   "md5 de los tres bloques idéntico"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Accel, AccelStamped, AccelWithCovariance(Stamped)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "geom#6, #7 y #8 tienen el MISMO código (screw display): aceptable, pero las tres fichas no son independientes.",
+  "fuentes": [
+   "md5 de los tres bloques idéntico"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Wrench, geometry_msgs/msg/WrenchStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "geom#6, #7 y #8 tienen el MISMO código (screw display): aceptable, pero las tres fichas no son independientes.",
+  "fuentes": [
+   "md5 de los tres bloques idéntico"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Quaternion, geometry_msgs/msg/QuaternionStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Transform, geometry_msgs/msg/TransformStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Polygon, geometry_msgs/msg/PolygonStamped",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Polygon 28+12·38 = 484 B ≤ 488 coherente; cinta solo si cambia la forma (ADR 0011 §4).",
+  "fuentes": [
+   "docs/adr/0011-presupuesto-render-vita.md:46-49"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#geometry_msgs/msg/Inertia, geometry_msgs/msg/InertiaStamped",
+  "veredicto": "DESAFÍO",
+  "check_only": "FALLA: «Cannot infer the type of \"lados\" variable» (línea 30: Vector3 * Variant con `:=`). Corrección: `var lados: Vector3 = ...` (comprobado: así pasa)",
+  "motivo": "Error real del analizador en ambos runtimes. Jacobi en GDScript solo PC/raro en Vita: correcto.",
+  "fuentes": [
+   "check-only con editor 4.8-dev7"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#nav_msgs/msg/Odometry",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Odometry 724 B recalculado (frame odom, child base_footprint), coincide con doc 27. Pero propone ampliar /vita/pose2d de 6 a 10 floats: rompe el contrato existente (vita_relay.py:11) que consumen otras apps y la ficha hmi#14 (C4). Mejor topic nuevo /vita/pose2d_cov.",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:11",
+   "docs/27-xrce-limites-y-relay.md:18"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#nav_msgs/msg/Path",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Cinta ≤ 2 Hz en Vita respeta ADR 0011 §4; /vita/path_compacto ya existe (≤ 57 pts).",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:18",
+   "docs/adr/0011-presupuesto-render-vita.md:46-49"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#tf2_msgs/msg/TFMessage (/tf, /tf_static) — display TF",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Display TF compila. El relay /vita/tf propuesto (trozos de 4 transforms a 30 Hz) para 32 frames = 8 × 432 B × 30 Hz ≈ 104 KB/s: supera solo el presupuesto de 100 KB/s de docs/27 (§Resumen). Además 32 frames → 64 instancias > 32 de ADR 0011 §6 (el post lo reconoce). Corrección: por /vita/tf solo frames NO URDF (map→odom→base), los del robot por /vita/joints + FK local (geom#17).",
+  "fuentes": [
+   "docs/27-xrce-limites-y-relay.md:18-21",
+   "docs/adr/0011-presupuesto-render-vita.md:46-49"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#tf2_msgs/msg/TFMessage en la Vita — TfLigero (sustituto de RosTfListener)",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA",
+  "motivo": "TfLigero en GDScript compila y es la vía rápida. Alternativa: el nativo sobre modules/tf-tree (P0 ya registrado en API_PARITY), que evita duplicar semántica; y nucleo (#2) no prevé TfLigero sino tf = null en la Vita. Juez D3.",
+  "fuentes": [
+   "godot/ros2_vita/API_PARITY.md (fila create_tf_listener ⏳)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#sensor_msgs/msg/JointState + URDF (RobotModel)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Relay /vita/joints + joints_orden ya existen; JointState G1 1 668 B no cabe en BE (doc 27).",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:12-13"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#sensor_msgs/msg/Imu",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#sensor_msgs/msg/MagneticField",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "MagneticField 124 B, en TIPOS de generar_esquemas.",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:12-40"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#sensor_msgs/msg/NavSatFix, sensor_msgs/msg/NavSatStatus",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Observación correcta sobre float32 (1e-5° ≈ 1 m). Teselas OSM en Vita prehorneadas ≤ 9 coherente con H19.",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:51 (H19)"
+  ]
+ },
+ {
+  "ficha": "geometria-tf-robot#sensor_msgs/msg/Range",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia: geom#0 primitivas.gd NO define esfera/ejes/disco/anillo/cono que esta ficha llama; se usaron stubs del revisor)",
+  "motivo": "Tamaño CDR y presencia/ausencia en RViz coherentes (recalculados PoseWithCovStamped 364 B, Odometry 724 B con rosbags). Representación ajustada a H1/H8.",
+  "fuentes": [
+   "toolchains/rosbags-venv (recalculado por el revisor)"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/LaserScan (PC)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Filtro REP-117 correcto (`not (r >= min and r <= max)` rechaza NaN). PC: decay crea MeshInstance3D + timer por mensaje (asignaciones; aceptable solo en PC).",
+  "fuentes": [
+   "check-only",
+   "ficha sens#0 l.26,36"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/LaserScan (Vita)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Compila y la técnica (un triangle_array) es correcta (H17). Cifra: 106 rayos con base_scan = 484 B SIN encapsulación (488 con ella, rosbags). Como el transporte envía el CDR sin los 4 B de encapsulación (xrce_transport.cpp:12-13) caben 107 (488 B). Convención distinta a la de geom/hmi/mapas, que cuentan los 4 B (C6). Sin impacto práctico (los lidar reales tienen 360+ rayos → relay).",
+  "fuentes": [
+   "godot/ros2_vita/xrce_transport.cpp:12-13,147,678",
+   "rosbags recalculado: 106 rayos = 488 B, 107 = 492 B con encapsulación"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/MultiEchoLaserScan",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia scan_pc.gd = sens#0)",
+  "motivo": "Aplanar a LaserScan y reutilizar: igual que RViz.",
+  "fuentes": []
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/PointCloud2 (PC)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Decodificador genérico con to_vector3_array; tiempos medidos en host [V]. PRIMITIVE_POINTS solo PC (H1 lo prohíbe en Vita).",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:33 (H1)"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/PointCloud2 (Vita)",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA",
+  "motivo": "/vita/nube2d está solo diseñado (docs/27:106, comprobado). Cabecera [seq, trozo, n_trozos] coincide con /vita/marcadores de mapas: debería ser la cabecera común VC/1 de todos los formatos troceados (C4). Alternativa: vizd_cloud_cm en C (docs/31 §4.3) si la nube supera 78 pts.",
+  "fuentes": [
+   "docs/27-xrce-limites-y-relay.md:106",
+   "docs/31-render-visualizacion-vita.md:195-210"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/PointCloud (obsoleto)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia nube_pc2.gd = sens#3)",
+  "motivo": "Obsoleto; recomienda convertir fuera de Godot (point_cloud_converter): correcto.",
+  "fuentes": []
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/Image — rgb8, rgba8, bgr8, bgra8, mono8, 8UC1, 8UC3, bayer_*8 (PC)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Conversión en GPU con shader en PC; sin bucles por píxel.",
+  "fuentes": []
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/Image — 16UC1, mono16, 32FC1 (profundidad) y 16SC1/64FC1",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Mismo bloque de código que sens#6 (md5 idéntico): la ficha de profundidad no trae código específico de R16/RF ni del shader de rango; 16SC1 queda [?].",
+  "fuentes": [
+   "md5 idéntico sens#6/#7"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/Image — yuv422 (=uyvy), uyvy, yuyv, yuv422_yuy2 (PC)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "YUV como RGBA8 de ancho/2 + shader: técnica estándar.",
+  "fuentes": []
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/Image en la Vita (todas las codificaciones)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "El código es el de CompressedImage (idéntico a sens#10). La ficha «Image en la Vita» depende de /vita/camara, que no existe en el relay (docs/27:107 solo diseño). Decisión D13.",
+  "fuentes": [
+   "docs/27-xrce-limites-y-relay.md:107",
+   "docker/scripts/vita_relay.py:9-19"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/CompressedImage (jpeg, png; PC y Vita)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "JPEG/PNG del motor (H22) y set_reliability por método (portable): correcto.",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:54 (H22)"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/CompressedImage — compressedDepth (png / rvl)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (envuelto; es casi todo comentario)",
+  "motivo": "PNG 16 bit bajado a 8 bit en Godot: afirmación coherente; republish fuera de Godot.",
+  "fuentes": []
+ },
+ {
+  "ficha": "sensores-densos#sensor_msgs/msg/CameraInfo (frustum)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "CameraInfo «381 B plumb_bob»: recalculado 357 B con frame «camera» (la cifra depende del frame_id). Cabe igualmente. ImmediateMesh/PRIMITIVE_LINES solo vale en PC (H1).",
+  "fuentes": [
+   "rosbags recalculado: CameraInfo plumb_bob, frame camera = 357 B"
+  ]
+ },
+ {
+  "ficha": "sensores-densos#Camera (superposición imagen + escena 3D, display 'Camera' de RViz)",
+  "veredicto": "Por medir",
+  "check_only": "PASA",
+  "motivo": "Sin ejecutar [I]; en la Vita no hay SubViewport 3D (CLAUDE.md G7c) y el post ya da la variante.",
+  "fuentes": []
+ },
+ {
+  "ficha": "sensores-densos#DepthCloud (profundidad + CameraInfo → nube; display 'DepthCloud' de RViz)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "DepthCloud en vertex shader: solo PC (sin shaders en la Vita).",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#nav_msgs/msg/OccupancyGrid (esquema «map»)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Paleta en shader (PC) y troceado 128² (H19) en Vita; relay VC/1 2 bit existente.",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:51",
+   "godot/plantillas/ros/vc1.gd:7-9"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#nav_msgs/msg/OccupancyGrid (esquema «costmap»)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Port de makeCostmapPalette; paletas.gd fusionada (#1+#2) pasa.",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#nav_msgs/msg/OccupancyGrid (esquema «raw»)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fusionado con mapas#1 en paletas.gd; aislado falla por _base()/costmap() de la otra parte)",
+  "motivo": "Fragmento de paletas.gd.",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#map_msgs/msg/OccupancyGridUpdate",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA (añadido a mapas#0; aislado falla: ctx/img/tex)",
+  "motivo": "El post detecta bien que vita_relay.py:234 sube version en cada OccupancyGrid (comprobado): con costmaps a 1–5 Hz se pierde el caché de teselas. Cambio de contrato VC/1 (época ≠ teselas sucias) pendiente.",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:232-234"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#nav_msgs/msg/GridCells",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "MultiMesh solo PC (H2 lo prohíbe en Vita, la ficha da 2D).",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:34 (H2)"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#nav_msgs/msg/MapMetaData",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "MapMetaData 84 B recalculado.",
+  "fuentes": [
+   "rosbags recalculado"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#nav2_msgs/msg/Costmap (+ CostmapUpdate, «costmap_raw»)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (añadido a mapas#0)",
+  "motivo": "Fragmento del display Map.",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#nav2_msgs/msg/VoxelGrid",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Solo PC; en la Vita relay. Esquemas fuera del typestore (bien señalado).",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:48-51"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#grid_map_msgs/msg/GridMap",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Solo PC; en la Vita relay. Esquemas fuera del typestore (bien señalado).",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:48-51"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#octomap_msgs/msg/Octomap",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Solo PC; en la Vita relay. Esquemas fuera del typestore (bien señalado).",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:48-51"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker (gestor: acciones, ns+id, lifetime, frame_locked)",
+  "veredicto": "DESAFÍO",
+  "check_only": "FALLA en ros2_vita: «Could not find type \"RosTfListener\"» (l.6 `var tf: RosTfListener`). Pasa en rclgd. Corrección: `var tf = null` (comprobado: así pasa)",
+  "motivo": "Viola la propia regla de portabilidad (nucleo borrador §4, API_PARITY): el gestor no compilaría en la Vita aunque tf sea null. Semántica de RViz (ns/id, DELETEALL por ns, lifetime) correcta. Marker sin puntos 229 B recalculado (frame map, ns test); 10 pts 469, 11 pts 493: coincide.",
+  "fuentes": [
+   "godot/ros2_vita/register_types.cpp:16-22",
+   "rosbags recalculado: 229/469/493 B"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=ARROW (modo pose)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "ARROW pose 229 B directo (recalculado). Flecha unidad distinta a la de geom#0 (24 tri vs 18 tri): unificar (C2).",
+  "fuentes": [
+   "rosbags recalculado"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=ARROW (modo points)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=CUBE",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "CUBE/SPHERE/CYLINDER: malla unidad compartida + escala (s.y,s.z,s.x) coherente con ros=(−g.z,−g.x,g.y) (API_PARITY).",
+  "fuentes": [
+   "godot/ros2_vita/API_PARITY.md (godot_to_ros)"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=SPHERE",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "CUBE/SPHERE/CYLINDER: malla unidad compartida + escala (s.y,s.z,s.x) coherente con ros=(−g.z,−g.x,g.y) (API_PARITY).",
+  "fuentes": [
+   "godot/ros2_vita/API_PARITY.md (godot_to_ros)"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=CYLINDER",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "CUBE/SPHERE/CYLINDER: malla unidad compartida + escala (s.y,s.z,s.x) coherente con ros=(−g.z,−g.x,g.y) (API_PARITY).",
+  "fuentes": [
+   "godot/ros2_vita/API_PARITY.md (godot_to_ros)"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=LINE_STRIP",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "LINE_STRIP/LIST en 2D con un comando (H17).",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:49"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=LINE_LIST",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=CUBE_LIST",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con fabrica.gd fusionada + stubs)",
+  "motivo": "CUBE_LIST MultiMesh solo PC.",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=SPHERE_LIST",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=POINTS",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "POINTS en 2D, un lote.",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=TEXT_VIEW_FACING",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "TEXT_VIEW_FACING en Vita con nodos Label del HUD (uno por marcador) mientras geom y hmi usan draw_string en un solo CanvasItem: un Label por texto multiplica items/draws del lienzo (doc 34: 222 draws con 305 quads). Unificar con draw_string (C3).",
+  "fuentes": [
+   "docs/34-perfil-vita-ligero.md:52"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=MESH_RESOURCE",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=TRIANGLE_LIST",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/Marker type=ARROW_STRIP (12, nuevo en Jazzy)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Comprobado: marker_factory.cpp (rviz jazzy) solo trata CUBE..TRIANGLE_LIST; ARROW_STRIP (12) existe en Marker.msg Jazzy (typestore) pero cae en default. Semántica propia [?].",
+  "fuentes": [
+   "https://raw.githubusercontent.com/ros2/rviz/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/marker_factory.cpp:75-103",
+   "rosbags Marker.ARROW_STRIP"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/MarkerArray",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA (envuelto con extends Node2D y Paleta de fabrica; la ficha no trae extends ni Paleta)",
+  "motivo": "«Estado completo» evita fantasmas en BE (buena idea). /vita/marcadores 10 floats/marcador amplía docs/27 (8): decisión de contrato. Cabecera [seq, trozo, n_trozos, n] = la de nube2d: hacerla común (C4).",
+  "fuentes": [
+   "docs/27-xrce-limites-y-relay.md:79,105"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/InteractiveMarker + InteractiveMarkerUpdate (cliente)",
+  "veredicto": "DESAFÍO",
+  "check_only": "FALLA: «Could not find type \"RosClient\"» en ros2_vita (solo PC: existe en rclgd, class_rosclient.rst) y «Identifier \"Fab\" not declared» (falta el preload de fabrica.gd). Corrección: `const Fab := preload(...)` y anotar sin tipo",
+  "motivo": "Cliente IM en PC correcto como diseño; en Vita depende del relay porque create_client ⏳.",
+  "fuentes": [
+   "godot/rclgd/docs/classes/class_rosclient.rst",
+   "godot/ros2_vita/API_PARITY.md (create_client ⏳)"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/InteractiveMarkerFeedback (publicar; Vita con táctil)",
+  "veredicto": "DESAFÍO",
+  "check_only": "FALLA: «Cannot infer the type of \"pulsado\"» (l.17, expresión con operandos Variant). Corrección: `var pulsado: bool = ...` (comprobado)",
+  "motivo": "149 B recalculado (frame base_link, client /godot, marker, sin control); 157 B con nombres reales: cabe. PERO publicar el feedback en BE no casa: InteractiveMarkerServer suscribe feedback con rclcpp::QoS(1) = RELIABLE (interactive_marker_server.hpp:87-88, jazzy) ⇒ un publicador BE es incompatible y no llega nada. Debe ir fiable (149 B = 1 datagrama, sin fragmentar). Coincide con la regla de HMI §0.4.",
+  "fuentes": [
+   "https://raw.githubusercontent.com/ros-visualization/interactive_markers/jazzy/include/interactive_markers/interactive_marker_server.hpp:87-88",
+   "rosbags recalculado"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#visualization_msgs/msg/ImageMarker",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "ImageMarker en Control _draw: igual PC/Vita.",
+  "fuentes": []
+ },
+ {
+  "ficha": "mapas-marcadores#shape_msgs/msg/SolidPrimitive",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#shape_msgs/msg/Mesh",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "mapas-marcadores#shape_msgs/msg/Plane",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de fabrica.gd; fusionado con las demás fichas de fabrica + stubs FLECHA, CILINDRO_Z, CONO_Z, CUBO_CARAS, color(), Paleta, crear/aplicar/pose, que ninguna ficha define)",
+  "motivo": "Fragmento de fabrica.gd coherente con el marker de RViz citado. Ojo: duplica primitivas de geom (C2).",
+  "fuentes": [
+   "check-only de fabrica.gd fusionada"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#(kit HUD) widget_hud.gd — base común de los widgets de estado",
+  "veredicto": "ALTERNATIVA",
+  "check_only": "PASA",
+  "motivo": "widget_hud.gd es una cuarta base (Control + conectar(nodo)) que duplica DisplayRosHud de nucleo (#3) y sensor_base.gd existente (plantillas/ros/sensor_base.gd). Debe fusionarse (C1). Alternativa no buscada por ningún post W13: Ozuba/gdviz (MIT, docs/24 §1–§4) ya trae registro de displays (core/viz_registry.gd:65-102), TopicDisplay/Tool/View y la tarea T-W4-4 «capa GXM-safe» (docs/24:286).",
+  "fuentes": [
+   "godot/plantillas/ros/sensor_base.gd",
+   "docs/24-portabilidad-ozuba.md:229-240"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#sensor_msgs/msg/Joy",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Joy 128 B; negar el eje Y coherente con g6-hmi/main.gd:85-86 (comprobado: stick arriba = eje negativo).",
+  "fuentes": [
+   "godot/g6-hmi/main.gd:85-86"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#sensor_msgs/msg/BatteryState",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "BatteryState 89/133 B, en TIPOS.",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:12-40"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#sensor_msgs/msg/Temperature",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "medidor.gd genérico.",
+  "fuentes": []
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#sensor_msgs/msg/FluidPressure",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de configuración envuelto en func; la ficha no es un script completo)",
+  "motivo": "Configuración del medidor; FluidPressure ya en TIPOS, Temperature/Illuminance/RelativeHumidity no (comprobado).",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:12-40"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#sensor_msgs/msg/Illuminance",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de configuración envuelto en func; la ficha no es un script completo)",
+  "motivo": "Configuración del medidor; FluidPressure ya en TIPOS, Temperature/Illuminance/RelativeHumidity no (comprobado).",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:12-40"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#sensor_msgs/msg/RelativeHumidity",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (fragmento de configuración envuelto en func; la ficha no es un script completo)",
+  "motivo": "Configuración del medidor; FluidPressure ya en TIPOS, Temperature/Illuminance/RelativeHumidity no (comprobado).",
+  "fuentes": [
+   "godot/plantillas/generar_esquemas.py:12-40"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#diagnostic_msgs/msg/DiagnosticArray",
+  "veredicto": "Por medir",
+  "check_only": "PASA",
+  "motivo": "Tabla ≈ 500 quads (12 filas) [I]: por sí sola supera el HUD de 400 quads de docs/31 §5.3 (comprobado). Estimaciones de quads por glifo sin medir (C5).",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:255"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#rcl_interfaces/msg/Log",
+  "veredicto": "Por medir",
+  "check_only": "PASA",
+  "motivo": "Consola ≈ 600 quads [I] > HUD 400 (docs/31:255). Módulo relay rosout conserva el tipo Log: buena idea.",
+  "fuentes": [
+   "docs/31-render-visualizacion-vita.md:255"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#lifecycle_msgs/msg/TransitionEvent",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "TransitionEvent 65 B.",
+  "fuentes": []
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#vision_msgs/msg/Detection2DArray (incluye BoundingBox2D)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Recalculado con vision_msgs (rama ros2): Detection2DArray 1 det = 449 B (frame cam, clase «1»), 465 B (camera/person), 474 B (camera_link/person/id). El post da 481 B: no se reproduce, pero la conclusión (1 cabe, 3 = 1 313–1 354 B no) se mantiene.",
+  "fuentes": [
+   "https://github.com/ros-perception/vision_msgs/tree/ros2/vision_msgs/msg",
+   "rosbags recalculado"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#vision_msgs/msg/Detection3DArray (incluye BoundingBox3D)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "«1 detección = 489 B, no cabe por 1 B» es un artefacto de convención: 489 incluye los 4 B de encapsulación que el transporte NO envía (xrce_transport.cpp:12-13) ⇒ 485 B sí cabría con frame «cam» y clase «1». Con nombres reales (camera/person) = 505 B: no cabe. Conclusión práctica igual, motivo incorrecto (C6).",
+  "fuentes": [
+   "godot/ros2_vita/xrce_transport.cpp:12-13,678",
+   "rosbags recalculado: 489/505/514 B"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#trajectory_msgs/msg/JointTrajectory",
+  "veredicto": "Por medir",
+  "check_only": "PASA",
+  "motivo": "Fantasma duplica draws del robot (≤ 40+40) frente a 80 instancias del modo HMI (ADR 0011 §6): con TF y marcadores no cabe (C7).",
+  "fuentes": [
+   "docs/adr/0011-presupuesto-render-vita.md:46-49"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#control_msgs/msg/JointTrajectoryControllerState",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Hallazgo `m.reference` → get_member correcto y reproducible (el post lo pasó por check-only).",
+  "fuentes": [
+   "ficha hmi#13 l.18"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#nav_msgs/msg/Path (planificado frente a ejecutado)",
+  "veredicto": "DESAFÍO",
+  "check_only": "PASA",
+  "motivo": "Usa /vita/pose2d de 6 floats; geom#13 propone ampliarlo a 10 (C4). Además plan en map y rastro en odom: sin TF en la Vita el rastro no casa (el post lo dice).",
+  "fuentes": [
+   "docker/scripts/vita_relay.py:11"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#action_msgs/msg/GoalStatusArray + nav2_msgs/action/NavigateToPose (feedback y estado)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Nivel 0 de ADR 0012 (topics ocultos de acción); GoalStatusArray 33/453 B coincide con doc 32.",
+  "fuentes": [
+   "docs/adr/0012-*.md",
+   "docs/32-acciones-puente-pc.md"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#Herramienta RViz «Nav2 Goal» → geometry_msgs/msg/PoseStamped en /goal_pose",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "goal_tool.cpp (jazzy) crea el publicador con qos_profile_ configurable (l.67,78); fiable por defecto. Confirmación con ✕ razonable.",
+  "fuentes": [
+   "https://raw.githubusercontent.com/ros2/rviz/jazzy/rviz_default_plugins/src/rviz_default_plugins/tools/goal_pose/goal_tool.cpp:67,78"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#Herramienta RViz «2D Pose Estimate» → geometry_msgs/msg/PoseWithCovarianceStamped en /initialpose",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA (con dependencia herramienta_pose.gd = hmi#16)",
+  "motivo": "initialpose 364 B (recalculado).",
+  "fuentes": [
+   "rosbags recalculado"
+  ]
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#Herramienta RViz «Publish Point» → geometry_msgs/msg/PointStamped en /clicked_point",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "PointStamped 44 B; rayo físico contra colisiones del mundo editable (doc 35).",
+  "fuentes": []
+ },
+ {
+  "ficha": "hmi-percepcion-acciones#Teleop → geometry_msgs/msg/Twist en /cmd_vel (Foxglove Teleop, rqt_robot_steering, teleop_twist_joy)",
+  "veredicto": "VERIFICADO",
+  "check_only": "PASA",
+  "motivo": "Twist 52 B; R como hombre muerto coherente con ADR 0012.",
+  "fuentes": []
+ }
+]

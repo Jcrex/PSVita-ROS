@@ -1,0 +1,564 @@
+[
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "(kit HUD) widget_hud.gd — base común de los widgets de estado",
+    "equivalente": "Panel genérico de Foxglove (Indicator/Gauge/Plot comparten «topic + último mensaje + caducidad»); rqt_robot_monitor marca STALE por edad",
+    "candidato": "Control con `_draw()` propio que suscribe por texto, guarda el último mensaje y redibuja solo si cambió, a ≤ 10 Hz, con gris al caducar; todos los widgets de esta familia heredan de él (por ruta, como `sensor_base.gd`).",
+    "pc_rclgd": "Control (capa HUD, CanvasLayer). `RosNode.create_subscription(topic, tipo:String, callable, RosQoS)`; callback en el hilo principal (RosNode.md:40-42). Tipos por texto y anotación `RosMsg` (regla de scripts portables, API_PARITY.md:67-69).",
+    "vita_ros2_vita": "Igual (create_subscription ✅, RosQoS 🟡 con set_history/set_depth/set_reliability enlazados en ros_runtime.cpp:80-83). En la Vita el lienzo re-emite TODOS los quads cada fotograma (H16), así que el ahorro de redibujar a ≤ 10 Hz es de GDScript, no de GPU: el presupuesto de quads (≈1 500/fotograma, docs/31 §5.3) obliga a mostrar un solo panel grande a la vez (pestañas).",
+    "campos": "Ninguno propio: `_recibir(m)` lo implementa cada widget. `best_effort=false` cuando el CDR pasa de 488 B (docs/27:10) o el emisor publica por eventos.",
+    "codigo": "extends Control\n## widget_hud.gd: base de todos los widgets HUD (PC y Vita). Suscribe, marca sucio y redibuja a <= hz_dibujo.\n@export var topic := \"\"\n@export var tipo := \"\"\n@export var best_effort := true\t\t  # false si el CDR pasa de 488 B (docs/27:10) o el emisor publica a saltos\n@export var hz_dibujo := 10.0\t\t\t# Label/HUD a <= 10 Hz (docs/31:139)\n@export var caducidad_s := 2.0\t\t   # sin mensajes en este tiempo -> gris (STALE)\nvar nodo: RosNode\nvar _sub: RosSubscriber\t\t\t\t  # guardar la referencia: si se suelta, se cancela\nvar _sucio := false\nvar _t := 0.0\nvar _edad := INF\nvar _gris := false\n\nfunc conectar(n: RosNode) -> void:\n\tnodo = n\n\tvar q := RosQoS.new()\n\tq.set_history(RosQoS.KEEP_LAST)\n\tq.set_depth(1)\n\tq.set_reliability(RosQoS.BEST_EFFORT if best_effort else RosQoS.RELIABLE)\n\t_sub = nodo.create_subscription(topic, tipo, _on_msg, q)\n\nfunc _on_msg(m: RosMsg) -> void:\n\t_edad = 0.0\n\t_sucio = true\n\t_recibir(m)\n\nfunc _recibir(_m: RosMsg) -> void: pass   # cada widget lee aquí sus campos\n\nfunc caducado() -> bool: return _edad > caducidad_s\n\nfunc _process(dt: float) -> void:\n\t_edad += dt; _t += dt\n\tif caducado() != _gris:\t\t\t  # redibujar también al pasar a gris o volver\n\t\t_gris = caducado()\n\t\t_sucio = true\n\tif _sucio and _t >= 1.0 / hz_dibujo:\n\t\t_t = 0.0; _sucio = false\n\t\tqueue_redraw()",
+    "parametros": [
+      "topic",
+      "tipo",
+      "best_effort",
+      "hz_dibujo (10)",
+      "caducidad_s (2)"
+    ],
+    "evidencia": "El patrón de redibujo a ≤ 10 Hz es la optimización O1 de G7c (docs/31:139). La cola de entrega de ros2_vita es de 256 mensajes con descarte del más antiguo (API_PARITY.md:109-110), así que un widget lento no bloquea la red. La suscripción BE de un widget es compatible con publicadores fiables (regla de compatibilidad QoS: un suscriptor BE acepta publicadores RELIABLE y BE). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "skills/rclgd/references/api/RosNode.md:40-42",
+      "godot/ros2_vita/API_PARITY.md:67-69",
+      "godot/ros2_vita/API_PARITY.md:109-110",
+      "godot/ros2_vita/ros_runtime.cpp:80-83",
+      "docs/31-render-visualizacion-vita.md:48",
+      "docs/31-render-visualizacion-vita.md:139",
+      "docs/31-render-visualizacion-vita.md:255",
+      "godot/plantillas/ros/contexto_ros.gd:25-31",
+      "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html"
+    ],
+    "confianza": "[V] API; [I] coste",
+    "coste_estimado": "GDScript ≈ 0 por fotograma salvo el `_process` (3 sumas); quads = los del `_draw()` de cada widget",
+    "como_se_mediria_en_hardware": "PC (fish): `docker/vita-ros.sh up`; desplegar con `tools/deploy-vpk-ftp.sh`; leer los logs del lienzo `[gxm2d-canvas] avg_canvas_us` y `[gxm2d-perf] quads=` (docs/31 H18/H24). Escena con 6 widgets base vacíos: FPS igual que sin ellos (± 0,5) y `quads=` sin cambio. Verde: FPS ≥ 55 (perfil ligero, docs/34)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "sensor_msgs/msg/Joy",
+    "equivalente": "Foxglove Teleop (publica) / no hay display de Joy en RViz2; `ros2 topic echo /joy`",
+    "candidato": "Mando dibujado en el HUD (dos círculos con su punto y una fila de botones); en la Vita además es FUENTE: `/vita/joy` publicado desde `Input`.",
+    "pc_rclgd": "Control 2D (`draw_arc`, `draw_circle`, `draw_rect`). Suscripción BE a `/joy`. `axes` (float32[]) y `buttons` (int32[]) llegan como Packed*Array.",
+    "vita_ros2_vita": "128 B con 8 ejes y 17 botones: cabe en BE a 20–60 Hz (docs/27 regla ≤ 488 B). Como fuente: `Input.get_joy_axis`/`is_joy_button_pressed` (ya usados en g6-hmi) → Joy a 20 Hz; reto `/vita/joy` pendiente en docs/ia/guion-g7c-3d-en-la-vita.md:105. Panel trasero NO disponible aún (el port solo lee el táctil delantero, docs/28:59).",
+    "campos": "axes[i] ∈ [-1,1]; en joy/teleop_twist_joy stick arriba = +1 e izquierda = +1 [I]; en Godot el eje Y del stick es positivo hacia abajo (g6-hmi/main.gd:85-86: `-_eje(JOY_AXIS_LEFT_Y)` = adelante), así que al PUBLICAR desde la Vita hay que negar X e Y; buttons[i] 0/1. Sin frame ni TF.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Mando dibujado para sensor_msgs/Joy: dos sticks y una fila de botones.\n@export var pares_sticks: Array[Vector2i] = [Vector2i(0, 1), Vector2i(3, 4)]   # índices (x, y) en axes\n@export var invertir_x := true\t\t   # convención joy: izquierda = +1; en pantalla, izquierda = -x\nvar _ejes = []\t\t\t\t\t\t   # sin tipo: rclgd/ros2_vita dan Packed*Array (H25)\nvar _botones = []\n\nfunc _init() -> void:\n\ttopic = \"/joy\"\n\ttipo = \"sensor_msgs/msg/Joy\"\n\thz_dibujo = 20.0\n\nfunc _recibir(m: RosMsg) -> void:\n\t_ejes = m.axes\n\t_botones = m.buttons\n\nfunc _eje(i: int) -> float:\n\treturn _ejes[i] if i < _ejes.size() else 0.0\n\nfunc _draw() -> void:\n\tvar base := Color.DIM_GRAY if caducado() else Color(0.9, 0.9, 0.9)\n\tvar radio := size.y * 0.3\n\tfor k in pares_sticks.size():\n\t\tvar c := Vector2(size.x * (0.25 + 0.5 * k), size.y * 0.4)\n\t\tdraw_arc(c, radio, 0.0, TAU, 24, base, -1.0)\n\t\tvar sx := _eje(pares_sticks[k].x) * (-1.0 if invertir_x else 1.0)\n\t\tdraw_circle(c + Vector2(sx, -_eje(pares_sticks[k].y)) * radio, radio * 0.25, Color(1.0, 0.75, 0.2))\n\tvar paso := size.x / maxf(1.0, _botones.size())\n\tfor b in _botones.size():\n\t\tvar on: bool = _botones[b] != 0\n\t\tdraw_rect(Rect2(b * paso + 1, size.y - 14, paso - 2, 12), Color(0.3, 1.0, 0.4) if on else base, on)",
+    "parametros": [
+      "pares_sticks",
+      "invertir_x",
+      "hz_dibujo (20)",
+      "caducidad_s"
+    ],
+    "evidencia": "Definición Joy = header + float32[] axes + int32[] buttons (common_interfaces jazzy). 128 B calculado. Float32/uint8 arrays por memcpy en la Vita (H25); int32[] por bucle (ros_msg.cpp). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/Joy.msg",
+      "godot/g6-hmi/main.gd:76-104",
+      "docs/28-sensores-y-vision-vita.md:59",
+      "docs/ia/guion-g7c-3d-en-la-vita.md:105",
+      "docs/31-render-visualizacion-vita.md:57",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py",
+      "https://docs.foxglove.dev/docs/visualization/panels/introduction"
+    ],
+    "confianza": "[V] tamaño y campos; [I] convención de signos de joy",
+    "coste_estimado": "128 B/msg; ≈ 2 arcos de 24 segmentos + 2 círculos + 17 rects ≈ 70 quads; GDScript < 0,2 ms por dibujo",
+    "como_se_mediria_en_hardware": "PC: `ros2 run joy joy_node` con un mando + la Vita suscrita; mover sticks: el punto sigue sin retraso visible y `caducado()` pasa a gris al parar joy_node. Fuente: la Vita publica /vita/joy; en el PC `ros2 topic hz /vita/joy` ≈ 20 y `ros2 topic echo /vita/joy --field axes` con stick arriba = +1."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "sensor_msgs/msg/BatteryState",
+    "equivalente": "Foxglove Gauge/Indicator; rqt no tiene widget propio (solo Plot de percentage)",
+    "candidato": "Icono de batería en la barra fija del HUD: relleno = percentage, rojo si salud mala o < 20 %, texto con V, A y estado de carga.",
+    "pc_rclgd": "Control 2D en la barra superior del HUD; suscripción BE a `/battery_state` (o `/g1/battery_state`, g1-sensores/ros/topics.json:49).",
+    "vita_ros2_vita": "89 B sin celdas, 133 B con 6 celdas: BE directo, sin relay. Esquema ya generado (generar_esquemas.py:30). Hz bajo (0,2–1 Hz, bateria.gd:15-16) ⇒ caducidad 15 s.",
+    "campos": "percentage 0..1 (NaN = no medido → charge/capacity); voltage V; current A (negativa descargando); power_supply_status 0..4; power_supply_health 0..8 (2–8 = alarma); cell_voltage[] opcional (barras por celda si se quiere). Sin TF.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Icono de batería para sensor_msgs/BatteryState: relleno = percentage, color por salud y umbral.\nconst ESTADO := [\"?\", \"cargando\", \"descargando\", \"sin cargar\", \"llena\"]   # POWER_SUPPLY_STATUS_*\nconst SALUD_MALA := [2, 3, 4, 5, 6, 7, 8]  # OVERHEAT … SAFETY_TIMER_EXPIRE\n@export var umbral_bajo := 0.2\nvar _pct := NAN\nvar _txt := \"\"\nvar _alarma := false\n\nfunc _init() -> void:\n\ttopic = \"/battery_state\"\n\ttipo = \"sensor_msgs/msg/BatteryState\"\n\tcaducidad_s = 15.0\t\t\t\t   # bateria.gd publica a 1 Hz (0,2 Hz en la Vita)\n\nfunc _recibir(m: RosMsg) -> void:\n\t_pct = m.percentage\t\t\t\t  # 0..1; NaN si no se mide\n\tif is_nan(_pct) and m.capacity > 0.0:\n\t\t_pct = m.charge / m.capacity\n\tvar st := int(m.power_supply_status)\n\t_alarma = int(m.power_supply_health) in SALUD_MALA or (not is_nan(_pct) and _pct < umbral_bajo)\n\t_txt = \"%.1f V %+.1f A %s\" % [m.voltage, m.current, ESTADO[st] if st < ESTADO.size() else \"?\"]\n\nfunc _draw() -> void:\n\tvar cuerpo := Rect2(2, 2, size.x - 10, size.y - 4)\n\tdraw_rect(cuerpo, Color.WHITE, false, 2.0)\n\tdraw_rect(Rect2(size.x - 8, size.y * 0.3, 6, size.y * 0.4), Color.WHITE)\n\tif is_nan(_pct):\n\t\treturn\n\tvar c := Color.DIM_GRAY if caducado() else (Color8(178, 23, 46) if _alarma else Color8(85, 178, 76))\n\tdraw_rect(Rect2(5, 5, (cuerpo.size.x - 6) * clampf(_pct, 0.0, 1.0), cuerpo.size.y - 6), c)\n\tdraw_string(get_theme_default_font(), Vector2(8, size.y - 8), \"%d %%  %s\" % [roundi(_pct * 100.0), _txt],\n\t\t\tHORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 12)",
+    "parametros": [
+      "umbral_bajo (0,2)",
+      "caducidad_s (15)"
+    ],
+    "evidencia": "Constantes POWER_SUPPLY_* y comentario «percentage 0 to 1» en BatteryState.msg (jazzy). La plantilla `bateria.gd` publica percentage 0..1, status 2 y health 1, que el widget pinta en verde. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/BatteryState.msg",
+      "godot/plantillas/sensores/bateria.gd:11-46",
+      "godot/plantillas/generar_esquemas.py:30",
+      "godot/g1-sensores/ros/topics.json:49",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "89–133 B a ≤ 1 Hz; ≈ 4 rects + ~35 glifos ≈ 40 quads",
+    "como_se_mediria_en_hardware": "g1-sensores en el PC publicando /g1/battery_state y la HMI en la Vita: el porcentaje coincide con `ros2 topic echo /g1/battery_state --field percentage` (± 1 %); parar el publicador ⇒ gris a los 15 s."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "sensor_msgs/msg/Temperature",
+    "equivalente": "Foxglove Gauge + Plot; rqt_plot",
+    "candidato": "Widget `medidor.gd` genérico: barra con umbrales verde/amarillo/rojo, valor con unidades y sparkline de 60 muestras.",
+    "pc_rclgd": "Control 2D; `m.get_member(campo)` para leer el campo configurado (mismo widget para los 4 tipos ambientales).",
+    "vita_ros2_vita": "44 B: BE directo a cualquier Hz que se quiera dibujar (≤ 10 Hz útil). Falta añadir Temperature, Illuminance y RelativeHumidity a `TIPOS` de generar_esquemas.py (FluidPressure ya está, :32).",
+    "campos": "temperature (float64, °C) → float; variance (0 = desconocida) opcional como banda ±σ. header.frame_id solo informativo.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## medidor.gd: un float64 con unidades (Temperature, FluidPressure, Illuminance, RelativeHumidity).\n## Barra con umbrales + valor + sparkline de las últimas N muestras (una polilínea = 1 comando, H17).\n@export var campo := \"temperature\"\t   # fluid_pressure | illuminance | relative_humidity\n@export var escala := 1.0\t\t\t\t# 0.01 Pa->hPa, 100 humedad 0..1->%\n@export var unidad := \"°C\"\n@export var minimo := -10.0\n@export var maximo := 60.0\n@export var aviso := 45.0\t\t\t\t# amarillo desde aquí; rojo desde maximo\n@export var muestras := 60\nvar _v := NAN\nvar _serie := PackedFloat32Array()\n\nfunc _recibir(m: RosMsg) -> void:\n\t_v = float(m.get_member(campo)) * escala\n\t_serie.append(_v)\n\tif _serie.size() > muestras:\n\t\t_serie.remove_at(0)\n\nfunc _color() -> Color:\n\tif caducado():\n\t\treturn Color.DIM_GRAY\n\treturn Color8(85, 178, 76) if _v < aviso else (Color8(222, 213, 17) if _v < maximo else Color8(178, 23, 46))\n\nfunc _draw() -> void:\n\tdraw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.09, 0.12))\n\tif is_nan(_v):\n\t\treturn\n\tvar c := _color()\n\tdraw_rect(Rect2(0, size.y - 6, size.x * clampf(inverse_lerp(minimo, maximo, _v), 0.0, 1.0), 6), c)\n\tdraw_string(get_theme_default_font(), Vector2(4, 14), \"%.1f %s\" % [_v, unidad], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, c)\n\tvar pts := PackedVector2Array()\n\tfor i in _serie.size():\n\t\tvar f := clampf(inverse_lerp(minimo, maximo, _serie[i]), 0.0, 1.0)\n\t\tpts.append(Vector2(size.x * i / maxf(1.0, muestras - 1), 18.0 + (size.y - 26.0) * (1.0 - f)))\n\tif pts.size() > 1:\n\t\tdraw_polyline(pts, c, -1.0)\t  # -1 = línea fina, un solo comando de lienzo",
+    "parametros": [
+      "campo",
+      "escala",
+      "unidad",
+      "minimo",
+      "maximo",
+      "aviso",
+      "muestras"
+    ],
+    "evidencia": "Temperature.msg: header + float64 temperature + float64 variance. Sparkline con `draw_polyline` fina = un comando de lienzo (H17). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/Temperature.msg",
+      "docs/31-render-visualizacion-vita.md:49",
+      "godot/plantillas/generar_esquemas.py:12-39",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py",
+      "https://docs.godotengine.org/en/stable/classes/class_canvasitem.html#class-canvasitem-method-draw-polyline"
+    ],
+    "confianza": "[V] mensaje; [I] coste",
+    "coste_estimado": "44 B/msg; 2 rects + ~10 glifos + 1 polilínea de 60 puntos (un lote) ≈ 15–70 quads según el lienzo baje la línea",
+    "como_se_mediria_en_hardware": "PC: `ros2 topic pub -r 5 /temp sensor_msgs/msg/Temperature '{temperature: 50.0}'`; la Vita muestra 50,0 °C en amarillo. Verde: valor exacto, sparkline plana, FPS sin cambio."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "sensor_msgs/msg/FluidPressure",
+    "equivalente": "Foxglove Gauge + Plot",
+    "candidato": "`medidor.gd` con campo fluid_pressure en hPa.",
+    "pc_rclgd": "Igual que Temperature.",
+    "vita_ros2_vita": "44 B BE; esquema ya incluido (generar_esquemas.py:32). La plantilla `barometro.gd` publica 5 Hz con XRCE (hz_xrce=5).",
+    "campos": "fluid_pressure Pa ×0,01 → hPa; variance Pa².",
+    "codigo": "# Configuración del widget medidor.gd (código completo en la ficha sensor_msgs/msg/Temperature).\n# barometro.gd publica en /barometer a 5 Hz con XRCE (barometro.gd:14-20).\nvar w = preload(\"res://comun/hmi/medidor.gd\").new()\nw.topic = \"/barometer\"\nw.tipo = \"sensor_msgs/msg/FluidPressure\"\nw.campo = \"fluid_pressure\"\nw.escala = 0.01\nw.unidad = \"hPa\"\nw.minimo = 950.0\nw.maximo = 1050.0\nw.aviso = 1040.0\nw.caducidad_s = 3.0\nw.custom_minimum_size = Vector2(200, 64)\n$Hud/Fila.add_child(w)\nw.conectar(contexto.nodo)",
+    "parametros": [
+      "campo=fluid_pressure",
+      "escala=0.01",
+      "unidad=hPa"
+    ],
+    "evidencia": "FluidPressure.msg (fluid_pressure en Pa); barometro.gd calcula la presión barométrica estándar a 450 m (~960 hPa). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/FluidPressure.msg",
+      "godot/plantillas/sensores/barometro.gd:14-33",
+      "godot/plantillas/generar_esquemas.py:32"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "como Temperature",
+    "como_se_mediria_en_hardware": "g1-sensores con barómetro en el PC: la Vita muestra ≈ 960 hPa y la sparkline sigue la altura si el robot sube una rampa."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "sensor_msgs/msg/Illuminance",
+    "equivalente": "Foxglove Gauge + Plot",
+    "candidato": "`medidor.gd` con campo illuminance en lux (escala lineal 0–2 000; para exteriores, `maximo` mayor).",
+    "pc_rclgd": "Igual que Temperature.",
+    "vita_ros2_vita": "44 B BE; añadir el tipo a generar_esquemas.py.",
+    "campos": "illuminance (lux), variance.",
+    "codigo": "# Configuración del widget medidor.gd (código completo en la ficha sensor_msgs/msg/Temperature).\n# Sin plantilla que lo publique: probar con ros2 topic pub.\nvar w = preload(\"res://comun/hmi/medidor.gd\").new()\nw.topic = \"/illuminance\"\nw.tipo = \"sensor_msgs/msg/Illuminance\"\nw.campo = \"illuminance\"\nw.escala = 1.0\nw.unidad = \"lx\"\nw.minimo = 0.0\nw.maximo = 2000.0\nw.aviso = 1500.0\nw.caducidad_s = 3.0\nw.custom_minimum_size = Vector2(200, 64)\n$Hud/Fila.add_child(w)\nw.conectar(contexto.nodo)",
+    "parametros": [
+      "campo=illuminance",
+      "unidad=lx",
+      "maximo"
+    ],
+    "evidencia": "Illuminance.msg: header + float64 illuminance + float64 variance. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/Illuminance.msg"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "como Temperature",
+    "como_se_mediria_en_hardware": "`ros2 topic pub -r 2 /illuminance sensor_msgs/msg/Illuminance '{illuminance: 300.0}'` ⇒ 300 lx en verde en la Vita."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "sensor_msgs/msg/RelativeHumidity",
+    "equivalente": "Foxglove Gauge + Plot",
+    "candidato": "`medidor.gd` con campo relative_humidity ×100 en %.",
+    "pc_rclgd": "Igual que Temperature.",
+    "vita_ros2_vita": "44 B BE; añadir el tipo a generar_esquemas.py.",
+    "campos": "relative_humidity 0..1 ×100 → %; variance.",
+    "codigo": "# Configuración del widget medidor.gd (código completo en la ficha sensor_msgs/msg/Temperature).\n# relative_humidity va de 0 a 1 (RelativeHumidity.msg): escala 100.\nvar w = preload(\"res://comun/hmi/medidor.gd\").new()\nw.topic = \"/humidity\"\nw.tipo = \"sensor_msgs/msg/RelativeHumidity\"\nw.campo = \"relative_humidity\"\nw.escala = 100.0\nw.unidad = \"%\"\nw.minimo = 0.0\nw.maximo = 100.0\nw.aviso = 80.0\nw.caducidad_s = 3.0\nw.custom_minimum_size = Vector2(200, 64)\n$Hud/Fila.add_child(w)\nw.conectar(contexto.nodo)",
+    "parametros": [
+      "campo=relative_humidity",
+      "escala=100",
+      "unidad=%"
+    ],
+    "evidencia": "RelativeHumidity.msg: «from 0.0 to 1.0». Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/sensor_msgs/msg/RelativeHumidity.msg"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "como Temperature",
+    "como_se_mediria_en_hardware": "`ros2 topic pub -r 2 /humidity sensor_msgs/msg/RelativeHumidity '{relative_humidity: 0.45}'` ⇒ 45,0 % en la Vita."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "diagnostic_msgs/msg/DiagnosticArray",
+    "equivalente": "rqt_robot_monitor (árbol con OK/WARN/ERROR/STALE) y Foxglove Diagnostics (Summary/Detail)",
+    "candidato": "Tabla de filas (cuadro de color + nivel + nombre + mensaje) ordenada de peor a mejor, STALE por fila a los 10 s, filtro «solo problemas»; detalle de KeyValue al tocar una fila (pestaña aparte).",
+    "pc_rclgd": "PC: puede usarse un `Tree` de Godot (jerarquía por `/` en el nombre, como rqt) o el mismo `_draw()`; suscripción FIABLE a `/diagnostics_agg` (o `/diagnostics`).",
+    "vita_ros2_vita": "1 estado sin valores = 76 B; 1×3 KV = 157 B; 5×3 = 685 B; 20×4 = 3 225 B ⇒ con más de 2–3 estados ya no cabe en BE: suscripción FIABLE (techo ≈ 7,5 KiB, docs/27:35) a 1 Hz, que es la cadencia típica de diagnostic_updater [I]. Para robots grandes (> ~40 estados) módulo `diag` del relay: un DiagnosticArray de 1 estado por mensaje, valores recortados a 3 KV y textos a 40 caracteres, solo los cambiados + refresco 1 Hz (≈ 160 B cada uno). Con 12 filas ≈ 500 quads: ocupa el panel de detalle él solo.",
+    "campos": "status[]: level (byte: 0 OK, 1 WARN, 2 ERROR, 3 STALE) → int; name (jerarquía con '/'); message; hardware_id; values[] (key, value). `byte` llega como entero [I] en ambos runtimes.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Tabla tipo rqt_robot_monitor para diagnostic_msgs/DiagnosticArray: una fila por estado, peores arriba.\nconst COLOR := [Color8(85, 178, 76), Color8(222, 213, 17), Color8(178, 23, 46), Color8(40, 23, 176)]\nconst TEXTO := [\"OK\", \"WARN\", \"ERROR\", \"STALE\"]\n@export var max_filas := 12\t\t\t  # 12 filas x ~40 glifos = ~500 quads (docs/31 §5.3)\n@export var caducidad_fila_s := 10.0\t # rqt_robot_monitor: STALE a los 10 s sin noticias\n@export var solo_problemas := false\t  # filtro «Warnings/Errors» de rqt\nvar _filas := {}\t\t\t\t\t\t # nombre -> [nivel, mensaje, edad_s]\n\nfunc _init() -> void:\n\ttopic = \"/diagnostics_agg\"\t\t   # o /diagnostics sin agregador\n\ttipo = \"diagnostic_msgs/msg/DiagnosticArray\"\n\tbest_effort = false\t\t\t\t  # >= 3 estados ya pasan de 488 B; fiable hasta ~7,5 KiB a 1 Hz\n\tcaducidad_s = 10.0\n\nfunc _recibir(m: RosMsg) -> void:\n\tfor st in m.status:\n\t\t_filas[str(st.name)] = [int(st.level), str(st.message), 0.0]\n\nfunc _process(dt: float) -> void:\n\tfor k in _filas:\n\t\t_filas[k][2] += dt\n\tsuper(dt)\n\nfunc _draw() -> void:\n\tvar fuente := get_theme_default_font()\n\tvar claves := _filas.keys()\n\tclaves.sort_custom(func(a, b): return _filas[a][0] > _filas[b][0])\n\tvar y := 14.0\n\tfor k in claves.slice(0, max_filas):\n\t\tvar nivel: int = 3 if _filas[k][2] > caducidad_fila_s else clampi(_filas[k][0], 0, 3)\n\t\tif solo_problemas and nivel == 0:\n\t\t\tcontinue\n\t\tdraw_rect(Rect2(2, y - 10, 10, 10), COLOR[nivel])\n\t\tdraw_string(fuente, Vector2(16, y), \"%s  %s: %s\" % [TEXTO[nivel], k, _filas[k][1]],\n\t\t\t\tHORIZONTAL_ALIGNMENT_LEFT, size.x - 18, 12)\n\t\ty += 14.0",
+    "parametros": [
+      "max_filas (12)",
+      "caducidad_fila_s (10)",
+      "solo_problemas",
+      "topic (/diagnostics_agg | /diagnostics)"
+    ],
+    "evidencia": "Colores de rqt_robot_monitor: OK (85,178,76), WARN (222,213,17), ERROR (178,23,46), STALE (40,23,176) en util_robot_monitor.py:48-54; STALE si data_age > 10 s (timeline.py:161-163). Niveles en DiagnosticStatus.msg. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/diagnostic_msgs/msg/DiagnosticStatus.msg",
+      "https://github.com/ros-visualization/rqt_robot_monitor/blob/ros2/src/rqt_robot_monitor/util_robot_monitor.py#L48-L54",
+      "https://github.com/ros-visualization/rqt_robot_monitor/blob/ros2/src/rqt_robot_monitor/timeline.py#L161-L163",
+      "docs/27-xrce-limites-y-relay.md:35",
+      "docs/31-render-visualizacion-vita.md:255",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V] tamaños, colores y niveles; [I] conversión de `byte` y cadencia",
+    "coste_estimado": "76–3 225 B a 1 Hz (fiable fragmentado hasta 7 trozos); orden + dibujo de 12 filas ≈ 1 ms GDScript por mensaje [I]; ≈ 500 quads",
+    "como_se_mediria_en_hardware": "PC: `ros2 run diagnostic_updater example` o un publicador de prueba con 20 estados × 4 KV a 1 Hz. Vita: todas las filas aparecen, un WARN forzado sube arriba en amarillo, parar el publicador ⇒ STALE azul a los 10 s. `get_transport_info()` sin `reliable_dropped` y FPS ≥ 55."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "rcl_interfaces/msg/Log",
+    "equivalente": "rqt_console (tabla filtrable por nivel/nodo, pausa) y Foxglove Log panel",
+    "candidato": "Consola de N líneas coloreadas por nivel, filtro por nivel mínimo y subcadena de nodo, pausa; en la Vita alimentada por un módulo `rosout` del relay que ya filtra.",
+    "pc_rclgd": "Control con `_draw()` o `RichTextLabel` (con BBCode de color) en PC; suscripción FIABLE + VOLATILE a `/rosout` para NO recibir el historial (el publicador /rosout guarda 1 000 mensajes TRANSIENT_LOCAL). Para escribir: `RosNode.get_logger().info(...)` sale por consola y `/rosout` (RosNode.md:61-67).",
+    "vita_ros2_vita": "Log = 180 B con 40 caracteres y ruta de fichero típica; 260 B con 120; 440 B con 300 ⇒ la mayoría cabe en BE, pero los mensajes largos de Nav2 no, y el ritmo agregado de /rosout de todo el grafo es impredecible (la cola de 256 descarta, API_PARITY.md:109). Decisión: módulo `rosout` del relay que reenvía a `/vita/rosout` (mismo tipo Log, BE) solo nivel ≥ WARN, con `file` y `function` vaciados y `msg` recortado a 200 caracteres (≈ 270 B máx.) y tope de 20 msg/s. El widget no cambia: solo el topic. Escribir desde la Vita: `RosLogger` ⏳ (API_PARITY.md:20,39,85); hasta entonces un publicador propio de rcl_interfaces/msg/Log en /rosout es posible (añadir el esquema).",
+    "campos": "stamp (Time) → «sec.ms»; level (10/20/30/40/50) → color y letra; name (logger/nodo) → filtro; msg; file/function/line solo en el detalle del PC.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Consola tipo rqt_console para rcl_interfaces/msg/Log (/rosout): anillo de N líneas, filtro por nivel y nodo.\nconst COLORES := {10: Color.GRAY, 20: Color.WHITE, 30: Color8(222, 213, 17), 40: Color8(230, 80, 80), 50: Color.MAGENTA}\nconst LETRA := {10: \"D\", 20: \"I\", 30: \"W\", 40: \"E\", 50: \"F\"}\n@export var nivel_minimo := 20\t\t   # Log.INFO; en la Vita el relay ya deja solo >= WARN\n@export var filtro_nodo := \"\"\t\t\t# subcadena de Log.name (\"\" = todos)\n@export var max_lineas := 10\t\t\t # 10 x ~60 glifos = ~600 quads: solo al llegar (H16)\nvar _lineas: Array = []\t\t\t\t  # [nivel, texto]\nvar pausada := false\t\t\t\t\t # «Pause» de rqt_console (botón/tecla en la HMI)\n\nfunc _init() -> void:\n\ttopic = \"/rosout\"\n\ttipo = \"rcl_interfaces/msg/Log\"\n\tbest_effort = false\t\t\t\t  # /rosout es RELIABLE + TRANSIENT_LOCAL; aquí VOLATILE: sin historial\n\tcaducidad_s = INF\t\t\t\t\t# silencio en /rosout no es un fallo\n\nfunc _recibir(m: RosMsg) -> void:\n\tvar nivel := int(m.level)\n\tif pausada or nivel < nivel_minimo or (filtro_nodo != \"\" and not filtro_nodo in str(m.name)):\n\t\treturn\n\tvar t = m.stamp\n\t_lineas.append([nivel, \"[%s] %d.%03d %s: %s\" % [LETRA.get(nivel, \"?\"), t.sec % 100000,\n\t\t\tt.nanosec / 1000000, m.name, m.msg]])\n\tif _lineas.size() > max_lineas:\n\t\t_lineas.pop_front()\n\nfunc _draw() -> void:\n\tdraw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.6))\n\tvar fuente := get_theme_default_font()\n\tfor i in _lineas.size():\n\t\tvar l: Array = _lineas[i]\n\t\tdraw_string(fuente, Vector2(4, 14 + 13 * i), l[1], HORIZONTAL_ALIGNMENT_LEFT, size.x - 8, 11,\n\t\t\t\tCOLORES.get(l[0], Color.WHITE))",
+    "parametros": [
+      "nivel_minimo (20; 30 en la Vita)",
+      "filtro_nodo",
+      "max_lineas (10)",
+      "pausada"
+    ],
+    "evidencia": "QoS de /rosout: KEEP_LAST 1000, RELIABLE, TRANSIENT_LOCAL, lifespan 10 s (rcl logging_rosout.h:37-48). Niveles en Log.msg. Un suscriptor VOLATILE es compatible con un publicador TRANSIENT_LOCAL y no recibe el historial. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/rcl_interfaces/blob/jazzy/rcl_interfaces/msg/Log.msg",
+      "https://github.com/ros2/rcl/blob/jazzy/rcl/include/rcl/logging_rosout.h#L37-L48",
+      "skills/rclgd/references/api/RosNode.md:61-67",
+      "skills/rclgd/references/api/RosLogger.md:25-62",
+      "godot/ros2_vita/API_PARITY.md:20",
+      "godot/ros2_vita/API_PARITY.md:85",
+      "godot/ros2_vita/API_PARITY.md:109",
+      "docker/scripts/vita_relay.py:21",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py",
+      "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html"
+    ],
+    "confianza": "[V] QoS, niveles y tamaños; [I] diseño del módulo rosout del relay (sin implementar)",
+    "coste_estimado": "≤ 270 B por línea vía relay, ≤ 20 msg/s ⇒ ≤ 5,4 KB/s; 10 líneas ≈ 600 quads (panel de detalle exclusivo)",
+    "como_se_mediria_en_hardware": "PC: `docker/vita-ros.sh relay rosout` (módulo nuevo) y `ros2 run demo_nodes_cpp talker` + un nodo que emita WARN/ERROR a 50 Hz. Vita: solo aparecen WARN/ERROR, nunca más de 20/s, FPS ≥ 55, `be_dropped` estable; en el PC `ros2 topic bw /vita/rosout` < 6 KB/s."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "lifecycle_msgs/msg/TransitionEvent",
+    "equivalente": "Sin display en RViz; Foxglove State Transitions; `ros2 lifecycle get`; Nav2 lifecycle_manager",
+    "candidato": "Fila de estado por nodo gestionado (verde activo, amarillo inactivo/transición, rojo error, gris desconocido) en la tabla de estado del HUD.",
+    "pc_rclgd": "Control 2D; suscripción FIABLE a `<nodo>/transition_event`. El estado inicial se pide con el servicio `<nodo>/get_state` (lifecycle_msgs/srv/GetState) vía `RosNode.create_client` en el PC.",
+    "vita_ros2_vita": "65 B, cabe en todo; FIABLE porque solo hay mensaje al cambiar. Sin servicios en ros2_vita (API_PARITY.md:32-33) ⇒ el estado inicial queda «desconocido» hasta la primera transición, o lo da el proxy `srv` con lista blanca del puente (docs/32 §12).",
+    "campos": "goal_state.id (1 unconfigured, 2 inactive, 3 active, 4 finalized; 10–15 transitorios, 15 errorprocessing) → color/texto; transition.label; timestamp uint64 ns.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Fila de estado de un nodo gestionado: lifecycle_msgs/TransitionEvent en <nodo>/transition_event.\nconst NOMBRE := {0: \"desconocido\", 1: \"sin configurar\", 2: \"inactivo\", 3: \"activo\", 4: \"finalizado\",\n\t10: \"configurando\", 11: \"limpiando\", 12: \"apagando\", 13: \"activando\", 14: \"desactivando\", 15: \"ERROR\"}\n@export var nodo_gestionado := \"/controller_server\"\nvar _estado := 0\t\t\t\t\t\t # 0 hasta el primer evento (el estado inicial es un servicio)\nvar _transicion := \"\"\n\nfunc _init() -> void:\n\ttipo = \"lifecycle_msgs/msg/TransitionEvent\"\n\tbest_effort = false\t\t\t\t  # solo hay mensaje al cambiar: no se puede perder (65 B)\n\nfunc _ready() -> void:\n\ttopic = nodo_gestionado + \"/transition_event\"   # antes de conectar()\n\nfunc caducado() -> bool:\n\treturn false\t\t\t\t\t\t # evento, no flujo: el silencio no es fallo\n\nfunc _recibir(m: RosMsg) -> void:\n\t_estado = int(m.goal_state.id)\n\t_transicion = str(m.transition.label)\n\nfunc _color() -> Color:\n\tmatch _estado:\n\t\t3: return Color8(85, 178, 76)\n\t\t2, 10, 13, 14: return Color8(222, 213, 17)\n\t\t15: return Color8(178, 23, 46)\n\treturn Color.DIM_GRAY\n\nfunc _draw() -> void:\n\tdraw_rect(Rect2(2, 2, 10, 10), _color())\n\tdraw_string(get_theme_default_font(), Vector2(16, 12), \"%s: %s (%s)\" % [nodo_gestionado,\n\t\t\tNOMBRE.get(_estado, \"?\"), _transicion], HORIZONTAL_ALIGNMENT_LEFT, size.x - 18, 12)",
+    "parametros": [
+      "nodo_gestionado"
+    ],
+    "evidencia": "Constantes de State.msg y campos de TransitionEvent.msg (rcl_interfaces jazzy). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/rcl_interfaces/blob/jazzy/lifecycle_msgs/msg/State.msg",
+      "https://github.com/ros2/rcl_interfaces/blob/jazzy/lifecycle_msgs/msg/TransitionEvent.msg",
+      "godot/ros2_vita/API_PARITY.md:32-33",
+      "docs/32-acciones-puente-pc.md:131",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V] mensaje; [I] estado inicial vía puente",
+    "coste_estimado": "65 B por evento; ≈ 40 quads por fila",
+    "como_se_mediria_en_hardware": "PC: `ros2 run lifecycle py_lifecycle_talker` (o `demo_nodes_cpp lifecycle_talker`) y `ros2 lifecycle set /lc_talker configure` y `activate`; la fila de la Vita pasa a amarillo y luego verde en < 0,5 s."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "vision_msgs/msg/Detection2DArray (incluye BoundingBox2D)",
+    "equivalente": "Foxglove Image panel con anotaciones; rqt_image_overlay; en RViz2 no hay display nativo de vision_msgs (plugin aparte vision_msgs_rviz_plugins) [I]",
+    "candidato": "Rectángulos con etiqueta y % de score dibujados en un Control superpuesto al TextureRect de la cámara, escalados de píxeles de la imagen original al tamaño del widget.",
+    "pc_rclgd": "Control 2D encima del TextureRect de la cámara (ficha Image/CompressedImage de sensores-densos); suscripción FIABLE. `d.results[0].hypothesis.class_id/score`; `d.bbox.center.position.x/y`, `size_x/size_y`.",
+    "vita_ros2_vita": "1 detección con 1 hipótesis = 481 B (la covarianza 6×6 de ObjectHypothesisWithPose ocupa 288 B), 3 = 1 377 B, 10 = 4 513 B ⇒ no cabe en BE; fiable funciona hasta ~15 detecciones a ≤ 5 Hz. Decisión: módulo `det2d` del relay → `/vita/detecciones` Float32MultiArray `[seq, ancho_img, alto_img, n, (clase_idx, score, cx, cy, w, h)×n]` = 16+4·(4+6n) ≤ 488 ⇒ n ≤ 19, + `/vita/det_clases` String fiable TRANSIENT_LOCAL con los nombres. En la Vita `_recibir` lee el compacto y llena el mismo `_cajas`. La imagen va en `/vita/camara` 160×120 (docs/27 §2): por eso las cajas vienen en píxeles de la imagen ORIGINAL y se escalan con ancho/alto del propio mensaje. vision_msgs no está en el typestore de rosbags: registrar sus .msg en generar_esquemas.py (como control_msgs).",
+    "campos": "detections[].bbox (BoundingBox2D: center Pose2D {position{x,y}, theta} + size_x, size_y en píxeles) → Rect2; theta ignorado (cajas rotadas raras) [I]; results[].hypothesis.class_id/score → etiqueta; header.stamp para casar con la imagen (en la Vita: la última con la última).",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Cajas de vision_msgs/Detection2DArray encima del TextureRect de la cámara (mismo tamaño y posición).\n@export var ancho_imagen := 640.0\t\t# CameraInfo.width de la imagen ORIGINAL (no la del relay)\n@export var alto_imagen := 480.0\n@export var umbral_score := 0.3\nvar _cajas: Array = []\t\t\t\t   # [Rect2 en píxeles de imagen, etiqueta, score]\n\nfunc _init() -> void:\n\ttipo = \"vision_msgs/msg/Detection2DArray\"\n\tbest_effort = false\t\t\t\t  # 1 detección = 481 B y 3 = 1 377 B: no caben en BE\n\nfunc _recibir(m: RosMsg) -> void:\n\t_cajas.clear()\n\tfor d in m.detections:\n\t\tvar etiqueta := str(d.id)\n\t\tvar score := 1.0\n\t\tif d.results.size() > 0:\t\t # la hipótesis de más score suele ir primero [I]\n\t\t\tetiqueta = str(d.results[0].hypothesis.class_id)\n\t\t\tscore = float(d.results[0].hypothesis.score)\n\t\tif score >= umbral_score:\n\t\t\tvar b = d.bbox\t\t\t   # BoundingBox2D: center (Pose2D) + size_x/size_y; theta se ignora\n\t\t\tvar s := Vector2(b.size_x, b.size_y)\n\t\t\t_cajas.append([Rect2(Vector2(b.center.position.x, b.center.position.y) - s * 0.5, s), etiqueta, score])\n\nfunc _draw() -> void:\n\tvar k := size / Vector2(ancho_imagen, alto_imagen)\n\tvar fuente := get_theme_default_font()\n\tfor caja in _cajas:\n\t\tvar r: Rect2 = caja[0]\n\t\tvar col := Color.DIM_GRAY if caducado() else Color.from_hsv(float(absi(hash(caja[1])) % 360) / 360.0, 0.8, 1.0)\n\t\tdraw_rect(Rect2(r.position * k, r.size * k), col, false, 2.0)\n\t\tdraw_string(fuente, r.position * k + Vector2(2, -2), \"%s %d%%\" % [caja[1], roundi(caja[2] * 100.0)],\n\t\t\t\tHORIZONTAL_ALIGNMENT_LEFT, -1, 11, col)",
+    "parametros": [
+      "ancho_imagen",
+      "alto_imagen",
+      "umbral_score",
+      "color por clase (hash)"
+    ],
+    "evidencia": "Definiciones de Detection2D, BoundingBox2D, Pose2D, ObjectHypothesisWithPose (vision_msgs rama ros2). Tamaños calculados registrando esos .msg en rosbags. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros-perception/vision_msgs/blob/ros2/vision_msgs/msg/Detection2D.msg",
+      "https://github.com/ros-perception/vision_msgs/blob/ros2/vision_msgs/msg/BoundingBox2D.msg",
+      "https://github.com/ros-perception/vision_msgs/blob/ros2/vision_msgs/msg/ObjectHypothesisWithPose.msg",
+      "https://github.com/ros-perception/vision_msgs/blob/ros2/vision_msgs/msg/Pose2D.msg",
+      "docs/27-xrce-limites-y-relay.md:107",
+      "godot/plantillas/generar_esquemas.py:49-51",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py",
+      "https://docs.foxglove.dev/docs/visualization/panels/introduction"
+    ],
+    "confianza": "[V] tamaños y campos; [I] formato compacto del relay (propuesta)",
+    "coste_estimado": "Compacto ≤ 488 B a 5 Hz ≈ 2,4 KB/s; por caja 4 quads + ~10 glifos ⇒ 19 cajas ≈ 270 quads",
+    "como_se_mediria_en_hardware": "PC: publicar Detection2DArray de prueba (3 cajas fijas sobre una imagen de 640×480) + relay det2d + cámara; en la Vita las cajas caen sobre los objetos de la imagen 160×120 (error < 2 px tras escalar). FPS ≥ 55 con 19 cajas."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "vision_msgs/msg/Detection3DArray (incluye BoundingBox3D)",
+    "equivalente": "vision_msgs_rviz_plugins (BoundingBox3DArray/Detection3DArray) [I]; Foxglove 3D con SceneUpdate",
+    "candidato": "Cajas de alambre: 12 aristas por caja proyectadas al HUD con una sola `draw_multiline` (PC y Vita idénticos); etiqueta de clase con `draw_string` en el centro proyectado.",
+    "pc_rclgd": "Control superpuesto a la vista 3D, `Camera3D.unproject_position`. Alternativa PC (más bonita, ocluye bien): `MeshInstance3D` con `ImmediateMesh` PRIMITIVE_LINES por caja o BoxMesh translúcido.",
+    "vita_ros2_vita": "1 detección = 489 B (no cabe en BE por 1 B), 3 = 1 433 B ⇒ fiable ≤ 5 Hz o módulo `det3d` del relay: Float32 `[seq, n, (clase, score, x, y, z, yaw, sx, sy, sz)×n]` ⇒ n ≤ 13. Líneas 3D no existen sin shaders (docs/31 §2.2): superposición 2D, que no se oculta tras el robot (precio conocido, docs/31 §3). Cubo sólido de la pool de marcadores (12 tri, docs/31 tabla) como alternativa si se quiere oclusión.",
+    "campos": "bbox.center (Pose, en header.frame_id) → Transform3D con ros_to_godot_vector/quat; bbox.size (Vector3, m) → semiejes (abs tras permutar ejes); results[0].hypothesis → etiqueta. El frame debe existir en la escena (`marco_fijo`) o resolverse con TF.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Cajas de vision_msgs/Detection3DArray: 12 aristas por caja proyectadas al HUD con UNA draw_multiline\n## (H17). Igual en PC y Vita: en la Vita no hay líneas 3D sin shaders (docs/31 §2.2).\n@export var camara: Camera3D\n@export var marco_fijo: Node3D\t\t   # nodo de la escena alineado con header.frame_id (p. ej. «map»)\nconst ARISTAS := [0,1, 2,3, 4,5, 6,7, 0,2, 1,3, 4,6, 5,7, 0,4, 1,5, 2,6, 3,7]\nvar _esquinas: Array = []\t\t\t\t# PackedVector3Array(8) por caja, en ejes Godot del marco\n\nfunc _init() -> void:\n\ttipo = \"vision_msgs/msg/Detection3DArray\"\n\tbest_effort = false\t\t\t\t  # 1 detección = 489 B (> 488)\n\nfunc _recibir(m: RosMsg) -> void:\n\t_esquinas.clear()\n\tfor d in m.detections:\n\t\tvar c = d.bbox.center\t\t\t# BoundingBox3D: center (Pose) + size (Vector3)\n\t\tvar q := rclgd.ros_to_godot_quat(Quaternion(c.orientation.x, c.orientation.y, c.orientation.z, c.orientation.w))\n\t\tvar t := Transform3D(Basis(q), rclgd.ros_to_godot_vector(Vector3(c.position.x, c.position.y, c.position.z)))\n\t\tvar h := rclgd.ros_to_godot_vector(Vector3(d.bbox.size.x, d.bbox.size.y, d.bbox.size.z)).abs() * 0.5\n\t\tvar e := PackedVector3Array()\n\t\tfor i in 8:\n\t\t\te.append(t * Vector3(h.x * (1 if i & 1 else -1), h.y * (1 if i & 2 else -1), h.z * (1 if i & 4 else -1)))\n\t\t_esquinas.append(e)\n\nfunc _process(dt: float) -> void:\n\tsuper(dt)\n\tqueue_redraw()\t\t\t\t\t   # la cámara se mueve: reproyectar (8 unproject por caja)\n\nfunc _draw() -> void:\n\tvar segs := PackedVector2Array()\n\tfor e in _esquinas:\n\t\tfor i in range(0, ARISTAS.size(), 2):\n\t\t\tvar a: Vector3 = marco_fijo.global_transform * e[ARISTAS[i]]\n\t\t\tvar b: Vector3 = marco_fijo.global_transform * e[ARISTAS[i + 1]]\n\t\t\tif not (camara.is_position_behind(a) or camara.is_position_behind(b)):\n\t\t\t\tsegs.append_array([camara.unproject_position(a), camara.unproject_position(b)])\n\tif segs.size() >= 2:\n\t\tdraw_multiline(segs, Color.DIM_GRAY if caducado() else Color(0.2, 1.0, 0.6), -1.0)",
+    "parametros": [
+      "camara",
+      "marco_fijo",
+      "color"
+    ],
+    "evidencia": "Detection3D.msg + BoundingBox3D.msg (vision_msgs ros2). `draw_multiline` = un comando con N segmentos (H17). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros-perception/vision_msgs/blob/ros2/vision_msgs/msg/Detection3D.msg",
+      "https://github.com/ros-perception/vision_msgs/blob/ros2/vision_msgs/msg/BoundingBox3D.msg",
+      "docs/31-render-visualizacion-vita.md:49",
+      "docs/31-render-visualizacion-vita.md:85-96",
+      "docs/31-render-visualizacion-vita.md:141-148",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V] tamaños; [I] coste de reproyección",
+    "coste_estimado": "13 cajas × 8 unproject ≈ 104 llamadas GDScript ≈ 1–1,5 ms/fotograma [I] (docs/31 §3: 10–15 µs/punto); 156 segmentos en 1 comando",
+    "como_se_mediria_en_hardware": "PC: Detection3DArray de prueba con 10 cajas alrededor del G1; Vita: cajas estables al orbitar la cámara, `[gxm2d-canvas] avg_canvas_us` < 3 000 y FPS ≥ 55; si no, reproyectar a 20 Hz."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "trajectory_msgs/msg/JointTrajectory",
+    "equivalente": "MoveIt «Planned Path» (DisplayTrajectory, robot fantasma en bucle) en RViz; Foxglove no tiene equivalente directo",
+    "candidato": "Fantasma: segunda instancia del robot horneado que recorre los puntos en bucle según time_from_start (interpolación lineal), con material translúcido en PC.",
+    "pc_rclgd": "Node3D + instancia de la escena del robot (ADR 0009) con `set_joints(nombres, posiciones)` (urdf_robot.gd:80); suscripción fiable.",
+    "vita_ros2_vita": "6 juntas × 1 punto = 152–228 B (cabe en BE: el patrón «fire-and-forget» de rclgd_arm_demo, docs/32:81); 6×10 = 1 380 B; 7×50 = 7 308 B (al límite del fiable) ⇒ el plan de MoveIt llega por el puente como `/vita/accion/trayectoria` Int16MultiArray ≤ 32 puntos (476 B, docs/32:81) y el adaptador rellena `_t/_q`. Segunda instancia del robot = doble de draws (≤ 40 + 40, docs/31 §3): en el G1 (29 juntas) usar solo la cadena del brazo o alternar robot/fantasma con un botón. Sin transparencia fiable en 3D (no hay orden de transparencias, docs/31 §2.4): color plano distinto (albedo) en vez de translúcido.",
+    "campos": "joint_names → nombres URDF; points[].positions (float64[]) → PackedFloat64Array; time_from_start (Duration sec+nanosec) → s; velocities/accelerations ignoradas en el fantasma.",
+    "codigo": "extends Node3D\n## Fantasma de trajectory_msgs/JointTrajectory: copia del robot horneado (ADR 0009) que recorre los puntos\n## en bucle según time_from_start, interpolando en lineal. Robot con set_joints() (urdf_robot.gd:80).\n@export var escena_robot: PackedScene\t# en el PC con material translúcido; en la Vita, ver ficha\n@export var topic := \"/arm_controller/joint_trajectory\"\n@export var velocidad := 1.0\nvar nodo: RosNode\nvar _sub: RosSubscriber\nvar _fantasma: Node3D\nvar _nombres := PackedStringArray()\nvar _t := PackedFloat32Array()\t\t   # time_from_start en s\nvar _q: Array = []\t\t\t\t\t   # PackedFloat64Array por punto\nvar _reloj := 0.0\n\nfunc conectar(n: RosNode) -> void:\n\tnodo = n\n\t_fantasma = escena_robot.instantiate()\n\tadd_child(_fantasma)\n\t_sub = nodo.create_subscription(topic, \"trajectory_msgs/msg/JointTrajectory\", _on_tray)\n\nfunc _on_tray(m: RosMsg) -> void:\n\t_nombres = m.joint_names\n\t_t.clear()\n\t_q.clear()\n\tfor p in m.points:\n\t\t_t.append(p.time_from_start.sec + p.time_from_start.nanosec * 1e-9)\n\t\t_q.append(p.positions)\n\t_reloj = 0.0\n\nfunc _process(dt: float) -> void:\n\tif _t.is_empty():\n\t\treturn\n\t_reloj = fmod(_reloj + dt * velocidad, _t[-1] + 0.5)   # 0,5 s de pausa al final del bucle\n\tvar i := clampi(_t.bsearch(_reloj), 1, _t.size() - 1) if _t.size() > 1 else 0\n\tvar q: PackedFloat64Array = _q[i].duplicate()\n\tif i > 0:\n\t\tvar a := clampf(inverse_lerp(_t[i - 1], _t[i], _reloj), 0.0, 1.0)\n\t\tfor j in mini(q.size(), _q[i - 1].size()):\n\t\t\tq[j] = lerpf(_q[i - 1][j], q[j], a)\n\t_fantasma.call(\"set_joints\", _nombres, q)",
+    "parametros": [
+      "escena_robot",
+      "topic",
+      "velocidad",
+      "pausa final (0,5 s)"
+    ],
+    "evidencia": "JointTrajectory.msg; set_joints cachea índices por lista de nombres (urdf_robot.gd:80-101), barato si la lista no cambia. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/trajectory_msgs/msg/JointTrajectory.msg",
+      "godot/g1-unitree/robot/urdf_robot.gd:80-101",
+      "docs/32-acciones-puente-pc.md:81",
+      "docs/adr/0009-urdf-horneado-en-pc.md",
+      "docs/31-render-visualizacion-vita.md:111-114",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V] tamaños y API del robot; [I] coste del fantasma en la Vita",
+    "coste_estimado": "Por fotograma: 1 bsearch + N lerp + set_joints(N) ≈ 0,2–0,7 ms (N ≤ 29, docs/31 §4.2 RobotModel cacheado); draws ×2 del robot",
+    "como_se_mediria_en_hardware": "PC: `ros2 topic pub --once /arm_controller/joint_trajectory ...` con 2 puntos (0 s y 2 s); Vita: el fantasma va de la pose A a la B en 2 s y vuelve, FPS ≥ 55 con el brazo; con el G1 completo anotar `[gxm3d] drawn=`."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "control_msgs/msg/JointTrajectoryControllerState",
+    "equivalente": "rqt_joint_trajectory_controller (deslizadores) y rqt_plot de error; Foxglove Plot",
+    "candidato": "Panel de barras por junta: real (barra), referencia (marca) y |error| en rojo si supera la tolerancia; opcional: fantasma 3D de `reference` reutilizando la ficha JointTrajectory.",
+    "pc_rclgd": "Control 2D; suscripción fiable a `/joint_trajectory_controller/controller_state`.",
+    "vita_ros2_vita": "7 juntas con los 4 puntos llenos = 1 340 B, 14 = 2 404 B ⇒ fiable a ≤ 5 Hz (la plantilla ya lo publica fiable a 2 Hz con XRCE, estado_controlador.gd:9-13). Esquema propio en plantillas/ros/msg/control_msgs (no está en rosbags). Para ver más rápido: relay con solo reference/feedback Float32 (2·N floats).",
+    "campos": "joint_names; reference/feedback/error/output (JointTrajectoryPoint).positions → PackedFloat64Array; header.stamp; speed_scaling_factor (texto). OJO: `m.reference` NO es el campo: GDScript lo resuelve como el método `RefCounted.reference()` (Callable) y el analizador falla («Cannot find member positions in base Callable», comprobado con --check-only); hay que usar `m.get_member(\"reference\")`, que es lo que ya hace estado_controlador.gd:36-41 y la regla de campos que chocan con miembros (API_PARITY.md:63).",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Panel de control_msgs/JointTrajectoryControllerState: por junta, real (barra azul), referencia (marca\n## naranja) y |error| en rojo si pasa la tolerancia. El fantasma 3D de la referencia usa la ficha JointTrajectory.\n@export var limite_rad := PI\n@export var tolerancia := 0.05\nvar _nombres := PackedStringArray()\nvar _ref := PackedFloat64Array()\nvar _real := PackedFloat64Array()\nvar _err := PackedFloat64Array()\n\nfunc _init() -> void:\n\ttopic = \"/joint_trajectory_controller/controller_state\"\n\ttipo = \"control_msgs/msg/JointTrajectoryControllerState\"\n\tbest_effort = false\t\t\t\t  # 7 juntas = 1 340 B (fiable, <= 5 Hz); estado_controlador.gd:13\n\nfunc _recibir(m: RosMsg) -> void:\n\t_nombres = m.joint_names\n\t_ref = m.get_member(\"reference\").positions   # `reference` choca con RefCounted.reference()\n\t_real = m.feedback.positions\n\t_err = m.error.positions\n\nfunc _x(v: float, cx: float, w: float) -> float:\n\treturn cx + w * 0.5 * clampf(v / limite_rad, -1.0, 1.0)\n\nfunc _draw() -> void:\n\tvar fuente := get_theme_default_font()\n\tvar cx := size.x * 0.7\n\tvar w := size.x * 0.58\n\tfor i in mini(_nombres.size(), mini(_ref.size(), _real.size())):\n\t\tvar y := 2.0 + i * 14.0\n\t\tdraw_rect(Rect2(cx - w * 0.5, y, w, 11), Color(0.2, 0.2, 0.25))\n\t\tdraw_rect(Rect2(minf(cx, _x(_real[i], cx, w)), y + 2, absf(_x(_real[i], cx, w) - cx), 7), Color(0.3, 0.7, 1.0))\n\t\tvar xr := _x(_ref[i], cx, w)\n\t\tdraw_rect(Rect2(xr - 1, y, 2, 11), Color(1.0, 0.75, 0.2))\n\t\tvar e := absf(_err[i]) if i < _err.size() else 0.0\n\t\tdraw_string(fuente, Vector2(2, y + 10), \"%s %.3f\" % [_nombres[i], e], HORIZONTAL_ALIGNMENT_LEFT,\n\t\t\t\tsize.x * 0.4 - 4, 11, Color.WHITE if e < tolerancia else Color8(230, 80, 80))",
+    "parametros": [
+      "limite_rad (π)",
+      "tolerancia (0,05 rad)"
+    ],
+    "evidencia": "estado_controlador.gd rellena reference/feedback/error/output con get_member/set_member; tamaños calculados con el .msg del repo. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "godot/plantillas/sensores/estado_controlador.gd:1-43",
+      "godot/plantillas/ros/msg/control_msgs/msg/JointTrajectoryControllerState.msg",
+      "godot/plantillas/generar_esquemas.py:49-51",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "1,3–2,4 KB a 2–5 Hz; 14 filas × (3 rects + ~20 glifos) ≈ 320 quads",
+    "como_se_mediria_en_hardware": "Plantilla con estado_controlador.gd en el PC (rbkairos) y HMI en la Vita: barras = `ros2 topic echo ... --field feedback.positions`; con error 0 todas las etiquetas en blanco."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "nav_msgs/msg/Path (planificado frente a ejecutado)",
+    "equivalente": "RViz Path display ×2 (plan global/local) + Odometry con «Keep» para el rastro; Foxglove 3D",
+    "candidato": "Dos polilíneas en la vista de planta: plan (verde) y rastro real (azul) con el mismo script en PC (Path + Odometry crudos) y Vita (compactos del relay).",
+    "pc_rclgd": "Node2D en la vista de planta (patrón g6-hmi) o cinta 3D (ficha Path de geometria-tf-robot). Detecta el tipo con `get_ros_interface_name()`.",
+    "vita_ros2_vita": "Path 100 poses = 7 228 B (al límite) ⇒ `/vita/path_compacto` ≤ 57 puntos a 2 Hz (476 B) y `/vita/pose2d` 40 B a 30 Hz, ya implementados en vita_relay.py:11,18. `draw_polyline` fina = 1 comando (H17). Ojo marcos: el plan va en `map` y /odom en `odom`: el rastro debe salir de `/vita/pose2d` calculado con TF map→base (docs/27 §2) o de un listener TF en el PC.",
+    "campos": "poses[].pose.position.x/y → Vector2 (x, −y)·escala; data compacto [n, x0, y0, …]; Odometry.pose.pose.position.",
+    "codigo": "extends Node2D\n## Plan (/plan o /vita/path_compacto) frente al rastro real (/odom o /vita/pose2d); planta como g6-hmi.\n@export var escala := 80.0\t\t\t   # px/m (g6-hmi/main.gd:13)\n@export var rastro_max := 600\nvar _subs: Array = []\t\t\t\t   # guardar las suscripciones (RefCounted)\nvar _plan := PackedVector2Array()\nvar _real := PackedVector2Array()\n\nfunc conectar(n: RosNode, compacto: bool) -> void:\n\tvar plan := [\"/vita/path_compacto\", \"std_msgs/msg/Float32MultiArray\"] if compacto else [\"/plan\", \"nav_msgs/msg/Path\"]\n\tvar pose := [\"/vita/pose2d\", \"std_msgs/msg/Float32MultiArray\"] if compacto else [\"/odom\", \"nav_msgs/msg/Odometry\"]\n\t_subs = [n.create_subscription(plan[0], plan[1], _on_plan), n.create_subscription(pose[0], pose[1], _on_pose)]\n\nfunc _a_pantalla(x: float, y: float) -> Vector2:\n\treturn Vector2(x, -y) * escala\t   # ROS (x delante, y izquierda) -> lienzo (y abajo)\n\nfunc _on_plan(m: RosMsg) -> void:\n\t_plan.clear()\n\tif m.get_ros_interface_name() == \"nav_msgs/msg/Path\":\n\t\tfor ps in m.poses:\n\t\t\t_plan.append(_a_pantalla(ps.pose.position.x, ps.pose.position.y))\n\telse:\n\t\tvar d: PackedFloat32Array = m.data   # [n, x0, y0, …] (docs/27 §2)\n\t\tfor i in int(d[0]):\n\t\t\t_plan.append(_a_pantalla(d[1 + 2 * i], d[2 + 2 * i]))\n\tqueue_redraw()\n\nfunc _on_pose(m: RosMsg) -> void:\n\tvar odo := m.get_ros_interface_name() == \"nav_msgs/msg/Odometry\"\n\tvar p := _a_pantalla(m.pose.pose.position.x, m.pose.pose.position.y) if odo else _a_pantalla(m.data[0], m.data[1])\n\tif _real.is_empty() or _real[-1].distance_to(p) > 2.0:\n\t\t_real.append(p)\n\t\tif _real.size() > rastro_max:\n\t\t\t_real.remove_at(0)\n\t\tqueue_redraw()\n\nfunc _draw() -> void:\n\tif _plan.size() > 1: draw_polyline(_plan, Color(0.3, 1.0, 0.4), -1.0)\n\tif _real.size() > 1: draw_polyline(_real, Color(0.3, 0.7, 1.0), -1.0)",
+    "parametros": [
+      "escala (80 px/m)",
+      "rastro_max (600)",
+      "colores plan/real"
+    ],
+    "evidencia": "Formatos del relay en vita_relay.py:10-19; rastro y vista de planta validados en hardware en G6 (g6-hmi/main.gd:118-133). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "docker/scripts/vita_relay.py:10-19",
+      "docs/27-xrce-limites-y-relay.md:67",
+      "godot/g6-hmi/main.gd:13",
+      "godot/g6-hmi/main.gd:118-133",
+      "docs/31-render-visualizacion-vita.md:49",
+      "docs/31-render-visualizacion-vita.md:133"
+    ],
+    "confianza": "[V] formatos; [I] coste",
+    "coste_estimado": "476 B a 2 Hz + 40 B a 30 Hz; 2 polilíneas ≤ 57 + ≤ 600 puntos ≈ 1 comando cada una",
+    "como_se_mediria_en_hardware": "TB3 + Nav2 en la estación (docs/32 §3), relay `path,pose`; la Vita muestra el plan y el rastro encima con desfase < 0,1 m al llegar a la meta."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "action_msgs/msg/GoalStatusArray + nav2_msgs/action/NavigateToPose (feedback y estado)",
+    "equivalente": "Panel «Navigation 2» de nav2_rviz_plugins (estado, ETA, distancia, recuperaciones, botón Cancel)",
+    "candidato": "Línea de estado en la barra fija del HUD: fase de la meta coloreada + distancia restante + ETA + recuperaciones; mismo script en PC y Vita con los topics ocultos de la acción (nivel 0); cancelar solo por el puente (nivel 1) o, en el PC, con RosActionClient.",
+    "pc_rclgd": "Suscripción a `/navigate_to_pose/_action/status` y `/_action/feedback`. Alternativa solo PC con control total: `create_action_client(\"navigate_to_pose\", \"nav2_msgs/action/NavigateToPose\")` → `send_goal` → señales `feedback`/`completed` y `cancel()` (RosActionClient.md:11-20, RosGoalHandle.md:10-57).",
+    "vita_ros2_vita": "Sin acciones en ros2_vita (API_PARITY.md:34, ADR 0012). Nivel 0: GoalStatusArray 33–453 B y FeedbackMessage 116 B caben en BE/fiable (docs/32:41); el feedback puede llegar a ~100 msg/s (bt_loop 10 ms) ⇒ mitad del presupuesto de datagramas: preferir el nivel 1, `/vita/accion/estado` 112 B a 5 Hz con fase, código y progreso (docs/32:51). Necesita .rsch de action_msgs/GoalStatusArray y del FeedbackMessage.",
+    "campos": "status_list[].status (0 UNKNOWN, 1 ACCEPTED, 2 EXECUTING, 3 CANCELING, 4 SUCCEEDED, 5 CANCELED, 6 ABORTED) y goal_info.stamp (elegir la más reciente; la Vita no conoce el UUID de su meta, docs/32:41); feedback.distance_remaining (float32 m), estimated_time_remaining (Duration), number_of_recoveries (int16), navigation_time, current_pose.",
+    "codigo": "extends \"res://comun/hmi/widget_hud.gd\"\n## Estado de la meta de Nav2 con los topics ocultos de la acción (nivel 0, ADR 0012): mismo script en PC y Vita.\nconst FASE := [\"sin meta\", \"aceptada\", \"ejecutando\", \"cancelando\", \"LLEGÓ\", \"cancelada\", \"ABORTADA\"]\nconst COL := [Color.DIM_GRAY, Color.WHITE, Color(0.3, 0.7, 1.0), Color8(222, 213, 17), Color8(85, 178, 76),\n\t\tColor.DIM_GRAY, Color8(178, 23, 46)]\n@export var accion := \"/navigate_to_pose\"\nvar _sub_fb: RosSubscriber\nvar _fase := 0\nvar _dist := NAN\nvar _eta := 0\nvar _recup := 0\n\nfunc _init() -> void:\n\ttipo = \"action_msgs/msg/GoalStatusArray\"\n\tbest_effort = false\t\t\t\t  # 33 B (1 meta) … 453 B (16 metas)\n\tcaducidad_s = INF\t\t\t\t\t# status solo se publica al cambiar\n\nfunc conectar(n: RosNode) -> void:\n\ttopic = accion + \"/_action/status\"\n\tsuper(n)\n\t_sub_fb = nodo.create_subscription(accion + \"/_action/feedback\",\n\t\t\t\"nav2_msgs/action/NavigateToPose_FeedbackMessage\", _on_fb)   # 116 B; tipo por texto [?]\n\nfunc _recibir(m: RosMsg) -> void:\n\tvar mejor = null\t\t\t\t\t # la meta aceptada más reciente\n\tfor st in m.status_list:\n\t\tvar t = st.goal_info.stamp\n\t\tif mejor == null or t.sec * 1e9 + t.nanosec > mejor.goal_info.stamp.sec * 1e9 + mejor.goal_info.stamp.nanosec:\n\t\t\tmejor = st\n\t_fase = 0 if mejor == null else clampi(int(mejor.status), 0, 6)\n\nfunc _on_fb(m: RosMsg) -> void:\n\t_dist = m.feedback.distance_remaining\n\t_eta = m.feedback.estimated_time_remaining.sec\n\t_recup = m.feedback.number_of_recoveries\n\t_sucio = true\n\nfunc _draw() -> void:\n\tdraw_string(get_theme_default_font(), Vector2(4, 14), \"Meta: %s · %.1f m · ETA %d s · recup. %d\" % [\n\t\t\tFASE[_fase], _dist, _eta, _recup], HORIZONTAL_ALIGNMENT_LEFT, size.x - 8, 13, COL[_fase])",
+    "parametros": [
+      "accion (/navigate_to_pose)",
+      "colores por fase"
+    ],
+    "evidencia": "GoalStatus.msg (constantes), NavigateToPose.action (feedback), análisis de topics ocultos y tamaños en docs/32 §3; constantes STATUS_* de RosGoalHandle coinciden (RosGoalHandle.md:54-57). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/rcl_interfaces/blob/jazzy/action_msgs/msg/GoalStatus.msg",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_msgs/action/NavigateToPose.action",
+      "docs/32-acciones-puente-pc.md:39-47",
+      "docs/32-acciones-puente-pc.md:51",
+      "docs/adr/0012-puente-pc-acciones-y-relay.md:26-38",
+      "skills/rclgd/references/api/RosActionClient.md:11-20",
+      "skills/rclgd/references/api/RosGoalHandle.md:54-57",
+      "godot/ros2_vita/API_PARITY.md:34",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V] mensajes y tamaños; [?] que rclgd y la Vita acepten el tipo `nav2_msgs/action/NavigateToPose_FeedbackMessage` por texto en una suscripción normal (sin probar)",
+    "coste_estimado": "Nivel 0: 116 B × hasta 100/s = 11,6 KB/s (alto); nivel 1: 112 B × 5 Hz = 0,56 KB/s; ≈ 50 quads",
+    "como_se_mediria_en_hardware": "Prueba de docs/32 §3: TB3 + Nav2 headless, la Vita publica /goal_pose; verde: el HUD pasa 2→4 con la distancia bajando y `get_transport_info().read_packets` < 200/s con el feedback suscrito."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "Herramienta RViz «Nav2 Goal» → geometry_msgs/msg/PoseStamped en /goal_pose",
+    "equivalente": "rviz_default_plugins/tools/goal_pose/goal_tool.cpp (GoalTool sobre PoseTool)",
+    "candidato": "Script `herramienta_pose.gd`: pulsar fija la posición en el plano del suelo del frame fijo, arrastrar fija el rumbo (flecha fantasma en el HUD), soltar publica; PC con ratón, Vita con el táctil delantero (llega como ratón) y confirmación con ✕.",
+    "pc_rclgd": "Node con `_unhandled_input`; rayo `Camera3D.project_ray_origin/normal` contra `Plane` del suelo; conversión `rclgd.godot_to_ros_vector` en el marco del nodo `marco_fijo`; `create_publisher(\"goal_pose\", \"geometry_msgs/msg/PoseStamped\")` con QoS por defecto (fiable).",
+    "vita_ros2_vita": "PoseStamped = 76 B: cabe en todo; publicar FIABLE porque bt_navigator se suscribe con SystemDefaultsQoS (fiable) y un publicador BE no casaría (docs/32:41; regla QoS). Stamp: `nodo.now()` ya es hora del agente (API_PARITY.md:31); si `uxr_sync_session` fallara, stamp 0 = «último» en tf2 [I] (docs/32:41). Vita: en la vista 3D el táctil delantero (960×544) hace de ratón; sin táctil, cursor con el stick derecho, rumbo con L/R y ✕ para publicar. Confirmación: en la Vita la meta queda «pendiente» (flecha naranja) hasta pulsar ✕ (evita metas por roce en una consola de mano) [decisión de diseño].",
+    "campos": "Punto del suelo (Godot) → marco_fijo⁻¹ → ROS (x, y, 0); rumbo = atan2(Δy, Δx) (pose_tool.cpp:151) → cuaternión (0, 0, sin(θ/2), cos(θ/2)) (pose_tool.cpp:154-161); header.frame_id = frame fijo («map»).",
+    "codigo": "extends Node\n## herramienta_pose.gd = «Nav2 Goal» (goal_tool.cpp): pulsar = posición, arrastrar = rumbo, soltar = publicar.\n## Ratón en PC; táctil de la Vita como ratón (emulate_mouse_from_touch) [I]. «2D Pose Estimate» hereda.\n@export var camara: Camera3D\n@export var marco_fijo: Node3D\t\t   # nodo de la escena alineado con el frame fijo\n@export var frame_fijo := \"map\"\n@export var topic := \"goal_pose\"\t\t # relativo, como RViz (goal_tool.cpp:52-53)\n@export var tipo := \"geometry_msgs/msg/PoseStamped\"\nvar nodo: RosNode\nvar _pub: RosPublisher\nvar _inicio = null\t\t\t\t\t   # Vector3 en ejes ROS del punto pulsado, o null\nvar _yaw := 0.0\n\nfunc conectar(n: RosNode) -> void:\n\tnodo = n\n\t_pub = nodo.create_publisher(topic, tipo)   # QoS por defecto = fiable: bt_navigator/AMCL se suscriben fiables\n\nfunc _suelo_ros(p: Vector2):\n\tvar g := marco_fijo.global_transform\n\tvar hit = Plane(g.basis.y.normalized(), g.origin).intersects_ray(camara.project_ray_origin(p), camara.project_ray_normal(p))\n\treturn null if hit == null else rclgd.godot_to_ros_vector(g.affine_inverse() * hit)\n\nfunc _unhandled_input(e: InputEvent) -> void:\n\tif e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:\n\t\tif e.pressed:\n\t\t\t_inicio = _suelo_ros(e.position)\n\t\telif _inicio != null:\n\t\t\t_publicar(_inicio, _yaw)\n\t\t\t_inicio = null\n\telif e is InputEventMouseMotion and _inicio != null:\n\t\tvar p = _suelo_ros(e.position)\n\t\tif p != null and Vector2(p.x - _inicio.x, p.y - _inicio.y).length() > 0.05:\n\t\t\t_yaw = atan2(p.y - _inicio.y, p.x - _inicio.x)   # pose_tool.cpp:151\n\nfunc _publicar(p: Vector3, yaw: float) -> void:\n\tvar m := RosMsg.from_type(tipo)\n\tm.header.frame_id = frame_fijo; m.header.stamp = nodo.now()   # Vita: hora del agente (API_PARITY.md:31)\n\tm.pose.position.x = p.x; m.pose.position.y = p.y\n\tm.pose.orientation.z = sin(yaw * 0.5); m.pose.orientation.w = cos(yaw * 0.5)   # pose_tool.cpp:154-161\n\t_pub.publish(m)",
+    "parametros": [
+      "camara",
+      "marco_fijo",
+      "frame_fijo (map)",
+      "topic (goal_pose)",
+      "umbral de arrastre (5 cm)",
+      "confirmar_con_boton (Vita)"
+    ],
+    "evidencia": "GoalTool: topic «goal_pose», QoS rclcpp::QoS(5) (KEEP_LAST 5, fiable, volátil), stamp = clock now, frame = fixed frame, z = 0 (goal_tool.cpp:48-53, 83-97). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/tools/goal_pose/goal_tool.cpp#L48-L97",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/tools/pose/pose_tool.cpp#L79-L161",
+      "docs/32-acciones-puente-pc.md:41",
+      "godot/ros2_vita/API_PARITY.md:31",
+      "godot/ros2_vita/xrce_transport.cpp:162-164",
+      "https://docs.godotengine.org/en/stable/classes/class_camera3d.html#class-camera3d-method-project-ray-origin",
+      "https://docs.godotengine.org/en/stable/tutorials/inputs/input_examples.html"
+    ],
+    "confianza": "[V] RViz y tamaños; [I] emulación ratón-desde-táctil en el port",
+    "coste_estimado": "76 B por meta; 1 intersección de rayo por evento de ratón (µs)",
+    "como_se_mediria_en_hardware": "TB3 + Nav2 (docs/32 §3). Vita: tocar el mapa 3D, arrastrar, ✕. Verde: `ros2 topic echo /goal_pose` muestra frame map y el yaw arrastrado (± 5°); el robot navega. Comprobar en el arranque que un toque produce UN solo evento (sin duplicado táctil + ratón)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "Herramienta RViz «2D Pose Estimate» → geometry_msgs/msg/PoseWithCovarianceStamped en /initialpose",
+    "equivalente": "rviz_default_plugins/tools/pose_estimate/initial_pose_tool.cpp",
+    "candidato": "Subclase de `herramienta_pose.gd` que solo cambia topic, tipo y `_publicar()` (covarianza por defecto de RViz: 0,25 / 0,25 / (π/12)²).",
+    "pc_rclgd": "Igual que Nav2 Goal; `m.pose.covariance = PackedFloat64Array(36)` asignado entero.",
+    "vita_ros2_vita": "364 B: cabe en BE, pero se publica FIABLE (AMCL se suscribe con QoS fiable [I]). Mismo gesto en el táctil; en la Vita se elige la herramienta con SELECT (ciclo Teleop → Meta → Pose inicial → Punto) y su nombre se ve en el HUD.",
+    "campos": "Como Nav Goal + covariance[0]=cov_x, [7]=cov_y, [35]=cov_yaw (índices 6·i+i de x, y, yaw).",
+    "codigo": "extends \"res://comun/hmi/herramienta_pose.gd\"\n## «2D Pose Estimate» (initial_pose_tool.cpp): mismo gesto que Nav2 Goal; publica\n## geometry_msgs/PoseWithCovarianceStamped en initialpose con la covarianza por defecto de RViz.\n@export var cov_x := 0.25\t\t\t\t# 0,5² (initial_pose_tool.cpp:62-64)\n@export var cov_y := 0.25\n@export var cov_yaw := 0.06853892\t\t# (π/12)² (initial_pose_tool.cpp:68-70)\n\nfunc _init() -> void:\n\ttopic = \"initialpose\"\n\ttipo = \"geometry_msgs/msg/PoseWithCovarianceStamped\"   # 364 B: cabe en BE, pero AMCL se suscribe fiable\n\nfunc _publicar(p: Vector3, yaw: float) -> void:\n\tvar m := RosMsg.from_type(tipo)\n\tm.header.frame_id = frame_fijo\n\tm.header.stamp = nodo.now()\n\tm.pose.pose.position.x = p.x\n\tm.pose.pose.position.y = p.y\n\tm.pose.pose.orientation.z = sin(yaw * 0.5)\n\tm.pose.pose.orientation.w = cos(yaw * 0.5)\n\tvar cov := PackedFloat64Array()\n\tcov.resize(36)\n\tcov.fill(0.0)\n\tcov[0] = cov_x\t\t\t\t\t   # [6*0+0]\n\tcov[7] = cov_y\t\t\t\t\t   # [6*1+1]\n\tcov[35] = cov_yaw\t\t\t\t\t# [6*5+5]\n\tm.pose.covariance = cov\t\t\t  # asignar el array entero: los arrays se copian (API_PARITY.md:49)\n\t_pub.publish(m)",
+    "parametros": [
+      "cov_x (0,25)",
+      "cov_y (0,25)",
+      "cov_yaw (0,0685)",
+      "topic (initialpose)"
+    ],
+    "evidencia": "InitialPoseTool: topic «initialpose», QoS(5), covarianzas por defecto 0,5², 0,5², (π/12)² y asignación a [0], [7], [35] (initial_pose_tool.cpp:50-70, 98-117). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/tools/pose_estimate/initial_pose_tool.cpp#L50-L117",
+      "godot/ros2_vita/API_PARITY.md:49",
+      "tamaños CDR calculados con rosbags (store ROS2_JAZZY, toolchains/rosbags-venv) con contenido representativo; scratchpad w13/tam.py"
+    ],
+    "confianza": "[V] RViz y tamaño; [I] QoS del suscriptor de AMCL",
+    "coste_estimado": "364 B por uso",
+    "como_se_mediria_en_hardware": "TB3 + Nav2 con AMCL: fijar la pose desde la Vita; verde: la nube de partículas de AMCL (`ros2 topic echo /particle_cloud` o RViz en el PC) se recoloca alrededor del punto tocado."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "Herramienta RViz «Publish Point» → geometry_msgs/msg/PointStamped en /clicked_point",
+    "equivalente": "rviz_default_plugins/tools/point/point_tool.cpp",
+    "candidato": "Al soltar el clic/toque: rayo de física contra las colisiones de la escena editable (docs/35) y, si no toca nada, contra el suelo; publica PointStamped; «un solo clic» desactiva la herramienta.",
+    "pc_rclgd": "`PhysicsDirectSpaceState3D.intersect_ray` (RViz usa el selector de profundidad del render, aquí se sustituye por física).",
+    "vita_ros2_vita": "44 B. La física de Godot existe en el port (Jolt desactivado, urdf_robot.gd:7 [I] GodotPhysics3D activo); los robots horneados no tienen colisiones (solo visual, urdf_robot.gd:2), así que sobre el robot cae al suelo. Uso típico: marcar puntos para un explorador o waypoints.",
+    "campos": "hit.position (Godot) → marco_fijo⁻¹ → ROS xyz; header.frame_id = frame fijo; stamp = now().",
+    "codigo": "extends Node\n## «Publish Point» (point_tool.cpp): al SOLTAR el clic, rayo físico contra la escena (colisiones del\n## mundo editable, docs/35) o, si no toca nada, contra el suelo; publica PointStamped en /clicked_point.\n@export var camara: Camera3D\n@export var marco_fijo: Node3D\n@export var frame_fijo := \"map\"\n@export var topic := \"/clicked_point\"\t# point_tool.cpp:60-61\n@export var un_solo_clic := true\t\t # «Single click»: se desactiva tras publicar (point_tool.cpp:65-68)\n@export var alcance := 200.0\nvar nodo: RosNode\nvar _pub: RosPublisher\nvar activa := false\t\t\t\t\t  # la HMI la activa con su botón/pestaña\n\nfunc conectar(n: RosNode) -> void:\n\tnodo = n\n\t_pub = nodo.create_publisher(topic, \"geometry_msgs/msg/PointStamped\")   # 44 B\n\nfunc _unhandled_input(e: InputEvent) -> void:\n\tif not (activa and e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and not e.pressed):\n\t\treturn\t\t\t\t\t\t   # RViz publica en leftUp (point_tool.cpp:111-114)\n\tvar o := camara.project_ray_origin(e.position)\n\tvar fin := o + camara.project_ray_normal(e.position) * alcance\n\tvar hit := camara.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(o, fin))\n\tvar g := marco_fijo.global_transform\n\tvar punto = hit.get(\"position\", Plane(g.basis.y.normalized(), g.origin).intersects_ray(o, fin - o))\n\tif punto == null:\n\t\treturn\n\tvar p := rclgd.godot_to_ros_vector(g.affine_inverse() * punto)\n\tvar m := RosMsg.from_type(\"geometry_msgs/msg/PointStamped\")\n\tm.header.frame_id = frame_fijo\n\tm.header.stamp = nodo.now()\n\tm.point.x = p.x\n\tm.point.y = p.y\n\tm.point.z = p.z\n\t_pub.publish(m)\n\tactiva = not un_solo_clic",
+    "parametros": [
+      "un_solo_clic (true)",
+      "alcance (200 m)",
+      "topic (/clicked_point)"
+    ],
+    "evidencia": "PointTool: topic «/clicked_point», «Single click» por defecto true, publica en leftUp, frame = fixed frame (point_tool.cpp:56-68, 100-141). Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/tools/point/point_tool.cpp#L56-L141",
+      "docs/35-regla-escenas-editables.md",
+      "godot/g1-unitree/robot/urdf_robot.gd:1-7",
+      "https://docs.godotengine.org/en/stable/tutorials/physics/ray-casting.html"
+    ],
+    "confianza": "[V] RViz; [I] física en el port",
+    "coste_estimado": "44 B; 1 rayo de física por clic",
+    "como_se_mediria_en_hardware": "Escena con el mundo de plantillas/mundo/mundo.tscn: tocar una pared en la Vita; `ros2 topic echo /clicked_point` da la coordenada de la pared (± 5 cm frente a la medida en el editor)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "hmi-percepcion-acciones (opus)",
+    "tipo": "Teleop → geometry_msgs/msg/Twist en /cmd_vel (Foxglove Teleop, rqt_robot_steering, teleop_twist_joy)",
+    "equivalente": "Foxglove Teleop panel; rqt_robot_steering; teleop_twist_joy (enable_button)",
+    "candidato": "Stick izquierdo (Vita) o flechas (PC) → Twist a 20 Hz solo con hombre muerto (R / Mayús); al soltar, un Twist cero y silencio; en robots reales, por el puente `/vita/mando` (docs/32 §Q5).",
+    "pc_rclgd": "`create_timer(0.05, ...)` + `Input`; publicador por defecto (fiable).",
+    "vita_ros2_vita": "Twist 52 B. FIABLE por defecto como en g6-hmi (validado en hardware, G6): turtlesim y diff_drive se suscriben fiables y un publicador BE no casaría. En robots reales no publicar /cmd_vel directo: `/vita/mando` Float32 64 B con hombre muerto y la puerta (caducidad 0,3 s, rearme por flanco) en el PC (ADR 0012 punto 3). Mapeo Vita: stick izq. = lineal/giro, R = hombre muerto, △/✕ escala (g6-hmi), cruceta = ui_* (Godot mapea la cruceta a ui_up/down por defecto).",
+    "campos": "linear.x = −eje Y × v_max; angular.z = −eje X × w_max (izquierda positiva, REP-103); zona muerta reescalada (g6-hmi/main.gd:76-81).",
+    "codigo": "extends Node\n## Teleop (Foxglove Teleop, rqt_robot_steering, teleop_twist_joy): stick izquierdo de la Vita o flechas del\n## PC -> geometry_msgs/Twist a 20 Hz. Hombre muerto = R mantenido (enable_button de teleop_twist_joy) o Mayús.\n@export var topic := \"/cmd_vel\"\n@export var v_max := 0.5\t\t\t\t # m/s\n@export var w_max := 1.0\t\t\t\t # rad/s\n@export var zona_muerta := 0.12\t\t  # g6-hmi/main.gd:19\nvar nodo: RosNode\nvar _pub: RosPublisher\nvar _timer: RosTimer\nvar _activo := false\n\nfunc conectar(n: RosNode) -> void:\n\tnodo = n\n\t_pub = nodo.create_publisher(topic, \"geometry_msgs/msg/Twist\")   # fiable por defecto: casa con todos\n\t_timer = nodo.create_timer(0.05, _tick)\n\nfunc _eje(a: JoyAxis) -> float:\n\tvar v := Input.get_joy_axis(0, a)\n\treturn 0.0 if absf(v) < zona_muerta else signf(v) * (absf(v) - zona_muerta) / (1.0 - zona_muerta)\n\nfunc _tick() -> void:\n\tvar hombre_muerto := Input.is_joy_button_pressed(0, JOY_BUTTON_RIGHT_SHOULDER) or Input.is_key_pressed(KEY_SHIFT)\n\tif not hombre_muerto and not _activo:\n\t\treturn\t\t\t\t\t\t   # en reposo, silencio: la puerta del robot para sola (docs/32 §Q5)\n\tvar lin := clampf(-_eje(JOY_AXIS_LEFT_Y) + Input.get_axis(\"ui_down\", \"ui_up\"), -1.0, 1.0)\n\tvar ang := clampf(-_eje(JOY_AXIS_LEFT_X) + Input.get_axis(\"ui_right\", \"ui_left\"), -1.0, 1.0)\n\tvar m := RosMsg.from_type(\"geometry_msgs/msg/Twist\")\n\tif hombre_muerto:\n\t\tm.linear.x = lin * v_max + 0.0   # +0.0 evita publicar -0.0 (g6-hmi/main.gd:98)\n\t\tm.angular.z = ang * w_max + 0.0\n\t_pub.publish(m)\t\t\t\t\t  # al soltar sale UN Twist cero y luego silencio\n\t_activo = hombre_muerto",
+    "parametros": [
+      "v_max",
+      "w_max",
+      "zona_muerta (0,12)",
+      "botón de hombre muerto"
+    ],
+    "evidencia": "g6-hmi publica Twist a 20 Hz con este mapeo, validado en la Vita (G6); docs/32 §Q5 diseña la puerta de mando en el lado robot. Código analizado sin errores con `godot.linuxbsd.editor.x86_64 --headless --check-only` (editor 4.8-dev7 del repo con el módulo ros2_vita, que registra RosNode/RosMsg/RosQoS), 2026-11-13.",
+    "fuentes": [
+      "godot/g6-hmi/main.gd:1-11",
+      "godot/g6-hmi/main.gd:76-103",
+      "docs/32-acciones-puente-pc.md:111",
+      "docs/adr/0012-puente-pc-acciones-y-relay.md:35-36",
+      "https://docs.foxglove.dev/docs/visualization/panels/introduction",
+      "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html"
+    ],
+    "confianza": "[V] mapeo y QoS por defecto; [I] dead man en Vita sin puente",
+    "coste_estimado": "52 B × 20 Hz = 1 KB/s solo con R pulsado",
+    "como_se_mediria_en_hardware": "`docker/vita-ros.sh sim` (turtlesim): sin R la tortuga no se mueve aunque se empuje el stick; con R se mueve; al soltar R `ros2 topic echo /cmd_vel` muestra un cero y luego nada."
+  }
+]
