@@ -354,8 +354,8 @@ Ver `docs/adr/0011-presupuesto-render-vita.md`.
 |---|---|---|---|---|
 | T-W8-1 | Añadir los ajustes de §5.4 a los proyectos Godot de la Vita | `godot/*/project.godot` | P0 | S |
 | T-W8-2 | Proyecto `w8-bench` con E-W8-0…5 | `godot/w8-bench/` | P0 | M (1–2 días) |
-| T-W8-3 | Arreglos de §4.4 (LUT de teselas, sub-texturas, tabla del scan, redibujado por cambio, caché de joints) | `godot/comun/`, `godot/g1-unitree/` | P0 | S–M |
-| T-W8-4 | Biblioteca de visualización: paleta, ejes, flecha, cinta, primitivas unidad, lote 2D | `godot/comun/viz/` | P1 | M |
+| T-W8-3 | Arreglos de §4.4 (LUT de teselas, sub-texturas, tabla del scan, redibujado por cambio, caché de joints) | `godot/plantillas/`, `godot/g1-unitree/` | P0 | S–M |
+| T-W8-4 | Biblioteca de visualización: paleta, ejes, flecha, cinta, primitivas unidad, lote 2D | `godot/plantillas/viz/` | P1 | M |
 | T-W8-5 | Hornear la casa en una malla con paleta | `docker/g1/casa.py` | P1 | S |
 | T-W8-6 | Módulos del relay que faltan: marcadores, nube, cámara | `docker/scripts/vita_relay.py` | P1 | M |
 | T-W8-7 | Módulo dual `viz-decode` + exposición en `ros2_vita` | `modules/viz-decode/`, `godot/ros2_vita/` | P2 (con la próxima plantilla) | M |

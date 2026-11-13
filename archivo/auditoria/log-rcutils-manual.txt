@@ -1,0 +1,19 @@
+===== time_unix.c =====
+rcutils/src/time_unix.c:19:10: fatal error: rcutils/logging_macros.h: No such file or directory
+   19 | #include "rcutils/logging_macros.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+===== filesystem.c =====
+===== shared_library.c =====
+rcutils/src/shared_library.c:30:10: fatal error: dlfcn.h: No such file or directory
+   30 | #include <dlfcn.h>
+      |          ^~~~~~~~~
+compilation terminated.
+===== process.c =====
+rcutils/src/process.c: In function 'rcutils_get_executable_name':
+rcutils/src/process.c:64:26: error: 'program_invocation_name' undeclared (first use in this function)
+   64 |   const char * appname = program_invocation_name;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~
+rcutils/src/process.c:64:26: note: each undeclared identifier is reported only once for each function it appears in
+===== error_handling.c =====
+===== allocator.c =====

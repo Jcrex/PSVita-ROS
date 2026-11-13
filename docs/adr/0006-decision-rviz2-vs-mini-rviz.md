@@ -14,8 +14,8 @@ teoría, y decidir según un árbol de decisión explícito.
 
 La auditoría se ejecutó el 2026-07-10 en el PC de desarrollo (CachyOS,
 VitaSDK v2.540, gcc 15.2.0, cmake 4.3.3), según la Etapa A de
-`docs/10-plan-objetivos-3-4.md`. Los logs completos quedaron en
-`auditoria/` (gitignored); la evidencia citada abajo está copiada
+`docs/10-plan-objetivos-3-4.md`. Los logs están en
+`archivo/auditoria/`; clones en `toolchains/auditoria-rviz2/` (sin versionar); la evidencia citada abajo está copiada
 textualmente de ellos y volcada también en docs/04.
 
 ## Evidencia
