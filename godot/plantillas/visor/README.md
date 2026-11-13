@@ -156,3 +156,65 @@ $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_primiti
 ```
 
 El `ERROR: PrimitivasViz: forma desconocida 99` y el aviso de «más de 64 variantes» del log son casos negativos.
+
+## HUD (V4)
+
+Estado: **hecho y verde en host** (`pruebas/visor_hud.gd`); el coste real en la Vita está sin medir (gate
+**G-W13-H0**: `[gxm2d-perf] quads=` ≤ 400 y `draws` ≤ 30 con la pestaña Estado, µs por glifo). Diseño: doc 36 §2.9.7
+y §7.2, sentencia W13 D6, fichas de doc 36a §4.1.10, §4.4.5–4.4.7 y §4.8.9.
+
+| Archivo | Pieza | Zona | *Quads* declarados |
+|---|---|---|---:|
+| `gestor_hud.gd` | GestorHud (`Control`) | barra fija + UNA pestaña visible; recuento por zona | — |
+| `displays/hud/bateria.gd` | `sensor_msgs/BatteryState` | barra | 34 |
+| `displays/hud/estado_meta.gd` | `action_msgs/GoalStatusArray` + feedback de `NavigateToPose` (nivel 0) o puente VAB/1 (nivel 1) | barra | 40 |
+| `displays/hud/barra_estado.gd` | enlace (`get_transport_info`), Hz del `vigilado`, herramienta, `relay_bw` opcional | barra | 40 |
+| `displays/hud/medidor.gd` | `Temperature`, `FluidPressure`, `Illuminance`, `RelativeHumidity` (configuración por nodo) | pestaña Estado | 39 |
+| `displays/hud/joy.gd` | `sensor_msgs/Joy` (dos sticks + botones) | pestaña Mando | 51 |
+
+Cupos (doc 36 §7.2): barra ≤ 120 (114 con los tres), pestaña ≤ 240 (6 medidores = 234), texto superpuesto ≤ 40
+(TextoSuperpuesto, V2). En la Vita (o con `avisar_en_pc`) GestorHud avisa una vez si una zona declara de más.
+
+**En la escena** (`godot/visor-ros/main.tscn`, regla doc 35): `VisorRos/Hud/GestorHud` con `Barra` (Bateria, Meta,
+Estado) y `Pestanas` (Estado: Temperatura y Presion; Mando: Joy). Cada pestaña es un `Control` hijo de `Pestanas`;
+sus widgets son displays HUD normales (los conecta VisorRos). Cambio de pestaña: `ui_page_down`/`ui_page_up` o
+R/L del mando (`boton_siguiente`/`boton_anterior`, −1 = desactivado). En el PC, `todas_visibles` las enseña todas.
+
+**Contrato añadido a `display_ros_hud.gd`:** el widget pinta en `_dibujar() -> bool` (termina con `return true`) con
+los ayudantes `texto` (recorta a `max_car`), `rect`, `marco`, `linea`, `polilinea`, `arco` y `num` (NaN → «—»),
+que cuentan `glifos_dibujados` y `quads_dibujados` del último `_draw()` (estimación por primitiva, doc 31 H16–H17:
+texto = 1 *quad* por carácter, polilínea fina de n puntos = n − 1). `_coste().quads` es la cota que se suma por
+zona y la prueba comprueba que lo dibujado no la pasa. `mouse_filter = IGNORE` por defecto (el `.tscn` lo cambia).
+
+**Tipos sin esquema `.rsch`** (Vita y editor de host, mismo `ros/schema.rsch`) → **V5** (`TIPOS_VISOR`):
+`sensor_msgs/Joy`, `Temperature`, `Illuminance`, `RelativeHumidity`, `action_msgs/GoalStatusArray` y
+`nav2_msgs/action/NavigateToPose_FeedbackMessage` (este, registro manual). Hasta entonces esos widgets quedan en
+«sin esquema: …» sin suscribir (T20). Con esquema hoy: `BatteryState`, `FluidPressure`.
+
+### Decisiones de V4 no cubiertas por el ADR 0013 (las más conservadoras)
+
+1. **Paleta:** colores provisionales `COLOR_OK/AVISO/ERROR` (rqt_robot_monitor), `COLOR_TEXTO/FONDO/ACENTO` y
+   `COLOR_CADUCADO` como constantes de `display_ros_hud.gd`. **Pendiente de integrar con `paleta_viz.gd` (V2)**: se
+   cambian ahí y ningún widget toca colores sueltos (salvo `COLOR_APAGADO` de joy y el azul de «ejecutando» de
+   estado_meta).
+2. **Recuento de glifos** como cota alta: cuentan también los espacios. La medida buena es G-W13-H0.
+3. **Medidor con 24 muestras** (el catálogo decía 60, que daba > 70 *quads*): así 6 medidores caben en 240.
+4. **Joy:** circunferencias de 16 segmentos y botones siempre rellenos (un marco cuesta 4 *quads*); ≤ 17 botones.
+   La fuente `/vita/joy` (publicar el mando de la Vita) es una herramienta: V7.
+5. **estado_meta:** el camino del puente VAB/1 (`topic_vita = "accion/estado"`, docs/32:51 y :61) está escrito
+   pero apagado: el puente no existe [I]. Sin esquema del feedback, se queda sin feedback (`estado_feedback`).
+6. **barra_estado:** sin suscripción propia; `relay_bw` solo si se le da `topic_vita`. Paquetes/s calculados con
+   `read_packets` entre refrescos (2 Hz).
+7. **GestorHud** no pinta títulos de pestaña (gastarían glifos de la barra); `pestana_activa()` da el nombre.
+8. **R/L como cambio de pestaña** [I]: nombres de botón del port sin validar en hardware.
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_hud.gd   # RESULTADO: 68/68
+```
+
+`pruebas/visor_hud.gd` (loopback): GestorHud (una pestaña visible, la oculta no procesa ni dibuja, aviso de cupo
+una vez, vuelta con `siguiente`/`anterior`), glifos y *quads* por zona (barra ≤ 120, pestaña ≤ 240, lo dibujado ≤
+lo declarado), cada widget con su mensaje (real por loopback con esquema; falso con los mismos campos sin él), NaN
+(T2) en batería, medidor y mando, camino compacto de estado_meta y el HUD de `main.tscn`. Un `Logger` cuenta los
+errores de script de `visor/` (debe ser 0). Los `ERROR: RosMsg: tipo … no esta en el esquema` del log son los
+tipos V5 de arriba (esperados).
