@@ -26,6 +26,21 @@ const MapasColor = preload("res://comun/visor/mapas_color.gd")
 const D := "res://comun/visor/displays/"
 
 
+## Objeto ROS falso (tipos sin esquema en el editor de host: InteractiveMarker*, GridMap, Octomap).
+class Falso:
+	extends RefCounted
+	var _m := {}
+
+	func _init(m: Dictionary) -> void:
+		_m = m
+
+	func _get(n: StringName):
+		return _m.get(String(n))
+
+	func get_member(n: String):
+		return _m.get(n)
+
+
 class Vigia:
 	extends Logger
 	var errores := 0
@@ -70,6 +85,7 @@ func _correr() -> void:
 	await _probar_mapa()
 	await _probar_nube()
 	await _probar_imagen()
+	await _probar_im()
 	check(vigia.errores == 0, "sin errores de script ni de shader (%s)" % vigia.ultimo)
 	OS.remove_logger(vigia)
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
@@ -549,4 +565,170 @@ func _probar_imagen() -> void:
 	im._al_mensaje(_cruda("16SC1", 32, 24, 64, d16))
 	im._al_mensaje(_cruda("rgb8", 32, 24, 100, rel))    # 100 no es múltiplo de 3
 	check(im.rechazadas == r0 + 2, "16SC1 y step no múltiplo de bpp: rechazados")
+	await _cerrar(v)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 4. Cliente de marcadores interactivos + herramienta Interactuar (feedback FIABLE, profundidad 1)
+# ---------------------------------------------------------------------------------------------------------------
+func _pose(x: float, y: float, z := 0.0, yaw := 0.0):
+	var p = RosMsg.from_type("geometry_msgs/msg/Pose")
+	p.position.x = x
+	p.position.y = y
+	p.position.z = z
+	p.orientation.z = sin(yaw / 2.0)
+	p.orientation.w = cos(yaw / 2.0)
+	return p
+
+
+func _cabecera(f: String):
+	var h = RosMsg.from_type("std_msgs/msg/Header")
+	h.frame_id = f
+	return h
+
+
+## InteractiveMarkerControl: `q` = orientación (x, y, z, w) del control (su +X es el eje).
+func _control_im(nombre: String, modo: int, q := Quaternion.IDENTITY, marcadores := []) -> Falso:
+	var o = RosMsg.from_type("geometry_msgs/msg/Quaternion")
+	o.x = q.x
+	o.y = q.y
+	o.z = q.z
+	o.w = q.w
+	return Falso.new({"name": nombre, "orientation": o, "orientation_mode": 0, "interaction_mode": modo,
+			"always_visible": false, "markers": marcadores, "independent_marker_orientation": false, "description": ""})
+
+
+func _im(nombre: String, pose, controles: Array, escala := 1.0) -> Falso:
+	return Falso.new({"header": _cabecera("map"), "pose": pose, "name": nombre, "description": nombre, "scale": escala,
+			"menu_entries": [], "controls": controles})
+
+
+func _update(seq: int, tipo: int, marcadores := [], poses := [], borrar := []) -> Falso:
+	return Falso.new({"server_id": "/basic_controls", "seq_num": seq, "type": tipo, "markers": marcadores, "poses": poses,
+			"erases": PackedStringArray(borrar)})
+
+
+func _raton(h: Node, pos: Vector2, pulsado = null) -> void:
+	var e: InputEvent
+	if pulsado == null:
+		e = InputEventMouseMotion.new()
+	else:
+		e = InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pulsado
+	e.position = pos
+	h._unhandled_input(e)
+
+
+func _pantalla(v: Node, ros: Vector3) -> Vector2:
+	return v.camara.unproject_position(rclgd.ros_to_godot_vector(ros))
+
+
+func _probar_im() -> void:
+	var cl: Node3D = load(D + "3d/im_cliente.gd").new()
+	cl.name = "MarcadoresInteractivos"
+	cl.ns = "/basic_controls"
+	var hf: Node2D = load("res://comun/visor/herramientas/im_feedback.gd").new()
+	hf.name = "Interactuar"
+	hf.cliente = cl
+	var v := _visor(false, [], [hf], [cl], Vector3.ZERO, 8.0)
+	await _esperar(v)
+	check(cl.solo_pc and cl.canal.topic_abierto == "" and cl.estado.begins_with("sin esquema") and not cl.con_servicio,
+			"IM: en el editor de host (ros2_vita) sin esquema de InteractiveMarkerUpdate ni servicios: lógica por mensajes falsos")
+	check(hf.estado == "ok" and hf.topic == "/basic_controls/feedback" and hf.qos.get_reliability() == RosQoS.RELIABLE
+			and hf.qos.get_depth() == 1, "IM feedback: <ns>/feedback FIABLE y profundidad 1 (C9, también en el PC)")
+	# Estado: cuatro marcadores como basic_controls (mover en x, mover en el plano XY, rotar en z, botón).
+	var cubo = RosMsg.from_type("visualization_msgs/msg/Marker")
+	cubo.type = 1
+	cubo.scale.x = 0.45
+	cubo.scale.y = 0.45
+	cubo.scale.z = 0.45
+	cubo.color.r = 0.5
+	cubo.color.g = 0.5
+	cubo.color.b = 0.5
+	cubo.color.a = 1.0
+	cubo.pose.orientation.w = 1.0
+	var q_z := Quaternion(0, 0.70710678, 0, 0.70710678)            # +X del control → +Z (ROS): plano XY / giro en z
+	cl._al_mensaje(_update(1, 1, [
+		_im("mover_x", _pose(0, 0), [_control_im("move_x", 3)]),
+		_im("plano", _pose(2.0, 3.0), [_control_im("move_plane", 4, q_z)]),
+		_im("rotar", _pose(-2.0, 3.0), [_control_im("rotate_z", 5, q_z)]),
+		_im("boton", _pose(-2.5, -3.0), [_control_im("button", 2, Quaternion.IDENTITY, [cubo])]),
+	]))
+	check(cl.ims.size() == 4 and cl.seq == 1, "IM: UPDATE con 4 marcadores aplicado (seq 1)")
+	var cx: Dictionary = cl.ims["mover_x"]["controles"][0]
+	check(cx["dibujados"] == 2 and cl.color_eje(cx["eje"]) == Color(1, 0, 0), "IM: MOVE_AXIS sin marcadores → 2 flechas rojas (autoComplete)")
+	check(cl.ims["boton"]["controles"][0]["dibujados"] == 1 and cl.color_eje(cl.ims["plano"]["controles"][0]["eje"]) == Color(0, 0, 1),
+			"IM: BUTTON dibuja su CUBE; el control del plano XY tiene eje z (azul)")
+	var n_hijos: int = cl.ims["rotar"]["nodo"].get_child(0).get_child_count()
+	check(n_hijos == 1, "IM: ROTATE_AXIS → un anillo")
+	# Secuencia: hueco (3 sin 2) aceptado y contado; un viejo (2) ignorado; KEEP_ALIVE al día sin cambios.
+	cl._al_mensaje(_update(3, 1, [], [Falso.new({"header": _cabecera("map"), "pose": _pose(0.5, 0), "name": "mover_x"})]))
+	check(cl.seq == 3 and cl.huecos == 1 and is_equal_approx(cl.ims["mover_x"]["pose"].origin.z, -0.5),
+			"IM: hueco 1→3 contado (sin servicio se acepta); poses aplicadas")
+	cl._al_mensaje(_update(2, 1, [], [], ["mover_x"]))
+	cl._al_mensaje(_update(3, 0))
+	check(cl.ims.has("mover_x") and cl.seq == 3, "IM: update viejo ignorado; KEEP_ALIVE al día")
+	cl._al_mensaje(_update(4, 1, [], [Falso.new({"header": _cabecera("map"), "pose": _pose(0, 0), "name": "mover_x"})]))
+	await _fotogramas(2)
+	# Feedback por loopback: un suscriptor FIABLE profundidad 1, como el del servidor (rclcpp::QoS(1)).
+	var recibidos: Array = []
+	var sub = v.contexto.nodo.create_subscription("/basic_controls/feedback", "visualization_msgs/msg/InteractiveMarkerFeedback",
+			func(m): recibidos.append([int(m.event_type), String(m.marker_name), String(m.header.frame_id), m.pose.position.x, m.pose.position.y, m.pose.orientation.z, m.pose.orientation.w]),
+			v.contexto.qos(false, 1, false))
+	hf.activar(true)
+	# MOVE_AXIS: agarrar la flecha +x (0,5 m) y llevarla a x = 1,5 m.
+	var a := _pantalla(v, Vector3(0.5, 0, 0))
+	_raton(hf, a, true)
+	check(hf.asa.get("im", "") == "mover_x" and cl.arrastrando == "mover_x", "IM: pulsar sobre la flecha agarra mover_x")
+	cl._al_mensaje(_update(5, 1, [], [Falso.new({"header": _cabecera("map"), "pose": _pose(-3, -3), "name": "mover_x"})]))
+	check(is_equal_approx(cl.ims["mover_x"]["pose"].origin.z, 0.0), "IM: mientras se arrastra, las poses del servidor se ignoran")
+	_raton(hf, _pantalla(v, Vector3(1.0, 0.3, 0)))
+	_raton(hf, _pantalla(v, Vector3(1.5, 0.6, 0)))
+	_raton(hf, _pantalla(v, Vector3(1.5, 0.6, 0)), false)
+	var px: Vector3 = rclgd.godot_to_ros_vector(cl.ims["mover_x"]["pose"].origin)
+	check(absf(px.x - 1.0) < 0.05 and absf(px.y) < 1e-3, "IM MOVE_AXIS: solo se mueve sobre el eje x (Δx = 1 m; y fijo) %s" % px)
+	check(hf.eventos.front() == 4 and hf.eventos.back() == 5 and hf.eventos.has(1) and cl.arrastrando == "",
+			"IM: MOUSE_DOWN, POSE_UPDATE y MOUSE_UP (%s)" % [hf.eventos])
+	await _fotogramas(3)
+	check(recibidos.size() == hf.eventos.size() and recibidos.back()[0] == 5 and recibidos.back()[1] == "mover_x"
+			and recibidos.back()[2] == "map" and absf(recibidos.back()[3] - 1.0) < 0.05,
+			"IM: feedback recibido por loopback (FIABLE): marcador, marco y pose (%d mensajes)" % recibidos.size())
+	# MOVE_PLANE (plano XY): de (2, 3) a (3, 2).
+	hf.eventos.clear()
+	_raton(hf, _pantalla(v, Vector3(2.0, 3.0, 0)), true)
+	_raton(hf, _pantalla(v, Vector3(3.0, 2.0, 0)))
+	_raton(hf, _pantalla(v, Vector3(3.0, 2.0, 0)), false)
+	var pp: Vector3 = rclgd.godot_to_ros_vector(cl.ims["plano"]["pose"].origin)
+	check(pp.distance_to(Vector3(3.0, 2.0, 0)) < 0.05, "IM MOVE_PLANE: el marcador sigue al puntero en el plano XY %s" % pp)
+	# ROTATE_AXIS (z): agarrar el anillo por +x y llevarlo a +y → yaw +90°.
+	hf.eventos.clear()
+	_raton(hf, _pantalla(v, Vector3(-2.0 + 0.8, 3.0, 0)), true)
+	check(hf.asa.get("im", "") == "rotar", "IM: pulsar sobre el anillo agarra rotar")
+	_raton(hf, _pantalla(v, Vector3(-2.0, 3.0 + 0.8, 0)))
+	_raton(hf, _pantalla(v, Vector3(-2.0, 3.0 + 0.8, 0)), false)
+	var qr: Quaternion = rclgd.godot_to_ros_quat(cl.ims["rotar"]["pose"].basis.get_rotation_quaternion())
+	var yaw := 2.0 * atan2(qr.z, qr.w)
+	check(absf(yaw - PI / 2.0) < 0.05 and rclgd.godot_to_ros_vector(cl.ims["rotar"]["pose"].origin).distance_to(Vector3(-2, 3, 0)) < 1e-3,
+			"IM ROTATE_AXIS: yaw +90° (%.1f°) sin moverse" % rad_to_deg(yaw))
+	# BUTTON: clic → MOUSE_DOWN, BUTTON_CLICK, MOUSE_UP.
+	hf.eventos.clear()
+	var pb := _pantalla(v, Vector3(-2.5, -3.0, 0))
+	_raton(hf, pb, true)
+	_raton(hf, pb, false)
+	check(hf.eventos == [4, 3, 5], "IM BUTTON: MOUSE_DOWN, BUTTON_CLICK, MOUSE_UP (%s)" % [hf.eventos])
+	# Clic en vacío: no agarra ni publica.
+	var antes: int = hf.publicados
+	_raton(hf, _pantalla(v, Vector3(3.5, -5.0, 0)), true)
+	_raton(hf, _pantalla(v, Vector3(3.5, -5.0, 0)), false)
+	check(hf.publicados == antes and hf.asa.is_empty(), "IM: clic lejos de las asas no publica")
+	# Borrado.
+	cl._al_mensaje(_update(6, 1, [], [], ["boton"]))
+	check(not cl.ims.has("boton") and cl.ims.size() == 3, "IM: erases quita el marcador")
+	if gpu:
+		var cap := await _captura()
+		var c := cap.get_pixelv(Vector2i(_pantalla(v, Vector3(0.5 + 1.0 + 0.35, 0, 0))))   # flecha +x roja (trasladada)
+		check(c.r > 0.6 and c.g < 0.3 and c.b < 0.3, "GPU IM: la flecha roja de MOVE_AXIS se dibuja donde quedó (%s)" % c)
+	sub = null
+	hf.activar(false)
 	await _cerrar(v)
