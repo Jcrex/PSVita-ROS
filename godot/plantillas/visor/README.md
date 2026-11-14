@@ -3,7 +3,8 @@
 Visor propio y portable: **el mismo GDScript** en el PC (rclgd, o el editor de host con `ros2_vita`) y en la PS Vita
 (`ros2_vita`). Diseño en `docs/adr/0013-visualizacion-topics-godot.md` y `docs/36-visualizacion-topics-godot.md`
 (§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); **V6** (relay
-VC/1 rev. 2, consola y diagnóstico) y V7 también, ver sus secciones; V8 (marcadores) y V9 (TfLigero, TF y poses) hechos (2026-11-14); V10–V15 pendientes.
+VC/1 rev. 2, consola y diagnóstico) y V7 también, ver sus secciones; V8 (marcadores), V9 (TfLigero, TF y poses), V10 (percepción),
+V11 (costmap) y V12 (inspector, trazador y explorador) hechos (2026-11-14): **V1–V12 hechos**; V13–V15 pendientes.
 Lo que no se puede ver en el host (render GXM, FPS, XRCE real, reconexión) está sin validar en hardware.
 
 | Archivo | Pieza | Papel |
