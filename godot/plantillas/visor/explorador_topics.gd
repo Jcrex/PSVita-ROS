@@ -88,10 +88,12 @@ func catalogo() -> Dictionary:
 		if not visor.is_ancestor_of(d) or not ("topic" in d):
 			continue
 		var t: String = d.topic
-		var ti: String = d.tipo
-		if compacto and String(d.topic_vita) != "":
-			t = visor.prefijo_compacto.trim_suffix("/") + "/" + String(d.topic_vita).trim_prefix("/")
-			ti = d.tipo_vita
+		var ti: String = String(d.get("tipo")) if "tipo" in d else ""
+		# Herramientas como Teleop están en «display_ros» sin `topic_vita` (fusión V10 + V12): se comprueba.
+		var tv: String = String(d.get("topic_vita")) if "topic_vita" in d else ""
+		if compacto and tv != "":
+			t = visor.prefijo_compacto.trim_suffix("/") + "/" + tv.trim_prefix("/")
+			ti = String(d.get("tipo_vita")) if "tipo_vita" in d else ""
 		if t == "" or ti == "":
 			continue
 		if not out.has(t):
