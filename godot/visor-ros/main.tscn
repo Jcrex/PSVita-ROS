@@ -20,6 +20,8 @@
 [ext_resource type="Script" path="res://comun/visor/herramientas/meta.gd" id="18_meta_h"]
 [ext_resource type="Script" path="res://comun/visor/herramientas/pose_inicial.gd" id="19_pose_ini"]
 [ext_resource type="Script" path="res://comun/visor/herramientas/punto.gd" id="20_punto"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/diagnostico.gd" id="21_diagnostico"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/consola.gd" id="22_consola"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -185,6 +187,28 @@ mouse_filter = 2
 offset_right = 320.0
 offset_bottom = 160.0
 script = ExtResource("7_joy")
+
+[node name="Diagnostico" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Diagnostico" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Diagnostico"]
+offset_right = 320.0
+offset_bottom = 120.0
+script = ExtResource("21_diagnostico")
+
+[node name="Consola" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Consola" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Consola"]
+offset_right = 320.0
+offset_bottom = 90.0
+script = ExtResource("22_consola")
 
 [node name="Herramientas" type="Node2D" parent="VisorRos/Hud"]
 

@@ -13,6 +13,10 @@ enum { AUTO, BEST_EFFORT, FIABLE }
 
 var hz := 0.0                    # tope de entrega al display (0 = sin tope)
 var coalescer := true            # true = «el último gana»; false = entregar todos (trazador)
+## Con `coalescer = false`: tope de mensajes pendientes (0 = sin tope). Una pestaña oculta del HUD no bombea, y
+## sin tope una consola de eventos apilaría sin fin; con tope se descartan los más viejos (V6).
+var max_pendientes := 0
+var descartados := 0             # pendientes tirados por `max_pendientes`
 var compacto := false            # true = camino del relay (/vita/*): el display usa _procesar_compacto
 var topic_abierto := ""          # topic y tipo realmente suscritos (para el HUD y las pruebas)
 var tipo_abierto := ""
@@ -78,6 +82,9 @@ func _al_recibir(msg) -> void:
 	_t_recibido = Time.get_ticks_msec()
 	if coalescer:
 		_pendientes.clear()      # «el último gana» (trampa T24: rclgd entrega CADA mensaje)
+	elif max_pendientes > 0 and _pendientes.size() >= max_pendientes:
+		_pendientes.pop_front()
+		descartados += 1
 	_pendientes.append(msg)
 
 
