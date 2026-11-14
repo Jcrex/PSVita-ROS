@@ -421,6 +421,26 @@ pub extern "C" fn net_udp_send(sock: *mut NetUdpSocket, buf: *const u8,
     }
 }
 
+/// Microsegundos máximos del timeout de recepción (`i32::MAX`), igual que
+/// `NET_UDP_TIMEOUT_USEC_MAX` en net_udp.h.
+pub const NET_UDP_TIMEOUT_USEC_MAX: i32 = i32::MAX;
+
+/// Convierte milisegundos a microsegundos SATURANDO (bug B3 de la auditoría):
+/// `timeout_ms * 1000` en i32 desborda a partir de 2147484 ms. En Rust, con
+/// `panic = "abort"` en release, el desborde no hace panic sino que da la
+/// vuelta en silencio, como en C.
+///
+/// `saturating_mul` es un método de los enteros de Rust: multiplica y, si el
+/// resultado no cabe en el tipo, devuelve el máximo (o mínimo) en lugar de
+/// desbordar. Es la forma idiomática de "multiplicar sin dar la vuelta".
+#[unsafe(no_mangle)]
+pub extern "C" fn net_udp_timeout_usec(timeout_ms: i32) -> i32 {
+    if timeout_ms <= 0 {
+        return 0;
+    }
+    timeout_ms.saturating_mul(1000)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn net_udp_recv(sock: *mut NetUdpSocket, buf: *mut u8,
                                cap: usize, timeout_ms: i32) -> i32 {
@@ -462,7 +482,8 @@ pub extern "C" fn net_udp_recv(sock: *mut NetUdpSocket, buf: *mut u8,
             if timeout_ms == 0 {
                 flags = sys::SCE_NET_MSG_DONTWAIT;
             } else {
-                let usec: i32 = timeout_ms * 1000;
+                // Conversión saturada (B3): ver net_udp_timeout_usec.
+                let usec: i32 = net_udp_timeout_usec(timeout_ms);
                 if sys::sceNetSetsockopt((*sock).fd, sys::SCE_NET_SOL_SOCKET,
                     sys::SCE_NET_SO_RCVTIMEO,
                     &usec as *const _ as *const c_void,

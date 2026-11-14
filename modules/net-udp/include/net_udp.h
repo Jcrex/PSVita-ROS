@@ -92,6 +92,19 @@ int32_t net_udp_send(net_udp_socket *sock, const uint8_t *buf, size_t len);
 int32_t net_udp_recv(net_udp_socket *sock, uint8_t *buf, size_t cap,
                      int32_t timeout_ms);
 
+/** Microsegundos máximos que acepta el timeout de recepción (INT32_MAX). */
+#define NET_UDP_TIMEOUT_USEC_MAX 2147483647
+
+/**
+ * Convierte `timeout_ms` (milisegundos) a microsegundos SATURANDO en
+ * NET_UDP_TIMEOUT_USEC_MAX: `timeout_ms * 1000` en 32 bits desborda a partir
+ * de 2147484 ms (~35,8 min) y daría un timeout negativo o absurdo
+ * (bug B3 de la auditoría). Un `timeout_ms` <= 0 devuelve 0.
+ * Es la conversión que usa net_udp_recv en la Vita (SCE_NET_SO_RCVTIMEO es
+ * un int en µs); se exporta para que la paridad la pruebe en el host.
+ */
+int32_t net_udp_timeout_usec(int32_t timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

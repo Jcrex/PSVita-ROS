@@ -244,6 +244,19 @@ int32_t net_udp_send(net_udp_socket *sock, const uint8_t *buf, size_t len)
     return (int32_t)sent;
 }
 
+int32_t net_udp_timeout_usec(int32_t timeout_ms)
+{
+    if (timeout_ms <= 0) {
+        return 0;
+    }
+    /* Se multiplica en 64 bits (no desborda) y luego se satura. */
+    int64_t usec = (int64_t)timeout_ms * 1000;
+    if (usec > NET_UDP_TIMEOUT_USEC_MAX) {
+        return NET_UDP_TIMEOUT_USEC_MAX;
+    }
+    return (int32_t)usec;
+}
+
 int32_t net_udp_recv(net_udp_socket *sock, uint8_t *buf, size_t cap,
                      int32_t timeout_ms)
 {
@@ -257,8 +270,9 @@ int32_t net_udp_recv(net_udp_socket *sock, uint8_t *buf, size_t cap,
     if (timeout_ms == 0) {
         flags = SCE_NET_MSG_DONTWAIT;
     } else {
-        /* SCE_NET_SO_RCVTIMEO se expresa en microsegundos (int). */
-        int usec = timeout_ms * 1000;
+        /* SCE_NET_SO_RCVTIMEO se expresa en microsegundos (int): se
+         * convierte saturando para no desbordar (B3). */
+        int usec = (int)net_udp_timeout_usec(timeout_ms);
         if (sceNetSetsockopt(sock->fd, SCE_NET_SOL_SOCKET,
                              SCE_NET_SO_RCVTIMEO, &usec, sizeof(usec)) < 0) {
             return NET_UDP_ERR_RECV;

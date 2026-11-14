@@ -30,6 +30,7 @@ de VitaSDK al compilar en el PC.
 | `net_udp_close(sock)` | Cierra y libera la entrada. NULL es no-op. |
 | `net_udp_send(sock, buf, len)` | Envía un datagrama; devuelve bytes o error negativo. |
 | `net_udp_recv(sock, buf, cap, timeout_ms)` | Recibe con timeout (`0` = sondeo, `<0` = inválido); `NET_UDP_ERR_TIMEOUT` si expira. |
+| `net_udp_timeout_usec(timeout_ms)` | ms → µs saturando en `INT32_MAX` (lo usa `recv` en la Vita; evita el desborde B3 de `timeout_ms*1000`). |
 
 ## Decisiones de diseño
 
@@ -54,7 +55,7 @@ tools/run-parity-tests.sh net-udp
 El test levanta un peer UDP POSIX en 127.0.0.1 (puerto efímero) que hace de
 mini-agente de eco, sin hilos. Casos: init/shutdown/idempotencia, open antes
 de init, 10 variantes de IP inválida, agotamiento y reciclaje de la tabla,
-roundtrip de datos real, timeouts (50 ms medido, sondeo 0 ms, negativo),
+roundtrip de datos real, timeouts (50 ms medido, sondeo 0 ms, negativo), conversión saturada ms→µs (B3),
 argumentos inválidos de send/recv y uso tras close.
 
 ## Estado

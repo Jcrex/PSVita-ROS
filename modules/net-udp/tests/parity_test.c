@@ -155,6 +155,19 @@ static void test_recv_timeout(void)
     net_udp_close(s);
 }
 
+/* B3: la conversión ms -> µs del timeout satura en vez de desbordar. */
+static void test_timeout_usec_saturates(void)
+{
+    CHECK(net_udp_timeout_usec(-5) == 0);
+    CHECK(net_udp_timeout_usec(0) == 0);
+    CHECK(net_udp_timeout_usec(1) == 1000);
+    CHECK(net_udp_timeout_usec(50) == 50000);
+    CHECK(net_udp_timeout_usec(2147483) == 2147483000);   /* último exacto */
+    CHECK(net_udp_timeout_usec(2147484) == NET_UDP_TIMEOUT_USEC_MAX);
+    CHECK(net_udp_timeout_usec(3600 * 1000) == NET_UDP_TIMEOUT_USEC_MAX);
+    CHECK(net_udp_timeout_usec(2147483647) == NET_UDP_TIMEOUT_USEC_MAX);
+}
+
 static void test_invalid_send_recv_args(void)
 {
     net_udp_socket *s = net_udp_open("127.0.0.1", peer_port);
@@ -184,6 +197,7 @@ int main(void)
     test_socket_table_exhaustion();
     test_send_recv_roundtrip();
     test_recv_timeout();
+    test_timeout_usec_saturates();
     test_invalid_send_recv_args();
 
     net_udp_shutdown();
