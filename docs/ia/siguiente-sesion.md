@@ -8,7 +8,8 @@
 
 - **Fase O** (organización, ADR 0014) y **Fase V** (visor de topics W13, V1–V15, ADR 0013) hechas y verificadas en
   host; publicadas con push y PR a `main` el 2026-11-14 (rama `ccr-44e2db2a-mr6xqr`).
-- **Nada del visor se ha probado en la Vita.** Nada se ha probado con rclgd (no instalado).
+- **Nada del visor se ha probado en la Vita.** Nada se ha probado con rclgd todavía (el usuario clonó rclgd,
+  roomba_ws y rclgd_sensors en `~/Proyectos/rclgd-estudio/` el 2026-11-14: ver §3.4).
 - Verde en host: 14 suites `godot/plantillas/pruebas/visor*.gd`, `godot/test/run_host_tests.sh` 349/0, runner de
   g1-sensores 16/16, `docker/scripts/test_vita_relay.py` OK, plantilla Vita recompilada con V13a (`verify_runtime.py`
   PASS) y `build/visor-ros.vpk` exportado (no versionado: reexportar si hace falta).
@@ -48,9 +49,27 @@
    comprobar `strings_off <= total`, B2 panic = `loop {}` sin log en el paraguas Rust, B3 desborde `timeout_ms*1000`,
    R1 `shutdown()` desde un timer, X1 hipótesis `poll(0)`/HEARTBEAT. Cada uno con prueba de paridad.
 3. **Optimizaciones** (lote 5): MTU XRCE 512 → ~1400, quitar pools de red duplicados, `-O2` para los `.c` en SCsub.
-4. **rclgd en el PC**: instalar/compilar rclgd (o `ros-jazzy-rclgd`) para validar el visor en el PC con rclgd real
-   (lista de lo no probado en doc 36 §13.4: servicio de marcadores interactivos, InteractiveMarkerUpdate, Octomap,
-   GridMap, comparar `TfLigero` con `RosTfListener` ± 1 mm).
+4. **rclgd en el PC** — el usuario clonó el 2026-11-14 en `~/Proyectos/rclgd-estudio/` (fuera del repo, no versionado):
+   - `rclgd/` (Ozuba/rclgd) en rama **`jazzy`** @ `d8221d3` (3.0.0, 2026-11-04): **mismo código que `fb12a65`** (la
+     base de la skill y de `godot/rclgd/`); solo cambia el CHANGELOG. **Compilado desde fuente y probado el
+     2026-11-14: 45/45 pruebas del propio rclgd** con Godot 4.7.1 (receta en `skills/rclgd/references/versiones.md`
+     §Compilar). Instalación en `~/Proyectos/rclgd-estudio/ws-jazzy/install`, Godot 4.7.1 en
+     `ws-jazzy/build/rclgd/godot-engine/`, logs en `~/Proyectos/rclgd-estudio/.build-logs/`.
+   - `roomba_ws/` (Ozuba/roomba_ws @ `8332acb`): su `docker/` instala `ros-jazzy-rclgd` por **apt, que solo ofrece
+     2.1.0** (sin clases tipadas ni RosLogger): **no vale tal cual**. Usar la compilación de fuente de arriba (o
+     cambiar su Dockerfile para montar `ws-jazzy/install`).
+   - **Siguiente paso concreto:** ejecutar las suites del visor con rclgd en el contenedor jazzy: copiar
+     `godot/visor-ros` (y `godot/plantillas` como `comun`) a un directorio temporal, añadir `librclgd.so` +
+     `rclgd.gdextension` como hace `run_tests.sh` de rclgd, y lanzar `godot/plantillas/pruebas/visor*.gd` con el
+     Godot 4.7.1 de `ws-jazzy` (ojo: las suites usan hoy `ros2_vita`; puede hacer falta un modo «rclgd» en
+     `godot/visor-ros/project.godot` y en las pruebas: decide Fable).
+   - `rclgd_sensors/` (Ozuba/rclgd_sensors @ `420d4d4`): LiDAR 360 por GPU, IMU, cámara RGBA y GPS en Godot con
+     `addons/rclgd-sensors`. Ya estudiado en `docs/24` (MIT; su LiDAR/cámara por GPU no van en la Vita).
+   - **Tareas:** (a) validar el visor con rclgd real: lo no probado de doc 36 §13.4 (servicio de marcadores
+     interactivos, InteractiveMarkerUpdate, Octomap, GridMap, `TfLigero` frente a `RosTfListener` ± 1 mm, extras V14);
+     (b) comparar los patrones de `roomba_hmi` y `rclgd_sensors` con `godot/plantillas/` (HMI, sensores) y el visor:
+     reusar lo bueno respetando la regla de escenas (doc 35); (c) registrar en `docs/24` §estado qué cambió entre
+     las versiones estudiadas y estas.
 5. **Integrar el visor en las apps vivas** (g1-sensores, rbkairos-plus, dron-mapeo): usar `VisorRos` + displays en vez
    de los visualizadores propios de `plantillas/sensores/*` donde aplique (regla de escenas, doc 35).
 6. **Tipos sin display** (18 ⏳ de doc 36a §4.0.1): priorizar con Fable.
