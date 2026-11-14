@@ -87,6 +87,9 @@ case "${1:-help}" in
         # percepcion (V10): cámara JPEG, /detections, /detections_3d y /points sintéticos.
         # $2 = modos separados por comas; $3 = nº de sólidos del modo marcadores (31 por defecto).
         run "python3 /scripts/fuente_prueba_v2.py ${2:-avisos,marcadores,tf}${3:+ --n $3}" ;;
+    fuente-costmap)
+        # Costmap sintético al estilo de Nav2 (V11): /global_costmap/costmap (una vez) + parches en _updates cada $2 s.
+        run "python3 /scripts/fuente_prueba_costmap.py${2:+ --periodo $2}" ;;
     netem)
         # Pérdida artificial SOLO hacia la Vita (gate G-W13-M3): netem en la interfaz del host (la estación usa la red
         # del host y tiene NET_ADMIN). `netem <IP_VITA> [pérdida %]` la pone; `netem off` la quita.
@@ -138,6 +141,7 @@ Uso: docker/vita-ros.sh <comando>
   relay [mód] [pref] [ritmo] [tf_lista]  vita_relay VC/1.2: módulos o perfil hmi/viz/percepcion (doc 36 §5)
   fuente-visor        datos sintéticos para godot/visor-ros (mapa, scan, odom, joints, plan, batería…)
   fuente-v2 [modos] [n]  gates V6/V8/V9/V10 del visor: avisos, marcadores, vida, tf, percepcion (V2-revision.md)
+  fuente-costmap [s]   costmap sintético de Nav2 + parches cada s segundos (V11; con `relay hmi,costmap`)
   netem <IP_VITA> [%] | netem off   pérdida artificial solo hacia la Vita (gate G-W13-M3)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)

@@ -28,6 +28,9 @@ const REGLAS := [
 	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/path_compacto", "script": D + "2d/path.gd", "capa": "sensores_2d"},
 	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/marcadores", "script": D + "3d/marcadores.gd", "capa": "marcadores"},
 	{"tipo": "std_msgs/msg/UInt8MultiArray", "topic": "*/mapa_tesela", "script": D + "2d/mapa.gd", "capa": "sensores_2d"},
+	# V11: costmap (relay `<p>/costmap_tesela` y OccupancyGrid de Nav2 cuyo topic dice «costmap»; antes que el mapa).
+	{"tipo": "std_msgs/msg/UInt8MultiArray", "topic": "*/costmap_tesela", "script": D + "2d/costmap.gd", "capa": "sensores_2d"},
+	{"tipo": "nav_msgs/msg/OccupancyGrid", "topic": "*costmap*", "script": D + "2d/costmap.gd", "capa": "sensores_2d"},
 	{"tipo": "sensor_msgs/msg/LaserScan", "script": D + "2d/scan.gd", "capa": "sensores_2d"},
 	{"tipo": "sensor_msgs/msg/JointState", "script": D + "3d/robot_joints.gd", "capa": "robot"},
 	{"tipo": "nav_msgs/msg/Odometry", "script": D + "2d/odometria.gd", "capa": "sensores_2d"},

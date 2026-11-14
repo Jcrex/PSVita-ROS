@@ -1015,3 +1015,187 @@ def recomprimir_camara(entrada, frame_id="", calidad=CAMARA_CALIDAD, max_b=CAMAR
 
 PRESUPUESTO["camara"] = (3, CAMARA_MAX_B, 7)                  # V10: 3 Hz × ≤ 2 994 B (≈ 7 datagramas)
 IMPLEMENTADOS.update({"camara", "det2d", "det3d", "nube"})    # V10 (bloque aditivo)
+# ============================================================================= V11: costmap por teselas de 4 bit
+# Doc 36 §5.3 y 36a §4.6.2 (sentencia W13 D5): `<p>/costmap_meta` (Float32MultiArray F+TL, como mapa_meta pero con
+# teselas de 32×16) + `<p>/costmap_tesela` (UInt8MultiArray BE ≤ 10/s): [ver_lo, ver_hi, tx, ty] + 32×16 celdas a
+# 4 bit (celda k = j·32 + i en el byte k >> 1, nibble BAJO para k par) = 260 B (276 con rosbags). Niveles:
+# 0 desconocido, 1 libre (transparente), 2–13 degradado, 14 inscrito (99), 15 letal (100), como la LUT de 16 colores
+# `PaletaViz.lut16_costmap()` (índices [255, 0, 8, 16, …, 88, 98, 99, 100] de la paleta costmap de RViz). El relay
+# baja la resolución por MÁXIMO a ≥ 10 cm (un obstáculo no desaparece al reducir). Época = `epoca_mapa` (D5.5).
+# Copia en GDScript: `godot/plantillas/ros/vc1.gd` (bloque «costmap»); prueba de bytes en los dos lados con la huella
+# de enteros `huella` (HUELLA_COSTMAP en `test_vita_relay.py` y `godot/plantillas/pruebas/visor_costmap.gd`).
+
+TESELA_X_COSTMAP = 32
+TESELA_Y_COSTMAP = 16
+RES_MIN_COSTMAP = 0.10            # m/celda: por debajo, el relay reduce por máximo (36a §4.6.2)
+LUT16_COSTMAP = (255, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 98, 99, 100)   # nivel → valor de la paleta
+
+
+def celda_costmap_4bit(v):
+    """OccupancyGrid de costmap (-1, 0..100) → nivel de 4 bit (el más cercano de LUT16_COSTMAP; 1–98 → 2–13)."""
+    v = int(v)
+    if v < 0:
+        return 0
+    if v == 0:
+        return 1
+    if v >= 100:
+        return 15                 # letal (y los ilegales > 100, que Nav2 no publica)
+    if v == 99:
+        return 14                 # inscrito
+    if v >= 93:
+        return 13                 # 98
+    return 2 + max(0, min(10, (v + 4) // 8 - 1))
+
+
+def factor_costmap(res, res_min=RES_MIN_COSTMAP):
+    """Celdas originales por celda reducida (≥ 1): la resolución que viaja es ≥ res_min."""
+    if res <= 0:
+        return 1
+    return max(1, math.ceil(res_min / res - 1e-6))
+
+
+def reducir_costmap(data, ancho, alto, f):
+    """Rejilla (fila 0 abajo, -1 desconocido) → rejilla f veces más gruesa por MÁXIMO (lo conocido gana a -1).
+    Devuelve (datos, ancho, alto). Con f = 1, una copia."""
+    if f <= 1:
+        return list(data[:ancho * alto]), ancho, alto
+    w2, h2 = -(-ancho // f), -(-alto // f)
+    out = [-1] * (w2 * h2)
+    for y in range(alto):
+        fila = y * ancho
+        base = (y // f) * w2
+        for x in range(ancho):
+            v = data[fila + x]
+            k = base + x // f
+            if v > out[k]:
+                out[k] = v
+    return out, w2, h2
+
+
+def empaquetar_tesela_costmap(data, ancho, alto, tx, ty, epoca):
+    """Tesela de 32×16 celdas a 4 bit = 4 B de cabecera + 256 B. Celdas fuera del costmap = 0 (desconocido)."""
+    cuerpo = bytearray(TESELA_X_COSTMAP * TESELA_Y_COSTMAP // 2)
+    for j in range(TESELA_Y_COSTMAP):
+        y = ty * TESELA_Y_COSTMAP + j
+        for i in range(TESELA_X_COSTMAP):
+            x = tx * TESELA_X_COSTMAP + i
+            c = celda_costmap_4bit(data[y * ancho + x]) if (x < ancho and y < alto) else 0
+            k = j * TESELA_X_COSTMAP + i
+            cuerpo[k >> 1] |= c << ((k & 1) * 4)
+    return bytes([epoca & 0xFF, (epoca >> 8) & 0xFF, tx, ty]) + bytes(cuerpo)
+
+
+def desempaquetar_tesela_costmap(b):
+    """Inverso: (época, tx, ty, lista de 512 niveles 0–15 por filas)."""
+    ver, tx, ty = b[0] | (b[1] << 8), b[2], b[3]
+    n = TESELA_X_COSTMAP * TESELA_Y_COSTMAP
+    return ver, tx, ty, [(b[4 + (k >> 1)] >> ((k & 1) * 4)) & 15 for k in range(n)]
+
+
+def teselas_costmap(ancho, alto):
+    """(teselas_x, teselas_y) de un costmap (ya reducido)."""
+    return -(-ancho // TESELA_X_COSTMAP), -(-alto // TESELA_Y_COSTMAP)
+
+
+def meta_costmap(res, ancho, alto, ox, oy, epoca):
+    """`<p>/costmap_meta` = [res, ancho, alto, ox, oy, teselas_x, teselas_y, época] (como mapa_meta)."""
+    ntx, nty = teselas_costmap(ancho, alto)
+    return [float(res), float(ancho), float(alto), float(ox), float(oy), float(ntx), float(nty), float(epoca)]
+
+
+class EstadoCostmap:
+    """El módulo `costmap` sin ROS (para probarlo): rejilla original, reducida, época y cola de teselas.
+    - `grid(data, ancho, alto, res, ox, oy)`: OccupancyGrid completo → meta (lista) si la época es nueva, si no None.
+      Con la misma geometría solo se encolan las teselas que cambian (D5.5).
+    - `update(x, y, w, h, datos)`: map_msgs/OccupancyGridUpdate (coordenadas de la rejilla ORIGINAL) → parche; marca
+      las teselas tocadas que cambian, sin tocar la época. Fuera de límites o sin rejilla: se ignora (como RViz).
+    - `siguiente(pos)`: bytes de la próxima tesela (primero las cambiadas, las cercanas a `pos` (x, y) antes; si no
+      hay, un repaso circular para quien se conecte tarde) o None sin costmap."""
+
+    def __init__(self, res_min=RES_MIN_COSTMAP):
+        self.res_min = res_min
+        self.orig = None              # (data, ancho, alto)
+        self.f = 1
+        self.red = None               # (data reducida, ancho, alto)
+        self.res = 0.0
+        self.ox = self.oy = 0.0
+        self.epoca = 0
+        self.geo = None
+        self.firma = {}               # (tx, ty) -> bytes del cuerpo enviado o encolado
+        self.cola = []
+        self.repaso = -1
+        self.ignorados = 0
+
+    def _firmar(self, todas):
+        ntx, nty = teselas_costmap(self.red[1], self.red[2])
+        cambiadas = []
+        for (tx, ty) in todas:
+            if tx >= ntx or ty >= nty:
+                continue
+            b = empaquetar_tesela_costmap(self.red[0], self.red[1], self.red[2], tx, ty, self.epoca)[4:]
+            if self.firma.get((tx, ty)) != b:
+                self.firma[(tx, ty)] = b
+                cambiadas.append((tx, ty))
+        self.cola = cambiadas + [t for t in self.cola if t not in cambiadas]
+        return cambiadas
+
+    def grid(self, data, ancho, alto, res, ox, oy):
+        self.f = factor_costmap(res, self.res_min)
+        self.orig = (list(data[:ancho * alto]), ancho, alto)
+        self.red = reducir_costmap(self.orig[0], ancho, alto, self.f)
+        self.res = res * self.f
+        self.ox, self.oy = float(ox), float(oy)
+        geo = (float(self.res), int(self.red[1]), int(self.red[2]), self.ox, self.oy)
+        self.epoca, nueva = epoca_mapa(self.geo, geo, self.epoca)
+        self.geo = geo
+        if nueva:
+            self.firma = {}
+            self.cola = []
+            self.repaso = -1
+        ntx, nty = teselas_costmap(self.red[1], self.red[2])
+        self._firmar([(tx, ty) for ty in range(nty) for tx in range(ntx)])
+        return meta_costmap(self.res, self.red[1], self.red[2], self.ox, self.oy, self.epoca) if nueva else None
+
+    def update(self, x, y, w, h, datos):
+        if self.orig is None or w <= 0 or h <= 0 or x < 0 or y < 0:
+            self.ignorados += 1
+            return []
+        data, ancho, alto = self.orig
+        if x + w > ancho or y + h > alto or len(datos) < w * h:
+            self.ignorados += 1
+            return []
+        for j in range(h):
+            data[(y + j) * ancho + x:(y + j) * ancho + x + w] = list(datos[j * w:(j + 1) * w])
+        f = self.f
+        rd, w2, _ = self.red
+        x0, x1, y0, y1 = x // f, (x + w - 1) // f, y // f, (y + h - 1) // f
+        for cy in range(y0, y1 + 1):                    # recalcula por máximo solo las celdas reducidas tocadas
+            for cx in range(x0, x1 + 1):
+                m = -1
+                for yy in range(cy * f, min(alto, cy * f + f)):
+                    fila = yy * ancho
+                    for xx in range(cx * f, min(ancho, cx * f + f)):
+                        if data[fila + xx] > m:
+                            m = data[fila + xx]
+                rd[cy * w2 + cx] = m
+        tocadas = [(tx, ty) for ty in range(y0 // TESELA_Y_COSTMAP, y1 // TESELA_Y_COSTMAP + 1)
+                   for tx in range(x0 // TESELA_X_COSTMAP, x1 // TESELA_X_COSTMAP + 1)]
+        return self._firmar(tocadas)
+
+    def siguiente(self, pos=None):
+        if self.red is None:
+            return None
+        ntx, nty = teselas_costmap(self.red[1], self.red[2])
+        if self.cola:
+            if pos is not None and len(self.cola) > 1:
+                px = (pos[0] - self.ox) / (self.res * TESELA_X_COSTMAP)
+                py = (pos[1] - self.oy) / (self.res * TESELA_Y_COSTMAP)
+                self.cola.sort(key=lambda t: (t[0] + 0.5 - px) ** 2 + (t[1] + 0.5 - py) ** 2)
+            tx, ty = self.cola.pop(0)
+        else:
+            self.repaso = (self.repaso + 1) % (ntx * nty)
+            tx, ty = self.repaso % ntx, self.repaso // ntx
+        return empaquetar_tesela_costmap(self.red[0], self.red[1], self.red[2], tx, ty, self.epoca)
+
+
+IMPLEMENTADOS |= {"costmap"}      # V11
