@@ -54,6 +54,13 @@ const REGLAS := [
 	{"tipo": "geometry_msgs/msg/PolygonStamped", "script": D + "2d/poligono.gd", "capa": "sensores_2d"},
 	{"tipo": "geometry_msgs/msg/PoseWithCovarianceStamped", "script": D + "2d/covarianza.gd", "capa": "sensores_2d"},
 	{"tipo": "sensor_msgs/msg/NavSatFix", "script": D + "2d/gps.gd", "capa": "sensores_2d"},
+	# V9: TF y poses. Relay `<p>/poses` y `<p>/pose_cov` (antes que el `*MultiArray` genérico); `<p>/tf` lo consume
+	# VisorRos (TfLigero), no un display; TFMessage → display TF (consulta visor.tf, sin suscribirse a /tf).
+	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/poses", "script": D + "2d/poses.gd", "capa": "sensores_2d"},
+	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/pose_cov", "script": D + "2d/covarianza.gd", "capa": "sensores_2d"},
+	{"tipo": "geometry_msgs/msg/PoseArray", "script": D + "2d/poses.gd", "capa": "sensores_2d"},
+	{"tipo": "nav2_msgs/msg/ParticleCloud", "script": D + "2d/poses.gd", "capa": "sensores_2d"},
+	{"tipo": "tf2_msgs/msg/TFMessage", "script": D + "3d/tf.gd", "capa": "tf"},
 	# V6: widgets HUD de eventos y estado (tipos estándar; en la Vita llegan por el relay `<p>/rosout` y `<p>/diagnostics`).
 	{"tipo": "rcl_interfaces/msg/Log", "script": D + "hud/consola.gd", "capa": "hud"},
 	{"tipo": "diagnostic_msgs/msg/DiagnosticArray", "script": D + "hud/diagnostico.gd", "capa": "hud"},

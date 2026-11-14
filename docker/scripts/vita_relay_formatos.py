@@ -248,6 +248,107 @@ def epoca_mapa(geo_anterior, geo, version):
     return version, False
 
 
+# ----------------------------------------------------------------------------- V9: pose_cov, poses y tf (doc 36 §5.3)
+# Copia en GDScript: `godot/plantillas/ros/vc1.gd` (empaquetar_pose_cov, diezmar, empaquetar_poses, empaquetar_tf,
+# leer_*); prueba de bytes en los dos lados con `huella_f32` (bits float32 = lo que viaja en Float32MultiArray):
+# `test_vita_relay.py` (HUELLA_POSE_COV / _POSES / _TF) y `godot/plantillas/pruebas/visor_tf.gd`.
+
+MAX_POSES = 36            # 4 + 3·36 = 112 floats → 464 B
+MAX_TF = 8                # 4 + 8·8 = 68 floats → 288 B (lista blanca de ≤ 8 marcos dinámicos, D3)
+MAX_TF_ESTATICOS = 16     # 4 + 8·16 = 132 floats → 544 B, fiable + TRANSIENT_LOCAL (≤ 1 100 B de la tabla §5.3)
+
+
+def huella_f32(valores):
+    """Huella de los bits float32 de cada valor (MD5 de los enteros sin signo unidos por comas)."""
+    import struct
+    return huella(struct.unpack("<I", struct.pack("<f", float(v)))[0] for v in valores)
+
+
+def empaquetar_pose_cov(x, y, yaw, cov):
+    """PoseWithCovariance → <p>/pose_cov = [x, y, yaw, σxx, σxy, σyy, σyaw]: las VARIANZAS cov[0], cov[1], cov[7] y
+    cov[35] de la matriz 6×6 por filas (lo que espera `displays/2d/covarianza.gd`). 7 floats = 44 B."""
+    return [x, y, yaw, cov[0], cov[1], cov[7], cov[35]]
+
+
+def diezmar(lista, max_n):
+    """Diezmado por paso fijo (como el scan): lista[::ceil(n / max_n)][:max_n]."""
+    paso = max(1, math.ceil(len(lista) / max_n))
+    return list(lista[::paso][:max_n])
+
+
+def empaquetar_poses(xyyaw, seq, max_n=MAX_POSES):
+    """[(x, y, yaw), …] (PoseArray o ParticleCloud) → UN trozo de <p>/poses con la cabecera común."""
+    return trocear([list(p) for p in diezmar(xyyaw, max_n)], 3, seq=seq, max_valores=4 + 3 * max_n, max_trozos=1)[0]
+
+
+def empaquetar_tf(items, seq, max_n=MAX_TF):
+    """[(idx, x, y, z, qx, qy, qz, qw), …] → UN trozo de <p>/tf (o tf_estatico con max_n=MAX_TF_ESTATICOS)."""
+    return trocear([list(e) for e in items[:max_n]], 8, seq=seq, max_valores=4 + 8 * max_n, max_trozos=1)[0]
+
+
+def leer_poses(d):
+    """Inverso de empaquetar_poses (lo que hace la Vita): [(x, y, yaw)] o [] si la cabecera no vale."""
+    c = cabecera(d)
+    if c is None:
+        return []
+    return [tuple(d[4 + 3 * i:7 + 3 * i]) for i in range(min(c["n"], (len(d) - 4) // 3))]
+
+
+class TablaTf:
+    """Módulo tf del relay (D3; doc 36 §5.3), puro: lista blanca de ≤ MAX_TF hijos dinámicos (de /tf) y ≤
+    MAX_TF_ESTATICOS estáticos (de /tf_static). Cada par «padre>hijo» recibe un índice fijo por orden de llegada
+    (el de <p>/tf_marcos); un hijo que cambia de padre ocupa un índice nuevo y el viejo deja de mandarse."""
+
+    def __init__(self, lista, max_dinamicos=MAX_TF, max_estaticos=MAX_TF_ESTATICOS):
+        self.lista = [f.lstrip("/") for f in lista if f.strip()]
+        self.max_dinamicos = max_dinamicos
+        self.max_estaticos = max_estaticos
+        self.pares = []            # «padre>hijo» en orden de índice
+        self.dinamicos = {}        # hijo -> (idx, valores) último valor
+        self.estaticos = {}        # hijo -> (idx, valores)
+        self.cambio_marcos = False
+        self.cambio_estaticos = False
+
+    def _indice(self, padre, hijo):
+        par = f"{padre}>{hijo}"
+        if par not in self.pares:
+            self.pares.append(par)
+            self.cambio_marcos = True
+        return self.pares.index(par)
+
+    def dinamico(self, padre, hijo, t, q):
+        """Un TransformStamped de /tf. True si entra (hijo en la lista blanca y con hueco)."""
+        padre, hijo = padre.lstrip("/"), hijo.lstrip("/")
+        if hijo not in self.lista or (hijo not in self.dinamicos and len(self.dinamicos) >= self.max_dinamicos):
+            return False
+        self.dinamicos[hijo] = (self._indice(padre, hijo), [*t, *q])
+        return True
+
+    def estatico(self, padre, hijo, t, q):
+        """Un TransformStamped de /tf_static. True si entra (con hueco)."""
+        padre, hijo = padre.lstrip("/"), hijo.lstrip("/")
+        if hijo not in self.estaticos and len(self.estaticos) >= self.max_estaticos:
+            return False
+        v = (self._indice(padre, hijo), [*t, *q])
+        if self.estaticos.get(hijo) != v:
+            self.estaticos[hijo] = v
+            self.cambio_estaticos = True
+        return True
+
+    def texto_marcos(self):
+        return ",".join(self.pares)
+
+    def trozo_tf(self, seq):
+        return empaquetar_tf([[i, *v] for (i, v) in self.dinamicos.values()], seq, self.max_dinamicos)
+
+    def trozo_estatico(self, seq=0):
+        return empaquetar_tf([[i, *v] for (i, v) in self.estaticos.values()], seq, self.max_estaticos)
+
+
+# Los módulos de V9 ya existen en el nodo (vita_relay.py). Bloque aditivo: no se toca la línea de IMPLEMENTADOS.
+IMPLEMENTADOS.update({"pose_cov", "poses", "tf"})
+
+
 # ----------------------------------------------------------------------------- tamaños CDR exactos (rosbags)
 
 def _cdr_str(off, s):

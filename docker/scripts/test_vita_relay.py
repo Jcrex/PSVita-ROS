@@ -214,6 +214,61 @@ def _comparar_con_rosbags():
     print("  tamaños CDR = rosbags")
 
 
+# V9 (doc 36 §5.3): huellas de bits float32 que `godot/plantillas/pruebas/visor_tf.gd` comprueba con `vc1.gd`.
+HUELLA_POSE_COV = "919121b347346f313e0ec41b5b0132c7"
+HUELLA_POSES = "52d3f6f9108908b2abd20f08ce668f4d"
+HUELLA_TF = "474c8b147c4b652f59c1959f628dbd40"
+HUELLA_TF_ESTATICO = "3b84bb423aeaedebed5039a2aa5ab62e"
+
+
+def vectores_v9():
+    """Los mismos vectores que `_probar_bytes` de pruebas/visor_tf.gd."""
+    cov = [i * 0.01 - 0.1 for i in range(36)]
+    poses = [(i * 0.25 - 3, (i % 7) * 0.5, (i % 13) * 0.125 - 0.75) for i in range(100)]
+    items = [[k, k * 0.5, -k * 0.25, 0.1 * k, 0, 0, 0.6, 0.8] for k in range(10)]
+    return cov, poses, items
+
+
+def test_tf_poses():
+    cov, poses, items = vectores_v9()
+    pc = vf.empaquetar_pose_cov(1.5, -2.25, 0.3, cov)
+    assert len(pc) == 7 and vf.cdr_multiarray(7, 4) == 44 and pc[3] == cov[0] and pc[6] == cov[35]
+    assert vf.huella_f32(pc) == HUELLA_POSE_COV
+    tp = vf.empaquetar_poses(poses, 40000)
+    c = vf.cabecera(tp)
+    assert c == {"seq": 7232, "trozo": 0, "n_trozos": 1, "n": 34}            # 100 poses, paso 3 → 34
+    assert vf.cdr_multiarray(len(tp), 4) <= vf.cdr_multiarray(4 + 3 * vf.MAX_POSES, 4) == 464 <= vf.MAX_BE
+    assert vf.huella_f32(tp) == HUELLA_POSES
+    assert vf.leer_poses(tp)[1] == tuple(float(v) for v in poses[3])
+    assert len(vf.diezmar(list(range(36)), 36)) == 36 and vf.diezmar(list(range(37)), 36) == list(range(0, 37, 2))
+    tt = vf.empaquetar_tf(items, 7)
+    assert vf.cabecera(tt)["n"] == 8 and vf.cdr_multiarray(len(tt), 4) == 288 <= vf.MAX_BE
+    assert vf.huella_f32(tt) == HUELLA_TF
+    te = vf.empaquetar_tf(items * 2, 3, vf.MAX_TF_ESTATICOS)
+    assert vf.cabecera(te)["n"] == 16 and vf.cdr_multiarray(len(te), 4) == 544 <= 1100
+    assert vf.huella_f32(te) == HUELLA_TF_ESTATICO
+    # TablaTf: lista blanca, índices estables, tope de 8 dinámicos y estáticos «al cambiar».
+    tabla = vf.TablaTf(["odom", "/base_link"] + [f"f{i}" for i in range(10)])
+    assert tabla.dinamico("map", "odom", (1, 2, 0), (0, 0, 0, 1))
+    assert not tabla.dinamico("odom", "rueda", (0, 0, 0), (0, 0, 0, 1))            # fuera de la lista blanca
+    assert tabla.estatico("base_link", "base_scan", (-0.032, 0, 0.172), (0, 0, 0, 1)) and tabla.cambio_estaticos
+    assert tabla.texto_marcos() == "map>odom,base_link>base_scan" and tabla.cambio_marcos
+    tabla.cambio_estaticos = False
+    assert tabla.estatico("base_link", "base_scan", (-0.032, 0, 0.172), (0, 0, 0, 1)) and not tabla.cambio_estaticos
+    for i in range(10):
+        tabla.dinamico("odom", f"f{i}", (i, 0, 0), (0, 0, 0, 1))
+    assert len(tabla.dinamicos) == 8 and vf.cabecera(tabla.trozo_tf(1))["n"] == 8
+    t = tabla.trozo_tf(2)
+    assert t[4:12] == [0, 1, 2, 0, 0, 0, 0, 1]                                          # idx 0 = map>odom
+    assert vf.cabecera(tabla.trozo_estatico())["n"] == 1 and tabla.trozo_estatico()[4] == 1
+    # Presupuesto: perfil viz ya no dice que faltan pose_cov, poses ni tf (los de V8/V11 pueden faltar aún).
+    try:
+        vf.resolver_modulos(["pose_cov", "poses", "tf"])
+    except ValueError as e:
+        assert False, e
+    print("tf, poses y pose_cov ok")
+
+
 def test_ritmo():
     r = vf.parsear_ritmo(["imu=/imu/data@20", " temp=/temperature@2.5 ", ""])
     assert r == [("imu", "/imu/data", 20.0), ("temp", "/temperature", 2.5)]
@@ -231,6 +286,7 @@ def test_ritmo():
 
 
 if __name__ == "__main__":
+    test_tf_poses()                                                       # V9
     test_scan(); test_tesela(); test_path(); test_limites()
     test_trocear(); test_presupuesto(); test_relay_info_y_epoca(); test_rosout_y_diag(); test_ritmo()
     print("TODO OK")
