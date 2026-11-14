@@ -4,7 +4,9 @@
 > la numeración §4.x, y «doc 36 §4.x» significa este fichero. Arquitectura, primitivas, relay VC/1, QoS, presupuesto,
 > trampas, gates y tareas V1–V15 siguen en [`36-visualizacion-topics-godot.md`](36-visualizacion-topics-godot.md)
 > (sus §0–§3 y §5–§12). Marcas, convenciones de tamaños y estado: las de la cabecera del doc 36.
-> Cuando exista el código (V1+), el código es la fuente y estas fichas se reducen a la tabla §4.0.
+> **Código = fuente de verdad (V15, 2026-11-14):** V1–V14 están hechos en host. El estado real por tipo y la ruta de
+> cada display están en §4.0.1; los esqueletos de las fichas se conservan como diseño (no se actualizan) y, donde el
+> código difiere, manda el código.
 
 ---
 
@@ -112,6 +114,109 @@ Plantilla de cada subsección: **Representación** · **Campos** (campo ROS → 
 (además de los comunes, §2.3) · **Vita** · **Veredicto** · esqueleto. Los esqueletos solo muestran lo propio del
 display (los `@export` comunes y la mecánica vienen de la base). Ruta de `extends`: `res://comun/visor/display_ros_3d.gd`
 (3D), `…/display_ros_2d.gd` (2D), `…/display_ros_hud.gd` (HUD).
+
+### 4.0.1 Estado de la implementación por tipo (V15, 2026-11-14)
+
+Desde V1–V14 **el código es la fuente de verdad**: los esqueletos de §4.1–§4.8 son el diseño de partida y, donde
+difieren, manda el script que cita esta tabla (nombres de archivo, `@export`, formatos y costes). No se repiten aquí;
+cada script lleva en su cabecera las decisiones que tomó y el README del visor (`godot/plantillas/visor/README.md`)
+las de cada tarea. Las reglas de selección (tipo, patrón de topic → script, capa, `solo_pc`, `orbital`) están en
+`godot/plantillas/visor/registro_displays.gd:22-95` [V].
+
+Marcas: **✅** implementado y verde en host (pruebas `godot/plantillas/pruebas/visor*.gd`; nada está validado aún en la
+Vita: ver doc 36 §9 y §13) · **✅ PC** implementado solo para el PC (`solo_pc`, fuera de la `.vpk`) · **⏳** sin
+implementar (el registro cae en el siguiente candidato, al final el inspector de texto) · **—** no aplica (se
+resuelve fuera de Godot). Rutas relativas a `godot/plantillas/visor/`. «≠ ficha» = el nombre o la forma real difiere
+del esqueleto.
+
+| # | Tipo | Estado | Display real | Nota |
+|---|---|---|---|---|
+| 1 | cualquiera (árbol) | ⏳ | — | `hud/inspector_arbol.gd` no existe; en el PC el explorador crea el inspector de texto |
+| 2 | cualquiera (texto) | ✅ | `displays/hud/inspector_texto.gd` | V12; comodín `*` del registro |
+| 3 | campos numéricos | ✅ | `displays/hud/trazador.gd` | V12; diezmado por tiempo (revisión V3) |
+| 4 | `std_msgs` escalares | ⏳ | (inspector de texto) | `hud/valor.gd` no existe |
+| 5 | `*MultiArray` | ⏳ | (inspector de texto) | la regla apunta a `hud/multiarray.gd`, que no existe |
+| 6 | `ColorRGBA` | ✅ / ⏳ | `paleta_viz.gd` (`de_ros`) | el widget `hud/color.gd` no existe |
+| 7 | `Header`, `Time`, `Duration` | ✅ | `tiempo_ros.gd` | V1 |
+| 8 | tipo sin esquema | ✅ ≠ ficha | `canal_display.gd:43-46` | estado `sin esquema: <tipo>` en vez de `hud/desconocido.gd`; desde V13a también `create_subscription` → `null` |
+| 9 | monitor Hz/enlace | ✅ | `displays/hud/barra_estado.gd` | V4 |
+| 10 | descubrimiento | ✅ | `explorador_topics.gd` | V12; Vita: catálogo fijo (D9) |
+| 11 | `Point(Stamped)` | ✅ | `displays/3d/punto.gd` | V5 |
+| 12 | `Vector3(Stamped)` | ✅ | `displays/3d/vector.gd` | V5 |
+| 13 | `Pose(Stamped)` | ✅ | `displays/3d/pose.gd`, `displays/2d/pose.gd` | V3 |
+| 14 | `PoseArray` (+ `ParticleCloud`) | ✅ (2D) | `displays/2d/poses.gd` | V9; `3d/poses.gd` ⏳ |
+| 15 | `PoseWithCovariance(Stamped)` | ✅ (2D) | `displays/2d/covarianza.gd` | V5/V9; `3d/covarianza.gd` ⏳ |
+| 16 | `Twist`, `Accel`, `Wrench` | ✅ ≠ ficha | `displays/3d/fuerza.gd` | nombre de la sentencia (no `tornillo.gd`) |
+| 17 | `Quaternion(Stamped)` | ✅ ≠ ficha | `displays/3d/ejes.gd` | no `orientacion.gd` |
+| 18 | `Transform(Stamped)` | ✅ ≠ ficha | `displays/3d/ejes.gd` | no `transformada.gd` |
+| 19 | `Polygon(Stamped)` | ✅ (2D) | `displays/2d/poligono.gd` | `3d/poligono.gd` ⏳ |
+| 20 | `Inertia(Stamped)` | ⏳ | — | `3d/inercia.gd` no existe |
+| 21 | `Odometry` | ✅ ≠ ficha | `displays/2d/pose.gd` (rastro) | `2d/odometria.gd` no existe: el registro lo tiene primero y cae en `2d/pose.gd`; `3d/odometria.gd` ⏳ |
+| 22 | `Path` | ✅ (2D) | `displays/2d/path.gd` | V3; `3d/path.gd` ⏳ |
+| 23 | display TF | ✅ | `displays/3d/tf.gd` | V9 |
+| 24 | TF en la Vita | ✅ | `tf_ligero.gd`; `RosTfListener` nativo (V13a) | selección en `visor_ros.gd:216-224` |
+| 25 | `JointState` + URDF | ✅ | `displays/3d/robot_joints.gd` | V3 |
+| 26 | `Imu` | ✅ | `displays/3d/imu.gd` | V5 |
+| 27 | `MagneticField` | ⏳ | — | `3d/magnetico.gd` no existe |
+| 28 | `NavSatFix` | ✅ | `displays/2d/gps.gd` | V5 |
+| 29 | `Range` | ✅ (3D) | `displays/3d/rango.gd` | V5; `2d/rango.gd` ⏳ |
+| 30 | medidores ambientales | ✅ | `displays/hud/medidor.gd` | V4 |
+| 31 | `BatteryState` | ✅ | `displays/hud/bateria.gd` | V4 |
+| 32 | `Joy` | ✅ | `displays/hud/joy.gd` | V4 |
+| 33 | `LaserScan` | ✅ (2D) | `displays/2d/scan.gd` | V3; `3d/scan_puntos.gd` ⏳ |
+| 34 | `MultiEchoLaserScan` | ⏳ | — | por el relay `scan_compacto` si se añade el eco |
+| 35 | `PointCloud2` | ✅ + ✅ PC | `displays/2d/nube.gd`; `displays/3d/nube_puntos.gd` | V10 (planta); V14 (GPU, *vertex shader*, sin umbral de 50 k) |
+| 36 | `PointCloud` | — | — | convertir fuera de Godot |
+| 37 | `Image` 8 bit | ✅ PC ≠ ficha | `displays/hud/imagen_pc.gd` | V14, amplía `hud/imagen.gd`; bayer con demosaico 2×2 |
+| 38 | `Image` profundidad | ✅ PC | `displays/hud/imagen_pc.gd` | V14: 16UC1/mono16 en RG8, 32FC1 en RF; `16SC1`/`64FC1` ⏳ |
+| 39 | `Image` YUV | ✅ PC ≠ ficha | `displays/hud/imagen_pc.gd` | no `imagen_yuv.gd` |
+| 40 | `Image` en la Vita | ✅ | `displays/hud/imagen.gd` + relay `camara` | V10 (D13) |
+| 41 | `CompressedImage` | ✅ ≠ ficha | `displays/hud/imagen.gd` | no `imagen_comprimida.gd`; PNG de 16/32 bit rechazado (T4) |
+| 42 | `compressedDepth` | — | — | republicar fuera de Godot |
+| 43 | `CameraInfo` | ⏳ | — | `3d/camara_info.gd` no existe |
+| 44 | «Camera» | ⏳ | — | por medir (sens#13) |
+| 45 | DepthCloud | ⏳ | — | |
+| 46 | `OccupancyGrid` «map» | ✅ | `displays/2d/mapa.gd`, `displays/3d/mapa.gd`, `mapa_textura.gd` | V3; en el PC con *shader* y paleta 256×1 (V14) |
+| 47 | `OccupancyGrid` «costmap» | ✅ ≠ ficha | `displays/2d/costmap.gd`, `costmap_textura.gd` | V11: display propio (no «mismo `mapa.gd`») |
+| 48 | `OccupancyGrid` «raw» | ✅ | `esquema = raw` de `2d/mapa.gd`/`3d/mapa.gd` | |
+| 49 | `OccupancyGridUpdate` | ✅ Vita / ⏳ PC | relay (teselas sucias, época fija) | sin suscripción directa en el PC |
+| 50 | `GridCells` | ⏳ | — | `2d/celdas.gd` no existe (el tipo sí está en `TIPOS_VISOR`) |
+| 51 | `MapMetaData` | ⏳ | — | `hud/meta_mapa.gd` no existe |
+| 52 | `nav2_msgs/Costmap` | ⏳ | — | |
+| 53 | `nav2_msgs/VoxelGrid` | ⏳ | — | |
+| 54 | `GridMap` | ✅ PC | `displays/3d/grid_map.gd` | V14 |
+| 55 | `Octomap` | ✅ PC | `displays/3d/octomap.gd` | V14 |
+| 56 | `Marker` (gestor) | ✅ | `displays/3d/marcadores.gd`; `displays/3d/marcador_simple.gd` | V8 (+ marcador simple de V5) |
+| 57 | ARROW, CUBE, SPHERE, CYLINDER | ✅ | `fabrica_marcadores.gd` | V8 |
+| 58 | LINE_STRIP / LINE_LIST | ✅ | `displays/2d/marcadores_2d.gd` | V8 (2D superpuesto también en el PC) |
+| 59 | CUBE_LIST / SPHERE_LIST | ✅ | `fabrica_marcadores.gd` (≤ 64 horneado), `2d/marcadores_2d.gd` (más) | V8 |
+| 60 | POINTS | ✅ | `displays/2d/marcadores_2d.gd` | V8 |
+| 61 | TEXT_VIEW_FACING | ✅ | `texto_superpuesto.gd` vía `2d/marcadores_2d.gd` | V8 (D11) |
+| 62 | MESH_RESOURCE | ✅ | `fabrica_marcadores.gd` (tabla `mallas`) | sin malla: cubo + aviso; GLTF en caliente ⏳ |
+| 63 | TRIANGLE_LIST | ✅ | `fabrica_marcadores.gd` | ≤ 1 000 triángulos |
+| 64 | ARROW_STRIP | ✅ | `displays/2d/marcadores_2d.gd` | semántica propia [?] (§9.3.4 del doc 36) |
+| 65 | `MarkerArray` | ✅ | `displays/3d/marcadores.gd` + relay `marcadores` | V8 (D14) |
+| 66 | `InteractiveMarkerUpdate` | ✅ PC | `displays/3d/im_cliente.gd` | V14; Vita aplazada |
+| 67 | `InteractiveMarkerFeedback` | ✅ PC | `herramientas/im_feedback.gd` | V14, fiable, profundidad 1 |
+| 68 | `ImageMarker` | ⏳ | — | `hud/marcas_imagen.gd` no existe |
+| 69 | `shape_msgs` | ⏳ | — | la fábrica no los traduce aún |
+| 70 | `DiagnosticArray` | ✅ | `displays/hud/diagnostico.gd` | V6 |
+| 71 | `rcl_interfaces/Log` | ✅ | `displays/hud/consola.gd` | V6 |
+| 72 | `TransitionEvent` | ⏳ | — | `hud/lifecycle.gd` no existe |
+| 73 | `Detection2DArray` | ✅ | `displays/hud/cajas_2d.gd` | V10 (Vita por relay `detecciones`) |
+| 74 | `Detection3DArray` | ✅ | `displays/2d/cajas_3d.gd` | V10 (Vita por relay `detecciones3d`) |
+| 75 | `JointTrajectory` | ⏳ | — | `3d/fantasma.gd` no existe |
+| 76 | `JointTrajectoryControllerState` | ⏳ | — | `hud/controlador.gd` no existe |
+| 77 | plan frente a real | ✅ ≠ ficha | `2d/path.gd` + `2d/pose.gd` en la misma planta | sin `2d/plan_real.gd`; marco resuelto (V2-juez F3) |
+| 78 | `GoalStatusArray` + feedback | ✅ | `displays/hud/estado_meta.gd` | V4 |
+| 79 | meta Nav2 | ✅ | `herramientas/meta.gd` | V7 |
+| 80 | pose inicial | ✅ | `herramientas/pose_inicial.gd` | V7 |
+| 81 | Publish Point | ✅ | `herramientas/punto.gd` | V7 |
+| 82 | teleop | ✅ | `herramientas/teleop.gd` | V7 |
+
+Recuento: 62 filas con algo implementado (7 solo PC; parciales las #6 y #49), 18 ⏳ y 2 que no aplican [V: `ls
+godot/plantillas/visor/displays/*/` el 2026-11-14]. Lo ⏳ no bloquea nada: el registro cae en el inspector de texto y
+la ficha correspondiente de §4.1–§4.8 sigue siendo el diseño cuando se aborde.
 
 ### 4.1 Genéricos y `std_msgs` (familia `nucleo-generico`)
 
