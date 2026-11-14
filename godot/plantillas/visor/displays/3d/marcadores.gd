@@ -41,6 +41,7 @@ var _seq := -1
 var _vistos := {}
 var _trozos := {}
 var _sin_nodo := []                             # sólidos de este seq sin nodo libre todavía
+var _t_informe := 0
 
 
 static func nombre_display() -> String:
@@ -274,6 +275,11 @@ func _process(dt: float) -> void:
 			_borrar(k)
 		elif e.locked or not e.con_tf:
 			_colocar(e)
+	# Revisión V2: gates G-W13-M1/M2/M3 en la Vita (o con `-- perfil`): nodos constantes, sin sitio y estados.
+	if Perfil.activo and ahora - _t_informe >= 5000:
+		_t_informe = ahora
+		printerr("[visor-marc] vivos=%d nodos=%d hijos=%d tope=%d sin_sitio=%d completos=%d rechazados=%d" % [
+				_vivos.size(), _creados, get_child_count(), tope(), sin_sitio, estados_completos, rechazados])
 
 
 func _coste() -> Dictionary:

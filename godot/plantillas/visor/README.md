@@ -629,3 +629,27 @@ docker/vita-ros.sh relay hmi,marcadores                                         
 ```
 
 El aviso «MESH_RESOURCE … sin malla horneada» y «Marcadores pide 48 … y recibe 12» del log son casos de la prueba.
+
+## Revisión V2 (2026-11-14)
+
+Revisión escéptica y de código de V5–V9 y de la fusión V8 + V9: `docs/ia/workshops/posts/V2-revision.md` (hallazgos,
+veredictos de las decisiones anotadas arriba, presupuestos de `main.tscn` y guion único de hardware). Cambios:
+
+- `VisorRos.marco_mundo_pose2d()`: con `marco_pose2d` puesto (p. ej. «odom») pero aún sin unir al marco fijo (relay sin
+  el módulo `tf`), pose2d cuelga del fijo como con "" (antes TODO quedaba en el origen). Así `godot/visor-ros/main.tscn`
+  lleva `marco_pose2d = "odom"` y `tf_relay = true` y la misma `.vpk` vale con y sin el módulo `tf`.
+- `VisorRos` emite `pose2d_tf(m)`; `robot_joints.gd` se cuelga de ahí en lugar de abrir otra suscripción a
+  `<p>/pose2d` (cada lector XRCE recibe su copia; V9 había pasado de 2 a 3 lectores).
+- `[perfil-gd]` añade `rx_paq`, `topic_dropped`, `reliable_dropped`, `be_dropped` y `reconexiones` (gate V6) y
+  `3d/marcadores.gd` escribe cada 5 s `[visor-marc] vivos= nodos= hijos= tope= sin_sitio= completos=` (gates M1–M3).
+- `fabrica_marcadores.gd`: un nodo del pool que pasa de lista horneada a otro tipo y vuelve con los mismos datos ya
+  no se queda con la malla del otro tipo (firma ligada a la malla horneada). Prueba nueva en `visor_marcadores.gd`.
+- `2d/poses.gd`: `topic_vita = "poses"` por defecto (en la Vita el PoseArray directo no cabe con n > 8).
+- `2d/marcadores_2d.gd`: ancho NaN del relay → ancho mínimo.
+- Estación: `docker/vita-ros.sh relay … [tf_lista]`, `fuente-v2 [avisos,marcadores,vida,tf] [n]`
+  (`docker/scripts/fuente_prueba_v2.py`) y `netem <IP_VITA> [%]` / `netem off` (pérdida solo hacia la Vita, M3).
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_tf.gd          # RESULTADO: 79/79
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_marcadores.gd  # RESULTADO: 63/63
+```

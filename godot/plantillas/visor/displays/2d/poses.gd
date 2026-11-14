@@ -30,6 +30,7 @@ static func tipos_ros() -> PackedStringArray:
 
 func _init() -> void:
 	hz = 2.0
+	topic_vita = "poses"                          # revisión V2: en la Vita el PoseArray directo no cabe (n > 8)
 	tipo_vita = "std_msgs/msg/Float32MultiArray"
 
 

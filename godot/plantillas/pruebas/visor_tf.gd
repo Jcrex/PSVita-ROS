@@ -408,13 +408,17 @@ func _probar_vita() -> void:
 		rangos.append(2.0)
 	var scan_msg = _arr("std_msgs/msg/Int16MultiArray", VC1.empaquetar_scan(rangos, -PI, TAU / 180.0, 0.1, 20.0, 1))
 
-	# A) Solo pose2d (odom → base_link): TfLigero aún no conoce «map» = como sin TF (D3), el scan en el origen.
+	# A) Solo pose2d, `marco_pose2d` = odom pero sin map → odom (relay sin `tf`): revisión V2, la base cuelga del fijo
+	#    (como `marco_pose2d` = "", supone map ≈ odom) en lugar de dejar TODO en el origen.
 	p_pose.publish(_arr(f32, PackedFloat32Array([1.0, 2.0, PI / 2, 0, 0, 0])))
 	await _fotogramas(3)
 	p_scan.publish(scan_msg)
 	await _fotogramas(3)
-	check(v.tf.frame_exists("odom") and not v.tf.frame_exists("map"), "Vita A: pose2d → odom → base_link")
-	check(scan.estado == "ok" and scan.transform == Transform2D.IDENTITY, "Vita A: sin el marco fijo, el scan va en el origen (D3)")
+	check(v.tf.get_frame_parent("base_link") == "map" and not v.tf.frame_exists("odom"),
+			"Vita A: pose2d sin map → odom: la base cuelga del fijo (revisión V2)")
+	var esperado_a: Vector2 = Vector2(1.0, -(2.0 - 0.032)) * v.px_por_m
+	check(scan.estado == "ok" and scan.transform.origin.distance_to(esperado_a) < 0.05,
+			"Vita A: el scan va con la base (1, 1.968) m, no en el origen (%s)" % scan.transform.origin)
 
 	# B) Relay tf: tf_estatico ANTES que tf_marcos (latched, orden libre), luego tf (map → odom).
 	p_est.publish(_arr(f32, PackedFloat32Array(VC1.empaquetar_tf([[1, 0.1, 0.0, 0.2, 0, 0, 0, 1]], 0, VC1.MAX_TF_ESTATICOS))))
@@ -425,10 +429,11 @@ func _probar_vita() -> void:
 	await _fotogramas(3)
 	check(v.tf.orden_relay().size() == 2 and _cerca(_xf(v.tf, "base_link", "base_scan"), Vector3(0.1, 0, 0.2)),
 			"Vita B: tf_estatico llegado antes que tf_marcos se aplica (y pisa el estático de la escena)")
-	check(_cerca(_xf(v.tf, "map", "base_link"), Vector3(11, 2, 0)), "Vita B: map → odom (relay tf) → base_link (pose2d)")
 	p_pose.publish(_arr(f32, PackedFloat32Array([1.0, 2.0, PI / 2, 0, 0, 0])))
 	p_scan.publish(scan_msg)
 	await _fotogramas(3)
+	check(v.tf.get_frame_parent("base_link") == "odom" and _cerca(_xf(v.tf, "map", "base_link"), Vector3(11, 2, 0)),
+			"Vita B: map → odom (relay tf) → base_link (el siguiente pose2d pasa la base a odom)")
 	# base_scan en map: (11, 2) + R(90°)·(0.1, 0) = (11, 2.1); planta: x = ROS x, y = −ROS y, rotación −yaw.
 	var esperado: Vector2 = Vector2(11.0, -2.1) * v.px_por_m
 	check(scan.estado == "ok" and scan.transform.origin.distance_to(esperado) < 0.05 and absf(scan.transform.get_rotation() + PI / 2) < 1e-3,
@@ -436,6 +441,8 @@ func _probar_vita() -> void:
 	check(robot.poses_base >= 1 and robot.transform.origin.distance_to(C * Vector3(11, 2, 0)) < MM,
 			"Vita B: el robot (frame_id base_link) se coloca con TfLigero, sin sumar pose2d dos veces")
 	check(robot.robot.transform.origin.is_equal_approx(Vector3.ZERO), "Vita B: el hijo del robot no se mueve (una sola vez)")
+	check(v.suscrito_pose2d() and robot._subs.size() == 1 and v.pose2d_tf.is_connected(robot._al_pose2d),
+			"Vita: el robot recibe pose2d por VisorRos, sin una suscripción más (revisión V2)")
 
 	scan.frame_id = "laser_x"
 	p_scan.publish(scan_msg)

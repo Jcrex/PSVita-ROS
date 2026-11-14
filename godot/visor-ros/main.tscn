@@ -51,6 +51,8 @@ boton = 6
 script = ExtResource("1_visor")
 camara = NodePath("../Camara")
 texto = NodePath("Hud/Texto")
+marco_pose2d = "odom"
+tf_relay = true
 tf_estaticos = PackedStringArray("base_link>base_scan -0.032 0 0.172 0")
 
 [node name="Robot" type="Node3D" parent="VisorRos"]

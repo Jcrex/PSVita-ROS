@@ -545,3 +545,15 @@ func _probar_pool() -> void:
 	check(m3.nodos_creados() == 12 and m3.get_child_count() == hijos and m3.cuantos() == 12,
 			"Vita: 30 estados completos con claves nuevas: siempre 12 nodos (pool lleno, sin fugas)")
 	await _cerrar(v)
+	# Revisión V2: un nodo horneado (CUBE_LIST) que pasa a CUBO y vuelve a la MISMA lista no conserva el cubo.
+	var n := Fab.crear()
+	var lista_m = _mk("l", 1, Fab.CUBE_LIST, Vector3.ZERO, Vector3(0.2, 0.2, 0.2), Color(0.1, 0.8, 0.2),
+			[Vector3(0, 0, 0), Vector3(1, 0, 0)])
+	Fab.aplicar(n, lista_m, {"intervalo_horneado_ms": 1000})
+	var horneada = n.mesh
+	Fab.aplicar(n, _mk("l", 2, Fab.CUBE), {"intervalo_horneado_ms": 1000})
+	var cubo = n.mesh
+	Fab.aplicar(n, lista_m, {"intervalo_horneado_ms": 1000})
+	check(horneada is ArrayMesh and n.mesh != cubo and n.mesh is ArrayMesh and n.mesh.get_faces().size() == horneada.get_faces().size(),
+			"pool: lista → cubo → la misma lista vuelve a hornear (no se queda el cubo)")
+	n.free()

@@ -70,12 +70,19 @@ func conectar(v) -> void:
 		var pre: String = v.prefijo_compacto.trim_suffix("/")
 		_subs.append(n.create_subscription(pre + "/joints_orden", "std_msgs/msg/String", _al_orden,
 				v.contexto.qos(false, 1, true)))
-		_subs.append(n.create_subscription(pre + "/pose2d", "std_msgs/msg/Float32MultiArray", _al_pose2d,
-				v.contexto.qos(true, 1, false)))
+		if v.has_method("suscrito_pose2d") and v.suscrito_pose2d():
+			# Revisión V2: VisorRos (TfLigero) ya recibe pose2d; una suscripción más = otra copia por XRCE.
+			if not v.pose2d_tf.is_connected(_al_pose2d):
+				v.pose2d_tf.connect(_al_pose2d)
+		else:
+			_subs.append(n.create_subscription(pre + "/pose2d", "std_msgs/msg/Float32MultiArray", _al_pose2d,
+					v.contexto.qos(true, 1, false)))
 
 
 func desconectar() -> void:
 	_subs.clear()
+	if visor != null and visor.has_signal("pose2d_tf") and visor.pose2d_tf.is_connected(_al_pose2d):
+		visor.pose2d_tf.disconnect(_al_pose2d)
 	super.desconectar()
 
 
