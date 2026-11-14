@@ -1,6 +1,7 @@
-// ros_runtime.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); corre en la Vita en loopback (G4,
+// ros_runtime.cpp — Godot 4.x in-tree. V13a (2026-11-14): ver la cabecera de ros_runtime.h. Compilado y probado en host (G1, 2026-10-29); corre en la Vita en loopback (G4,
 // 2026-10-30). El transporte XRCE vive en xrce_transport.cpp (G5).
 #include "ros_runtime.h"
+#include "ros_tf.h"
 
 #include "core/config/project_settings.h"
 #include "core/object/class_db.h"
@@ -56,7 +57,7 @@ public:
 
 #ifndef ROS2_VITA_XRCE
 // Compilado sin las libs XRCE (SCsub no las encontró): el transporte xrce no está disponible.
-// Se construyen con vita-app/scripts/build-xrce-client-vita.sh (XRCE_PIC=1 Vita, XRCE_HOST=1 host).
+// Se construyen con tools/build-xrce-client-vita.sh (XRCE_PIC=1 Vita, XRCE_HOST=1 host).
 class XrceUnavailable : public RosTransport {
 public:
 	Error start(const Dictionary &) override {
@@ -75,20 +76,42 @@ public:
 
 // ================================================================== RosQoS
 void RosQoS::_bind_methods() {
+	// V13a: setters/getters con propiedades, como rclgd (godot/rclgd/rclgd/src/rclgd/ros_qos.cpp): así
+	// `qos.reliability = RosQoS.BEST_EFFORT` funciona igual en el PC y en la Vita. Los set_*() se mantienen.
 	ClassDB::bind_method(D_METHOD("set_history", "v"), &RosQoS::set_history);
 	ClassDB::bind_method(D_METHOD("get_history"), &RosQoS::get_history);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "history", PROPERTY_HINT_ENUM, "Keep Last,Keep All"), "set_history", "get_history");
 	ClassDB::bind_method(D_METHOD("set_depth", "v"), &RosQoS::set_depth);
 	ClassDB::bind_method(D_METHOD("get_depth"), &RosQoS::get_depth);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "depth"), "set_depth", "get_depth");
 	ClassDB::bind_method(D_METHOD("set_reliability", "v"), &RosQoS::set_reliability);
 	ClassDB::bind_method(D_METHOD("get_reliability"), &RosQoS::get_reliability);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "reliability", PROPERTY_HINT_ENUM, "Reliable,Best Effort"), "set_reliability", "get_reliability");
 	ClassDB::bind_method(D_METHOD("set_durability", "v"), &RosQoS::set_durability);
 	ClassDB::bind_method(D_METHOD("get_durability"), &RosQoS::get_durability);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "durability", PROPERTY_HINT_ENUM, "Volatile,Transient Local"), "set_durability", "get_durability");
+	// Guardadas pero ignoradas por XRCE (API_PARITY.md):
+	ClassDB::bind_method(D_METHOD("set_deadline", "v"), &RosQoS::set_deadline);
+	ClassDB::bind_method(D_METHOD("get_deadline"), &RosQoS::get_deadline);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "deadline_seconds"), "set_deadline", "get_deadline");
+	ClassDB::bind_method(D_METHOD("set_lifespan", "v"), &RosQoS::set_lifespan);
+	ClassDB::bind_method(D_METHOD("get_lifespan"), &RosQoS::get_lifespan);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "lifespan_seconds"), "set_lifespan", "get_lifespan");
+	ClassDB::bind_method(D_METHOD("set_liveliness", "v"), &RosQoS::set_liveliness);
+	ClassDB::bind_method(D_METHOD("get_liveliness"), &RosQoS::get_liveliness);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "liveliness", PROPERTY_HINT_ENUM, "Automatic,Manual By Topic,System Default"), "set_liveliness", "get_liveliness");
+	ClassDB::bind_method(D_METHOD("set_lease_duration", "v"), &RosQoS::set_lease_duration);
+	ClassDB::bind_method(D_METHOD("get_lease_duration"), &RosQoS::get_lease_duration);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "lease_duration_seconds"), "set_lease_duration", "get_lease_duration");
 	BIND_ENUM_CONSTANT(RELIABLE);
 	BIND_ENUM_CONSTANT(BEST_EFFORT);
 	BIND_ENUM_CONSTANT(VOLATILE);
 	BIND_ENUM_CONSTANT(TRANSIENT_LOCAL);
 	BIND_ENUM_CONSTANT(KEEP_LAST);
 	BIND_ENUM_CONSTANT(KEEP_ALL);
+	BIND_ENUM_CONSTANT(AUTOMATIC);
+	BIND_ENUM_CONSTANT(MANUAL_BY_TOPIC);
+	BIND_ENUM_CONSTANT(SYSTEM_DEFAULT);
 }
 
 // ============================================================ Pub/Sub/Timer
@@ -99,7 +122,7 @@ void RosPublisher::_bind_methods() {
 void RosPublisher::publish(const Ref<RosMsg> &p_msg) {
 	rclgd *r = rclgd::get_singleton();
 	ERR_FAIL_NULL_MSG(r, "RosPublisher: rclgd no inicializado.");
-	ERR_FAIL_COND_MSG(!r->ok() || pub_id < 0, "RosPublisher: contexto ROS no activo.");
+	ERR_FAIL_COND_MSG(!r->ok() || pub_id < 0 || session != r->get_session(), "RosPublisher: contexto ROS no activo.");
 	ERR_FAIL_COND_MSG(p_msg.is_null(), "RosPublisher: mensaje nulo.");
 	ERR_FAIL_COND_MSG(p_msg->get_ros_interface_name() != type_name,
 			vformat("RosPublisher: se esperaba %s y llego %s.", type_name, p_msg->get_ros_interface_name()));
@@ -110,32 +133,77 @@ void RosPublisher::publish(const Ref<RosMsg> &p_msg) {
 
 RosPublisher::~RosPublisher() {
 	rclgd *r = rclgd::get_singleton();
-	if (r && r->get_transport() && pub_id >= 0) {
+	// V13a: solo en SU sesión. Antes, un publicador liberado tras shutdown()+init() borraba el id reutilizado de otro.
+	if (r && r->get_transport() && pub_id >= 0 && session == r->get_session()) {
 		r->get_transport()->unadvertise(pub_id);
 	}
 }
 
+void RosSubscriber::_bind_methods() {
+	// Extensiones de ros2_vita (V13a; rclgd no las tiene: comprobar con has_method en código común).
+	ClassDB::bind_method(D_METHOD("set_latest_only", "enabled"), &RosSubscriber::set_latest_only);
+	ClassDB::bind_method(D_METHOD("is_latest_only"), &RosSubscriber::is_latest_only);
+	ClassDB::bind_method(D_METHOD("get_stats"), &RosSubscriber::get_stats);
+}
+
 void RosSubscriber::deliver(const uint8_t *p_data, size_t p_len) {
+	if (raw) { // consumidor nativo: bytes tal cual (RosTfListener)
+		raw(raw_ctx, p_data, p_len);
+		decodificados++;
+		return;
+	}
 	if (!callback.is_valid()) {
 		return;
 	}
-	Ref<RosMsg> msg = RosMsg::from_type(type_name);
-	ERR_FAIL_COND(msg.is_null());
-	PackedByteArray bytes;
-	bytes.resize(p_len);
-	if (p_len) {
-		memcpy(bytes.ptrw(), p_data, p_len);
-	}
-	if (msg->deserialize(bytes) != OK) {
-		WARN_PRINT(vformat("RosSubscriber: CDR invalido para %s.", type_name));
+	// V13a: el tipo se resolvió al suscribir (antes, RosMsg::from_type buscaba el nombre en CADA mensaje y además
+	// construía un árbol por defecto que deserialize() tiraba).
+	Error err = OK;
+	Ref<RosMsg> msg = RosMsg::decode_new(type_idx, p_data, p_len, &err);
+	if (msg.is_null()) {
+		errores++;
+		if (errores == 1 || (errores % 100) == 0) { // sin inundar la consola (un aviso y luego cada 100)
+			WARN_PRINT(vformat("RosSubscriber: CDR invalido para %s (%d errores).", type_name, (int64_t)errores));
+		}
 		return;
 	}
+	decodificados++;
 	callback.call(msg);
+}
+
+bool RosSubscriber::_vigente() const {
+	rclgd *r = rclgd::get_singleton();
+	return r && r->ok() && sub_id >= 0 && session == r->get_session();
+}
+
+void RosSubscriber::set_latest_only(bool p_v) {
+	rclgd *r = rclgd::get_singleton();
+	if (_vigente()) {
+		r->set_latest_only(sub_id, p_v);
+	}
+}
+
+bool RosSubscriber::is_latest_only() const {
+	return _vigente() && rclgd::get_singleton()->is_latest_only(sub_id);
+}
+
+Dictionary RosSubscriber::get_stats() const {
+	uint64_t rec = 0, desc = 0;
+	if (_vigente()) {
+		rclgd::get_singleton()->get_sub_counters(sub_id, rec, desc);
+	}
+	Dictionary d;
+	d["recibidos"] = (int64_t)rec; // llegados del transporte
+	d["descartados"] = (int64_t)desc; // sin decodificar: latest_only o cola llena
+	d["decodificados"] = (int64_t)decodificados; // entregados al callback (o al consumidor nativo)
+	d["errores"] = (int64_t)errores; // CDR inválido
+	d["latest_only"] = is_latest_only();
+	d["tipo"] = type_name;
+	return d;
 }
 
 RosSubscriber::~RosSubscriber() {
 	rclgd *r = rclgd::get_singleton();
-	if (r && sub_id >= 0) {
+	if (_vigente()) { // V13a: ver ~RosPublisher
 		r->unregister_subscription(sub_id);
 		if (r->get_transport()) {
 			r->get_transport()->unsubscribe(sub_id);
@@ -191,6 +259,7 @@ void RosNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_publisher", "topic", "type", "qos"), &RosNode::create_publisher, DEFVAL(Ref<RosQoS>()));
 	ClassDB::bind_method(D_METHOD("create_subscription", "topic", "type", "callback", "qos"), &RosNode::create_subscription, DEFVAL(Ref<RosQoS>()));
 	ClassDB::bind_method(D_METHOD("create_timer", "seconds", "callback"), &RosNode::create_timer);
+	ClassDB::bind_method(D_METHOD("create_tf_listener", "cache_time_sec"), &RosNode::create_tf_listener, DEFVAL(10.0));
 	ClassDB::bind_method(D_METHOD("now"), &RosNode::now);
 	ClassDB::bind_method(D_METHOD("declare_parameter", "name", "default_value"), &RosNode::declare_parameter);
 	ClassDB::bind_method(D_METHOD("set_parameter", "name", "value"), &RosNode::set_parameter);
@@ -259,6 +328,7 @@ Ref<RosPublisher> RosNode::create_publisher(const String &p_topic, const Variant
 	Ref<RosPublisher> pub;
 	pub.instantiate();
 	pub->setup(id, type);
+	pub->set_session(r->get_session());
 	return pub;
 }
 
@@ -268,13 +338,49 @@ Ref<RosSubscriber> RosNode::create_subscription(const String &p_topic, const Var
 	ERR_FAIL_COND_V_MSG(node_name.is_empty(), Ref<RosSubscriber>(), "RosNode: llama a init().");
 	String type = _type_from_variant(p_type);
 	ERR_FAIL_COND_V_MSG(type.is_empty(), Ref<RosSubscriber>(), "RosNode: no se pudo resolver el tipo ROS.");
+	// V13a: el tipo se resuelve UNA vez aquí. Antes la suscripción se creaba igual y cada muestra fallaba en
+	// RosMsg.from_type sin que el callback llegara nunca (doc 36 §1.2). Ahora no se suscribe (no se gasta red en
+	// la Vita) y se dice por qué. [decisión V13a: null, como pide la regla de doc 36 §2.9.2]
+	uint32_t idx = RosMsg::find_type_index(type);
+	ERR_FAIL_COND_V_MSG(idx == MSG_SCHEMA_NO_TYPE, Ref<RosSubscriber>(),
+			vformat("RosNode: el tipo '%s' de '%s' no esta en el esquema .rsch cargado (%s); no se suscribe. "
+					"Anadelo a TIPOS y regenera el esquema (tools/gen_msg_schema.py).",
+					type, p_topic, RosMsg::has_schema() ? "falta el tipo" : "no hay esquema"));
 	int id = r->get_transport()->subscribe(_resolve_topic(p_topic), type, p_qos);
 	ERR_FAIL_COND_V_MSG(id < 0, Ref<RosSubscriber>(), "RosNode: el transporte rechazo la suscripcion.");
 	Ref<RosSubscriber> sub;
 	sub.instantiate();
-	sub->setup(id, type, p_cb);
+	sub->setup(id, type, idx, p_cb);
+	sub->set_session(r->get_session());
 	r->register_subscription(id, sub->get_instance_id());
 	return sub;
+}
+
+Ref<RosSubscriber> RosNode::create_subscription_raw(const String &p_topic, const String &p_type, RosSubscriber::RawHandler p_fn,
+		void *p_ctx, const Ref<RosQoS> &p_qos) {
+	rclgd *r = rclgd::get_singleton();
+	ERR_FAIL_COND_V_MSG(!r || !r->ok(), Ref<RosSubscriber>(), "RosNode: rclgd.init() primero.");
+	ERR_FAIL_COND_V_MSG(node_name.is_empty(), Ref<RosSubscriber>(), "RosNode: llama a init().");
+	int id = r->get_transport()->subscribe(_resolve_topic(p_topic), p_type, p_qos);
+	ERR_FAIL_COND_V_MSG(id < 0, Ref<RosSubscriber>(), "RosNode: el transporte rechazo la suscripcion.");
+	Ref<RosSubscriber> sub;
+	sub.instantiate();
+	sub->setup_raw(id, p_type, p_fn, p_ctx);
+	sub->set_session(r->get_session());
+	r->register_subscription(id, sub->get_instance_id());
+	return sub;
+}
+
+Ref<RosTfListener> RosNode::create_tf_listener(double p_cache_time_sec) {
+	rclgd *r = rclgd::get_singleton();
+	ERR_FAIL_COND_V_MSG(!r || !r->ok(), Ref<RosTfListener>(), "RosNode: rclgd.init() primero.");
+	ERR_FAIL_COND_V_MSG(node_name.is_empty(), Ref<RosTfListener>(), "RosNode: llama a init().");
+	Ref<RosTfListener> tf;
+	tf.instantiate();
+	if (tf->setup(this, p_cache_time_sec) != OK) {
+		return Ref<RosTfListener>();
+	}
+	return tf;
 }
 
 Ref<RosTimer> RosNode::create_timer(double p_seconds, const Callable &p_cb) {
@@ -291,6 +397,15 @@ Ref<RosTimer> RosNode::create_timer(double p_seconds, const Callable &p_cb) {
 Ref<RosMsg> RosNode::now() {
 	Ref<RosMsg> t = RosMsg::from_type("builtin_interfaces/msg/Time");
 	ERR_FAIL_COND_V_MSG(t.is_null(), t, "RosNode: el esquema no incluye builtin_interfaces/msg/Time.");
+	// Con XRCE, la hora del agente (sincronizada al abrir la sesión): el reloj de la Vita puede ir minutos
+	// por detrás del PC y tf2 descartaría los mensajes por «extrapolation». Si no, el reloj local.
+	rclgd *r = rclgd::get_singleton();
+	int64_t ns = 0;
+	if (r && r->get_transport() && r->get_transport()->epoch_ns(&ns) && ns > 0) {
+		t->set_member("sec", (int64_t)(ns / 1000000000));
+		t->set_member("nanosec", (int64_t)(ns % 1000000000));
+		return t;
+	}
 	double unix_s = OS::get_singleton()->get_unix_time();
 	int64_t sec = (int64_t)unix_s;
 	t->set_member("sec", sec);
@@ -412,6 +527,7 @@ Error rclgd::init(const PackedStringArray &p_args) {
 		return err;
 	}
 	running = true;
+	session++;
 	_ensure_pump();
 	emit_signal(SNAME("ros_ready"));
 	return OK;
@@ -446,12 +562,39 @@ void rclgd::_ensure_pump() {
 
 void rclgd::register_subscription(int p_id, ObjectID p_obj) {
 	MutexLock lock(inbox_mutex);
-	subs[p_id] = p_obj;
+	SubEntry e;
+	e.obj = p_obj;
+	subs[p_id] = e;
 }
 
 void rclgd::unregister_subscription(int p_id) {
 	MutexLock lock(inbox_mutex);
+	// Sus mensajes pendientes se quedan en la cola y _pump los salta (ya no hay entrada); `pending` muere con ella.
 	subs.erase(p_id);
+}
+
+void rclgd::set_latest_only(int p_id, bool p_v) {
+	MutexLock lock(inbox_mutex);
+	SubEntry *e = subs.getptr(p_id);
+	if (e) {
+		e->latest_only = p_v;
+		if (!p_v) {
+			e->pending = nullptr;
+		}
+	}
+}
+
+bool rclgd::is_latest_only(int p_id) const {
+	MutexLock lock(inbox_mutex);
+	const SubEntry *e = subs.getptr(p_id);
+	return e && e->latest_only;
+}
+
+void rclgd::get_sub_counters(int p_id, uint64_t &r_recibidos, uint64_t &r_descartados) const {
+	MutexLock lock(inbox_mutex);
+	const SubEntry *e = subs.getptr(p_id);
+	r_recibidos = e ? e->recibidos : 0;
+	r_descartados = e ? e->descartados : 0;
 }
 
 void rclgd::register_timer(ObjectID p_obj) {
@@ -462,7 +605,30 @@ void rclgd::register_timer(ObjectID p_obj) {
 void rclgd::_rx_trampoline(void *p_ctx, int p_sub_id, const uint8_t *p_data, size_t p_len) {
 	rclgd *self = (rclgd *)p_ctx;
 	MutexLock lock(self->inbox_mutex);
+	SubEntry *e = self->subs.getptr(p_sub_id);
+	if (!e) {
+		return; // suscripción liberada (antes se encolaba y _pump la saltaba)
+	}
+	e->recibidos++;
+	if (e->latest_only && e->pending) {
+		// V13a (D8): «el último gana» ANTES de decodificar: se pisa el payload que aún espera, en su sitio.
+		Vector<uint8_t> &pl = e->pending->get().payload;
+		pl.resize(p_len);
+		if (p_len) {
+			memcpy(pl.ptrw(), p_data, p_len);
+		}
+		e->descartados++;
+		return;
+	}
 	if (self->inbox.size() >= 256) { // cola acotada: se descarta el MÁS ANTIGUO (docs/13 §4)
+		List<RxItem>::Element *old = self->inbox.front();
+		SubEntry *oe = self->subs.getptr(old->get().sub_id);
+		if (oe) {
+			oe->descartados++;
+			if (oe->pending == old) {
+				oe->pending = nullptr;
+			}
+		}
 		self->inbox.pop_front();
 		self->dropped++;
 	}
@@ -472,7 +638,10 @@ void rclgd::_rx_trampoline(void *p_ctx, int p_sub_id, const uint8_t *p_data, siz
 	if (p_len) {
 		memcpy(item.payload.ptrw(), p_data, p_len);
 	}
-	self->inbox.push_back(item);
+	List<RxItem>::Element *el = self->inbox.push_back(item);
+	if (e->latest_only) {
+		e->pending = el;
+	}
 }
 
 void rclgd::_pump() {
@@ -489,16 +658,19 @@ void rclgd::_pump() {
 		MutexLock lock(inbox_mutex);
 		local = inbox;
 		inbox.clear();
+		for (KeyValue<int, SubEntry> &kv : subs) {
+			kv.value.pending = nullptr; // lo pendiente pasa a `local`: lo que llegue ahora va a la cola nueva
+		}
 	}
 	for (const RxItem &it : local) {
 		ObjectID oid;
 		{
 			MutexLock lock(inbox_mutex);
-			const ObjectID *p = subs.getptr(it.sub_id);
+			const SubEntry *p = subs.getptr(it.sub_id);
 			if (!p) {
 				continue; // suscripción liberada
 			}
-			oid = *p;
+			oid = p->obj;
 		}
 		RosSubscriber *sub = Object::cast_to<RosSubscriber>(ObjectDB::get_instance(oid));
 		if (sub) {

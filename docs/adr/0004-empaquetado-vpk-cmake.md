@@ -1,6 +1,6 @@
 # ADR 0004: Empaquetado `.vpk` con CMake
 
-- **Estado:** Aceptado
+- **Estado:** Aceptado; **alcance reducido desde 2026-10-27**: CMake solo empaqueta `tools/hwprobe` y la app histórica (`archivo/vita-app/`). Las apps se exportan con Godot (ADR 0008; `tools/export-vita-vpk.sh`).
 - **Fecha:** 2026-06-08
 
 ## Contexto

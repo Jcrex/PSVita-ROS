@@ -16,6 +16,13 @@ Siete agentes en paralelo, todos de **solo lectura** (no movieron ni editaron na
 
 ## Lista consolidada de acciones (pendiente de decisión del usuario)
 
+> **Estado (2026-11-13, Fase O; detalle en `docs/ia/organizacion/O1b-auditoria-estado.md`):** lotes **0, 1, 2a y 3
+> cerrados** en `bbbfa2d` (2026-11-01). **Lote 2b cerrado por la Fase O** (ADR 0014: `vita-app/` y `godot/godot35/`
+> con los docs 20–21 pasan a `archivo/` en el paso O2c, tras extraer el paraguas Rust a `modules/paraguas-rust/`, el
+> script del cliente XRCE a `tools/` y `netlog.c` a `tools/hwprobe/`). Del lote 4, **R2 y R3 hechos** (`ee4e7b3`,
+> `cc824f4`). **Siguen abiertos** el resto del lote 4 (B1–B3, R1, X1) y el lote 5: son código, no organización.
+> Los informes `04a`/`04b` están superados por el doc 26 + ADR 0010.
+
 ### Lote 0 — antes del commit de G7a
 - Añadir `godot/g7-imu/.godot/` a `.gitignore` (01b).
 

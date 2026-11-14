@@ -1,6 +1,19 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1"]
+[ext_resource type="PackedScene" path="res://casa/casa.tscn" id="2_0xm2m"]
 
-[node name="Main" type="Node3D"]
+[sub_resource type="Environment" id="Environment_h2yge"]
+ambient_light_source = 2
+ambient_light_color = Color(0.5, 0.52, 0.58, 1)
+
+[node name="Main" type="Node3D" unique_id=522610380]
 script = ExtResource("1")
+
+[node name="Casa" parent="." unique_id=1972726779 instance=ExtResource("2_0xm2m")]
+
+[node name="Luz" type="DirectionalLight3D" parent="." unique_id=36100217]
+transform = Transform3D(0.81915206, -0.46984634, 0.32898995, 0, 0.57357645, 0.81915206, -0.57357645, -0.6710101, 0.46984634, 0, 0, 0)
+
+[node name="Ambiente" type="WorldEnvironment" parent="." unique_id=757341975]
+environment = SubResource("Environment_h2yge")

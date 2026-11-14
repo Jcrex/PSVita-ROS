@@ -1,5 +1,10 @@
 # Web del proyecto — PSVita-ROS
 
+> **Rutas ajustadas a ADR 0014 sin probar (web en pausa, 2026-11-13).** `web/Dockerfile` copia
+> `archivo/vita-app/` y `archivo/godot/godot35/README.md` a sus rutas antiguas dentro de la imagen. `pnpm dev` fuera de
+> Docker no verá `vita-app/README.md` ni `godot/godot35/README.md`; los docs archivados (10, 11, 16, 19, 20, 21)
+> desaparecen de la colección `docs/*.md` y `fases.ts` conserva enlaces rotos hacia ellos.
+
 Sitio interactivo que presenta el proyecto, publica las guías y la
 documentación, muestra el progreso por fases y — desde la fase de
 desarrollo web (`docs/08`) — funciona como **panel de control del

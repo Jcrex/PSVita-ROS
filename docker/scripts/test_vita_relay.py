@@ -1,0 +1,696 @@
+#!/usr/bin/env python3
+"""Pruebas de las funciones puras del relay (sin ROS): python3 docker/scripts/test_vita_relay.py
+
+VC/1 (scan, tesela, path) y VC/1 rev. 2 (V6, doc 36 §5): cabecera común `trocear` con huellas cruzadas que
+`godot/plantillas/pruebas/runner.gd` comprueba con `vc1.gd` (mismos bytes Python = GDScript), presupuesto de red y
+perfiles (el relay NO arranca con «todo»), época del mapa, tamaños CDR exactos de Log y DiagnosticArray (contra
+rosbags si está instalado, p. ej. con toolchains/rosbags-venv/bin/python), rosout, diagnostics, ritmo y relay_info."""
+import math
+import os
+import random
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import vita_relay as vr  # noqa: E402
+import vita_relay_formatos as vf  # noqa: E402
+
+
+def test_scan():
+    rng = random.Random(1)
+    for n in (180, 360, 720, 1081):
+        ranges = [rng.uniform(0.2, 9.0) for _ in range(n)]
+        ranges[5] = float("inf"); ranges[7] = float("nan"); ranges[9] = 0.05
+        inc = 2 * math.pi / n
+        d = vr.empaquetar_scan(ranges, -math.pi, inc, 0.12, 10.0, seq=3)
+        assert d[3] <= 180 and len(d) == 4 + d[3]
+        assert vr.cdr_multiarray(len(d), 2) <= vr.MAX_BE, (n, vr.cdr_multiarray(len(d), 2))
+        pts = vr.desempaquetar_scan(d)
+        paso = math.ceil(n / 180)
+        for (a, r) in pts[:20]:
+            k = round((a + math.pi) / inc)
+            assert k % paso == 0
+            assert abs(r - ranges[k]) <= 0.006, (r, ranges[k])
+            assert abs(a - (-math.pi + k * inc)) < 1e-3
+    print("scan ok")
+
+
+def test_tesela():
+    rng = random.Random(2)
+    w, h = 70, 45                                # no múltiplos de 32: teselas de borde parciales
+    data = [rng.choice([-1, 0, 10, 50, 80, 100]) for _ in range(w * h)]
+    for ty in range(math.ceil(h / 32)):
+        for tx in range(math.ceil(w / 32)):
+            b = vr.empaquetar_tesela(data, w, h, tx, ty, 513)
+            assert len(b) == 260 and vr.cdr_multiarray(len(b), 1) <= vr.MAX_BE
+            ver, x, y, celdas = vr.desempaquetar_tesela(b)
+            assert (ver, x, y) == (513, tx, ty)
+            for j in range(32):
+                for i in range(32):
+                    gx, gy = tx * 32 + i, ty * 32 + j
+                    esperado = vr.celda_2bit(data[gy * w + gx]) if gx < w and gy < h else 0
+                    assert celdas[j * 32 + i] == esperado
+    print("tesela ok")
+
+
+def test_path():
+    pts = [(i * 0.01, math.sin(i * 0.01) * 2) for i in range(2000)]
+    d = vr.empaquetar_path(pts)
+    n = int(d[0])
+    assert n <= 57 and len(d) == 1 + 2 * n and vr.cdr_multiarray(len(d), 4) <= vr.MAX_BE
+    assert (d[1], d[2]) == pts[0] and (d[-2], d[-1]) == pts[-1]
+    recta = [(i * 0.1, 0.0) for i in range(100)]
+    assert int(vr.empaquetar_path(recta)[0]) == 2
+    print("path ok")
+
+
+def test_limites():
+    assert vr.cdr_multiarray(118, 4) <= vr.MAX_BE < vr.cdr_multiarray(119, 4)   # joints / Float32MultiArray
+    assert vr.cdr_multiarray(6, 4) <= vr.MAX_BE                                 # pose2d
+    print("límites ok")
+
+
+# ============================================================================= VC/1 rev. 2 (V6)
+
+# Huellas cruzadas: los MISMOS vectores y constantes están en godot/plantillas/pruebas/runner.gd (`_probar_vc1`).
+# Si cambia el formato en un lado, falla la prueba de ese lado.
+HUELLA_TROCEAR_F32 = "5da842991233e493fd04afd2d9c78df6"
+HUELLA_TROCEAR_I16 = "e2c81111e76c4b212dd9b5340850a655"
+
+
+def vector_trocear():
+    return [[i * 3 - 50, i % 7, 1000 + i, -i] for i in range(40)]
+
+
+def test_trocear():
+    el = vector_trocear()
+    t = vf.trocear(el, 4, (640, 480), seq=40000)
+    assert [x[:6] for x in t] == [[40000 & 0x7FFF, 0, 2, 28, 640, 480], [40000 & 0x7FFF, 1, 2, 12, 640, 480]]
+    assert len(t[0]) == vf.MAX_F32 and vf.cdr_multiarray(len(t[0]), 4) <= vf.MAX_BE
+    assert vf.huella([v for x in t for v in x]) == HUELLA_TROCEAR_F32
+    t2 = vf.trocear(el * 3, 4, (), seq=7, max_valores=vf.MAX_I16, max_trozos=3)   # 120 → corta a 3 × 58 = 174
+    assert [x[3] for x in t2] == [58, 58, 4] and all(vf.cdr_multiarray(len(x), 2) <= vf.MAX_BE for x in t2)
+    assert vf.huella([v for x in t2 for v in x]) == HUELLA_TROCEAR_I16
+    t3 = vf.trocear(el * 10, 4, (), seq=1, max_trozos=3)                            # estado completo: ≤ 3 trozos
+    assert len(t3) == 3 and sum(x[3] for x in t3) == 3 * 28
+    assert vf.trocear([], 8, (), seq=1) == [[1, 0, 1, 0]]                           # vacío = un trozo con n = 0
+    # Cuentas del catálogo (doc 36 §5.3): marcadores 11 × 10, puntos 36 × 3 + 4, det. 18 × 6 + 2, det3d 12 × 9,
+    # poses 36 × 3, tf 8 × 8, nube 76 × 3 int16.
+    for por, extra, n, esperado, tam in ((10, (), 11, 472, 4), (3, (0, 0, 0, 0), 36, 480, 4), (6, (0, 0), 18, 472, 4),
+                                         (9, (), 12, 464, 4), (3, (), 36, 464, 4), (8, (), 8, 288, 4),
+                                         (3, (), 76, 480, 2)):
+        mx = vf.MAX_F32 if tam == 4 else vf.MAX_I16
+        x = vf.trocear([[0] * por] * n, por, extra, max_valores=mx)
+        assert len(x) == 1 and x[0][3] == n and vf.cdr_multiarray(len(x[0]), tam) == esperado, (por, n, len(x[0]))
+    for x in t + t2:
+        c = vf.cabecera(x)
+        assert c is not None and c["n"] == x[3] and 0 <= c["trozo"] < c["n_trozos"]
+    assert vf.cabecera([1, 2, 2, 0]) is None and vf.cabecera([1, 0, 0, 0]) is None and vf.cabecera([1, 0]) is None
+    assert vf.cabecera([1, 0, 1, -1]) is None
+    print("trocear y cabecera ok")
+
+
+def test_presupuesto():
+    kb, dgr = vf.comprobar_presupuesto(vf.PERFILES["hmi"])
+    assert abs(kb - 19.1) < 0.1 and dgr == 108, (kb, dgr)                        # doc 36 §5.4: 19,2 / 108
+    kb, dgr = vf.comprobar_presupuesto(vf.PERFILES["viz"])
+    assert abs(kb - 35.0) < 0.05 and round(dgr) == 153, (kb, dgr)
+    kb, dgr = vf.comprobar_presupuesto(vf.PERFILES["percepcion"])
+    assert abs(kb - 40.0) < 0.05 and dgr == 154, (kb, dgr)
+    try:
+        vf.resolver_modulos(["todo"])
+        assert False, "«todo» no debe arrancar"
+    except ValueError as e:
+        assert "65.9 KB/s" in str(e) and "229" in str(e) and "sobra «ritmo»" in str(e), e
+    try:
+        vf.resolver_modulos(["hmi", "camara", "nube", "marcadores", "tf", "costmap", "ritmo"])
+        assert False
+    except ValueError as e:
+        assert "sobra" in str(e)
+    mods, kb, dgr = vf.resolver_modulos(["hmi"])
+    assert mods == ["scan", "pose", "joints", "mapa", "path", "rosout", "diag"] and kb < 20.0
+    assert vf.resolver_modulos(["scan,pose"[0:4], "pose", "scan"])[0] == ["scan", "pose"]   # sin repetidos
+    for malo in ([m] for m in vf.FASE if m not in vf.IMPLEMENTADOS):           # cabe, pero aún no existe (V11: dinámico)
+        try:
+            vf.resolver_modulos(malo)
+            assert False
+        except ValueError as e:
+            assert "sin implementar" in str(e) and vf.FASE[malo[0]] in str(e), e
+    for malo in (["nada"], ["nucleo"], []):
+        try:
+            vf.resolver_modulos(malo)
+            assert False
+        except ValueError:
+            pass
+    # El relay se niega a arrancar con «todo» (sin ROS: modo --comprobar, mismo camino que el nodo).
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    r = subprocess.run([sys.executable, script, "--comprobar", "todo"], capture_output=True, text=True)
+    assert r.returncode == 1 and "NO arranca" in r.stdout, (r.returncode, r.stdout)
+    r = subprocess.run([sys.executable, script, "--comprobar", "hmi"], capture_output=True, text=True)
+    assert r.returncode == 0 and "19.1 KB/s" in r.stdout, r.stdout
+    # [juez V3, D3] camara_hz: > 3 Hz solo si el relay entero sigue ≤ 40 KB/s nominales.
+    per = vf.PERFILES["percepcion"]
+    hz, kb, motivo = vf.camara_hz_efectivo(per, 3)
+    assert hz == 3.0 and abs(kb - 39.998) < 0.001 and motivo == ""
+    hz, kb, motivo = vf.camara_hz_efectivo(per, 5)                               # 46,0 KB/s: se queda en 3
+    assert hz == 3.0 and kb <= vf.KB_PERFIL_MAX and "46.0 KB/s" in motivo, (hz, kb, motivo)
+    hz, kb, motivo = vf.camara_hz_efectivo(vf.PERFILES["hmi"] + ["camara"], 5)   # 19,1 + 15,0 = 34,1: concedido
+    assert hz == 5.0 and abs(kb - 34.1) < 0.1 and motivo == "", (hz, kb, motivo)
+    hz, kb, motivo = vf.camara_hz_efectivo(vf.PERFILES["hmi"] + ["camara"], 9)   # tope duro 5
+    assert hz == 5.0 and "máximo" in motivo
+    assert vf.camara_hz_efectivo(vf.PERFILES["viz"] + ["camara"], 5)[0] == 3.0   # 50 KB/s: no
+    assert vf.camara_hz_efectivo(["camara"], 4)[0] == 4.0 and vf.camara_hz_efectivo(per, 2)[0] == 2.0
+    assert vf.camara_hz_efectivo(per, 0)[0] == 0.0 and vf.camara_hz_efectivo(per, float("nan"))[0] == 0.0
+    print("presupuesto ok")
+
+
+def test_relay_info_y_epoca():
+    s = vf.relay_info(["nucleo", "scan", "rosout"])
+    assert s == "VC/1.2;scan,rosout" and vf.leer_relay_info(s) == ("VC/1.2", ["scan", "rosout"])
+    assert vf.leer_relay_info("hola") is None and vf.leer_relay_info("VC/1.2;") == ("VC/1.2", [])
+    geo = (0.05, 100, 80, -2.5, -2.0)
+    v, nueva = vf.epoca_mapa(None, geo, 0)
+    assert (v, nueva) == (1, True)
+    assert vf.epoca_mapa(geo, geo, v) == (1, False)                              # mismo mapa: misma época
+    assert vf.epoca_mapa(geo, (0.05, 100, 81, -2.5, -2.0), v) == (2, True)       # tamaño
+    assert vf.epoca_mapa(geo, (0.05, 100, 80, -2.0, -2.0), v) == (2, True)       # origen
+    assert vf.epoca_mapa(geo, (0.1, 100, 80, -2.5, -2.0), 0xFFFF) == (0, True)   # resolución; vuelta a 16 bit
+    print("relay_info y época ok")
+
+
+def test_rosout_y_diag():
+    assert vf.compactar_log(20, "nodo", "info") is None
+    n, t = vf.compactar_log(30, "n" * 100, "x" * 500)
+    assert len(n) == vf.MAX_CAR_NOMBRE_LOG and len(t) == 200 and vf.cdr_log(n, t) <= vf.MAX_BE
+    n, t = vf.compactar_log(40, "nodo", "€" * 200)                               # UTF-8 de 3 B: recorta más
+    assert vf.cdr_log(n, t) <= vf.MAX_BE and 0 < len(t) < 200
+    assert vf.cdr_log("a", "b") == 52                                            # comprobado con rosbags
+    e = vf.compactar_estado(2, "d" * 60, "m" * 60, [("k%d" % i, "v" * 50) for i in range(5)])
+    assert e[0] == 2 and len(e[1]) == 40 and len(e[2]) == 40 and len(e[3]) == 3 and len(e[3][0][1]) == 40
+    assert vf.cdr_diag("", e[1], e[2], "", e[3]) <= vf.MAX_BE
+    e = vf.compactar_estado(1, "é" * 40, "ü" * 40, [("ø" * 40, "ß" * 40)] * 3)
+    assert vf.cdr_diag("", e[1], e[2], "", e[3]) <= vf.MAX_BE
+    assert vf.cdr_diag("", "a", "b", "", []) == 56                               # comprobado con rosbags
+    _comparar_con_rosbags()
+    plan = vf.PlanDiag(repaso_s=1.0)
+    plan.actualizar((0, "motor", "ok", []))
+    plan.actualizar((0, "bateria", "ok", []))
+    assert plan.siguiente(0.0)[1] == "motor" and plan.siguiente(0.1)[1] == "bateria"
+    assert plan.siguiente(0.2) is None                                           # nada cambia y aún no toca repaso
+    plan.actualizar((0, "motor", "ok", [("t", "41")]))                           # cambia un valor: no es «cambio»
+    assert plan.siguiente(0.3) is None
+    plan.actualizar((2, "motor", "caliente", []))                                # cambia el nivel: sale ya
+    assert plan.siguiente(0.4)[0] == 2
+    assert plan.siguiente(1.15)[1] == "bateria"                                  # repaso a 1 Hz por estado
+    assert plan.siguiente(1.2) is None and plan.siguiente(1.45)[1] == "motor"
+    print("rosout y diagnostics ok")
+
+
+def _comparar_con_rosbags():
+    try:
+        from rosbags.typesys import Stores, get_typestore
+    except ImportError:
+        print("  (rosbags no instalado: tamaños CDR sin comparar; usar toolchains/rosbags-venv/bin/python)")
+        return
+    ts = get_typestore(Stores.ROS2_JAZZY)
+    T = ts.types
+    for nombre, texto in (("a", "b"), ("n" * 60, "ñ" * 200), ("", "")):
+        m = T["rcl_interfaces/msg/Log"](stamp=T["builtin_interfaces/msg/Time"](sec=1, nanosec=2), level=30,
+                                         name=nombre, msg=texto, file="", function="", line=0)
+        assert len(ts.serialize_cdr(m, "rcl_interfaces/msg/Log")) == vf.cdr_log(nombre, texto)
+    for fr, nom, msg, pares in (("", "a", "b", []), ("map", "n" * 40, "é" * 40, [("k", "v")] * 3)):
+        st = T["diagnostic_msgs/msg/DiagnosticStatus"](level=1, name=nom, message=msg, hardware_id="", values=[
+            T["diagnostic_msgs/msg/KeyValue"](key=k, value=v) for k, v in pares])
+        m = T["diagnostic_msgs/msg/DiagnosticArray"](header=T["std_msgs/msg/Header"](
+            stamp=T["builtin_interfaces/msg/Time"](sec=0, nanosec=0), frame_id=fr), status=[st])
+        assert len(ts.serialize_cdr(m, "diagnostic_msgs/msg/DiagnosticArray")) == vf.cdr_diag(fr, nom, msg, "", pares)
+    print("  tamaños CDR = rosbags")
+
+
+# V9 (doc 36 §5.3): huellas de bits float32 que `godot/plantillas/pruebas/visor_tf.gd` comprueba con `vc1.gd`.
+HUELLA_POSE_COV = "919121b347346f313e0ec41b5b0132c7"
+HUELLA_POSES = "52d3f6f9108908b2abd20f08ce668f4d"
+HUELLA_TF = "474c8b147c4b652f59c1959f628dbd40"
+HUELLA_TF_ESTATICO = "3b84bb423aeaedebed5039a2aa5ab62e"
+
+
+def vectores_v9():
+    """Los mismos vectores que `_probar_bytes` de pruebas/visor_tf.gd."""
+    cov = [i * 0.01 - 0.1 for i in range(36)]
+    poses = [(i * 0.25 - 3, (i % 7) * 0.5, (i % 13) * 0.125 - 0.75) for i in range(100)]
+    items = [[k, k * 0.5, -k * 0.25, 0.1 * k, 0, 0, 0.6, 0.8] for k in range(10)]
+    return cov, poses, items
+
+
+def test_tf_poses():
+    cov, poses, items = vectores_v9()
+    pc = vf.empaquetar_pose_cov(1.5, -2.25, 0.3, cov)
+    assert len(pc) == 7 and vf.cdr_multiarray(7, 4) == 44 and pc[3] == cov[0] and pc[6] == cov[35]
+    assert vf.huella_f32_bits(pc) == HUELLA_POSE_COV
+    tp = vf.empaquetar_poses(poses, 40000)
+    c = vf.cabecera(tp)
+    assert c == {"seq": 7232, "trozo": 0, "n_trozos": 1, "n": 34}            # 100 poses, paso 3 → 34
+    assert vf.cdr_multiarray(len(tp), 4) <= vf.cdr_multiarray(4 + 3 * vf.MAX_POSES, 4) == 464 <= vf.MAX_BE
+    assert vf.huella_f32_bits(tp) == HUELLA_POSES
+    assert vf.leer_poses(tp)[1] == tuple(float(v) for v in poses[3])
+    assert len(vf.diezmar(list(range(36)), 36)) == 36 and vf.diezmar(list(range(37)), 36) == list(range(0, 37, 2))
+    tt = vf.empaquetar_tf(items, 7)
+    assert vf.cabecera(tt)["n"] == 8 and vf.cdr_multiarray(len(tt), 4) == 288 <= vf.MAX_BE
+    assert vf.huella_f32_bits(tt) == HUELLA_TF
+    te = vf.empaquetar_tf(items * 2, 3, vf.MAX_TF_ESTATICOS)
+    assert vf.cabecera(te)["n"] == 16 and vf.cdr_multiarray(len(te), 4) == 544 <= 1100
+    assert vf.huella_f32_bits(te) == HUELLA_TF_ESTATICO
+    # TablaTf: lista blanca, índices estables, tope de 8 dinámicos y estáticos «al cambiar».
+    tabla = vf.TablaTf(["odom", "/base_link"] + [f"f{i}" for i in range(10)])
+    assert tabla.dinamico("map", "odom", (1, 2, 0), (0, 0, 0, 1))
+    assert not tabla.dinamico("odom", "rueda", (0, 0, 0), (0, 0, 0, 1))            # fuera de la lista blanca
+    assert tabla.estatico("base_link", "base_scan", (-0.032, 0, 0.172), (0, 0, 0, 1)) and tabla.cambio_estaticos
+    assert tabla.texto_marcos() == "map>odom,base_link>base_scan" and tabla.cambio_marcos
+    tabla.cambio_estaticos = False
+    assert tabla.estatico("base_link", "base_scan", (-0.032, 0, 0.172), (0, 0, 0, 1)) and not tabla.cambio_estaticos
+    for i in range(10):
+        tabla.dinamico("odom", f"f{i}", (i, 0, 0), (0, 0, 0, 1))
+    assert len(tabla.dinamicos) == 8 and vf.cabecera(tabla.trozo_tf(1))["n"] == 8
+    t = tabla.trozo_tf(2)
+    assert t[4:12] == [0, 1, 2, 0, 0, 0, 0, 1]                                          # idx 0 = map>odom
+    assert vf.cabecera(tabla.trozo_estatico())["n"] == 1 and tabla.trozo_estatico()[4] == 1
+    # Presupuesto: perfil viz ya no dice que faltan pose_cov, poses ni tf (los de V8/V11 pueden faltar aún).
+    try:
+        vf.resolver_modulos(["pose_cov", "poses", "tf"])
+    except ValueError as e:
+        assert False, e
+    print("tf, poses y pose_cov ok")
+
+
+def test_ritmo():
+    r = vf.parsear_ritmo(["imu=/imu/data@20", " temp=/temperature@2.5 ", ""])
+    assert r == [("imu", "/imu/data", 20.0), ("temp", "/temperature", 2.5)]
+    for malo in (["imu:/imu@20"], ["IMU=/imu@20"], ["imu=/imu@0"], ["imu=/imu@31"], ["a=/a@20", "b=/b@11"],
+                 ["a=/a@1", "a=/b@1"], ["a=sin_barra@1"]):
+        try:
+            vf.parsear_ritmo(malo)
+            assert False, malo
+        except ValueError:
+            pass
+    cubo = vf.CuboBytes(1000)
+    assert cubo.permitir(600, 0.0) and not cubo.permitir(600, 0.5) and cubo.permitir(400, 0.6)
+    assert cubo.permitir(1000, 1.1) and not cubo.permitir(1, 1.2)
+    print("ritmo ok")
+
+
+# ============================================================================= marcadores (V8)
+
+# Huellas cruzadas con godot/plantillas/pruebas/visor_marcadores.gd (`_probar_bytes`): mismos vectores, mismos bytes
+# float32 (PackedFloat32Array.to_byte_array().hex_encode().md5_text()) y el mismo texto.
+HUELLA_MARCADORES = "a2f417e25439969dec1637dd4cd66bdd"
+HUELLA_PUNTOS = "170eed3a87485e2bf9c13e4ccc2e400a"
+HUELLA_TEXTO = "32eb49e4a031452af4e90ddeff303c72"
+CLAVE_VISOR_3 = 14529283
+
+
+def vector_marcadores():
+    """(ns, id, tipo, x, y, z, yaw, sx, sy, sz, r, g, b, a) × 33: los mismos en visor_marcadores.gd."""
+    cols = [(0.9, 0.1, 0.1), (0.1, 0.8, 0.2), (0.15, 0.35, 1.0), (1.0, 1.0, 0.0), (0.5, 0.25, 0.75), (0.3, 0.3, 0.3)]
+    out = []
+    for i in range(33):
+        r, g, b = cols[i % len(cols)]
+        out.append(("ns%d" % (i % 4), i * 7 - 20, i % 4, i * 0.25 - 3.0, 1.5 - i * 0.125, 0.0625 * (i % 5),
+                    -1.5 + i * 0.09375, 0.5 + (i % 3) * 0.25, 0.25, 0.75, r, g, b, (i % 4) / 3.0))
+    return out
+
+
+def elementos_marcadores():
+    return [[vf.clave_marcador(ns, i), t, x, y, z, yaw, sx, sy, sz, vf.color_marcador(vf.indice_paleta(r, g, b), a)]
+            for (ns, i, t, x, y, z, yaw, sx, sy, sz, r, g, b, a) in vector_marcadores()]
+
+
+def puntos_prueba():
+    return [(i * 0.5 - 4.0, (i % 6) * 0.25, 0.125 * (i % 3)) for i in range(50)]
+
+
+def _Ns(**k):
+    from types import SimpleNamespace
+    return SimpleNamespace(**k)
+
+
+def marker(ns="a", ident=0, tipo=1, accion=0, frame="map", pos=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0),
+           escala=(1.0, 1.0, 1.0), color=(1.0, 0.0, 0.0, 1.0), puntos=(), texto="", vida=0.0, locked=False):
+    P = lambda x, y, z: _Ns(x=x, y=y, z=z)  # noqa: E731
+    return _Ns(ns=ns, id=ident, type=tipo, action=accion, header=_Ns(frame_id=frame),
+               pose=_Ns(position=P(*pos), orientation=_Ns(x=q[0], y=q[1], z=q[2], w=q[3])), scale=P(*escala),
+               color=_Ns(r=color[0], g=color[1], b=color[2], a=color[3]), points=[P(*p) for p in puntos],
+               text=texto, lifetime=_Ns(sec=int(vida), nanosec=int((vida % 1) * 1e9)), frame_locked=locked)
+
+
+def test_marcadores():
+    # Formato y tamaños: 33 marcadores = 3 trozos de ≤ 472 B; puntos ≤ 480 B; textos ≤ 80 car.
+    el = elementos_marcadores()
+    t = vf.empaquetar_marcadores(el, seq=70000)
+    assert len(t) == 3 and [x[3] for x in t] == [11, 11, 11] and t[0][0] == 70000 & 0x7FFF
+    assert all(vf.cdr_multiarray(len(x), 4) <= 472 for x in t) and vf.cdr_multiarray(len(t[0]), 4) == 472
+    assert len(vf.empaquetar_marcadores(el + el, 1)) == 3                        # tope 33 (estado completo)
+    assert vf.empaquetar_marcadores([], 5) == [[5, 0, 1, 0]]                     # vacío: borra todo en la Vita
+    pts = vf.empaquetar_puntos(vf.clave_marcador("lineas", 2), 4, vf.color_marcador(2, 1.0), 0.05, puntos_prueba(), 9)
+    assert [x[3] for x in pts] == [36, 14] and all(vf.cdr_multiarray(len(x), 4) <= 480 for x in pts)
+    assert pts[0][4:8] == [vf.clave_marcador("lineas", 2), 4, 2 + 256 * 15, 0.05]
+    assert sum(x[3] for x in vf.empaquetar_puntos(1, 8, 0, 0.1, [(0, 0, 0)] * 500, 1)) == 108   # tope 3 trozos
+    tx = vf.texto_marcador(vf.clave_marcador("txt", 1), 1.25, -2.5, 0.125, "hola|mundo " + "x" * 100)
+    assert len(tx.split("|", 4)[4]) == 80 and vf.leer_texto_marcador(tx)[4].startswith("hola|mundo")
+    assert vf.leer_texto_marcador("1|2|3") is None
+    # Claves y colores exactos en float32
+    assert all(0 <= vf.clave_marcador("n" * k, i) <= 0xFFFFFF for k in range(5) for i in (-5, 0, 2 ** 31 - 1))
+    assert vf.clave_marcador("visor", 3) != vf.clave_marcador("visor", 4) != vf.clave_marcador("otro", 3)
+    assert vf.color_marcador(255, 1.0) == 4095 and vf.color_marcador(7, 0.0) == 7 and vf.color_marcador(3, 0.5) == 3 + 256 * 8
+    assert vf.indice_paleta(1, 1, 1) == 0 and vf.indice_paleta(0.9, 0.1, 0.1) == 2 and vf.indice_paleta(1, 0.647059, 0) == 8
+    plano = [v for x in t for v in x]
+    plano_p = [v for x in pts for v in x]
+    assert vf.huella_f32(plano) == HUELLA_MARCADORES
+    assert vf.huella_f32(plano_p) == HUELLA_PUNTOS and _md5(tx) == HUELLA_TEXTO
+    assert vf.clave_marcador("visor", 3) == CLAVE_VISOR_3
+    # Semántica (marker_common.cpp): ADD/MODIFY, DELETE, DELETEALL por ns, recrear, NaN, lifetime, frame_locked.
+    e = vf.EstadoMarcadores()
+    fijo = lambda f: vf.IDENTIDAD if f in ("", "map") else None  # noqa: E731
+    for i in range(3):
+        e.aplicar(marker("a", i, 1, pos=(i, 0, 0)), 0.0)
+    e.aplicar(marker("b", 0, 2), 0.0)
+    m, p, x = e.ciclo(0.0, fijo)
+    assert len(m) == 4 and m[0][2] == 0.0 and m[2][2] == 2.0
+    e.aplicar(marker("a", 1, 1, pos=(5, 0, 0)), 0.1)                             # MODIFY: misma entrada
+    e.aplicar(marker("a", 1, 3, accion=1, pos=(6, 0, 0)), 0.1)                   # cambia el tipo: se recrea al final
+    m, _, _ = e.ciclo(0.1, fijo)
+    assert [r[1] for r in m] == [1, 1, 2, 3] and m[-1][2] == 6.0
+    e.aplicar(marker("a", 0, accion=2), 0.2)                                     # DELETE
+    assert len(e.ciclo(0.2, fijo)[0]) == 3
+    e.aplicar(marker("a", accion=3), 0.3)                                        # DELETEALL de «a»
+    m, _, _ = e.ciclo(0.3, fijo)
+    assert len(m) == 1 and m[0][1] == 2
+    e.aplicar(marker("c", 0, 1, pos=(float("nan"), 0, 0)), 0.3)
+    assert e.rechazados == 1 and len(e.ciclo(0.3, fijo)[0]) == 1
+    e.aplicar(marker("v", 0, 1, vida=0.5), 1.0)
+    assert len(e.ciclo(1.4, fijo)[0]) == 2 and len(e.ciclo(1.6, fijo)[0]) == 1    # reloj de recepción
+    e.aplicar(marker("", 0, accion=3), 2.0)                                      # DELETEALL sin ns: todo
+    assert e.ciclo(2.0, fijo)[0] == []
+    # Marco: yaw y TF; sin TF no se manda; frame_locked se resuelve cada ciclo, sin él una sola vez.
+    tf = {"base": ((1.0, 2.0, 0.0), (0.0, 0.0, math.sin(math.pi / 4), math.cos(math.pi / 4)))}
+    res = lambda f: vf.IDENTIDAD if f == "map" else tf.get(f)  # noqa: E731
+    e.aplicar(marker("t", 0, 0, frame="base", pos=(1, 0, 0), escala=(1, 0.1, 0.1)), 3.0)
+    e.aplicar(marker("t", 1, 1, frame="base", locked=True), 3.0)
+    e.aplicar(marker("t", 2, 1, frame="sin_tf"), 3.0)
+    m, _, _ = e.ciclo(3.0, res)
+    assert len(m) == 2 and e.sin_tf == 1
+    assert abs(m[0][2] - 1.0) < 1e-9 and abs(m[0][3] - 3.0) < 1e-9 and abs(m[0][5] - math.pi / 2) < 1e-9
+    tf["base"] = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    m, _, _ = e.ciclo(3.2, res)
+    assert abs(m[0][3] - 3.0) < 1e-9 and abs(m[1][2]) < 1e-9 and abs(m[1][3]) < 1e-9   # sin locked / locked
+    # Puntos, listas, textos y flecha por 2 puntos
+    e = vf.EstadoMarcadores()
+    e.aplicar(marker("l", 0, 4, pos=(1, 0, 0), escala=(0.05, 0, 0), puntos=[(0, 0, 0), (1, 1, 0)]), 0.0)
+    e.aplicar(marker("l", 1, 9, pos=(0, 0, 2), texto="hola"), 0.0)
+    e.aplicar(marker("l", 2, 0, puntos=[(0, 0, 0), (0, 2, 0)], escala=(0.05, 0.1, 0.0)), 0.0)
+    e.aplicar(marker("l", 3, 11, puntos=[(0, 0, 0)] * 3), 0.0)
+    m, p, x = e.ciclo(0.0, fijo)
+    k0, k1 = vf.clave_marcador("l", 0), vf.clave_marcador("l", 1)
+    assert [r[1] for r in m] == [4, 9, 0] and e.ignorados == 1                   # TRIANGLE_LIST no viaja
+    assert p[k0] == (4, vf.color_marcador(vf.indice_paleta(1, 0, 0), 1.0), 0.05, [(1, 0, 0), (2, 1, 0)])
+    assert x[k1] == (0, 0, 2, "hola")
+    assert abs(m[2][5] - math.pi / 2) < 1e-9 and abs(m[2][6] - 2.0) < 1e-9 and abs(m[2][7] - 0.05) < 1e-9
+    e = vf.EstadoMarcadores()
+    for i in range(40):
+        e.aplicar(marker("n", i, 1), 0.0)
+    assert len(e.ciclo(0.0, fijo)[0]) == 33 and e.cortados == 7
+    # Ronda: primero lo que cambia, después repaso; lo que desaparece se olvida.
+    r = vf.PlanRonda()
+    r.actualizar({1: "a", 2: "b"})
+    assert [r.siguiente()[0] for _ in range(4)] == [1, 2, 1, 2]
+    r.actualizar({1: "a", 2: "B", 3: "c"})
+    assert [r.siguiente()[0] for _ in range(2)] == [2, 3]
+    r.actualizar({3: "c"})
+    assert r.siguiente()[0] == 3 and r.siguiente()[0] == 3
+    r.actualizar({})
+    assert r.siguiente() is None
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    rr = subprocess.run([sys.executable, script, "--comprobar", "hmi,marcadores"], capture_output=True, text=True)
+    assert rr.returncode == 0 and "marcadores" in rr.stdout, rr.stdout
+    print("marcadores ok")
+
+
+# ----------------------------------------------------------------------------- percepción (V10)
+# Huellas cruzadas con godot/plantillas/pruebas/visor_percepcion.gd (`_probar_bytes_percepcion`): mismos vectores,
+# mismos float32 (MD5 del hex, `huella_f32`) y mismos enteros (MD5 de los enteros con comas, `huella`).
+HUELLA_DET2D = "ee2ba52555c851eb7215e34e3e29df65"
+HUELLA_DET3D = "85721035f7b1d215bcd3006fc4c5bcde"
+HUELLA_NUBE = "749401e964f564fdba18ef774a5e8333"
+
+
+def vector_det2d_percepcion():
+    out = []
+    for i in range(22):
+        out.append([i % 4, ((i * 7) % 20) / 20.0, 10.0 + i * 25.5, 20.0 + i * 12.25, 30.0 + (i % 5) * 8, 40.0 + (i % 3) * 10])
+    out[5][2] = float("nan")                                   # NaN: fuera (T2)
+    return out
+
+
+def vector_det3d_percepcion():
+    out = []
+    for i in range(15):
+        out.append([i % 3, ((i * 3) % 10) / 10.0, i * 0.5 - 3.0, 1.0 - i * 0.25, 0.125 * (i % 4), -1.5 + i * 0.2,
+                    0.5 + (i % 3) * 0.25, 0.4, 1.7])
+    out[4][1] = float("nan")
+    return out
+
+
+def vector_nube_percepcion():
+    out = []
+    for i in range(1200):
+        x = float("nan") if i % 97 == 0 else -4.0 + (i % 40) * 0.07
+        out.append((x, -2.0 + (i // 40) * 0.13, 0.05 * (i % 7) - 0.1))
+    return out
+
+
+def _imagen_prueba_percepcion(ancho=640, alto=480):
+    """RGB uint8 con degradado, rectángulos y algo de ruido (escena «realista» para el tope de 3 KB)."""
+    import numpy as np
+    rng = np.random.default_rng(3)
+    yy, xx = np.mgrid[0:alto, 0:ancho]
+    img = np.stack([(xx * 255 // ancho), (yy * 255 // alto), np.full_like(xx, 90)], axis=2).astype(np.int16)
+    for k in range(6):
+        x0, y0 = 40 + k * 90, 60 + (k % 3) * 110
+        img[y0:y0 + 80, x0:x0 + 60] = (200 - k * 30, 40 + k * 30, 220 - k * 20)
+    img += rng.integers(-12, 13, size=img.shape, dtype=np.int16)
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def test_percepcion():
+    import struct
+    # det2d: 22 cajas (una NaN) → las 18 de más score; 472 B
+    d2 = vf.empaquetar_det2d(vector_det2d_percepcion(), 640, 480, 70001)
+    assert d2[:6] == [70001 & 0x7FFF, 0, 1, 18, 640.0, 480.0] and len(d2) == 114, d2[:6]
+    assert vf.cdr_multiarray(len(d2), 4) == 472
+    scores = [d2[7 + 6 * i] for i in range(18)]
+    assert scores == sorted(scores, reverse=True) and all(math.isfinite(v) for v in d2)
+    an, al, cajas = vf.leer_det2d(d2)
+    assert (an, al, len(cajas)) == (640.0, 480.0, 18)
+    plano2 = [struct.unpack("<f", struct.pack("<f", v))[0] for v in d2]
+    h2 = vf.huella_f32(plano2)
+    # det3d: 15 (una NaN) → 12; 464 B
+    d3 = vf.empaquetar_det3d(vector_det3d_percepcion(), 9)
+    assert d3[:4] == [9, 0, 1, 12] and len(d3) == 112 and vf.cdr_multiarray(len(d3), 4) == 464
+    assert len(vf.leer_det3d(d3)) == 12
+    h3 = vf.huella_f32(d3)
+    # nube: 1 200 puntos (13 NaN) → vóxel 10 cm → ≤ 228 → 3 trozos de ≤ 76 (480 B)
+    pts = vf.voxelizar_nube(vector_nube_percepcion())
+    import numpy as np
+    assert vf.voxelizar_nube_np(np.array(vector_nube_percepcion())) == pts, "numpy = referencia pura"
+    crudos = len(vf.voxelizar_nube(vector_nube_percepcion(), max_n=10 ** 6))
+    assert crudos > 228 and 152 < len(pts) <= 228, (crudos, len(pts))          # diezmado por paso fijo
+    claves = {(p[0] // 10, p[1] // 10, p[2] // 10) for p in pts}
+    assert len(claves) == len(pts), "un punto por vóxel"
+    tn = vf.empaquetar_nube(pts, 123)
+    assert [t[3] for t in tn] == [76, 76, len(pts) - 152] and all(vf.cdr_multiarray(len(t), 2) <= 480 for t in tn)
+    assert vf.cdr_multiarray(len(tn[0]), 2) == 480
+    assert all(-32768 <= v <= 32767 for t in tn for v in t)
+    assert vf.leer_nube(tn[2])[0] == tuple(pts[152])
+    assert vf.empaquetar_nube([], 4) == [[4, 0, 1, 0]] and vf.voxelizar_nube([(float("inf"), 0, 0)]) == []
+    hn = vf.huella([v for t in tn for v in t])
+    print(f"percepción: huellas det2d={h2} det3d={h3} nube={hn}")
+    assert (h2, h3, hn) == (HUELLA_DET2D, HUELLA_DET3D, HUELLA_NUBE), "actualizar las huellas (y las de GDScript)"
+    # clases
+    tc = vf.TablaClasesDet(max_clases=3)
+    assert [tc.indice(n) for n in ("persona", "coche", "persona", "a,b", "perro")] == [0, 1, 0, 2, -1]
+    assert tc.texto() == "persona,coche,a;b" and tc.cambio and vf.leer_det_clases(tc.texto())[2] == "a;b"
+    try:
+        import PIL  # noqa: F401
+        _probar_camara_percepcion()
+    except ImportError:
+        print("  (sin PIL ni OpenCV: recompresión de la cámara sin probar aquí; probarla en la estación)")
+    try:
+        import rosbags  # noqa: F401
+        _comparar_compressed_rosbags_percepcion()
+    except ImportError:
+        print("  (rosbags no instalado: tamaño CDR de CompressedImage sin contrastar)")
+    # perfil percepción: arranca (todos sus módulos existen) y suma 40,0 KB/s y 154 dgr/s
+    mods, kb, dgr = vf.resolver_modulos(["percepcion"])
+    assert mods[-4:] == ["camara", "det2d", "det3d", "nube"] and abs(kb - 40.0) < 0.05 and dgr == 154 and kb <= 40.0, (mods, kb, dgr)
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    rr = subprocess.run([sys.executable, script, "--comprobar", "percepcion"], capture_output=True, text=True)
+    assert rr.returncode == 0 and "40.0 KB/s" in rr.stdout, rr.stdout
+    print("percepción ok")
+
+
+def _probar_camara_percepcion():
+    """Cámara (D13): JPEG ≤ 160×120 q40 y mensaje ≤ CAMARA_MAX_B. Necesita numpy y PIL (o OpenCV en la estación)."""
+    import numpy as np
+    assert vf.tam_camara(640, 480) == (160, 120) and vf.tam_camara(1280, 720) == (160, 90)
+    assert vf.tam_camara(100, 50) == (100, 50)
+    img = _imagen_prueba_percepcion()
+    jpeg, q, tam = vf.recomprimir_camara(("cruda", "rgb8", 640, 480, 640 * 3, img.tobytes()), "camara")
+    assert jpeg is not None and tam == (640, 480), q
+    nb = vf.cdr_compressed_image("camara", "jpeg", len(jpeg))
+    assert nb <= vf.CAMARA_MAX_B and jpeg[:2] == b"\xff\xd8", nb
+    print(f"percepción: JPEG 160×120 q{q} = {len(jpeg)} B de datos, {nb} B de mensaje (≤ 2 994)")
+    import io
+    from PIL import Image as PilImage
+    s = io.BytesIO()
+    PilImage.fromarray(img).save(s, "JPEG", quality=90)
+    jpeg2, q2, tam2 = vf.recomprimir_camara(("comprimida", "jpeg", s.getvalue()), "camara")
+    assert jpeg2 is not None and tam2 == (640, 480) and len(jpeg2) < len(s.getvalue()) // 5
+    assert PilImage.open(io.BytesIO(jpeg2)).size == (160, 120)
+    bgr = img[:, :, ::-1].copy()
+    j3 = vf.recomprimir_camara(("cruda", "bgr8", 640, 480, 640 * 3, bgr.tobytes()))[0]
+    px = np.asarray(PilImage.open(io.BytesIO(j3)).convert("RGB")).astype(int)[60, 80]
+    ref = np.asarray(PilImage.open(io.BytesIO(jpeg)).convert("RGB")).astype(int)[60, 80]
+    assert np.abs(px - ref).max() < 40, (px, ref)                # bgr8 se pasa a RGB
+    assert vf.recomprimir_camara(("cruda", "mono8", 64, 48, 64, bytes(64 * 48)))[0] is not None
+    assert vf.recomprimir_camara(("cruda", "16UC1", 64, 48, 128, bytes(128 * 48)))[0] is None       # T4
+    assert vf.recomprimir_camara(("comprimida", "16UC1; compressedDepth", b"x"))[0] is None
+    assert vf.recomprimir_camara(("comprimida", "16UC1; png compressed ", b"x"))[0] is None   # revisión V3 (T4)
+    assert vf.recomprimir_camara(("comprimida", "rgb8; jpeg compressed bgr8", s.getvalue()))[0] is not None
+    ruido = np.random.default_rng(5).integers(0, 256, size=(480, 640, 3), dtype=np.uint8)
+    jr, qr, _ = vf.recomprimir_camara(("cruda", "rgb8", 640, 480, 640 * 3, ruido.tobytes()))
+    assert jr is None or vf.cdr_compressed_image("", "jpeg", len(jr)) <= vf.CAMARA_MAX_B, qr   # peor caso: baja q o se salta
+    print(f"percepción: ruido puro → {'saltada' if jr is None else f'q{qr}, {len(jr)} B'}")
+
+
+def _comparar_compressed_rosbags_percepcion():
+    import numpy as np
+    from rosbags.typesys import Stores, get_typestore
+    ts = get_typestore(Stores.ROS2_JAZZY)
+    T = ts.types
+    for f, fmt, n in (("", "jpeg", 0), ("camara", "jpeg", 2961), ("cam", "rgb8; jpeg compressed bgr8", 13)):
+        m = T["sensor_msgs/msg/CompressedImage"](header=T["std_msgs/msg/Header"](
+            stamp=T["builtin_interfaces/msg/Time"](sec=1, nanosec=2), frame_id=f), format=fmt,
+            data=np.zeros(n, dtype=np.uint8))
+        assert len(ts.serialize_cdr(m, "sensor_msgs/msg/CompressedImage")) == vf.cdr_compressed_image(f, fmt, n)
+    print("  CompressedImage: tamaño CDR = rosbags")
+# ----------------------------------------------------------------------------- V11: costmap por teselas de 4 bit
+# Huella cruzada: la misma en `godot/plantillas/pruebas/visor_costmap.gd` (vc1.gd: reducir_costmap +
+# empaquetar_tesela_costmap con los mismos datos).
+HUELLA_COSTMAP = "3814fb5781c2a0f19d936fc85e5b6d87"
+
+
+def rejilla_costmap(w, h):
+    """−2 … 100 (desconocido, libre, degradado, 99 inscrito y 100 letal); la misma fórmula en visor_costmap.gd."""
+    return [(x * 7 + y * 13) % 103 - 2 for y in range(h) for x in range(w)]
+
+
+def vector_costmap():
+    """70×37 a 5 cm → factor 2 → 35×19 a 10 cm → 2×2 teselas de 32×16; época 513. Enteros de los 4 mensajes."""
+    w, h = 70, 37
+    f = vf.factor_costmap(0.05)
+    d, w2, h2 = vf.reducir_costmap(rejilla_costmap(w, h), w, h, f)
+    ntx, nty = vf.teselas_costmap(w2, h2)
+    out = []
+    for ty in range(nty):
+        for tx in range(ntx):
+            out += list(vf.empaquetar_tesela_costmap(d, w2, h2, tx, ty, 513))
+    return (f, w2, h2, ntx, nty), out
+
+
+def test_costmap():
+    # Niveles: los de la LUT de 16 colores (RViz costmap: 0 libre, 99 inscrito, 100 letal, −1 desconocido).
+    assert [vf.celda_costmap_4bit(v) for v in (-1, 0, 1, 50, 92, 93, 98, 99, 100, 120)] == \
+        [0, 1, 2, 7, 12, 13, 13, 14, 15, 15]
+    for v in range(1, 99):                                                        # el nivel más cercano de la LUT
+        n = vf.celda_costmap_4bit(v)
+        assert 2 <= n <= 13
+        assert abs(vf.LUT16_COSTMAP[n] - v) <= min(abs(c - v) for c in vf.LUT16_COSTMAP[2:14]), v
+    # Reducción por máximo (lo conocido gana a −1; un obstáculo no desaparece).
+    assert vf.factor_costmap(0.05) == 2 and vf.factor_costmap(0.1) == 1 and vf.factor_costmap(0.03) == 4
+    assert vf.reducir_costmap([-1, 5, -1, -1, 100, 0, 0, 0, -1], 3, 3, 2) == ([100, 0, 0, -1], 2, 2)
+    # Bytes y tamaño.
+    (f, w2, h2, ntx, nty), plano = vector_costmap()
+    assert (f, w2, h2, ntx, nty) == (2, 35, 19, 2, 2) and len(plano) == 4 * 260
+    assert vf.cdr_multiarray(260, 1) == 276 <= vf.MAX_BE
+    rej = rejilla_costmap(70, 37)
+    d, _, _ = vf.reducir_costmap(rej, 70, 37, 2)
+    for ty in range(nty):
+        for tx in range(ntx):
+            b = vf.empaquetar_tesela_costmap(d, w2, h2, tx, ty, 513)
+            ver, x, y, niv = vf.desempaquetar_tesela_costmap(b)
+            assert (ver, x, y) == (513, tx, ty)
+            for j in range(16):
+                for i in range(32):
+                    gx, gy = tx * 32 + i, ty * 16 + j
+                    esp = vf.celda_costmap_4bit(d[gy * w2 + gx]) if gx < w2 and gy < h2 else 0
+                    assert niv[j * 32 + i] == esp
+    assert vf.huella(plano) == HUELLA_COSTMAP, vf.huella(plano)
+    # Repaso completo, actualización parcial y época (EstadoCostmap = el módulo sin ROS).
+    e = vf.EstadoCostmap()
+    meta = e.grid(rej, 70, 37, 0.05, -1.0, -2.0)
+    assert meta == [0.1, 35.0, 19.0, -1.0, -2.0, 2.0, 2.0, 1.0] and len(e.cola) == 4
+    vistas = {tuple(e.siguiente()[2:4]) for _ in range(4)}
+    assert vistas == {(0, 0), (1, 0), (0, 1), (1, 1)} and not e.cola              # repaso completo: las 4
+    assert [tuple(e.siguiente()[2:4]) for _ in range(5)] == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 0)]   # repaso circular
+    assert e.grid(rej, 70, 37, 0.05, -1.0, -2.0) is None and not e.cola           # mismo costmap: nada que mandar
+    cambia = list(rej)
+    cambia[30 * 70 + 66] = 100                                                    # celda reducida (33, 15) → tesela (1, 0)
+    assert e.grid(cambia, 70, 37, 0.05, -1.0, -2.0) is None and e.cola == [(1, 0)] and e.epoca == 1
+    e.siguiente()
+    assert e.update(66, 34, 2, 2, [99, 99, 99, 99]) == [(1, 1)]                  # parche → (33, 17) → tesela (1, 1)
+    b = e.siguiente()
+    assert tuple(b[2:4]) == (1, 1) and vf.desempaquetar_tesela_costmap(b)[3][1 * 32 + 1] == 14   # (33−32, 17−16)
+    assert e.update(69, 36, 2, 1, [0, 0]) == [] and e.ignorados == 1              # fuera de límites: se ignora
+    pos = (-1.0 + 3.3, -2.0 + 1.7)                                                # el robot junto a la tesela (1, 1)
+    cerca = list(rej)
+    for k in range(len(cerca)):
+        cerca[k] = 100 if cerca[k] == 50 else cerca[k]                             # cambian las cuatro teselas
+    e.grid(cerca, 70, 37, 0.05, -1.0, -2.0)
+    assert len(e.cola) == 4 and tuple(e.siguiente(pos)[2:4]) == (1, 1)            # cercanas primero
+    meta2 = e.grid(cerca, 70, 37, 0.05, -0.5, -2.0)                               # origen nuevo → época nueva
+    assert meta2 is not None and meta2[7] == 2.0 and len(e.cola) == 4 and e.siguiente()[0] == 2
+    # [juez V3, D1] Tope de 30 teselas (repaso ≤ 3 s a 10/s): el relay baja la resolución con factor entero.
+    assert vf.factor_costmap_tope(0.05, 200, 200) == 2                            # fuente de prueba 10 × 10 m: 28 teselas
+    assert vf.factor_costmap_tope(0.05, 400, 400) == 4                            # 20 × 20 m: 91 → 28 teselas a 20 cm
+    assert vf.factor_costmap_tope(0.05, 384, 384) == 4                            # mapa del TB3: 72 → 18 teselas a 20 cm
+    assert vf.factor_costmap_tope(0.05, 400, 400, teselas_max=0) == 2             # sin tope: solo res_min
+    assert vf.factor_costmap_tope(0.05, 70, 37) == 2 and vf.factor_costmap_tope(0.0, 10, 10) == 1
+    for (w, h) in ((1, 1), (384, 384), (1000, 300), (4000, 4000), (33, 5000)):
+        ff = vf.factor_costmap_tope(0.05, w, h)
+        nx, ny = vf.teselas_costmap(-(-w // ff), -(-h // ff))
+        assert nx * ny <= vf.TESELAS_MAX_COSTMAP and ff >= 2, (w, h, ff)
+    g = vf.EstadoCostmap()
+    mg = g.grid([0] * (384 * 384), 384, 384, 0.05, 0.0, 0.0)
+    assert g.f == 4 and abs(mg[0] - 0.2) < 1e-9 and mg[1:3] == [96.0, 96.0] and mg[5:7] == [3.0, 6.0] and len(g.cola) == 18
+    assert g.update(100, 100, 2, 2, [100] * 4) == [(0, 1)]                        # parche con f = 4: celda (25, 25)
+    assert vf.desempaquetar_tesela_costmap(g.siguiente())[3][(25 - 16) * 32 + 25] == 15
+    g0 = vf.EstadoCostmap(teselas_max=0)
+    assert g0.grid([0] * (384 * 384), 384, 384, 0.05, 0.0, 0.0)[5:7] == [6.0, 12.0]   # 72 teselas = 7,2 s
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    rr = subprocess.run([sys.executable, script, "--comprobar", "viz"], capture_output=True, text=True)
+    assert rr.returncode == 0 and "costmap" in rr.stdout and "35.0 KB/s" in rr.stdout, rr.stdout
+    print("costmap ok")
+
+
+def _md5(s):
+    import hashlib
+    return hashlib.md5(s.encode()).hexdigest()
+
+
+if __name__ == "__main__":
+    test_tf_poses()                                                       # V9
+    test_scan(); test_tesela(); test_path(); test_limites()
+    test_trocear(); test_presupuesto(); test_relay_info_y_epoca(); test_rosout_y_diag(); test_ritmo()
+    test_marcadores()
+    test_percepcion()                                                     # V10
+    test_costmap()                                                        # V11
+    print("TODO OK")

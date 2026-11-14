@@ -1,0 +1,566 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://robot/urdf_robot.gd" id="script"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_base_link_0.obj" id="malla_robot_base_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_top_cover_0.obj" id="malla_robot_top_cover_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_base_link_inertia_0.obj" id="malla_robot_arm_base_link_inertia_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_shoulder_link_0.obj" id="malla_robot_arm_shoulder_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_upper_arm_link_0.obj" id="malla_robot_arm_upper_arm_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_forearm_link_0.obj" id="malla_robot_arm_forearm_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_wrist_1_link_0.obj" id="malla_robot_arm_wrist_1_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_wrist_2_link_0.obj" id="malla_robot_arm_wrist_2_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_arm_wrist_3_link_0.obj" id="malla_robot_arm_wrist_3_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_base_logo_left_0.obj" id="malla_robot_base_logo_left_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_base_logo_right_0.obj" id="malla_robot_base_logo_right_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_base_logo_front_0.obj" id="malla_robot_base_logo_front_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_base_logo_rear_0.obj" id="malla_robot_base_logo_rear_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_front_right_wheel_link_0.obj" id="malla_robot_front_right_wheel_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_front_left_wheel_link_0.obj" id="malla_robot_front_left_wheel_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_back_left_wheel_link_0.obj" id="malla_robot_back_left_wheel_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_back_right_wheel_link_0.obj" id="malla_robot_back_right_wheel_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_imu_base_link_0.obj" id="malla_robot_imu_base_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_front_laser_base_link_0.obj" id="malla_robot_front_laser_base_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_rear_laser_base_link_0.obj" id="malla_robot_rear_laser_base_link_0"]
+[ext_resource type="ArrayMesh" path="res://robot/mallas_rbkairos_vita/robot_front_rgbd_camera_link_0.obj" id="malla_robot_front_rgbd_camera_link_0"]
+
+[sub_resource type="StandardMaterial3D" id="mat_0"]
+albedo_color = Color(0.7, 0.7, 0.7, 1)
+
+[sub_resource type="BoxMesh" id="prim_robot_base_footprint_0"]
+size = Vector3(0.001, 0.001, 0.001)
+
+[sub_resource type="StandardMaterial3D" id="mat_1"]
+albedo_color = Color(0, 0, 0, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_2"]
+albedo_color = Color(0.5, 0.5, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_3"]
+albedo_color = Color(0.2, 0.2, 0.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_4"]
+albedo_color = Color(1, 0, 0, 1)
+
+[node name="rbkairos_plus" type="Node3D"]
+script = ExtResource("script")
+metadata/urdf_robot = "rbkairos_plus"
+
+[node name="RosFrame" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0)
+
+[node name="Base" type="Node3D" parent="RosFrame"]
+
+[node name="robot_base_footprint" type="Node3D" parent="RosFrame/Base"]
+metadata/urdf_link = "robot_base_footprint"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("prim_robot_base_footprint_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_base_footprint_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.127)
+metadata/urdf_joint = "robot_base_footprint_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.127)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_base_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint"]
+metadata/urdf_link = "robot_base_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_base_link_0")
+material_override = SubResource("mat_1")
+
+[node name="robot_top_cover_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.56162)
+metadata/urdf_joint = "robot_top_cover_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.56162)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_top_cover" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint"]
+metadata/urdf_link = "robot_top_cover"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.0065)
+mesh = ExtResource("malla_robot_top_cover_0")
+material_override = SubResource("mat_2")
+
+[node name="robot_arm_base_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_base_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_arm_base_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint"]
+metadata/urdf_link = "robot_arm_base_link"
+
+[node name="robot_arm_base_link-base_link_inertia" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link"]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_base_link-base_link_inertia"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_arm_base_link_inertia" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia"]
+metadata/urdf_link = "robot_arm_base_link_inertia"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia"]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_arm_base_link_inertia_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_shoulder_pan_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1807)
+metadata/urdf_joint = "robot_arm_shoulder_pan_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1807)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -6.283185
+metadata/urdf_upper = 6.283185
+
+[node name="robot_arm_shoulder_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint"]
+metadata/urdf_link = "robot_arm_shoulder_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link"]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_arm_shoulder_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_shoulder_lift_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_shoulder_lift_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -6.283185
+metadata/urdf_upper = 6.283185
+
+[node name="robot_arm_upper_arm_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint"]
+metadata/urdf_link = "robot_arm_upper_arm_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link"]
+transform = Transform3D(0, 0, -1, -1, 0, 0, 0, 1, 0, 0, 0, 0.1762)
+mesh = ExtResource("malla_robot_arm_upper_arm_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_elbow_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6127, 0, 0)
+metadata/urdf_joint = "robot_arm_elbow_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6127, 0, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -3.141593
+metadata/urdf_upper = 3.141593
+
+[node name="robot_arm_forearm_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint"]
+metadata/urdf_link = "robot_arm_forearm_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link"]
+transform = Transform3D(0, 0, -1, -1, 0, 0, 0, 1, 0, 0, 0, 0.0393)
+mesh = ExtResource("malla_robot_arm_forearm_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_wrist_1_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.57155, 0, 0.17415)
+metadata/urdf_joint = "robot_arm_wrist_1_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.57155, 0, 0.17415)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -6.283185
+metadata/urdf_upper = 6.283185
+
+[node name="robot_arm_wrist_1_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint"]
+metadata/urdf_link = "robot_arm_wrist_1_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, -0.135)
+mesh = ExtResource("malla_robot_arm_wrist_1_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_wrist_2_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.11985, 0)
+metadata/urdf_joint = "robot_arm_wrist_2_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.11985, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -6.283185
+metadata/urdf_upper = 6.283185
+
+[node name="robot_arm_wrist_2_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint"]
+metadata/urdf_link = "robot_arm_wrist_2_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.12)
+mesh = ExtResource("malla_robot_arm_wrist_2_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_wrist_3_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.11655, 0)
+metadata/urdf_joint = "robot_arm_wrist_3_joint"
+metadata/urdf_type = "revolute"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.11655, 0)
+metadata/urdf_axis = Vector3(0, 0, 1)
+metadata/urdf_lower = -6.283185
+metadata/urdf_upper = 6.283185
+
+[node name="robot_arm_wrist_3_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint"]
+metadata/urdf_link = "robot_arm_wrist_3_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.0005, -0.1168)
+mesh = ExtResource("malla_robot_arm_wrist_3_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_arm_wrist_3_link-ft_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link"]
+transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_wrist_3_link-ft_frame"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_arm_ft_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link/robot_arm_wrist_3_link-ft_frame"]
+metadata/urdf_link = "robot_arm_ft_frame"
+
+[node name="robot_arm_wrist_3-flange" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link"]
+transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_wrist_3-flange"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_arm_flange" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link/robot_arm_wrist_3-flange"]
+metadata/urdf_link = "robot_arm_flange"
+
+[node name="robot_arm_flange-tool0" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link/robot_arm_wrist_3-flange/robot_arm_flange"]
+transform = Transform3D(0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_flange-tool0"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_arm_tool0" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_link_inertia/robot_arm_base_link_inertia/robot_arm_shoulder_pan_joint/robot_arm_shoulder_link/robot_arm_shoulder_lift_joint/robot_arm_upper_arm_link/robot_arm_elbow_joint/robot_arm_forearm_link/robot_arm_wrist_1_joint/robot_arm_wrist_1_link/robot_arm_wrist_2_joint/robot_arm_wrist_2_link/robot_arm_wrist_3_joint/robot_arm_wrist_3_link/robot_arm_wrist_3-flange/robot_arm_flange/robot_arm_flange-tool0"]
+metadata/urdf_link = "robot_arm_tool0"
+
+[node name="robot_arm_base_link-base_fixed_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link"]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "robot_arm_base_link-base_fixed_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_arm_base" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_top_cover_joint/robot_top_cover/robot_arm_base_joint/robot_arm_base_link/robot_arm_base_link-base_fixed_joint"]
+metadata/urdf_link = "robot_arm_base"
+
+[node name="robot_base_logo_left_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2894, 0.35562)
+metadata/urdf_joint = "robot_base_logo_left_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2894, 0.35562)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_base_logo_left" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_left_joint"]
+metadata/urdf_link = "robot_base_logo_left"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_left_joint/robot_base_logo_left"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_base_logo_left_0")
+material_override = SubResource("mat_2")
+
+[node name="robot_base_logo_right_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, -0.28931, 0.35562)
+metadata/urdf_joint = "robot_base_logo_right_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, -0.28931, 0.35562)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_base_logo_right" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_right_joint"]
+metadata/urdf_link = "robot_base_logo_right"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_right_joint/robot_base_logo_right"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_base_logo_right_0")
+material_override = SubResource("mat_2")
+
+[node name="robot_base_logo_front_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0.345, 0, 0)
+metadata/urdf_joint = "robot_base_logo_front_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0.345, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_base_logo_front" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_front_joint"]
+metadata/urdf_link = "robot_base_logo_front"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_front_joint/robot_base_logo_front"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_base_logo_front_0")
+material_override = SubResource("mat_2")
+
+[node name="robot_base_logo_rear_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.345, 0, 0)
+metadata/urdf_joint = "robot_base_logo_rear_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.345, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_base_logo_rear" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_rear_joint"]
+metadata/urdf_link = "robot_base_logo_rear"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_logo_rear_joint/robot_base_logo_rear"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_base_logo_rear_0")
+material_override = SubResource("mat_2")
+
+[node name="robot_base_docking_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0, 0.09)
+metadata/urdf_joint = "robot_base_docking_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0, 0.09)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_base_docking_contact" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_base_docking_joint"]
+metadata/urdf_link = "robot_base_docking_contact"
+
+[node name="robot_front_right_wheel_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.21528, -0.259, 0)
+metadata/urdf_joint = "robot_front_right_wheel_joint"
+metadata/urdf_type = "continuous"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.21528, -0.259, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+
+[node name="robot_front_right_wheel_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_right_wheel_joint"]
+metadata/urdf_link = "robot_front_right_wheel_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_right_wheel_joint/robot_front_right_wheel_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_front_right_wheel_link_0")
+material_override = SubResource("mat_3")
+
+[node name="robot_front_left_wheel_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.21528, 0.259, 0)
+metadata/urdf_joint = "robot_front_left_wheel_joint"
+metadata/urdf_type = "continuous"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.21528, 0.259, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+
+[node name="robot_front_left_wheel_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_left_wheel_joint"]
+metadata/urdf_link = "robot_front_left_wheel_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_left_wheel_joint/robot_front_left_wheel_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_front_left_wheel_link_0")
+material_override = SubResource("mat_3")
+
+[node name="robot_back_left_wheel_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21528, 0.259, 0)
+metadata/urdf_joint = "robot_back_left_wheel_joint"
+metadata/urdf_type = "continuous"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21528, 0.259, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+
+[node name="robot_back_left_wheel_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_back_left_wheel_joint"]
+metadata/urdf_link = "robot_back_left_wheel_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_back_left_wheel_joint/robot_back_left_wheel_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_back_left_wheel_link_0")
+material_override = SubResource("mat_3")
+
+[node name="robot_back_right_wheel_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21528, -0.259, 0)
+metadata/urdf_joint = "robot_back_right_wheel_joint"
+metadata/urdf_type = "continuous"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21528, -0.259, 0)
+metadata/urdf_axis = Vector3(0, 1, 0)
+
+[node name="robot_back_right_wheel_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_back_right_wheel_joint"]
+metadata/urdf_link = "robot_back_right_wheel_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_back_right_wheel_joint/robot_back_right_wheel_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_back_right_wheel_link_0")
+material_override = SubResource("mat_3")
+
+[node name="robot_imu_base_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.127, -0.129, 0.212)
+metadata/urdf_joint = "robot_imu_base_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.127, -0.129, 0.212)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_imu_base_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_imu_base_joint"]
+metadata/urdf_link = "robot_imu_base_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_imu_base_joint/robot_imu_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = ExtResource("malla_robot_imu_base_link_0")
+material_override = SubResource("mat_4")
+
+[node name="robot_imu_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_imu_base_joint/robot_imu_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00745, 0, 0.0088)
+metadata/urdf_joint = "robot_imu_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00745, 0, 0.0088)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_imu_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_imu_base_joint/robot_imu_base_link/robot_imu_joint"]
+metadata/urdf_link = "robot_imu_link"
+
+[node name="robot_front_laser_base_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(0.707107, -0.707107, 0, -0.707107, -0.707107, 0, 0, 0, -1, 0.2865, -0.20894, 0.2973)
+metadata/urdf_joint = "robot_front_laser_base_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0.707107, -0.707107, 0, -0.707107, -0.707107, 0, 0, 0, -1, 0.2865, -0.20894, 0.2973)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_laser_base_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_laser_base_joint"]
+metadata/urdf_link = "robot_front_laser_base_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_laser_base_joint/robot_front_laser_base_link"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
+mesh = ExtResource("malla_robot_front_laser_base_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_front_laser_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_laser_base_joint/robot_front_laser_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.116)
+metadata/urdf_joint = "robot_front_laser_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.116)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_laser_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_laser_base_joint/robot_front_laser_base_link/robot_front_laser_joint"]
+metadata/urdf_link = "robot_front_laser_link"
+
+[node name="robot_rear_laser_base_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(-0.707107, 0.707107, 0, 0.707107, 0.707107, 0, 0, 0, -1, -0.2865, 0.20894, 0.2973)
+metadata/urdf_joint = "robot_rear_laser_base_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(-0.707107, 0.707107, 0, 0.707107, 0.707107, 0, 0, 0, -1, -0.2865, 0.20894, 0.2973)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_rear_laser_base_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_rear_laser_base_joint"]
+metadata/urdf_link = "robot_rear_laser_base_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_rear_laser_base_joint/robot_rear_laser_base_link"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
+mesh = ExtResource("malla_robot_rear_laser_base_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_rear_laser_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_rear_laser_base_joint/robot_rear_laser_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.116)
+metadata/urdf_joint = "robot_rear_laser_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.116)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_rear_laser_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_rear_laser_base_joint/robot_rear_laser_base_link/robot_rear_laser_joint"]
+metadata/urdf_link = "robot_rear_laser_link"
+
+[node name="robot_front_rgbd_camera_base_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3585, 0, 0.25062)
+metadata/urdf_joint = "robot_front_rgbd_camera_base_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3585, 0, 0.25062)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_base_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_base_link"
+
+[node name="robot_front_rgbd_camera_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.01, 0.02, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.01, 0.02, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_link" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_link"
+
+[node name="visual_0" type="MeshInstance3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link"]
+transform = Transform3D(0, 0, 1, 1, 0, 0, 0, 1, 0, 0.0149, -0.0175, 0)
+mesh = ExtResource("malla_robot_front_rgbd_camera_link_0")
+material_override = SubResource("mat_0")
+
+[node name="robot_front_rgbd_camera_depth_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_depth_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_depth_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_depth_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_depth_frame"
+
+[node name="robot_front_rgbd_camera_depth_optical_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_depth_joint/robot_front_rgbd_camera_depth_frame"]
+transform = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_depth_optical_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_depth_optical_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_depth_joint/robot_front_rgbd_camera_depth_frame/robot_front_rgbd_camera_depth_optical_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_depth_optical_frame"
+
+[node name="robot_front_rgbd_camera_infra1_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_infra1_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_infra1_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_infra1_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_infra1_frame"
+
+[node name="robot_front_rgbd_camera_infra1_optical_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_infra1_joint/robot_front_rgbd_camera_infra1_frame"]
+transform = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_infra1_optical_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_infra1_optical_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_infra1_joint/robot_front_rgbd_camera_infra1_frame/robot_front_rgbd_camera_infra1_optical_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_infra1_optical_frame"
+
+[node name="robot_front_rgbd_camera_infra2_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_infra2_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_infra2_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_infra2_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_infra2_frame"
+
+[node name="robot_front_rgbd_camera_infra2_optical_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_infra2_joint/robot_front_rgbd_camera_infra2_frame"]
+transform = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_infra2_optical_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_infra2_optical_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_infra2_joint/robot_front_rgbd_camera_infra2_frame/robot_front_rgbd_camera_infra2_optical_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_infra2_optical_frame"
+
+[node name="robot_front_rgbd_camera_color_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_color_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_color_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_color_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_color_frame"
+
+[node name="robot_front_rgbd_camera_color_optical_joint" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_color_joint/robot_front_rgbd_camera_color_frame"]
+transform = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_joint = "robot_front_rgbd_camera_color_optical_joint"
+metadata/urdf_type = "fixed"
+metadata/urdf_origin = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, 0)
+metadata/urdf_axis = Vector3(1, 0, 0)
+
+[node name="robot_front_rgbd_camera_color_optical_frame" type="Node3D" parent="RosFrame/Base/robot_base_footprint/robot_base_footprint_joint/robot_base_link/robot_front_rgbd_camera_base_joint/robot_front_rgbd_camera_base_link/robot_front_rgbd_camera_joint/robot_front_rgbd_camera_link/robot_front_rgbd_camera_color_joint/robot_front_rgbd_camera_color_frame/robot_front_rgbd_camera_color_optical_joint"]
+metadata/urdf_link = "robot_front_rgbd_camera_color_optical_frame"

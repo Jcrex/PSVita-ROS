@@ -1,5 +1,7 @@
 # 13 — Infraestructura del entorno de desarrollo PS Vita ↔ ROS2
 
+> **Estado (2026-11-13):** Histórico. La tabla de objetivos (§2) está superada por doc 33 y doc 18; §3 sigue útil.
+
 **Fecha:** 2026-10-27 · **Estado:** mapa maestro; complementa `docs/12`
 (investigación Godot) y `docs/06` (bitácora). Marcas: **[V]** verificado en
 fuente o en test · **[I]** inferencia · **[?]** sin confirmar.
@@ -20,7 +22,7 @@ bloqueado por el hardware o el PC?*
 | Cliente micro-ROS | Micro-XRCE-DDS v2.4.3 + Micro-CDR v2.0.1, transporte custom sobre `sceNet` | Hardware OK (Obj. 1 y 2) |
 | Agente | `micro-ros-agent:jazzy` en la laptop (`--net=host --ipc=host`) | Hardware OK |
 | Gráficos | vitaGL único dueño del GPU (ADR 0007), mini-rviz (ADR 0006) | Etapa B validada en hardware |
-| Apps | `vita-app/` (teleop + VIZ) · `godot/` (esqueleto, ADR 0008) | App C OK; Godot sin verificar |
+| Apps | `archivo/vita-app/` (teleop + VIZ) · `godot/` (esqueleto, ADR 0008) | App C OK; Godot sin verificar |
 | Observabilidad | netlog UDP, `/monitor` web, MCP `ros2-introspection` | OK (monitor sin probar con Vita real) |
 | Web / docs | Astro, publica `docs/**` automáticamente | OK |
 

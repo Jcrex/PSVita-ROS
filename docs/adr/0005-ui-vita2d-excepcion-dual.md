@@ -1,6 +1,6 @@
 # ADR 0005: UI de la app con vita2d + layout declarativo (excepción a la regla dual)
 
-- **Estado:** Aceptado
+- **Estado:** **Superado** por ADR 0007 (2026-07-10, vitaGL sustituye a vita2d) y por ADR 0008 (2026-10-27, la UI se hace en Godot).
 - **Fecha:** 2026-07-07
 
 ## Contexto
@@ -29,12 +29,12 @@ Se usa **vita2d** (opción 2), por decisión explícita del usuario
 (2026-07-07), con dos acotaciones que limitan el daño de la excepción:
 
 - **El dibujado es código de app, no un módulo dual.** Vive en
-  `vita-app/src/ui.c` (+`ui.h`) y no entra en `modules/`: la regla dual sigue
+  `archivo/vita-app/src/ui.c` (+`ui.h`) y no entra en `modules/`: la regla dual sigue
   intacta para todo lo que esté por debajo (red, transporte, memoria). No hay
   rama host ni paridad para `ui.c`; todo su comportamiento se valida en el PC
   y en hardware, y así queda marcado en código y README.
 - **La UI es declarativa, y el dato SÍ es verificable en host.** La pantalla
-  se describe en `vita-app/ui/layout.json` (paneles, textos, valores ligados
+  se describe en `archivo/vita-app/ui/layout.json` (paneles, textos, valores ligados
   a datos de la app). `scripts/gen-ui-header.mjs` lo convierte en
   `src/ui_layout.h` (array constante de `ui_widget`, tipos en
   `src/ui_types.h`, sin dependencias de la Vita) y

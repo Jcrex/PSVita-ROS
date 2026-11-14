@@ -1,0 +1,835 @@
+[
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav_msgs/msg/OccupancyGrid (esquema «map»)",
+    "equivalente": "RViz2 Map display, Color Scheme = map (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/map_display.cpp, palette_builder.cpp makeMapPalette)",
+    "candidato": "Quad en el suelo con dos texturas: datos crudos (R = valor & 0xFF, sin bucles GDScript) + paleta 256×1; en PC la busca un shader de 3 líneas; en la Vita (sin shaders) la paleta se aplica en CPU por LUT sobre teselas del relay.",
+    "pc_rclgd": "MeshInstance3D con ArrayMesh de 2 triángulos (UV explícitos, sin depender de la orientación de PlaneMesh) y ShaderMaterial unshaded; `data` (int8[] → PackedInt32Array) → `to_byte_array()` → Image FORMAT_RGBA8 (el byte R de cada int32 little-endian es exactamente `valor & 0xFF`: −1 → 255, 101–127 y −128…−2 caen en los huecos de la paleta como en RViz). Suscripción fiable + TRANSIENT_LOCAL (map_server). Capa 3D; opcional `draw_texture_rect` en una vista planta 2D.",
+    "vita_ros2_vita": "Un OccupancyGrid no cabe (384² = 147 560 B, docs/27:65): solo vía relay VC/1 (`/vita/mapa_meta` fiable+TL y `/vita/mapa_tesela` 32×32 a 2 bit, BE ≤ 20/s). Capa 3D: quad(s) con textura (ADR 0011; H19: trocear en sub-texturas de 128² y subir solo la sucia, ≤ 1 por fotograma). Decodificar con LUT de 256 entradas byte→16 B RGBA + `Image.create_from_data` + `blit_rect` en lugar de los 1 024 `set_pixel` actuales (vita_relay.gd:56-67, docs/31 §4.4). Sin shaders: la paleta «map» se reduce a 3 colores (desconocido/libre/ocupado) por el 2 bit. Paquete RGBA8888 si hay degradados (H20). Hz: textura ≤ 4 Hz (HZ_TEXTURA, vita_relay.gd:16).",
+    "campos": "info.resolution (m/celda), info.width/height (celdas), info.origin (Pose de la celda (0,0), esquina, NO centro) → Transform3D con rclgd.ros_to_godot_vector/quat; celda (i,j) = data[j*width+i], fila j=0 en el origen; vértice ROS (u·w·res, v·h·res, 0) con UV (u,v) → imagen fila j = v·height: no hace falta voltear (sí en la vista 2D norte-arriba, vita_relay.gd:60). header.frame_id → nodo padre del frame (TF en PC; en la Vita marco fijo).",
+    "codigo": "extends MeshInstance3D\n## Display Map (PC, rclgd). Datos → textura sin bucles; paleta 256×1 en shader (como RViz).\nconst Paletas := preload(\"res://comun/viz/paletas.gd\")   # makeMapPalette/Costmap/Raw portadas (fichas 2 y 3)\nconst SH := \"shader_type spatial; render_mode unshaded, cull_disabled;\nuniform sampler2D datos : filter_nearest; uniform sampler2D paleta : filter_nearest; uniform float alfa = 1.0;\nvoid fragment() { int i = int(texture(datos, UV).r * 255.0 + 0.5);\nvec4 c = texelFetch(paleta, ivec2(i, 0), 0); ALBEDO = c.rgb; ALPHA = c.a * alfa; }\"\n@export var topic := \"/map\"\n@export_enum(\"map\", \"costmap\", \"raw\") var esquema := 0\n@export_range(0.0, 1.0) var alfa := 0.7\nvar ctx                       # contexto_ros.gd de las plantillas (nodo + qos)\nvar img: Image; var tex: ImageTexture; var _sub: RosSubscriber\nvar _mat := ShaderMaterial.new()\n\nfunc _ready() -> void:\n\t_mat.shader = Shader.new(); _mat.shader.code = SH\n\t_mat.set_shader_parameter(\"paleta\", ImageTexture.create_from_image(Paletas.imagen(esquema)))\n\t_mat.set_shader_parameter(\"alfa\", alfa)\n\tmaterial_override = _mat\n\t_sub = ctx.nodo.create_subscription(topic, \"nav_msgs/msg/OccupancyGrid\", _on_mapa, ctx.qos(false, 1, true))\n\nfunc _on_mapa(m) -> void:\n\tvar w: int = m.info.width; var h: int = m.info.height\n\timg = Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, m.data.to_byte_array())\n\ttex = ImageTexture.create_from_image(img)\n\t_mat.set_shader_parameter(\"datos\", tex)\n\tvar o = m.info.origin\n\ttransform = Transform3D(Basis(rclgd.ros_to_godot_quat(Quaternion(o.orientation.x, o.orientation.y,\n\t\to.orientation.z, o.orientation.w))), rclgd.ros_to_godot_vector(Vector3(o.position.x, o.position.y, o.position.z)))\n\tvar lx: float = w * m.info.resolution; var ly: float = h * m.info.resolution\n\tvar v := PackedVector3Array(); var uv := PackedVector2Array()\n\tfor p in [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 0), Vector2(1, 1), Vector2(0, 1)]:\n\t\tv.append(rclgd.ros_to_godot_vector(Vector3(p.x * lx, p.y * ly, 0.0))); uv.append(p)\n\tvar arr := []\n\tarr.resize(Mesh.ARRAY_MAX)\n\tarr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_TEX_UV] = uv\n\tvar am := ArrayMesh.new()\n\tam.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)\n\tmesh = am",
+    "parametros": [
+      "topic",
+      "update_topic (por defecto topic + \"_updates\", map_display.cpp:222-225)",
+      "esquema: map|costmap|raw",
+      "alfa 0–1",
+      "draw_behind (render_priority / depth)",
+      "binary_view + binary_threshold (0–100)",
+      "QoS durabilidad (TRANSIENT_LOCAL por defecto)"
+    ],
+    "evidencia": "Paleta map de RViz: 0–100 gris 255−255·v/100, 101–127 verde, 128–254 rojo→amarillo, 255 (=−1) 0x708986 (palette_builder.cpp:87-108) [V]. RViz sube los int8 como textura de índices y busca la paleta en un shader; con `to_byte_array()` el byte R de cada int32 es el índice de RViz sin un solo bucle GDScript [V API Godot; equivalencia de bytes I]. int8[] llega como PackedInt32Array en rclgd (ros_type_utils.hpp:103-106) y en ros2_vita (ros_msg.cpp:476-485) [V]. Mapa grande: RViz parte en swatches si > 16384 de lado (map_display.cpp:412-445) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/palette_builder.cpp#L87-L108",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/map_display.cpp#L96-L104",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/map_display.cpp#L412-L445",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:103-106",
+      "godot/ros2_vita/ros_msg.cpp:476-485",
+      "godot/plantillas/vita_relay.gd:30-77",
+      "docs/27-xrce-limites-y-relay.md:65-66",
+      "docs/31-render-visualizacion-vita.md:51 (H19)",
+      "docs/31-render-visualizacion-vita.md:109-114 (§2.4)",
+      "docs/31-render-visualizacion-vita.md:204-209 (§4.4)",
+      "https://docs.godotengine.org/en/stable/classes/class_image.html#class-image-method-create-from-data"
+    ],
+    "confianza": "[V] semántica de paleta y tamaños; [I] coste en PC",
+    "coste_estimado": "PC 384²: copia 590 KB + subida ≈ 1–3 ms por mapa [I]; 2 tri, 1 draw. Vita: 2–18 tri / 1–9 draws (docs/31 §3), tesela 260 B BE; LUT ≈ 1–1,5 ms por tesela frente a ≈ 20 ms con set_pixel (docs/31 §4.2).",
+    "como_se_mediria_en_hardware": "Vita: mapa 384² servido por vita_relay a 20 teselas/s; leer `[vita-prof] process=` y `[gxm3d] build_us=` durante la carga inicial. Verde: process ≤ 4 ms de media con LUT+blit_rect, sin caer de 30 FPS, `[vita-memory] textures=` estable tras 5 min."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav_msgs/msg/OccupancyGrid (esquema «costmap»)",
+    "equivalente": "RViz2 Map display, Color Scheme = costmap (palette_builder.cpp makeCostmapPalette)",
+    "candidato": "Mismo display que «map» con otra paleta: 0 transparente, 1–98 azul→rojo, 99 cian (inscrito), 100 magenta (letal), −1 0x708986; se compone ENCIMA del mapa en la misma textura en la Vita (sin orden de transparencias).",
+    "pc_rclgd": "Se reutiliza el display de la ficha 1 cambiando la textura `paleta`; la transparencia del valor 0 la da el canal A de la paleta (RViz marca costmap y raw como transparentes, map_display.cpp:183-187). Segundo MeshInstance3D 1 cm por encima del mapa, o render_priority.",
+    "vita_ros2_vita": "Sin shaders y sin orden de transparencias (docs/31 §2.4): el costmap se compone en CPU sobre la Image del mapa (una textura por capa). El 2 bit de VC/1 pierde el degradado: propuesta de formato **`/vita/costmap_tesela`** = UInt8MultiArray [ver_lo, ver_hi, tx, ty, 256 B] con teselas 32×16 a **4 bit** (16 niveles: 0 desconocido, 1 libre (transparente), 2–13 degradado, 14 inscrito, 15 letal) = 260 B BE; el relay baja la resolución por máximo a ≥ 10 cm. LUT de 16 colores → RGBA, `blit_rect`. Paquete RGBA8888 (H20).",
+    "campos": "data 0–100 (Nav2 traduce 0→0, 1–252→1–98, 253→99, 254→100, 255→−1: costmap_2d_publisher.cpp:101-109); resto como «map».",
+    "codigo": "extends RefCounted\n## paletas.gd (parte costmap). Port literal de makeCostmapPalette (palette_builder.cpp:110-134).\nstatic func _base() -> PackedByteArray:\n\tvar p := PackedByteArray()\n\tp.resize(1024)\n\tfor i in range(101, 128):              # ilegales positivos: verde\n\t\tp[4 * i + 1] = 255; p[4 * i + 3] = 255\n\tfor i in range(128, 255):              # ilegales negativos: rojo → amarillo\n\t\tp[4 * i] = 255; p[4 * i + 1] = 255 * (i - 128) / (254 - 128); p[4 * i + 3] = 255\n\tp[1020] = 0x70; p[1021] = 0x89; p[1022] = 0x86; p[1023] = 255   # 255 = −1 desconocido\n\treturn p\n\nstatic func costmap(binaria := false, umbral := 100) -> Image:\n\tvar p := _base()\n\tfor i in 101:\n\t\tvar c := Color8(0, 0, 0, 255)\n\t\tif binaria:\n\t\t\tc = Color8(0, 0, 255) if i < umbral else Color8(255, 0, 0)\n\t\telif i == 0:\n\t\t\tc = Color8(0, 0, 0, 0)               # libre: transparente\n\t\telif i <= 98:\n\t\t\tvar v := 255 * i / 100\n\t\t\tc = Color8(v, 0, 255 - v)\n\t\telif i == 99:\n\t\t\tc = Color8(0, 255, 255)              # inscrito: cian\n\t\telse:\n\t\t\tc = Color8(255, 0, 255)              # letal: magenta\n\t\tp[4 * i] = c.r8; p[4 * i + 1] = c.g8; p[4 * i + 2] = c.b8; p[4 * i + 3] = c.a8\n\treturn Image.create_from_data(256, 1, false, Image.FORMAT_RGBA8, p)\n\n## Vita: LUT de 16 niveles del formato propuesto /vita/costmap_tesela (4 bit), sacada de la misma paleta.\nstatic func lut16() -> PackedColorArray:\n\tvar img := costmap()\n\tvar idx := [255, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 98, 99, 100]\n\tvar out := PackedColorArray()\n\tfor i in idx:\n\t\tout.append(img.get_pixel(i, 0))\n\treturn out",
+    "parametros": [
+      "alfa",
+      "binary_view",
+      "binary_threshold",
+      "nivel de submuestreo del relay (Vita, ≥ 10 cm)"
+    ],
+    "evidencia": "makeCostmapPalette: 0 → (0,0,0,0); 1–98 → (255i/100, 0, 255−255i/100); 99 cian; 100 magenta; binario azul/rojo (palette_builder.cpp:110-134) [V]. Traducción Nav2 0–255 → 0–100 (costmap_2d_publisher.cpp:101-109) [V]. Formato 4 bit = decisión de diseño de este post [I]: 32×32 a 4 bit = 512 B > 472 B de UInt8MultiArray BE (docs/27:85), por eso 32×16.",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/palette_builder.cpp#L110-L134",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/map_display.cpp#L180-L211",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_costmap_2d/src/costmap_2d_publisher.cpp#L101-L109",
+      "docs/27-xrce-limites-y-relay.md:83-85",
+      "docs/31-render-visualizacion-vita.md:109-114",
+      "docs/31-render-visualizacion-vita.md:52 (H20)"
+    ],
+    "confianza": "[V] paleta; [I] formato 4 bit",
+    "coste_estimado": "PC igual que «map». Vita: costmap global 10 cm 200×200 → 7×13 = 91 teselas × 260 B ≈ 24 KB por refresco completo; a 40 teselas/s ≈ 10 KB/s [I]; LUT+blit ≈ 1 ms por tesela [I].",
+    "como_se_mediria_en_hardware": "Nav2 + TB3 en la estación, relay con `costmap` activo; comparar captura de la Vita con RViz (mismos colores en 16 niveles). Verde: refresco completo ≤ 3 s, FPS ≥ 30, `process` ≤ 4 ms."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav_msgs/msg/OccupancyGrid (esquema «raw»)",
+    "equivalente": "RViz2 Map display, Color Scheme = raw (makeRawPalette)",
+    "candidato": "Paleta gris lineal índice→gris (0 negro … 255 blanco) sin tratar −1: sirve para depurar valores fuera de 0–100. Solo PC.",
+    "pc_rclgd": "Display de la ficha 1 con `Paletas.raw()`; con `binaria` negro < umbral ≤ blanco.",
+    "vita_ros2_vita": "No aplica tal cual: el relay ya cuantiza a 2 bit (VC/1) y pierde los valores crudos. Si se pide, el formato 8 bit 16×16 (260 B) daría los valores exactos; no se recomienda (4× teselas).",
+    "campos": "Índice = byte crudo del int8 (−1 → 255), igual que en «map».",
+    "codigo": "## paletas.gd (parte raw + selector). makeRawPalette (palette_builder.cpp:136-152) y makeMapPalette (:87-108).\nstatic func raw(binaria := false, umbral := 100) -> Image:\n\tvar p := PackedByteArray()\n\tp.resize(1024)\n\tfor i in 256:\n\t\tvar v := i\n\t\tif binaria:\n\t\t\tv = 0 if i < umbral else 255\n\t\tp[4 * i] = v; p[4 * i + 1] = v; p[4 * i + 2] = v; p[4 * i + 3] = 255\n\treturn Image.create_from_data(256, 1, false, Image.FORMAT_RGBA8, p)\n\nstatic func mapa(binaria := false, umbral := 65) -> Image:\n\tvar p := _base()   # ilegales y −1 (ficha costmap)\n\tfor i in 101:\n\t\tvar v := 255 - 255 * i / 100\n\t\tif binaria:\n\t\t\tv = 255 if i < umbral else 0\n\t\tp[4 * i] = v; p[4 * i + 1] = v; p[4 * i + 2] = v; p[4 * i + 3] = 255\n\treturn Image.create_from_data(256, 1, false, Image.FORMAT_RGBA8, p)\n\nstatic func imagen(esquema: int, binaria := false, umbral := 65) -> Image:\n\tmatch esquema:\n\t\t1: return costmap(binaria, umbral)\n\t\t2: return raw(binaria, umbral)\n\treturn mapa(binaria, umbral)",
+    "parametros": [
+      "binary_view",
+      "binary_threshold"
+    ],
+    "evidencia": "makeRawPalette i→(i,i,i,255) y binario negro/blanco (palette_builder.cpp:136-152) [V]; raw no aplica los colores de ilegales ni −1 [V mismo archivo].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/palette_builder.cpp#L87-L152"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "Una textura 256×1 por esquema (1 KB); cambio de esquema = cambiar el uniform.",
+    "como_se_mediria_en_hardware": "Solo PC: prueba headless que compare los 1 024 bytes con los de palette_builder.cpp (tabla generada por un script C++ o copiada a mano). Verde: idénticos."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "map_msgs/msg/OccupancyGridUpdate",
+    "equivalente": "RViz2 Map display, «Update Topic» (<map>_updates) — incomingUpdate/updateMapDataInMemory",
+    "candidato": "Parche rectangular aplicado con `Image.blit_rect` sobre la Image persistente y subida limitada a ≤ 10 Hz; en la Vita el relay convierte cada update en teselas sucias sin cambiar la época.",
+    "pc_rclgd": "Suscripción a `topic + \"_updates\"` (QoS 5, map_display.cpp:72); `data` → `to_byte_array()` → Image RGBA8 del tamaño del parche → `blit_rect` en (x, y) → `ImageTexture.update` (mismo tamaño/formato). Se descarta si sale del mapa (como RViz).",
+    "vita_ros2_vita": "map_msgs NO está en el typestore de rosbags (comprobado: `map_msgs/msg/OccupancyGridUpdate` ausente en Stores.ROS2_JAZZY), así que no hay esquema .rsch sin registrar el .msg a mano (como control_msgs, generar_esquemas.py:48-51). CDR ≈ 40 B + w·h [I cálculo]: solo parches ≤ 21×21 caben en 488 B; Nav2 manda la caja cambiada, normalmente mayor → relay. **Hueco del relay:** `_on_map` sube la época en cada mensaje (vita_relay.py:234) — con un costmap que cambia a 1–5 Hz cada update sería una época nueva; para updates hay que marcar teselas sucias por hash y conservar `version`.",
+    "campos": "x, y (int32, celdas, desde la esquina origen), width, height (uint32), data int8[] fila a fila (y·width + x); header.frame_id debe coincidir con el del mapa.",
+    "codigo": "## Añadido al display Map (ficha 1): aplicar map_msgs/OccupancyGridUpdate (map_display.cpp:353-410).\n@export var hz_subida := 10.0\nvar _sub_upd: RosSubscriber\nvar _sucio := false\nvar _t_subida := 0\n\nfunc suscribir_updates(topic_upd: String) -> void:\n\tvar q: RosQoS = ctx.qos(false, 5)                  # RViz: rclcpp::QoS(5) fiable\n\t_sub_upd = ctx.nodo.create_subscription(topic_upd, \"map_msgs/msg/OccupancyGridUpdate\", _on_update, q)\n\nfunc _on_update(u) -> void:\n\tif img == null:\n\t\treturn                                        # RViz también ignora updates sin mapa\n\tvar x: int = u.x\n\tvar y: int = u.y\n\tvar w: int = u.width\n\tvar h: int = u.height\n\tif x < 0 or y < 0 or x + w > img.get_width() or y + h > img.get_height() or w * h == 0:\n\t\tpush_warning(\"OccupancyGridUpdate fuera del mapa\")\n\t\treturn\n\tvar parche := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, u.data.to_byte_array())\n\timg.blit_rect(parche, Rect2i(0, 0, w, h), Vector2i(x, y))\n\t_sucio = true\n\nfunc _process(_dt: float) -> void:\n\tvar ahora := Time.get_ticks_msec()\n\tif _sucio and ahora - _t_subida >= int(1000.0 / hz_subida):\n\t\ttex.update(img)                                 # mismo tamaño y formato: no recrea la textura\n\t\t_sucio = false\n\t\t_t_subida = ahora",
+    "parametros": [
+      "update_topic",
+      "hz_subida (PC 10, Vita 4)",
+      "QoS del update (fiable depth 5)"
+    ],
+    "evidencia": "RViz copia fila a fila el parche en el mapa en memoria y redibuja; descarta si x<0, y<0 o se sale (map_display.cpp:353-410) [V]. Nav2 publica `<costmap>_updates` y solo manda el mapa completo si cambia tamaño/resolución o `always_send_full_costmap` (costmap_2d_publisher.cpp:85-86, :239) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/map/map_display.cpp#L353-L410",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_costmap_2d/src/costmap_2d_publisher.cpp#L85-L88",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_costmap_2d/src/costmap_2d_publisher.cpp#L239",
+      "docker/scripts/vita_relay.py:232-269",
+      "godot/plantillas/generar_esquemas.py:48-51"
+    ],
+    "confianza": "[V] semántica; [I] tamaño CDR",
+    "coste_estimado": "PC: blit de un parche 60×60 ≈ µs; `update` de 384² ≈ 1 ms [I]. Vita (relay): solo teselas cambiadas, 260 B cada una.",
+    "como_se_mediria_en_hardware": "Nav2 con costmap local a 5 Hz; contar en `/vita/relay_bw` bytes/s y en la Vita teselas/s. Verde: la Vita converge a la imagen de RViz en ≤ 2 s tras un cambio y `version` no cambia entre updates."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav_msgs/msg/GridCells",
+    "equivalente": "RViz2 GridCells display (rviz_default_plugins/displays/grid_cells)",
+    "candidato": "Celdas planas del mismo color: PC MultiMesh de quads; Vita en 2D (un lote de triángulos) o pintadas en la textura del mapa.",
+    "pc_rclgd": "MultiMeshInstance3D con BoxMesh 1×0,01×1 escalado por cell_width/cell_height; un solo color (`color`, `alpha`).",
+    "vita_ros2_vita": "CDR = 36 + 24·n B (medido con rosbags: 10 celdas = 276 B, 30 = 756 B) ⇒ caben **≤ 18 celdas** en 488 B; directo solo en casos pequeños (añadir el tipo a generar_esquemas.py). Sin MultiMesh (H2): 2D con `canvas_item_add_triangle_array` (H17, 1 llamada) en la vista planta, o el relay las funde en la tesela del costmap.",
+    "campos": "cell_width/cell_height (m) → escala XZ; cells[] Point (centros, en header.frame_id) → ros_to_godot_vector; z se ignora en planta.",
+    "codigo": "extends MultiMeshInstance3D\n## GridCells (PC): una instancia por celda, sin color por instancia (todas iguales, como RViz).\n@export var color := Color(0.0, 0.6, 1.0, 0.5)\n@export var max_celdas := 20000\nvar ctx\nvar _sub: RosSubscriber\n\nfunc _ready() -> void:\n\tmultimesh = MultiMesh.new()\n\tmultimesh.transform_format = MultiMesh.TRANSFORM_3D\n\tvar caja := BoxMesh.new()\n\tcaja.size = Vector3(1.0, 0.01, 1.0)\n\tvar mat := StandardMaterial3D.new()\n\tmat.albedo_color = color\n\tmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if color.a < 1.0 else BaseMaterial3D.TRANSPARENCY_DISABLED\n\tmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED\n\tcaja.material = mat\n\tmultimesh.mesh = caja\n\nfunc suscribir(topic: String) -> void:\n\t_sub = ctx.nodo.create_subscription(topic, \"nav_msgs/msg/GridCells\", _on_celdas, ctx.qos(false, 1))\n\nfunc _on_celdas(m) -> void:\n\tvar celdas: Array = m.cells\n\tvar n := mini(celdas.size(), max_celdas)\n\tmultimesh.instance_count = n\n\tvar b := Basis.from_scale(Vector3(m.cell_height, 1.0, m.cell_width))   # ROS y → Godot X, ROS x → Godot Z\n\tfor i in n:\n\t\tvar p = celdas[i]\n\t\tmultimesh.set_instance_transform(i, Transform3D(b, rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z))))",
+    "parametros": [
+      "color",
+      "alpha",
+      "max_celdas"
+    ],
+    "evidencia": "Definición: header, cell_width, cell_height, Point[] cells (https://github.com/ros2/common_interfaces/blob/jazzy/nav_msgs/msg/GridCells.msg) [V]. Tamaños CDR medidos con rosbags ROS2_JAZZY en esta sesión [V]. Sin MultiMesh en la Vita (docs/31 H2) [V].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/nav_msgs/msg/GridCells.msg",
+      "docs/31-render-visualizacion-vita.md:34 (H2)",
+      "docs/31-render-visualizacion-vita.md:49 (H17)",
+      "docs/27-xrce-limites-y-relay.md:55-86"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "PC: 1 draw, 12 tri × n. Vita 2D: 1 quad por celda (≤ 200 en presupuesto de marcadores, docs/31 §3).",
+    "como_se_mediria_en_hardware": "Publicar 18 celdas a 5 Hz directo a la Vita; `[gxm2d-perf] quads=` sube ≈ 18 y FPS estable. Verde."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav_msgs/msg/MapMetaData",
+    "equivalente": "Sin display propio en RViz (parte de OccupancyGrid.info; topic `/map_metadata` de map_server)",
+    "candidato": "Solo HUD/inspector: resolución, tamaño, origen y hora de carga; sirve además para pre-dimensionar la Image del mapa.",
+    "pc_rclgd": "Label en el HUD a ≤ 1 Hz; si llega antes que el mapa, crear la Image vacía (gris desconocido) del tamaño anunciado.",
+    "vita_ros2_vita": "84 B CDR (medido) ⇒ cabe en BE y en fiable: se puede suscribir directo con TRANSIENT_LOCAL (añadir el tipo a generar_esquemas.py). Equivale a `/vita/mapa_meta` del relay (Float32[8]).",
+    "campos": "map_load_time (Time), resolution (f32), width/height (u32), origin (Pose).",
+    "codigo": "extends Label\n## MapMetaData en el HUD (PC y Vita: 84 B, cabe directo).\n@export var topic := \"/map_metadata\"\nvar ctx\nvar _sub: RosSubscriber\nsignal meta(res: float, ancho: int, alto: int, origen: Vector2)\n\nfunc _ready() -> void:\n\t_sub = ctx.nodo.create_subscription(topic, \"nav_msgs/msg/MapMetaData\", _on_meta, ctx.qos(false, 1, true))\n\nfunc _on_meta(m) -> void:\n\tvar o: Vector2 = Vector2(m.origin.position.x, m.origin.position.y)\n\ttext = \"mapa %d×%d @ %.3f m  origen (%.2f, %.2f)  cargado %d s\" % [m.width, m.height, m.resolution,\n\t\to.x, o.y, m.map_load_time.sec]\n\tmeta.emit(m.resolution, m.width, m.height, o)",
+    "parametros": [
+      "topic"
+    ],
+    "evidencia": "Tamaño 84 B medido con rosbags (esta sesión) [V]; `/vita/mapa_meta` del relay lleva lo mismo en Float32 (vita_relay.py:237-239) [V].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/nav_msgs/msg/MapMetaData.msg",
+      "docker/scripts/vita_relay.py:232-239"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "Despreciable.",
+    "como_se_mediria_en_hardware": "map_server con TRANSIENT_LOCAL; arrancar la app de la Vita después del servidor. Verde: el HUD muestra la meta sin esperar a un nuevo mensaje."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav2_msgs/msg/Costmap (+ CostmapUpdate, «costmap_raw»)",
+    "equivalente": "Nav2 publica el mismo costmap como OccupancyGrid `<costmap>` (lo que muestra RViz) y como nav2_msgs/Costmap `<costmap>_raw` (0–255 sin traducir); no hay display de RViz para el raw.",
+    "candidato": "Preferir el OccupancyGrid `costmap` + `costmap_updates` (fichas 2 y 4). El raw solo si hace falta el coste exacto: textura R8 directa (uint8[] → PackedByteArray) y paleta con la tabla de traducción de Nav2 ya aplicada.",
+    "pc_rclgd": "Image FORMAT_R8 con `data` tal cual (PackedByteArray, ruta rápida de rclgd) + paleta 256×1 = costmap_palette[traducir(i)]; mismo shader de la ficha 1. Necesita nav2_msgs en package.xml para la clase tipada (si no, RosMsg dinámico).",
+    "vita_ros2_vita": "No cabe (header + metadata ≈ 120 B + N [I]); nav2_msgs no está en el typestore de rosbags (comprobado). Solo relay, y entonces da igual partir del raw o del OccupancyGrid: mismo formato 4 bit de la ficha 2.",
+    "campos": "metadata.resolution, size_x, size_y, origin (Pose), layer (\"master\"), data uint8 0 libre, 1–252 coste, 253 inscrito, 254 letal, 255 desconocido.",
+    "codigo": "## costmap_raw (PC). Reutiliza el MeshInstance3D/shader de la ficha 1 con textura R8.\nconst Paletas := preload(\"res://comun/viz/paletas.gd\")\n\nstatic func paleta_nav2_raw() -> Image:\n\tvar base := Paletas.costmap()                      # paleta RViz por valor 0–100 / 255\n\tvar p := PackedByteArray()\n\tp.resize(1024)\n\tfor i in 256:\n\t\tvar t := 0                                     # tabla de costmap_2d_publisher.cpp:101-109\n\t\tif i == 253: t = 99\n\t\telif i == 254: t = 100\n\t\telif i == 255: t = 255                         # −1 desconocido → índice 255 de la paleta\n\t\telif i > 0: t = 1 + (97 * (i - 1)) / 251\n\t\tvar c := base.get_pixel(t, 0)\n\t\tp[4 * i] = c.r8; p[4 * i + 1] = c.g8; p[4 * i + 2] = c.b8; p[4 * i + 3] = c.a8\n\treturn Image.create_from_data(256, 1, false, Image.FORMAT_RGBA8, p)\n\nfunc _on_costmap_raw(m) -> void:\n\tvar md = m.metadata\n\timg = Image.create_from_data(md.size_x, md.size_y, false, Image.FORMAT_R8, m.data)\n\ttex = ImageTexture.create_from_image(img)\n\t_mat.set_shader_parameter(\"datos\", tex)          # _mat: ShaderMaterial de la ficha 1\n\t# geometría y origen: igual que _on_mapa (ficha 1) con md.resolution y md.origin",
+    "parametros": [
+      "topic (<costmap>_raw)",
+      "alfa"
+    ],
+    "evidencia": "Publicadores de Nav2: OccupancyGrid, nav2_msgs/Costmap raw, OccupancyGridUpdate `_updates`, CostmapUpdate `_raw_updates` (costmap_2d_publisher.cpp:79-88); tabla 0→0, 253→99, 254→100, 255→−1, 1–252→1+97(i−1)/251 (:101-109) [V]. Costmap.msg = header, CostmapMetaData metadata, uint8[] data [V]. uint8[] → PackedByteArray en rclgd (ros_type_utils.hpp:53-56) [V].",
+    "fuentes": [
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_costmap_2d/src/costmap_2d_publisher.cpp#L79-L109",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_msgs/msg/Costmap.msg",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:53-56"
+    ],
+    "confianza": "[V] formato; [I] tamaño CDR",
+    "coste_estimado": "PC: sin bucles por celda (R8 directo); 1 KB de paleta.",
+    "como_se_mediria_en_hardware": "No aplica a la Vita (va por relay). PC: comparar captura con RViz sobre el OccupancyGrid equivalente."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "nav2_msgs/msg/VoxelGrid",
+    "equivalente": "Sin display RViz directo: Nav2 trae `nav2_costmap_2d` costmap_2d_cloud (VoxelGrid → dos PointCloud2 marked/unknown) y el voxel layer publica `voxel_marked_cloud`.",
+    "candidato": "PC: decodificar solo las columnas con bits marcados a MultiMesh de cubos; mejor aún suscribir la PointCloud2 que ya genera Nav2 (ficha de sensores-densos). Vita: nunca crudo; el relay lo proyecta a 2D (máximo por columna) o lo manda como /vita/nube2d.",
+    "pc_rclgd": "Bucle en GDScript sobre size_x·size_y columnas (no sobre los vóxeles): `col >> 16` ≠ 0 ⇒ hay marcados; luego 16 bits de z. MultiMesh con BoxMesh de resolutions.",
+    "vita_ros2_vita": "data uint32[] llega como PackedInt64Array en ros2_vita (ros_msg.cpp:461-467); 200×200 columnas = 160 KB ⇒ imposible por XRCE; relay → nube de vóxeles Int16 cm (≤ 78 por datagrama, docs/27:68) o banda de altura en la tesela del costmap.",
+    "campos": "size_x/y/z (z ≤ 16), resolutions (Vector3), origin (Point32); columna = data[y·size_x + x]; bit z marcado = (col >> (16+z)) & 1 con desconocido = bits bajos XOR altos (voxel_grid.hpp:95-150).",
+    "codigo": "extends MultiMeshInstance3D\n## VoxelGrid de Nav2 (PC). Solo vóxeles MARCADOS (bit 16+z), como pub_marked de costmap_2d_cloud.cpp.\n@export var max_voxeles := 30000\nvar ctx\nvar _sub: RosSubscriber\n\nfunc suscribir(topic: String) -> void:\n\tmultimesh = MultiMesh.new()\n\tmultimesh.transform_format = MultiMesh.TRANSFORM_3D\n\tmultimesh.mesh = BoxMesh.new()\n\t_sub = ctx.nodo.create_subscription(topic, \"nav2_msgs/msg/VoxelGrid\", _on_grid, ctx.qos(false, 1))\n\nfunc _on_grid(g) -> void:\n\tvar d = g.data\n\tvar sx: int = g.size_x\n\tvar sy: int = g.size_y\n\tvar sz: int = mini(g.size_z, 16)\n\tvar r := Vector3(g.resolutions.x, g.resolutions.y, g.resolutions.z)\n\tvar o := Vector3(g.origin.x, g.origin.y, g.origin.z)\n\tvar pos := PackedVector3Array()\n\tfor k in sx * sy:\n\t\tvar marcados: int = (int(d[k]) >> 16) & 0xFFFF\n\t\tif marcados == 0:\n\t\t\tcontinue\n\t\tfor z in sz:\n\t\t\tif (marcados >> z) & 1 and pos.size() < max_voxeles:\n\t\t\t\tpos.append(o + Vector3((k % sx) + 0.5, (k / sx) + 0.5, z + 0.5) * r)\n\tmultimesh.instance_count = pos.size()\n\tvar b := Basis.from_scale(Vector3(r.y, r.z, r.x))    # escala ROS → ejes locales Godot\n\tfor i in pos.size():\n\t\tmultimesh.set_instance_transform(i, Transform3D(b, rclgd.ros_to_godot_vector(pos[i])))",
+    "parametros": [
+      "max_voxeles",
+      "color/altura (rampa)",
+      "mostrar desconocidos"
+    ],
+    "evidencia": "VoxelGrid.msg: header, uint32[] data, Point32 origin, Vector3 resolutions, size_x/y/z (https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_msgs/msg/VoxelGrid.msg) [V]; 16 celdas por columna, marcado en los 16 bits altos (voxel_grid.hpp:53, :95-116) [V]; costmap_2d_cloud.cpp convierte a PointCloud2 marked/unknown (:131-224) [V]. uint32[] → PackedInt64Array en ros2_vita [V]; en rclgd el tipo exacto de uint32[] no lo he comprobado [?] (el código indexa sin tipar).",
+    "fuentes": [
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_msgs/msg/VoxelGrid.msg",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_voxel_grid/include/nav2_voxel_grid/voxel_grid.hpp#L53-L150",
+      "https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_costmap_2d/src/costmap_2d_cloud.cpp#L131-L224",
+      "godot/ros2_vita/ros_msg.cpp:461-467",
+      "docs/27-xrce-limites-y-relay.md:68"
+    ],
+    "confianza": "[V] formato; [?] tipo de uint32[] en rclgd",
+    "coste_estimado": "PC 200×200: 40 000 iteraciones GDScript ≈ 5–15 ms por mensaje [I] → limitar a ≤ 2 Hz.",
+    "como_se_mediria_en_hardware": "No aplica en la Vita. PC: voxel layer con `publish_voxel_map: true`; comparar con la nube marked."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "grid_map_msgs/msg/GridMap",
+    "equivalente": "grid_map_rviz_plugin (ANYbotics/grid_map), capas como superficie de alturas coloreada",
+    "candidato": "PC: malla de alturas (2 tri por celda) de la capa elegida con color por otra capa; Vita: relay a raster 2D (textura con rampa) y, solo si se mide verde E-W8-2, malla 3D estática ≤ 64×64 reconstruida a ≤ 0,2 Hz.",
+    "pc_rclgd": "ArrayMesh con ARRAY_COLOR (vertex_color_use_as_albedo); celdas NaN se saltan. Requiere grid_map_msgs instalado y en package.xml (o RosMsg dinámico si la typesupport está en el entorno [I]).",
+    "vita_ros2_vita": "No está en el typestore de rosbags (comprobado) y cada capa es un Float32MultiArray de rows·cols·4 B ⇒ siempre relay. Formato propuesto: reusar `/vita/costmap_tesela` (4 bit, rampa de altura) para la vista planta; malla 3D con paleta (docs/31 §2.1) solo con datos casi estáticos (H9: 60 B/tri por reconstrucción).",
+    "campos": "info.resolution, length_x/y (m), info.pose = CENTRO del mapa; layers[] ↔ data[]; matriz column-major (Eigen, dim[0] = column) con búfer circular outer/inner_start_index; índice (0,0) en la esquina +x,+y y crece hacia −x/−y [I, convención grid_map].",
+    "codigo": "extends MeshInstance3D\n## GridMap (PC): superficie de alturas de `capa`, coloreada con rampa. Column-major + búfer circular.\n@export var capa := \"elevation\"\n@export var rango := Vector2(-0.5, 1.0)\nvar ctx\nvar _sub: RosSubscriber\n\nfunc _on_grid(g) -> void:\n\tvar k: int = Array(g.layers).find(capa)\n\tif k < 0:\n\t\treturn\n\tvar res: float = g.info.resolution\n\tvar filas := int(round(g.info.length_x / res))\n\tvar cols := int(round(g.info.length_y / res))\n\tvar z: PackedFloat32Array = g.data[k].data\n\tvar s0: int = g.outer_start_index\n\tvar s1: int = g.inner_start_index\n\tvar st := SurfaceTool.new()\n\tst.begin(Mesh.PRIMITIVE_TRIANGLES)\n\tfor i in filas - 1:\n\t\tfor j in cols - 1:\n\t\t\tvar q := [Vector2i(i, j), Vector2i(i + 1, j), Vector2i(i + 1, j + 1), Vector2i(i, j + 1)]\n\t\t\tvar v := []\n\t\t\tfor c in q:\n\t\t\t\tvar h := z[((c.x + s0) % filas) + ((c.y + s1) % cols) * filas]\n\t\t\t\tvar p := Vector3(g.info.length_x / 2 - (c.x + 0.5) * res, g.info.length_y / 2 - (c.y + 0.5) * res, h)\n\t\t\t\tv.append([rclgd.ros_to_godot_vector(p), Color.from_hsv(0.66 * (1.0 - inverse_lerp(rango.x, rango.y, h)), 1, 1)])\n\t\t\tif v.any(func(e): return is_nan(e[0].y)):\n\t\t\t\tcontinue\n\t\t\tfor t in [0, 1, 2, 0, 2, 3]:\n\t\t\t\tst.set_color(v[t][1]); st.add_vertex(v[t][0])\n\tmesh = st.commit()\n\tvar o = g.info.pose\n\ttransform = Transform3D(Basis(rclgd.ros_to_godot_quat(Quaternion(o.orientation.x, o.orientation.y, o.orientation.z,\n\t\to.orientation.w))), rclgd.ros_to_godot_vector(Vector3(o.position.x, o.position.y, o.position.z)))",
+    "parametros": [
+      "capa de altura",
+      "capa de color",
+      "rango de color",
+      "alfa",
+      "mostrar rejilla"
+    ],
+    "evidencia": "GridMap.msg: header, GridMapInfo info, string[] layers, basic_layers, Float32MultiArray[] data, uint16 outer/inner_start_index [V]; GridMapInfo: resolution, length_x/y, pose del centro [V]; dim[0] = column si la matriz no es row-major (GridMapMsgHelpers.hpp:99-118) [V]; Eigen por defecto column-major y significado del índice (0,0) [I].",
+    "fuentes": [
+      "https://github.com/ANYbotics/grid_map/blob/jazzy/grid_map_msgs/msg/GridMap.msg",
+      "https://github.com/ANYbotics/grid_map/blob/jazzy/grid_map_msgs/msg/GridMapInfo.msg",
+      "https://github.com/ANYbotics/grid_map/blob/jazzy/grid_map_ros/include/grid_map_ros/GridMapMsgHelpers.hpp",
+      "https://github.com/ANYbotics/grid_map/blob/jazzy/grid_map_ros/src/GridMapRosConverter.cpp",
+      "docs/31-render-visualizacion-vita.md:41 (H9)"
+    ],
+    "confianza": "[V] mensaje; [I] convención de índices; [?] material del material de vértice en PC sin probar",
+    "coste_estimado": "PC 100×100: 20 000 tri, bucle ≈ 30–60 ms en GDScript [I] → ≤ 1 Hz o C# / GDExtension. Vita 3D 64×64: 7 938 tri = 476 KB de arena por reconstrucción [I].",
+    "como_se_mediria_en_hardware": "PC: comparar con grid_map_rviz_plugin con el demo `simple_demo`. Vita: E-W8-2 (docs/31 §6) con malla de alturas 32×32 a 0,2 Hz; verde = build_us ≤ 2 000 y sin tirones."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "octomap_msgs/msg/Octomap",
+    "equivalente": "octomap_rviz_plugins (OccupancyGrid/OccupancyMap displays), cubos de las hojas ocupadas a la profundidad elegida",
+    "candidato": "Viable en PC en GDScript para octrees binarios (`binary = true`, id OcTree): recorrido en profundidad de 2 bytes por nodo; en la Vita NO directo (KB–MB): el relay lo convierte en lista de vóxeles ocupados a profundidad ≤ 14 (Int16 cm).",
+    "pc_rclgd": "Decodificador recursivo (código) → posiciones+tamaños → MultiMesh de BoxMesh (color por altura con use_colors). Solo formato binario; el formato completo (.ot, con log-odds) se rechaza con aviso.",
+    "vita_ros2_vita": "octomap_msgs no está en rosbags (comprobado); int8[] llegaría como PackedInt32Array (ros_msg.cpp:476-485). Por tamaño nunca cabe ⇒ relay: decodifica (octomap_msgs::binaryMsgToMap en C++ o este mismo algoritmo en Python) y publica `/vita/nube2d`-like con xyz cm de hojas ocupadas, ≤ 78 por datagrama; en la Vita dibujo 2D (proyección) o malla estática de cubos con paleta si ≤ 500 vóxeles (6 000 tri) a ≤ 0,2 Hz.",
+    "campos": "binary (bool), id (\"OcTree\"), resolution (m), data int8[]: por nodo 2 B (hijos 0–3, 4–7), 2 bit por hijo: 00 desconocido, 01 ocupado, 10 libre, 11 con hijos (bit 2i y 2i+1 del byte); raíz de lado res·2¹⁶ centrada en 0; hijo i: x=bit0, y=bit1, z=bit2 [I].",
+    "codigo": "extends RefCounted\n## Decodificador de octree BINARIO de OctoMap (readBinaryNode, OccupancyOcTreeBase.hxx:960-1030).\n## Devuelve [PackedVector3Array centros, PackedFloat32Array lados] de las hojas OCUPADAS (en ROS, metros).\nvar _d: PackedInt32Array\nvar _p := 0\nvar centros := PackedVector3Array()\nvar lados := PackedFloat32Array()\n\nfunc decodificar(msg) -> bool:\n\tif not msg.binary:\n\t\tpush_warning(\"Octomap no binario (.ot): no soportado\")\n\t\treturn false\n\t_d = msg.data\n\t_p = 0\n\t_nodo(Vector3.ZERO, msg.resolution * 65536.0)        # profundidad 16: raíz de lado res·2^16\n\treturn true\n\nfunc _nodo(c: Vector3, lado: float) -> void:\n\tif _p + 1 >= _d.size():\n\t\treturn\n\tvar bytes := (_d[_p] & 0xFF) | ((_d[_p + 1] & 0xFF) << 8)   # hijos 0–3 en el 1.º byte, 4–7 en el 2.º\n\t_p += 2\n\tvar con_hijos := []\n\tfor i in 8:\n\t\tvar bits := (bytes >> (2 * i)) & 3                       # bit 2i y 2i+1\n\t\tvar h := lado * 0.5\n\t\tvar ci := c + Vector3(1 if i & 1 else -1, 1 if i & 2 else -1, 1 if i & 4 else -1) * h * 0.5\n\t\tif bits == 2:                                            # (0,1) = ocupado\n\t\t\tcentros.append(ci)\n\t\t\tlados.append(h)\n\t\telif bits == 3:                                          # (1,1) = tiene hijos: se leen después, en orden\n\t\t\tcon_hijos.append(ci)\n\tfor ci in con_hijos:\n\t\t_nodo(ci, lado * 0.5)",
+    "parametros": [
+      "profundidad máxima mostrada",
+      "color por altura / por probabilidad",
+      "mostrar libres",
+      "alfa"
+    ],
+    "evidencia": "Formato: dos char por nodo, bitset de 8 por grupo de 4 hijos; (1,0) libre, (0,1) ocupado, (1,1) hijos, (0,0) desconocido; la escritura recorre los hijos con hijos en orden después de escribir el nodo (OccupancyOcTreeBase.hxx:960-1070, rama devel) [V]. Mensaje: header, binary, id, resolution, int8[] data (OctoMap/octomap_msgs rama ros2) [V]. Centro de la raíz en 0 y orden de bits de hijo (x=1, y=2, z=4) según OcTreeKey/computeChildIdx [I, no leído en esta sesión].",
+    "fuentes": [
+      "https://github.com/OctoMap/octomap/blob/devel/octomap/include/octomap/OccupancyOcTreeBase.hxx#L960-L1070",
+      "https://github.com/OctoMap/octomap_msgs/blob/ros2/msg/Octomap.msg",
+      "godot/ros2_vita/ros_msg.cpp:476-485",
+      "docs/27-xrce-limites-y-relay.md:68"
+    ],
+    "confianza": "[V] codificación de nodos; [I] geometría de hijos y raíz",
+    "coste_estimado": "PC: ≈ 2 B por nodo interior; mapa de habitación a 5 cm ≈ 50–200 KB ⇒ 25–100 k nodos ≈ 50–300 ms GDScript [I] → hilo (WorkerThreadPool) o ≤ 0,2 Hz. Vita: inviable directo.",
+    "como_se_mediria_en_hardware": "PC: octomap_server con un bag; comparar número de hojas ocupadas con `octomap::OcTree::getNumLeafNodes` filtrado. Verde: mismo recuento y posiciones (prueba headless con un .bt de referencia)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker (gestor: acciones, ns+id, lifetime, frame_locked)",
+    "equivalente": "RViz2 Marker display: MarkerCommon (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/marker_common.cpp)",
+    "candidato": "Gestor único Marker/MarkerArray: diccionario ns → {id → entrada}, nodos reciclados por tipo (pool), caducidad por reloj de recepción, frame_locked re-resuelto por fotograma; tope de 48 instancias en la Vita (ADR 0011).",
+    "pc_rclgd": "Node3D gestor; hijos MeshInstance3D/MultiMeshInstance3D/Label3D creados por la fábrica (borrador §3); TF con RosTfListener.lookup_transform(fixed_frame, frame, stamp) (Transform3D ya en ejes Godot).",
+    "vita_ros2_vita": "Sin TF listener (API_PARITY.md:36): solo marcadores en el marco fijo o en frames que la app conoce (robot local); Marker suelto cabe si ≤ 10 points (medido: 229 B sin puntos, 469 B con 10, 493 B con 11) — hay que añadir visualization_msgs a generar_esquemas.py (no está, :12-38); MarkerArray va por relay (ficha MarkerArray). Capa: sólidos en 3D (instancias rígidas), líneas/puntos/texto en 2D. Tope 48 instancias / 3 000 tri (docs/31 §5.2).",
+    "campos": "ns+id = clave; action 0 ADD/MODIFY, 2 DELETE, 3 DELETEALL (con ns no vacío: solo ese ns); type cambia ⇒ recrear; lifetime (Duration) > 0,1 ms ⇒ caduca en now()+lifetime; frame_locked ⇒ re-transformar cada fotograma, si no, una vez con header.stamp; NaN/Inf ⇒ rechazar.",
+    "codigo": "extends Node3D\n## Gestor (marker_common.cpp:205-310, marker_base.cpp:84-115). _process: caducidad (4 Hz) y frame_locked.\nconst Fab := preload(\"res://comun/viz/fabrica.gd\")   # propuesta: borrador §3\n@export var fixed_frame := \"map\"\n@export var max_marcadores := 48                  # Vita: ADR 0011\nvar tf: RosTfListener                             # null en la Vita\nvar _ns := {}                                     # ns → {id → {n, tipo, expira, frame, pose, locked}}\nvar _pool := {}; var _total := 0                  # _pool: tipo → Array de nodos ocultos\nfunc on_marker(m) -> void:\n\tmatch m.action:\n\t\t0: _add(m)\n\t\t2: _borrar(m.ns, m.id)\n\t\t3:\n\t\t\tfor ns in ([m.ns] if m.ns != \"\" else _ns.keys()):\n\t\t\t\tfor id in _ns.get(ns, {}).keys():\n\t\t\t\t\t_borrar(ns, id)\n\nfunc _add(m) -> void:\n\tvar tabla: Dictionary = _ns.get_or_add(m.ns, {})\n\tvar e = tabla.get(m.id)\n\tif e != null and e.tipo != m.type:\n\t\t_borrar(m.ns, m.id); e = null\n\tif e == null:\n\t\tif _total >= max_marcadores: return\n\t\tvar libres: Array = _pool.get_or_add(m.type, [])\n\t\te = {\"n\": libres.pop_back() if libres else Fab.crear(m.type), \"tipo\": m.type}\n\t\tif e.n.get_parent() == null: add_child(e.n)\n\t\ttabla[m.id] = e; _total += 1\n\tvar vida: float = m.lifetime.sec + m.lifetime.nanosec * 1e-9\n\te.expira = Time.get_ticks_msec() + int(vida * 1000.0) if vida > 1e-4 else -1\n\te.frame = m.header.frame_id; e.locked = m.frame_locked; e.pose = Fab.pose(m.pose)\n\te.n.transform = _marco(e.frame, m.header.stamp) * e.pose\n\te.n.visible = Fab.aplicar(e.n, m)                # después: fija malla, color y n.scale; false si escala 0\nfunc _borrar(ns: String, id: int) -> void:\n\tvar e = _ns.get(ns, {}).get(id)\n\tif e != null:\n\t\te.n.visible = false; _pool.get_or_add(e.tipo, []).append(e.n); _ns[ns].erase(id); _total -= 1\nfunc _marco(frame: String, stamp = null) -> Transform3D:\n\tvar t = tf.lookup_transform(fixed_frame, frame, stamp) if tf != null and frame != fixed_frame else null\n\treturn t if t != null else Transform3D.IDENTITY",
+    "parametros": [
+      "fixed_frame",
+      "max_marcadores (PC 5 000, Vita 48)",
+      "namespaces habilitados (como la lista de RViz)",
+      "barrido de caducidad Hz (4)",
+      "queue_size"
+    ],
+    "evidencia": "ADD/DELETE/DELETEALL y DELETEALL por ns (marker_common.cpp:205-233) [V]; cambio de tipo ⇒ recrear (:275-290) [V]; lifetime > 100 000 ns ⇒ lista de caducidad (:305-307) y expiración = now + lifetime (marker_base.cpp:84, :97) [V]; frame_locked ⇒ se re-transforma en update (:309-311, :366-370) [V]; validación NaN/Inf (:195-213) [V]; ARROW_STRIP=12 existe en el .msg de Jazzy pero la fábrica de RViz no lo crea (marker_factory.cpp:71-103) [V]. Dictionary.get_or_add existe desde Godot 4.3 [I].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/marker_common.cpp#L195-L370",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/marker_base.cpp#L84-L115",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/marker_factory.cpp#L71-L103",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/Marker.msg",
+      "godot/ros2_vita/API_PARITY.md:36",
+      "godot/plantillas/generar_esquemas.py:12-38",
+      "docs/adr/0011-presupuesto-render-vita.md:28-47",
+      "docs/31-render-visualizacion-vita.md:131 (tabla Marker)"
+    ],
+    "confianza": "[V] semántica; [I] rendimiento",
+    "coste_estimado": "Por mensaje: 2 búsquedas de diccionario + fábrica; 0 asignaciones en régimen estable gracias al pool. Vita: ≈ 1 ms por datagrama de 14 marcadores (docs/31 §4.2) [I].",
+    "como_se_mediria_en_hardware": "Script que publica 48 CUBE con lifetime 2 s a 5 Hz durante 5 min, alternando DELETEALL por ns. Verde: nº de hijos del gestor constante (pool), FPS ≥ 30, `[gxm3d] drawn=` ≤ 48 + resto, sin fugas en `[vita-memory]`."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=ARROW (modo pose)",
+    "equivalente": "RViz2 ArrowMarker sin points (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/arrow_marker.cpp)",
+    "candidato": "Una instancia de la malla unidad «flecha» (+X ROS, cuerpo 0,77 Ø1, cabeza 0,23 Ø2) escalada por scale; sin reconstruir malla.",
+    "pc_rclgd": "MeshInstance3D con malla compartida; transform = marco · pose · escala(Fab.escala(scale)).",
+    "vita_ros2_vita": "3D: instancia rígida (44 tri, docs/31 §3), color por textura-paleta (§2.1: 1 draw, fuera de la pasada de luz H8). Cabe en 229 B directo.",
+    "campos": "pose → Transform3D; scale.x largo, scale.y ancho, scale.z alto; si x·y·z = 0 no se dibuja; color → paleta/material.",
+    "codigo": "## fabrica.gd — ARROW en modo pose (arrow_marker.cpp:160-180).\nstatic func flecha_unidad() -> ArrayMesh:\n\t# Eje +X de ROS = −Z de Godot. Cuerpo: prisma de 0 a 0,77 con Ø 1; cabeza: pirámide de 0,77 a 1 con Ø 2.\n\tvar st := SurfaceTool.new()\n\tst.begin(Mesh.PRIMITIVE_TRIANGLES)\n\tvar n := 6                                        # lados: 12 tri de cuerpo + 6 de cabeza, sin tapas (H15: sin culling)\n\tfor k in n:\n\t\tvar a0 := TAU * k / n\n\t\tvar a1 := TAU * (k + 1) / n\n\t\tvar r0 := Vector3(cos(a0), sin(a0), 0) * 0.5\n\t\tvar r1 := Vector3(cos(a1), sin(a1), 0) * 0.5\n\t\tfor v in [r0, r1, r1 + Vector3(0, 0, -0.77), r0, r1 + Vector3(0, 0, -0.77), r0 + Vector3(0, 0, -0.77)]:\n\t\t\tst.add_vertex(v)\n\t\tfor v in [r0 * 2 + Vector3(0, 0, -0.77), r1 * 2 + Vector3(0, 0, -0.77), Vector3(0, 0, -1)]:\n\t\t\tst.add_vertex(v)\n\treturn st.commit()\n\nstatic func aplicar_flecha_pose(n: MeshInstance3D, m) -> bool:\n\tn.mesh = malla(FLECHA)                            # caché de flecha_unidad()\n\tn.material_override = material(color(m.color))\n\tn.scale = escala(m.scale)                         # (s.y, s.z, s.x) en ejes locales de Godot\n\treturn m.scale.x * m.scale.y * m.scale.z != 0.0",
+    "parametros": [
+      "shaft/head por defecto 0,77/0,23 y Ø 1/2",
+      "lados (PC 16, Vita 6)"
+    ],
+    "evidencia": "Sin points: `arrow_->set(0.77, 1.0, 0.23, 2.0)` y setScale(scale); no se muestra si x·y·z = 0 (arrow_marker.cpp:160-180) [V]. Coste Vita 44 tri por flecha (docs/31 §3, tabla Marker) [I].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/arrow_marker.cpp#L160-L180",
+      "docs/31-render-visualizacion-vita.md:131",
+      "docs/31-render-visualizacion-vita.md:70-83 (§2.1)"
+    ],
+    "confianza": "[V] semántica; [I] orientación exacta del eje del Arrow de Ogre (+X tras su corrección)",
+    "coste_estimado": "Vita: 1 instancia, ≤ 44 tri, 1 draw (paleta) o 2 (material con luz). PC trivial.",
+    "como_se_mediria_en_hardware": "Marker ARROW a 10 Hz con pose rotando; comparar ángulo con RViz en captura. Verde: coincide y `[gxm3d] build_us` no sube (no reconstruye malla)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=ARROW (modo points)",
+    "equivalente": "RViz2 ArrowMarker con 2 points (arrow_marker.cpp:108-145)",
+    "candidato": "Dos instancias rígidas (cuerpo cilindro unidad + cabeza cono unidad) orientadas con `looking_at` hacia p1; nunca malla nueva.",
+    "pc_rclgd": "Nodo con dos MeshInstance3D hijos; scale.x = Ø cuerpo, scale.y = Ø cabeza, scale.z = largo de cabeza (0 ⇒ 23 % de la distancia).",
+    "vita_ros2_vita": "Igual en 3D (2 instancias = 2 draws, 32+18 tri) [I]. Cabe directo (277 B con 2 puntos, medido).",
+    "campos": "points[0], points[1] (en el marco del marcador, tras pose) → ros_to_godot_vector; 1 punto ⇒ error; scale.x+y = 0 ⇒ no se dibuja.",
+    "codigo": "## fabrica.gd — ARROW con points (arrow_marker.cpp:108-152). n tiene hijos \"cuerpo\" y \"cabeza\" (mallas unidad en −Z).\nstatic func aplicar_flecha_puntos(n: Node3D, m) -> bool:\n\tvar pts: Array = m.points\n\tif pts.size() != 2 or m.scale.x + m.scale.y == 0.0:\n\t\treturn false\n\tvar a := rclgd.ros_to_godot_vector(Vector3(pts[0].x, pts[0].y, pts[0].z))\n\tvar b := rclgd.ros_to_godot_vector(Vector3(pts[1].x, pts[1].y, pts[1].z))\n\tvar d := b - a\n\tvar dist := d.length()\n\tif dist < 1e-6:\n\t\treturn false\n\tvar cabeza: float = 0.23 * dist\n\tif m.scale.z != 0.0:\n\t\tcabeza = clampf(m.scale.z, 0.0, dist)\n\tvar cuerpo := dist - cabeza\n\tvar arriba := Vector3.UP if absf(d.normalized().y) < 0.99 else Vector3.RIGHT\n\tvar base := Basis.looking_at(d, arriba)          # −Z local apunta a p1\n\tvar c := n.get_node(\"cuerpo\") as MeshInstance3D\n\tvar h := n.get_node(\"cabeza\") as MeshInstance3D\n\tc.mesh = malla(CILINDRO_Z); h.mesh = malla(CONO_Z)\n\tc.transform = Transform3D(base.scaled_local(Vector3(m.scale.x, m.scale.x, cuerpo)), a)\n\th.transform = Transform3D(base.scaled_local(Vector3(m.scale.y, m.scale.y, cabeza)), a + d.normalized() * cuerpo)\n\tvar mat := material(color(m.color))\n\tc.material_override = mat; h.material_override = mat\n\treturn true",
+    "parametros": [
+      "proporción de cabeza por defecto 0,23"
+    ],
+    "evidencia": "Con 2 puntos: distancia, head_length = 0,23·dist o scale.z recortado a [0, dist], shaft = dist − head; `set(shaft, scale.x, head, scale.y)`; 1 punto ⇒ estado de error; x+y = 0 ⇒ oculto (arrow_marker.cpp:87-152) [V]. Basis.scaled_local existe en Godot 4.3+ [I].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/arrow_marker.cpp#L87-L152",
+      "https://docs.godotengine.org/en/stable/classes/class_basis.html"
+    ],
+    "confianza": "[V] semántica; [I] API scaled_local",
+    "coste_estimado": "2 instancias, ≈ 50 tri; 0 B de arena por actualización.",
+    "como_se_mediria_en_hardware": "Flecha de puntos animada a 10 Hz (p1 girando); verde = sin cambio en `[gxm3d] invalidations` y FPS estable."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=CUBE",
+    "equivalente": "RViz2 ShapeMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/shape_marker.cpp)",
+    "candidato": "Instancia de la malla unidad compartida (BoxMesh 1×1×1) con transform = marco · pose · escala; color por paleta (Vita) o material cacheado por color (PC).",
+    "pc_rclgd": "MeshInstance3D reciclado del pool; material StandardMaterial3D cacheado por Color.to_rgba32() (transparente si a < 1).",
+    "vita_ros2_vita": "3D, instancia rígida: mover = set_transform, 0 B de arena (docs/31 §3). Color: malla unidad con UV al texel de la paleta (variante por color, cacheada) ⇒ 1 draw y fuera de la pasada de luz (H8); opción «sombreado» = material albedo_color (2 draws, H4). 12 tri. Cabe directo (229 B).",
+    "campos": "pose → Transform3D (ros_to_godot_vector/quat); scale = lados x,y,z → Fab.escala = Vector3(s.y, s.z, s.x) en ejes locales Godot (ROS x→−Z, y→−X, z→+Y); x·y·z = 0 ⇒ oculto; color RGBA 0–1.",
+    "codigo": "## fabrica.gd — CUBE (shape_marker.cpp:60-90).\nconst CUBO := 1\nconst ESFERA := 2\nconst CILINDRO := 3\nstatic var _mallas := {}\nstatic var _mats := {}\n\nstatic func malla(forma: int) -> Mesh:\n\tif not _mallas.has(forma):\n\t\tvar vita := OS.has_feature(\"vita\")\n\t\tmatch forma:\n\t\t\tCUBO: _mallas[forma] = BoxMesh.new()\n\t\t\tESFERA:\n\t\t\t\tvar s := SphereMesh.new(); s.radius = 0.5; s.height = 1.0\n\t\t\t\ts.radial_segments = 8 if vita else 32; s.rings = 4 if vita else 16\n\t\t\t\t_mallas[forma] = s\n\t\t\tCILINDRO:\n\t\t\t\tvar c := CylinderMesh.new(); c.top_radius = 0.5; c.bottom_radius = 0.5; c.height = 1.0\n\t\t\t\tc.radial_segments = 8 if vita else 32; c.rings = 0\n\t\t\t\t_mallas[forma] = c\n\treturn _mallas[forma]\n\nstatic func escala(s) -> Vector3:\n\treturn Vector3(absf(s.y), absf(s.z), absf(s.x))      # ROS (x,y,z) → ejes locales Godot (X=−y, Y=z, Z=−x)\n\nstatic func material(c: Color) -> Material:           # PC; en la Vita: Paleta.material_y_uv(c) (borrador §3)\n\tvar k := c.to_rgba32()\n\tif not _mats.has(k):\n\t\tvar m := StandardMaterial3D.new()\n\t\tm.albedo_color = c\n\t\tif c.a < 0.999: m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA\n\t\t_mats[k] = m\n\treturn _mats[k]\n\nstatic func aplicar_forma(n: MeshInstance3D, m) -> bool:\n\tn.mesh = malla(m.type)\n\tn.material_override = material(Color(m.color.r, m.color.g, m.color.b, m.color.a))\n\tn.scale = escala(m.scale)\n\treturn m.scale.x * m.scale.y * m.scale.z != 0.0",
+    "parametros": [
+      "segmentos (PC 32, Vita 8)",
+      "sombreado (Vita: paleta sin luz | material con luz)"
+    ],
+    "evidencia": "ShapeMarker crea cubo/esfera/cilindro con escala = scale y oculta si x·y·z = 0 (shape_marker.cpp:60-90) [V]. Sin MultiMesh y una instancia = un draw (H2), pasada de luz y su exclusión por alfa (H4, H8) [V]. Tri/primitiva de docs/31 §3 [I]. Mapeo de escalas por ejes: deducido de ros = (−g.z, −g.x, g.y) (API_PARITY.md:19) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/shape_marker.cpp#L60-L90",
+      "docs/31-render-visualizacion-vita.md:34-40 (H2, H4, H8)",
+      "docs/31-render-visualizacion-vita.md:131",
+      "godot/ros2_vita/API_PARITY.md:19"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "12 tri, 1 instancia, 1 draw (paleta) por marcador; cambio de pose = 1 set_transform.",
+    "como_se_mediria_en_hardware": "48 marcadores CUBE moviéndose a 10 Hz (G-W13-M1). Verde: `[gxm3d] drawn` sube 48, `avg_submit_us` ≤ 9 000, `invalidations` sin cambio, FPS ≥ 30."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=SPHERE",
+    "equivalente": "RViz2 ShapeMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/shape_marker.cpp)",
+    "candidato": "Instancia de la malla unidad compartida (SphereMesh radio 0,5 alto 1 (Vita: radial 8, rings 4 ≈ 64 tri)) con transform = marco · pose · escala; color por paleta (Vita) o material cacheado por color (PC).",
+    "pc_rclgd": "MeshInstance3D reciclado del pool; material StandardMaterial3D cacheado por Color.to_rgba32() (transparente si a < 1).",
+    "vita_ros2_vita": "3D, instancia rígida: mover = set_transform, 0 B de arena (docs/31 §3). Color: malla unidad con UV al texel de la paleta (variante por color, cacheada) ⇒ 1 draw y fuera de la pasada de luz (H8); opción «sombreado» = material albedo_color (2 draws, H4). 64 tri. Cabe directo (229 B).",
+    "campos": "pose → Transform3D (ros_to_godot_vector/quat); scale = diámetros x,y,z (elipsoide) → Fab.escala = Vector3(s.y, s.z, s.x) en ejes locales Godot (ROS x→−Z, y→−X, z→+Y); x·y·z = 0 ⇒ oculto; color RGBA 0–1.",
+    "codigo": "## fabrica.gd — SPHERE (shape_marker.cpp:60-90).\nconst CUBO := 1\nconst ESFERA := 2\nconst CILINDRO := 3\nstatic var _mallas := {}\nstatic var _mats := {}\n\nstatic func malla(forma: int) -> Mesh:\n\tif not _mallas.has(forma):\n\t\tvar vita := OS.has_feature(\"vita\")\n\t\tmatch forma:\n\t\t\tCUBO: _mallas[forma] = BoxMesh.new()\n\t\t\tESFERA:\n\t\t\t\tvar s := SphereMesh.new(); s.radius = 0.5; s.height = 1.0\n\t\t\t\ts.radial_segments = 8 if vita else 32; s.rings = 4 if vita else 16\n\t\t\t\t_mallas[forma] = s\n\t\t\tCILINDRO:\n\t\t\t\tvar c := CylinderMesh.new(); c.top_radius = 0.5; c.bottom_radius = 0.5; c.height = 1.0\n\t\t\t\tc.radial_segments = 8 if vita else 32; c.rings = 0\n\t\t\t\t_mallas[forma] = c\n\treturn _mallas[forma]\n\nstatic func escala(s) -> Vector3:\n\treturn Vector3(absf(s.y), absf(s.z), absf(s.x))      # ROS (x,y,z) → ejes locales Godot (X=−y, Y=z, Z=−x)\n\nstatic func material(c: Color) -> Material:           # PC; en la Vita: Paleta.material_y_uv(c) (borrador §3)\n\tvar k := c.to_rgba32()\n\tif not _mats.has(k):\n\t\tvar m := StandardMaterial3D.new()\n\t\tm.albedo_color = c\n\t\tif c.a < 0.999: m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA\n\t\t_mats[k] = m\n\treturn _mats[k]\n\nstatic func aplicar_forma(n: MeshInstance3D, m) -> bool:\n\tn.mesh = malla(m.type)\n\tn.material_override = material(Color(m.color.r, m.color.g, m.color.b, m.color.a))\n\tn.scale = escala(m.scale)\n\treturn m.scale.x * m.scale.y * m.scale.z != 0.0",
+    "parametros": [
+      "segmentos (PC 32, Vita 8)",
+      "sombreado (Vita: paleta sin luz | material con luz)"
+    ],
+    "evidencia": "ShapeMarker crea cubo/esfera/cilindro con escala = scale y oculta si x·y·z = 0 (shape_marker.cpp:60-90) [V]. Sin MultiMesh y una instancia = un draw (H2), pasada de luz y su exclusión por alfa (H4, H8) [V]. Tri/primitiva de docs/31 §3 [I]. Mapeo de escalas por ejes: deducido de ros = (−g.z, −g.x, g.y) (API_PARITY.md:19) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/shape_marker.cpp#L60-L90",
+      "docs/31-render-visualizacion-vita.md:34-40 (H2, H4, H8)",
+      "docs/31-render-visualizacion-vita.md:131",
+      "godot/ros2_vita/API_PARITY.md:19"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "64 tri, 1 instancia, 1 draw (paleta) por marcador; cambio de pose = 1 set_transform.",
+    "como_se_mediria_en_hardware": "48 marcadores SPHERE moviéndose a 10 Hz (G-W13-M1). Verde: `[gxm3d] drawn` sube 48, `avg_submit_us` ≤ 9 000, `invalidations` sin cambio, FPS ≥ 30."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=CYLINDER",
+    "equivalente": "RViz2 ShapeMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/shape_marker.cpp)",
+    "candidato": "Instancia de la malla unidad compartida (CylinderMesh radio 0,5 alto 1, eje +Y Godot = +Z ROS (Vita: radial 8 ≈ 32 tri)) con transform = marco · pose · escala; color por paleta (Vita) o material cacheado por color (PC).",
+    "pc_rclgd": "MeshInstance3D reciclado del pool; material StandardMaterial3D cacheado por Color.to_rgba32() (transparente si a < 1).",
+    "vita_ros2_vita": "3D, instancia rígida: mover = set_transform, 0 B de arena (docs/31 §3). Color: malla unidad con UV al texel de la paleta (variante por color, cacheada) ⇒ 1 draw y fuera de la pasada de luz (H8); opción «sombreado» = material albedo_color (2 draws, H4). 32 tri. Cabe directo (229 B).",
+    "campos": "pose → Transform3D (ros_to_godot_vector/quat); scale.x/y = diámetros, scale.z = altura → Fab.escala = Vector3(s.y, s.z, s.x) en ejes locales Godot (ROS x→−Z, y→−X, z→+Y); x·y·z = 0 ⇒ oculto; color RGBA 0–1.",
+    "codigo": "## fabrica.gd — CYLINDER (shape_marker.cpp:60-90).\nconst CUBO := 1\nconst ESFERA := 2\nconst CILINDRO := 3\nstatic var _mallas := {}\nstatic var _mats := {}\n\nstatic func malla(forma: int) -> Mesh:\n\tif not _mallas.has(forma):\n\t\tvar vita := OS.has_feature(\"vita\")\n\t\tmatch forma:\n\t\t\tCUBO: _mallas[forma] = BoxMesh.new()\n\t\t\tESFERA:\n\t\t\t\tvar s := SphereMesh.new(); s.radius = 0.5; s.height = 1.0\n\t\t\t\ts.radial_segments = 8 if vita else 32; s.rings = 4 if vita else 16\n\t\t\t\t_mallas[forma] = s\n\t\t\tCILINDRO:\n\t\t\t\tvar c := CylinderMesh.new(); c.top_radius = 0.5; c.bottom_radius = 0.5; c.height = 1.0\n\t\t\t\tc.radial_segments = 8 if vita else 32; c.rings = 0\n\t\t\t\t_mallas[forma] = c\n\treturn _mallas[forma]\n\nstatic func escala(s) -> Vector3:\n\treturn Vector3(absf(s.y), absf(s.z), absf(s.x))      # ROS (x,y,z) → ejes locales Godot (X=−y, Y=z, Z=−x)\n\nstatic func material(c: Color) -> Material:           # PC; en la Vita: Paleta.material_y_uv(c) (borrador §3)\n\tvar k := c.to_rgba32()\n\tif not _mats.has(k):\n\t\tvar m := StandardMaterial3D.new()\n\t\tm.albedo_color = c\n\t\tif c.a < 0.999: m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA\n\t\t_mats[k] = m\n\treturn _mats[k]\n\nstatic func aplicar_forma(n: MeshInstance3D, m) -> bool:\n\tn.mesh = malla(m.type)\n\tn.material_override = material(Color(m.color.r, m.color.g, m.color.b, m.color.a))\n\tn.scale = escala(m.scale)\n\treturn m.scale.x * m.scale.y * m.scale.z != 0.0",
+    "parametros": [
+      "segmentos (PC 32, Vita 8)",
+      "sombreado (Vita: paleta sin luz | material con luz)"
+    ],
+    "evidencia": "ShapeMarker crea cubo/esfera/cilindro con escala = scale y oculta si x·y·z = 0 (shape_marker.cpp:60-90) [V]. Sin MultiMesh y una instancia = un draw (H2), pasada de luz y su exclusión por alfa (H4, H8) [V]. Tri/primitiva de docs/31 §3 [I]. Mapeo de escalas por ejes: deducido de ros = (−g.z, −g.x, g.y) (API_PARITY.md:19) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/shape_marker.cpp#L60-L90",
+      "docs/31-render-visualizacion-vita.md:34-40 (H2, H4, H8)",
+      "docs/31-render-visualizacion-vita.md:131",
+      "godot/ros2_vita/API_PARITY.md:19"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "32 tri, 1 instancia, 1 draw (paleta) por marcador; cambio de pose = 1 set_transform.",
+    "como_se_mediria_en_hardware": "48 marcadores CYLINDER moviéndose a 10 Hz (G-W13-M1). Verde: `[gxm3d] drawn` sube 48, `avg_submit_us` ≤ 9 000, `invalidations` sin cambio, FPS ≥ 30."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=LINE_STRIP",
+    "equivalente": "RViz2 LineStripMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/line_strip_marker.cpp), ancho = scale.x",
+    "candidato": "PC: prisma triangular por segmento (fábrica `lineas_3d`, ficha LINE_LIST) con color por vértice; Vita: superposición 2D con `draw_polyline_colors` (ancho en px proyectado), reproyectando ≤ 20 Hz.",
+    "pc_rclgd": "ArrayMesh reconstruida por mensaje (solo PC, sin coste de arena) con ARRAY_COLOR y material vertex_color_use_as_albedo.",
+    "vita_ros2_vita": "H1: no hay líneas 3D en GXM; H16-H17: una polilínea es un comando 2D con color por segmento. Se proyecta con Camera3D.unproject_position y se ocultan los puntos detrás de la cámara. Directo si ≤ 10 puntos; si no, relay (`/vita/marcador_puntos`, borrador §4).",
+    "campos": "points[] en el marco del marcador (aplicar pose), colors[] por punto si colors.size == points.size (si no, color), scale.x = ancho (m).",
+    "codigo": "extends Node2D\n## Superposición 2D de LINE_STRIP / LINE_LIST (Vita y vista Planta). Un comando por marcador (docs/31 H17).\nvar cam: Camera3D\nvar _lineas := {}            # clave → {mundo: PackedVector3Array, cols: PackedColorArray, ancho: float, tira: bool}\nvar _t := 0\n\nfunc poner(clave: String, m, marco: Transform3D) -> void:\n\tvar w := PackedVector3Array(); var c := PackedColorArray()\n\tvar por_punto: bool = m.colors.size() == m.points.size()\n\tfor i in m.points.size():\n\t\tvar p = m.points[i]\n\t\tw.append(marco * rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\t\tvar k = m.colors[i] if por_punto else m.color\n\t\tc.append(Color(k.r, k.g, k.b, k.a))\n\t_lineas[clave] = {\"mundo\": w, \"cols\": c, \"ancho\": m.scale.x, \"tira\": m.type == 4}\n\tqueue_redraw()\n\nfunc _process(_dt: float) -> void:\n\tif Time.get_ticks_msec() - _t >= 50:                 # ≤ 20 Hz de reproyección (docs/31 §3)\n\t\t_t = Time.get_ticks_msec(); queue_redraw()\n\nfunc _draw() -> void:\n\tfor e in _lineas.values():\n\t\tvar px := PackedVector2Array(); var cs := PackedColorArray()\n\t\tfor i in e.mundo.size():\n\t\t\tif cam.is_position_behind(e.mundo[i]):\n\t\t\t\tcontinue                                  # simplificación: se corta el tramo\n\t\t\tpx.append(cam.unproject_position(e.mundo[i])); cs.append(e.cols[i])\n\t\tvar ancho := maxf(1.0, e.ancho * 522.0 / maxf(0.1, cam.global_position.distance_to(e.mundo[0])))\n\t\tif e.tira and px.size() >= 2:\n\t\t\tdraw_polyline_colors(px, cs, ancho)\n\t\telif px.size() >= 2:\n\t\t\tdraw_multiline_colors(px, cs, ancho)",
+    "parametros": [
+      "ancho mínimo en px",
+      "Hz de reproyección (≤ 20)",
+      "focal en px (522 con fov 55°, docs/31 §2.2)"
+    ],
+    "evidencia": "Ancho = scale.x (line_marker_base.cpp:96), colores por punto si tamaños iguales [V]. 2D: draw_multiline_colors y polilínea fina = 1 comando (CULL:980-1003, 1779-1797 en docs/31 H17) [V]. Focal 522 px (docs/31 §2.2) [I].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/line_marker_base.cpp#L72-L96",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/line_strip_marker.cpp#L61",
+      "docs/31-render-visualizacion-vita.md:33 (H1)",
+      "docs/31-render-visualizacion-vita.md:48-49 (H16, H17)",
+      "docs/31-render-visualizacion-vita.md:85-96 (§2.2)",
+      "https://docs.godotengine.org/en/stable/classes/class_canvasitem.html#class-canvasitem-method-draw-polyline-colors"
+    ],
+    "confianza": "[V] técnica; [I] coste",
+    "coste_estimado": "Vita: ≈ 10–15 µs por punto en GDScript al reproyectar (docs/31 §3): 50 puntos ≈ 0,6 ms a ≤ 20 Hz; 1–2 quads por segmento.",
+    "como_se_mediria_en_hardware": "LINE_STRIP de 50 puntos y cámara orbitando; `[gxm2d-canvas] avg_canvas_us` y `[vita-prof] process`. Verde: process + canvas ≤ 2 ms, 30 FPS."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=LINE_LIST",
+    "equivalente": "RViz2 LineListMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/line_list_marker.cpp): pares de puntos, ancho scale.x",
+    "candidato": "PC: fábrica `lineas_3d` = prisma de 3 caras por segmento en una sola ArrayMesh con color por vértice; Vita: 2D `draw_multiline_colors` (misma clase que LINE_STRIP) o, para rejillas estáticas en el suelo, cinta plana con paleta (2 tri/seg).",
+    "pc_rclgd": "ArrayMesh PRIMITIVE_TRIANGLES, ARRAY_COLOR; material unshaded + vertex_color_use_as_albedo; impares ⇒ error (RViz).",
+    "vita_ros2_vita": "3D solo para lo estático (rejilla del suelo, contornos fijos): cinta plana (H15 sin culling, se ve por las dos caras), UV a la paleta, construida una vez. Lo dinámico: 2D (ficha LINE_STRIP).",
+    "campos": "points.size par; segmento i = (2i, 2i+1); colors por punto; scale.x ancho.",
+    "codigo": "## fabrica.gd — líneas como prismas triangulares (6 tri/segmento, docs/31 §2.2). PC: color por vértice.\nstatic func lineas_3d(pts: PackedVector3Array, cols: PackedColorArray, ancho: float, tira: bool) -> ArrayMesh:\n\tvar v := PackedVector3Array(); var c := PackedColorArray()\n\tvar paso := 1 if tira else 2\n\tvar r := ancho * 0.5\n\tvar i := 0\n\twhile i + 1 < pts.size():\n\t\tvar a := pts[i]; var b := pts[i + 1]\n\t\tvar d := (b - a).normalized()\n\t\tvar u := d.cross(Vector3.UP if absf(d.y) < 0.99 else Vector3.RIGHT).normalized()\n\t\tvar w := d.cross(u)\n\t\tvar o := [u * r, (-u * 0.5 + w * 0.866) * r, (-u * 0.5 - w * 0.866) * r]\n\t\tfor k in 3:\n\t\t\tvar o0: Vector3 = o[k]; var o1: Vector3 = o[(k + 1) % 3]\n\t\t\tfor q in [[a, o0, i], [b, o0, i + 1], [b, o1, i + 1], [a, o0, i], [b, o1, i + 1], [a, o1, i]]:\n\t\t\t\tv.append(q[0] + q[1]); c.append(cols[q[2]])\n\t\ti += paso\n\tvar arr := []\n\tarr.resize(Mesh.ARRAY_MAX)\n\tarr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_COLOR] = c\n\tvar mesh := ArrayMesh.new()\n\tif v.size() > 0:\n\t\tmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)\n\treturn mesh\n\nstatic func material_vertices() -> StandardMaterial3D:\n\tvar m := StandardMaterial3D.new()\n\tm.vertex_color_use_as_albedo = true\n\tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED\n\tm.cull_mode = BaseMaterial3D.CULL_DISABLED\n\treturn m",
+    "parametros": [
+      "ancho (scale.x)",
+      "Vita: estático 3D (cinta) | dinámico 2D"
+    ],
+    "evidencia": "LINE_LIST: numLines = points/2, 2 puntos por línea (line_list_marker.cpp:73-79) [V]; ancho scale.x (line_marker_base.cpp:96) [V]. Vita: ARRAY_COLOR ignorado (W7, docs/31 §2.4) ⇒ en 3D paleta+UV [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/line_list_marker.cpp#L73-L79",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/line_marker_base.cpp#L96",
+      "docs/31-render-visualizacion-vita.md:35 (H3)",
+      "docs/31-render-visualizacion-vita.md:47 (H15)",
+      "docs/31-render-visualizacion-vita.md:85-96"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "PC: 6 tri/segmento. Vita cinta estática: 2 tri/segmento, 1 draw, construida una vez (60 B/tri de arena).",
+    "como_se_mediria_en_hardware": "Rejilla 20×20 (40 segmentos) como LINE_LIST estático en 3D con paleta. Verde: 80 tri, 1 draw, `arena_kb` +5 KB una sola vez."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=CUBE_LIST",
+    "equivalente": "RViz2 PointsMarker RM_BOXES (points_marker.cpp:110-113)",
+    "candidato": "PC: MultiMesh de BoxMesh con color por instancia; Vita: si ≤ 64 cubos y cambia ≤ 1 Hz, UNA ArrayMesh horneada (12 tri/cubo) con UV a la paleta; si no, cuadrados 2D.",
+    "pc_rclgd": "MultiMeshInstance3D, use_colors = true, material vertex_color_use_as_albedo; escala (scale.x,y,z) común.",
+    "vita_ros2_vita": "Sin MultiMesh (H2) y sin color por vértice (H3): malla única con UV por triángulo a la paleta (§2.1), reconstruida solo si cambia el hash de puntos (H9: 64×12×60 B = 46 KB por reconstrucción). Material con texel alfa 0 ⇒ fuera de la pasada de luz (H7/H8). > 64 o > 1 Hz ⇒ 2D (ficha POINTS).",
+    "campos": "points[] centros (marco del marcador), scale = lados, colors[] por cubo si tamaño igual.",
+    "codigo": "extends MultiMeshInstance3D\n## CUBE_LIST / SPHERE_LIST en PC (points_marker.cpp:102-135): MultiMesh con color por instancia.\nconst Fab := preload(\"res://comun/viz/fabrica.gd\")\nfunc aplicar(m) -> bool:\n\tif multimesh == null:\n\t\tmultimesh = MultiMesh.new()\n\t\tmultimesh.transform_format = MultiMesh.TRANSFORM_3D\n\t\tmultimesh.use_colors = true\n\tmultimesh.mesh = Fab.malla(Fab.CUBO if m.type == 6 else Fab.ESFERA)\n\tmaterial_override = Fab.material_vertices()        # cacheado; no tocar la malla compartida\n\tvar pts: Array = m.points\n\tvar por_punto: bool = m.colors.size() == pts.size()\n\tmultimesh.instance_count = pts.size()\n\tvar b := Basis.from_scale(Fab.escala(m.scale))\n\tfor i in pts.size():\n\t\tvar p = pts[i]\n\t\tmultimesh.set_instance_transform(i, Transform3D(b, rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z))))\n\t\tvar k = m.colors[i] if por_punto else m.color\n\t\tmultimesh.set_instance_color(i, Color(k.r, k.g, k.b, k.a))\n\treturn pts.size() > 0",
+    "parametros": [
+      "Vita: umbral horneado (64)",
+      "Vita: Hz máx. de reconstrucción (1)"
+    ],
+    "evidencia": "RM_BOXES con dimensiones (x,y,z); color por punto si colors.size == points.size (points_marker.cpp:110-113, :128) [V]. H2, H3, H7–H9 (docs/31) [V]. MultiMesh.use_colors + set_instance_color (docs Godot) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/points_marker.cpp#L102-L135",
+      "docs/31-render-visualizacion-vita.md:34-41",
+      "https://docs.godotengine.org/en/stable/classes/class_multimesh.html"
+    ],
+    "confianza": "[V] PC; [I] umbrales Vita",
+    "coste_estimado": "PC: 1 draw. Vita horneado: 768 tri / 1 draw por 64 cubos; 46 KB de arena por reconstrucción ⇒ a 1 Hz el arena se reinicia cada ≈ 8 min [I].",
+    "como_se_mediria_en_hardware": "E-W8-2 adaptado: CUBE_LIST de 64 cubos reconstruido a 1 Hz 10 min. Verde: build_us ≤ 2 000, tirón de reinicio ≤ 33 ms, sin geometría fantasma."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=SPHERE_LIST",
+    "equivalente": "RViz2 PointsMarker RM_SPHERES (points_marker.cpp:114-117)",
+    "candidato": "PC: MultiMesh de SphereMesh (código de CUBE_LIST); Vita: octaedro (8 tri) por punto horneado en una malla con paleta si ≤ 64, si no, cuadrados 2D.",
+    "pc_rclgd": "Igual que CUBE_LIST con malla esfera (32×16 segmentos).",
+    "vita_ros2_vita": "Octaedro = 8 tri (frente a 64 de la esfera unidad) para que 64 esferas sean 512 tri; color por UV de paleta.",
+    "campos": "points centros; scale = diámetros; colors por punto.",
+    "codigo": "## fabrica.gd — horneado Vita de SPHERE_LIST (octaedros) / CUBE_LIST con UV a la paleta (docs/31 §2.1).\nstatic func hornear_lista(m, octaedro: bool) -> ArrayMesh:\n\tvar v := PackedVector3Array(); var uv := PackedVector2Array()\n\tvar e := escala(m.scale) * 0.5\n\tvar por_punto: bool = m.colors.size() == m.points.size()\n\tvar caras: Array = OCTA_CARAS if octaedro else CUBO_CARAS  # tablas constantes de vértices unidad (±1)\n\tfor i in m.points.size():\n\t\tvar p = m.points[i]\n\t\tvar c := rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z))\n\t\tvar k = m.colors[i] if por_punto else m.color\n\t\tvar t := Paleta.uv(Color(k.r, k.g, k.b, k.a))          # centro del texel más cercano (16×16)\n\t\tfor q in caras:\n\t\t\tv.append(c + q * e); uv.append(t)\n\tvar arr := []\n\tarr.resize(Mesh.ARRAY_MAX)\n\tarr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_TEX_UV] = uv\n\tvar mesh := ArrayMesh.new()\n\tmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)\n\tmesh.surface_set_material(0, Paleta.material())           # albedo_texture = paleta con texel alfa 0 (H8)\n\treturn mesh\n\nconst OCTA_CARAS := [Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1), Vector3(0,0,1), Vector3(0,1,0), Vector3(-1,0,0),\n\tVector3(-1,0,0), Vector3(0,1,0), Vector3(0,0,-1), Vector3(0,0,-1), Vector3(0,1,0), Vector3(1,0,0),\n\tVector3(1,0,0), Vector3(0,0,1), Vector3(0,-1,0), Vector3(0,0,1), Vector3(-1,0,0), Vector3(0,-1,0),\n\tVector3(-1,0,0), Vector3(0,0,-1), Vector3(0,-1,0), Vector3(0,0,-1), Vector3(1,0,0), Vector3(0,-1,0)]",
+    "parametros": [
+      "umbral de horneado",
+      "octaedro | esfera baja (Vita)"
+    ],
+    "evidencia": "RM_SPHERES con (x,y,z) (points_marker.cpp:114-117) [V]; paleta + UV y POINT exacto (docs/31 §2.1, H15) [V]; arena (H9) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/points_marker.cpp#L114-L117",
+      "docs/31-render-visualizacion-vita.md:70-83",
+      "docs/31-render-visualizacion-vita.md:41",
+      "docs/31-render-visualizacion-vita.md:47"
+    ],
+    "confianza": "[V] técnica; [I] costes",
+    "coste_estimado": "Vita: 8 tri/esfera; 64 esferas = 512 tri = 30 KB de arena por reconstrucción.",
+    "como_se_mediria_en_hardware": "Igual que CUBE_LIST con octaedros; verde idéntico."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=POINTS",
+    "equivalente": "RViz2 PointsMarker RM_SQUARES (points_marker.cpp:106-109): cuadrados de scale.x × scale.y siempre de cara",
+    "candidato": "Vita (y vista planta): un triángulo/cuadrado por punto en UNA llamada `canvas_item_add_triangle_array` con color por vértice; PC: MultiMesh de QuadMesh con material billboard o el mismo 2D.",
+    "pc_rclgd": "MultiMesh de QuadMesh (tamaño scale.x×scale.y, material billboard + vertex_color_use_as_albedo); en la vista 2D, el mismo lote.",
+    "vita_ros2_vita": "2D por defecto (docs/31 §2.3): tamaño en px constante, color gratis (H16); proyectar con unproject_position ≤ 20 Hz.",
+    "campos": "points (marco del marcador) → mundo; scale.x/y en m → px con la focal; colors por punto.",
+    "codigo": "extends Node2D\n## POINTS en 2D (Vita): un lote, 2 triángulos por punto (docs/31 §2.3, H17).\nvar cam: Camera3D\nvar mundo := PackedVector3Array()\nvar cols := PackedColorArray()\nvar lado_m := 0.05\nvar _ci: RID\n\nfunc _ready() -> void:\n\t_ci = get_canvas_item()\n\nfunc _draw() -> void:\n\tvar px := PackedVector2Array(); var cs := PackedColorArray(); var idx := PackedInt32Array()\n\tfor i in mundo.size():\n\t\tif cam.is_position_behind(mundo[i]):\n\t\t\tcontinue\n\t\tvar c := cam.unproject_position(mundo[i])\n\t\tvar h := maxf(1.0, lado_m * 522.0 / maxf(0.1, cam.global_position.distance_to(mundo[i]))) * 0.5\n\t\tvar b := px.size()\n\t\tpx.append_array(PackedVector2Array([c + Vector2(-h, -h), c + Vector2(h, -h), c + Vector2(h, h), c + Vector2(-h, h)]))\n\t\tfor k in 4:\n\t\t\tcs.append(cols[i])\n\t\tidx.append_array(PackedInt32Array([b, b + 1, b + 2, b, b + 2, b + 3]))\n\tif idx.size() > 0:\n\t\tRenderingServer.canvas_item_add_triangle_array(_ci, idx, px, cs)",
+    "parametros": [
+      "tamaño mínimo px",
+      "Hz de reproyección",
+      "máx. puntos (Vita 468, docs/31 §3)"
+    ],
+    "evidencia": "RM_SQUARES con (x, y, 0) (points_marker.cpp:106-109) [V]; canvas_item_add_triangle_array = 1 comando y color por vértice promediado por triángulo (docs/31 H16, H17, §2.3) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/points_marker.cpp#L106-L135",
+      "docs/31-render-visualizacion-vita.md:48-49",
+      "docs/31-render-visualizacion-vita.md:98-107"
+    ],
+    "confianza": "[V] técnica; [I] coste",
+    "coste_estimado": "Vita: 2 quads… 1 quad por punto (6 vértices), ≈ 10–15 µs/punto de GDScript al reproyectar [I].",
+    "como_se_mediria_en_hardware": "POINTS de 180 puntos a 10 Hz; verde = `avg_canvas_us` ≤ 3 000 y process ≤ 4 ms."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=TEXT_VIEW_FACING",
+    "equivalente": "RViz2 TextViewFacingMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/text_view_facing_marker.cpp): alto de carácter = scale.z",
+    "candidato": "PC: Label3D billboard con pixel_size = scale.z / font_size; Vita: Label (Control) en la posición proyectada, nunca Label3D.",
+    "pc_rclgd": "Label3D (billboard = BILLBOARD_ENABLED, no_depth_test opcional, modulate = color, outline).",
+    "vita_ros2_vita": "Label3D y Sprite3D fuera (W7: color ignorado y update_vertex_region vacío; docs/31 §2.4). Label en un CanvasLayer, reposicionado ≤ 10 Hz, ≤ 10 textos (glifos = quads). Cabe directo: 249 B con 20 caracteres (medido).",
+    "campos": "pose.position (orientación ignorada), text, scale.z = alto del carácter (m), color.",
+    "codigo": "## fabrica.gd — TEXT_VIEW_FACING (text_view_facing_marker.cpp:80-92).\nstatic func aplicar_texto(n: Node, m, capa_hud: CanvasLayer) -> bool:\n\tif not OS.has_feature(\"vita\"):\n\t\tvar l := n as Label3D\n\t\tl.text = m.text\n\t\tl.billboard = BaseMaterial3D.BILLBOARD_ENABLED\n\t\tl.font_size = 32\n\t\tl.pixel_size = maxf(m.scale.z, 0.001) / 32.0     # alto del carácter = scale.z metros\n\t\tl.modulate = Color(m.color.r, m.color.g, m.color.b, m.color.a)\n\t\tl.outline_size = 4\n\t\treturn m.text != \"\"\n\t# Vita: n es un Node3D ancla; el Label vive en el HUD y lo mueve ActualizarTextos (≤ 10 Hz).\n\tvar lab: Label = n.get_meta(\"label\") if n.has_meta(\"label\") else null\n\tif lab == null:\n\t\tlab = Label.new()\n\t\tcapa_hud.add_child(lab)\n\t\tn.set_meta(\"label\", lab)\n\tlab.text = m.text\n\tlab.modulate = Color(m.color.r, m.color.g, m.color.b, m.color.a)\n\treturn m.text != \"\"\n\nstatic func actualizar_textos(anclas: Array, cam: Camera3D) -> void:\n\tfor n in anclas:\n\t\tvar lab: Label = n.get_meta(\"label\")\n\t\tvar p: Vector3 = n.global_position\n\t\tlab.visible = n.visible and not cam.is_position_behind(p)\n\t\tif lab.visible:\n\t\t\tlab.position = cam.unproject_position(p) - lab.size * 0.5",
+    "parametros": [
+      "tamaño de fuente",
+      "contorno",
+      "máx. textos (Vita 10)",
+      "Hz de reposicionado"
+    ],
+    "evidencia": "RViz: setCharacterHeight(scale.z) y espacio scale.x si ≠ 0 (text_view_facing_marker.cpp:87-90) [V]. Label3D/Sprite3D descartados en la Vita (docs/31:116-118) [V]. Coste de glifos en el HUD (docs/31 §3) [I].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/text_view_facing_marker.cpp#L80-L92",
+      "docs/31-render-visualizacion-vita.md:109-118",
+      "docs/31-render-visualizacion-vita.md:139",
+      "https://docs.godotengine.org/en/stable/classes/class_label3d.html"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "Vita: 1 quad por glifo + reposicionado ≈ 20 µs por texto [I].",
+    "como_se_mediria_en_hardware": "10 textos de 12 caracteres sobre marcadores en movimiento; verde = `[gxm2d-perf] quads` ≤ +150, FPS ≥ 30."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=MESH_RESOURCE",
+    "equivalente": "RViz2 MeshResourceMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/mesh_resource_marker.cpp): carga `package://`/`file://` con resource_retriever",
+    "candidato": "Tabla `mesh_resource` → `res://` de mallas pre-importadas/horneadas (como el URDF, ADR 0009); en PC respaldo de carga en caliente de .glb/.gltf con GLTFDocument; si no se puede, cubo marcador y aviso.",
+    "pc_rclgd": "ResourceLoader.load(res://…) para lo pre-importado; GLTFDocument.append_from_file para rutas file:// .glb/.gltf; `package://` se resuelve con un diccionario de paquetes (no hay ament en Godot). STL/DAE/OBJ en caliente: no hay cargador en tiempo de ejecución en el núcleo [I] ⇒ pre-convertir en el PC.",
+    "vita_ros2_vita": "Solo mallas del .pck horneadas por `tools/urdf2godot` (diezmadas, ADR 0009); nada en caliente (módulo gltf en la plantilla sin verificar, docs/24:114). mesh_file (malla embebida en el mensaje, Jazzy) nunca cabe en XRCE.",
+    "campos": "mesh_resource (URI), mesh_use_embedded_materials (si false: color del marcador), scale (multiplica la malla), mesh_file (filename + data, Jazzy).",
+    "codigo": "## fabrica.gd — MESH_RESOURCE (mesh_resource_marker.cpp:95-155).\nstatic var paquetes := {\"turtlebot3_description\": \"res://robots/tb3/\"}   # package:// → res:// (config)\nstatic var _cache := {}\n\nstatic func resolver(uri: String) -> String:\n\tif uri.begins_with(\"package://\"):\n\t\tvar resto := uri.trim_prefix(\"package://\")\n\t\tvar pkg := resto.get_slice(\"/\", 0)\n\t\tif paquetes.has(pkg):\n\t\t\treturn paquetes[pkg] + resto.trim_prefix(pkg + \"/\")\n\treturn uri.trim_prefix(\"file://\")\n\nstatic func cargar_malla(uri: String) -> Node3D:\n\tif _cache.has(uri):\n\t\tvar c = _cache[uri]\n\t\treturn c.instantiate() if c is PackedScene else (c.duplicate() if c is Node else _envolver(c))\n\tvar ruta := resolver(uri)\n\tvar vita := OS.has_feature(\"vita\")\n\tvar base := ruta.get_basename()\n\tfor ext in [\".tscn\", \".res\", \".glb\"]:              # horneado/pre-importado (en la Vita, la ÚNICA vía)\n\t\tif ResourceLoader.exists(base + ext):\n\t\t\tvar r = load(base + ext)\n\t\t\t_cache[uri] = r\n\t\t\treturn r.instantiate() if r is PackedScene else _envolver(r)\n\tif not vita and ruta.get_extension() in [\"glb\", \"gltf\"] and FileAccess.file_exists(ruta):\n\t\tvar doc := GLTFDocument.new(); var st := GLTFState.new()\n\t\tif doc.append_from_file(ruta, st) == OK:\n\t\t\tvar n := doc.generate_scene(st)\n\t\t\t_cache[uri] = n.duplicate()\n\t\t\treturn n\n\tpush_warning(\"MESH_RESOURCE no disponible: %s (se dibuja un cubo)\" % uri)\n\treturn _envolver(malla(CUBO))\n\nstatic func _envolver(m: Mesh) -> Node3D:\n\tvar mi := MeshInstance3D.new()\n\tmi.mesh = m\n\treturn mi",
+    "parametros": [
+      "tabla package→res://",
+      "usar materiales embebidos",
+      "color de respaldo"
+    ],
+    "evidencia": "RViz recarga si cambia mesh_resource o mesh_use_embedded_materials y avisa si no carga (mesh_resource_marker.cpp:95-155) [V]. viz_mesh_loader de Ozuba parsea STL/OBJ/DAE en GDScript (lento en la Vita) y glTF por GLTFDocument [V], gltf en la plantilla Vita sin verificar (docs/24:114) [?]. Mallas horneadas en el PC (ADR 0009) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/mesh_resource_marker.cpp#L95-L155",
+      "docs/24-portabilidad-ozuba.md:114",
+      "docs/adr/0009-urdf-horneado-en-pc.md",
+      "https://docs.godotengine.org/en/stable/classes/class_gltfdocument.html"
+    ],
+    "confianza": "[V] PC/diseño; [?] gltf en la Vita",
+    "coste_estimado": "Vita: igual que un link del robot (≤ 1 000 tri para entrar en la pasada de luz, H5).",
+    "como_se_mediria_en_hardware": "Marker MESH_RESOURCE con `package://turtlebot3_description/meshes/bases/burger_base.stl` → tabla a la malla horneada. Verde: se ve en la Vita sin aviso; URI desconocida ⇒ cubo y un solo aviso."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=TRIANGLE_LIST",
+    "equivalente": "RViz2 TriangleListMarker (https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/triangle_list_marker.cpp)",
+    "candidato": "PC: ArrayMesh con ARRAY_COLOR por vértice; Vita: ArrayMesh con UV a la paleta por triángulo (color del 1.er vértice o del triángulo), material con texel alfa ⇒ sin pasada de luz (evita el riesgo H7).",
+    "pc_rclgd": "ArrayMesh reconstruida por mensaje; points % 3 ≠ 0 ⇒ error; colors por vértice (== points) o por triángulo (== points/3).",
+    "vita_ros2_vita": "Reconstruir solo si cambia el hash; ≤ 1 000 tri; cabe directo si ≤ 3 triángulos (9 puntos), si no relay.",
+    "campos": "points (múltiplo de 3) en el marco del marcador; colors por vértice o por triángulo; scale multiplica (x·y·z = 0 ⇒ oculto).",
+    "codigo": "## fabrica.gd — TRIANGLE_LIST (triangle_list_marker.cpp:100-125, :295-306).\nstatic func malla_triangulos(m) -> ArrayMesh:\n\tvar n: int = m.points.size()\n\tif n == 0 or n % 3 != 0:\n\t\treturn null\n\tvar por_vertice: bool = m.colors.size() == n\n\tvar por_tri: bool = m.colors.size() == n / 3\n\tvar vita := OS.has_feature(\"vita\")\n\tvar v := PackedVector3Array(); var c := PackedColorArray(); var uv := PackedVector2Array()\n\tfor i in n:\n\t\tvar p = m.points[i]\n\t\tv.append(rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\t\tvar k = m.colors[i] if por_vertice else (m.colors[i / 3] if por_tri else m.color)\n\t\tvar col := Color(k.r, k.g, k.b, k.a)\n\t\tif vita:\n\t\t\tuv.append(Paleta.uv(col if i % 3 == 0 else c[i - i % 3]))   # un color por triángulo\n\t\t\tc.append(col)\n\t\telse:\n\t\t\tc.append(col)\n\tvar arr := []\n\tarr.resize(Mesh.ARRAY_MAX)\n\tarr[Mesh.ARRAY_VERTEX] = v\n\tif vita:\n\t\tarr[Mesh.ARRAY_TEX_UV] = uv\n\telse:\n\t\tarr[Mesh.ARRAY_COLOR] = c\n\tvar mesh := ArrayMesh.new()\n\tmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)\n\tmesh.surface_set_material(0, Paleta.material() if vita else material_vertices())\n\treturn mesh",
+    "parametros": [
+      "máx. triángulos (Vita 1 000)",
+      "doble cara (Vita: siempre, H15)"
+    ],
+    "evidencia": "TRIANGLE_LIST inválido si points % 3 ≠ 0 o vacío (triangle_list_marker.cpp:120); colores por triángulo o por vértice (:301, :306) [V]. H3, H7, H8, H15 (docs/31) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/triangle_list_marker.cpp#L100-L125",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/triangle_list_marker.cpp#L295-L306",
+      "docs/31-render-visualizacion-vita.md:35-41",
+      "docs/31-render-visualizacion-vita.md:47"
+    ],
+    "confianza": "[V] semántica; [I] coste",
+    "coste_estimado": "60 B de arena por triángulo y reconstrucción (H9); 1 draw.",
+    "como_se_mediria_en_hardware": "TRIANGLE_LIST de 500 tri cambiando de color a 1 Hz; verde = build_us ≤ 2 000 y sin geometría fantasma (H7)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/Marker type=ARROW_STRIP (12, nuevo en Jazzy)",
+    "equivalente": "Ninguno: la constante existe en Marker.msg de Jazzy, pero MarkerFactory de RViz2 Jazzy no tiene `case` para ella",
+    "candidato": "Dibujar como LINE_STRIP + punta de flecha (ARROW de 2 puntos) en el último segmento; marcar [?] la semántica hasta que RViz la implemente.",
+    "pc_rclgd": "Composición de las fichas LINE_STRIP y ARROW (points).",
+    "vita_ros2_vita": "Igual: polilínea 2D + flecha 3D rígida.",
+    "campos": "points (≥ 2), scale.x ancho, color/colors.",
+    "codigo": "## fabrica.gd — ARROW_STRIP: sin implementación de referencia en RViz Jazzy (marker_factory.cpp:71-103).\nconst ARROW_STRIP := 12\n\nstatic func aplicar_arrow_strip(n: Node3D, m, overlay) -> bool:\n\tif m.points.size() < 2:\n\t\treturn false\n\toverlay.poner(n.name, m, n.global_transform)       # tira (LINE_STRIP) en 2D (Vita) o lineas_3d (PC)\n\tvar pts: Array = m.points\n\tvar cabeza := RosMsg.from_type(\"visualization_msgs/msg/Marker\")\n\tcabeza.points = [pts[pts.size() - 2], pts[pts.size() - 1]]\n\tcabeza.scale.x = m.scale.x\n\tcabeza.scale.y = m.scale.x * 2.0\n\tcabeza.scale.z = 0.0\n\tcabeza.color = m.color\n\treturn aplicar_flecha_puntos(n.get_node(\"punta\"), cabeza)",
+    "parametros": [
+      "tamaño de punta relativo"
+    ],
+    "evidencia": "ARROW_STRIP=12 en Marker.msg de Jazzy (common_interfaces) [V]; sin `case` en marker_factory.cpp:71-103 ⇒ RViz Jazzy no lo dibuja [V]. Asignar arrays de mensajes en RosMsg: hay que asignar el array completo (skill rclgd, regla 7) [V].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/Marker.msg",
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/markers/marker_factory.cpp#L71-L103",
+      "skills/rclgd/SKILL.md (regla 7)"
+    ],
+    "confianza": "[?] semántica (no hay referencia)",
+    "coste_estimado": "Suma de LINE_STRIP + ARROW.",
+    "como_se_mediria_en_hardware": "No prioritario; prueba de humo en PC."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/MarkerArray",
+    "equivalente": "RViz2 MarkerArray display (MarkerCommon::addMessage(array) con comprobación de duplicados)",
+    "candidato": "Mismo gestor (ficha Marker): bucle sobre markers con comprobación de duplicados ns+id; en la Vita SIEMPRE por relay con el formato compacto `/vita/marcadores` (estado completo por trozos, sin acciones).",
+    "pc_rclgd": "Suscripción depth 100 (fiable); on_array → on_marker por elemento; aviso si hay ns+id repetidos (como RViz).",
+    "vita_ros2_vita": "50 CUBE = 11 605 B (docs/27:79) ⇒ nunca directo. Relay: aplica él la semántica (ADD/DELETE/DELETEALL/lifetime) y publica a 5 Hz el ESTADO completo en trozos BE de Float32MultiArray: cabecera [seq, trozo, n_trozos, n] + 10 floats por marcador [clave, tipo, x, y, z, yaw, sx, sy, sz, color] ⇒ 11 por datagrama (4 + 110 = 114 ≤ 118 floats, docs/27:83). Clave = id ⊕ hash(ns) & 0xFFFFFF (exacta en float). Color = índice de paleta (0–255) + 256·alfa(0–15). Al completar un seq, la Vita oculta lo que no ha llegado (sin DELETE perdidos). Puntos de líneas/listas: `/vita/marcador_puntos` [seq, clave, tipo, color, n, x0,y0,z0,…] ≤ 37 puntos/datagrama; textos `/vita/marcador_texto` String fiable al cambiar.",
+    "campos": "markers[] (Marker); duplicados (ns,id) en el mismo array ⇒ estado de error en RViz.",
+    "codigo": "## Cliente Vita de /vita/marcadores (formato propuesto en este post). Mismo gestor que el PC (ficha Marker).\nconst POR_MARCADOR := 10\nvar gestor                       # gestor de marcadores (ficha Marker)\nvar _seq := -1\nvar _vistos := {}                # clave → true del seq en curso\nvar _trozos := 0\n\nfunc on_marcadores(m) -> void:\n\tvar d: PackedFloat32Array = m.data\n\tif d.size() < 4:\n\t\treturn\n\tvar seq := int(d[0]); var n_trozos := int(d[2]); var n := int(d[3])\n\tif seq != _seq:\n\t\t_seq = seq; _vistos.clear(); _trozos = 0\n\t_trozos += 1\n\tfor i in n:\n\t\tvar b := 4 + i * POR_MARCADOR\n\t\tif b + POR_MARCADOR > d.size():\n\t\t\tbreak\n\t\tvar clave := int(d[b])\n\t\t_vistos[clave] = true\n\t\tvar col := int(d[b + 9])\n\t\tgestor.poner_compacto(clave, int(d[b + 1]),                          # tipo\n\t\t\tTransform3D(Basis(Vector3.UP, d[b + 5]), rclgd.ros_to_godot_vector(Vector3(d[b + 2], d[b + 3], d[b + 4]))),\n\t\t\tVector3(d[b + 7], d[b + 8], d[b + 6]),                           # escala en ejes Godot (s.y, s.z, s.x)\n\t\t\tPaleta.color(col & 0xFF, ((col >> 8) & 0xF) / 15.0))\n\tif _trozos == n_trozos:\n\t\tgestor.retener_solo(_vistos)                 # estado completo: lo no visto se recicla (sin DELETE perdidos)",
+    "parametros": [
+      "Hz del relay (5)",
+      "máx. marcadores (48)",
+      "QoS PC: fiable depth 100"
+    ],
+    "evidencia": "addMessage(array) detecta ns+id duplicados y marca estado de error (marker_common.cpp:155-192) [V]. Tamaño 50 CUBE y propuesta 8 floats/marcador ⇒ 14/datagrama (docs/27:79, :105) [V]; aquí se amplía a 10 floats (11/datagrama) para no perder escala anisótropa ni alfa: decisión de diseño [I]. Float32MultiArray N ≤ 118 en BE (docs/27:83) [V]. `/vita/marcadores` no está implementado en vita_relay.py (solo scan, pose, joints, mapa, path: :137) [V].",
+    "fuentes": [
+      "https://github.com/ros2/rviz/blob/jazzy/rviz_default_plugins/src/rviz_default_plugins/displays/marker/marker_common.cpp#L155-L192",
+      "docs/27-xrce-limites-y-relay.md:79",
+      "docs/27-xrce-limites-y-relay.md:83",
+      "docs/27-xrce-limites-y-relay.md:105",
+      "docker/scripts/vita_relay.py:137",
+      "docs/adr/0012-puente-pc-acciones-y-relay.md"
+    ],
+    "confianza": "[V] límites; [I] formato propuesto",
+    "coste_estimado": "Vita: ≈ 1 ms por datagrama de 11–14 marcadores (docs/31 §4.2) [I]; 48 marcadores = 5 datagramas × 5 Hz × 456 B ≈ 11 KB/s.",
+    "como_se_mediria_en_hardware": "Relay con 48 marcadores mezclados y 10 % de pérdida simulada (tc netem en la estación). Verde: ningún marcador «fantasma» > 0,4 s tras borrarlo en ROS, process ≤ 4 ms, `/vita/relay_bw` ≤ 15 KB/s."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/InteractiveMarker + InteractiveMarkerUpdate (cliente)",
+    "equivalente": "RViz2 InteractiveMarkers display (interactive_markers InteractiveMarkerClient: servicio get_interactive_markers + topic <ns>/update + <ns>/feedback)",
+    "candidato": "PC: cliente propio en GDScript: estado inicial por servicio, luego updates con seq_num (hueco ⇒ pedir estado otra vez); cada control se dibuja con sus Marker (gestor) y un «asa» Godot (Area3D) según interaction_mode. Vita: relay como cliente.",
+    "pc_rclgd": "RosClient (`create_client(ns + \"/get_interactive_markers\", \"visualization_msgs/srv/GetInteractiveMarkers\")` + `await req.completed`), suscripción a `<ns>/update`. Los markers de cada control → gestor de la ficha Marker con ns = nombre del IM. Asa: Area3D + CollisionShape3D; arrastre por rayo de cámara contra Plane (MOVE_PLANE/MOVE_AXIS) o ángulo (ROTATE_AXIS).",
+    "vita_ros2_vita": "Servicios cliente ⏳ en ros2_vita (API_PARITY.md:31) ⇒ no puede pedir el estado. Relay: hace de cliente, publica las poses de los IM (`/vita/im_poses` Float32 [n, x, y, z, yaw]×n) y los markers de los controles por `/vita/marcadores`; un update de 1 pose = 132 B (medido) cabría directo pero el estado inicial no. Feedback: directo (ficha siguiente).",
+    "campos": "InteractiveMarker: header, pose, name, description, scale, menu_entries, controls[]; Control: name, orientation (eje = x local), orientation_mode, interaction_mode (MOVE_AXIS: traslación en x; MOVE_PLANE: plano y-z; ROTATE_AXIS: giro en x…), always_visible, markers[]; Update: server_id, seq_num, type (0 KEEP_ALIVE, 1 UPDATE), markers[], poses[], erases[].",
+    "codigo": "extends Node3D\n## Cliente de marcadores interactivos (PC, rclgd). Protocolo de interactive_marker_server.cpp:70-91.\n@export var ns := \"/simple_marker\"\nvar ctx\nvar gestor                                          # gestor de Marker (ficha Marker)\nvar _cli: RosClient; var _sub: RosSubscriber\nvar _seq := -1\nvar ims := {}                                       # nombre → InteractiveMarker (RosMsg)\n\nfunc _ready() -> void:\n\t_cli = ctx.nodo.create_client(ns + \"/get_interactive_markers\", \"visualization_msgs/srv/GetInteractiveMarkers\")\n\t_sub = ctx.nodo.create_subscription(ns + \"/update\", \"visualization_msgs/msg/InteractiveMarkerUpdate\", _on_update, ctx.qos(false, 100))\n\tawait _pedir_estado()\n\nfunc _pedir_estado() -> void:\n\tvar r = await _cli.async_send_request(_cli.create_request()).completed\n\t_seq = r.sequence_number\n\tims.clear()\n\tfor im in r.markers: _poner(im)\n\nfunc _on_update(u) -> void:\n\tif _seq < 0 or u.seq_num < _seq:\n\t\treturn\n\tif u.seq_num > _seq + (1 if u.type == 1 else 0):\n\t\tawait _pedir_estado()                       # hueco (update o keep-alive adelantado): estado completo\n\t\treturn\n\t_seq = u.seq_num\n\tfor im in u.markers: _poner(im)\n\tfor p in u.poses:\n\t\tif ims.has(p.name):\n\t\t\tims[p.name].pose = p.pose\n\t\t\tgestor.mover_ns(p.name, Fab.pose(p.pose))   # mueve todos los markers del IM (ns = nombre)\n\tfor nombre in u.erases: ims.erase(nombre); gestor.borrar_ns(nombre)\n\nfunc _poner(im) -> void:\n\tims[im.name] = im\n\tfor c in im.controls:\n\t\tfor mk in c.markers:\n\t\t\tmk.ns = im.name; mk.header = im.header   # el gestor los cuelga de la pose del IM\n\t\t\tgestor.on_marker(mk)",
+    "parametros": [
+      "namespace del servidor",
+      "mostrar descripción",
+      "mostrar ejes",
+      "QoS update depth 100"
+    ],
+    "evidencia": "Servidor: `<ns>/update` (InteractiveMarkerUpdate), `<ns>/feedback`, servicio `<ns>/get_interactive_markers` (interactive_marker_server.cpp:70-91); seq_num en cada update (:455) [V]. Semántica de control (eje x, plano y-z) (InteractiveMarkerControl.msg:15-32) [V]. KEEP_ALIVE=0/UPDATE=1 (InteractiveMarkerUpdate.msg:8-18) [V]. Servicios cliente sin implementar en ros2_vita (API_PARITY.md:31) [V]. Pose de los markers del control relativa al IM: [I] (en RViz los markers de control se expresan en el marco del IM salvo independent_marker_orientation).",
+    "fuentes": [
+      "https://github.com/ros-visualization/interactive_markers/blob/jazzy/src/interactive_marker_server.cpp#L70-L91",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/InteractiveMarkerControl.msg",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/InteractiveMarkerUpdate.msg",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/srv/GetInteractiveMarkers.srv",
+      "godot/ros2_vita/API_PARITY.md:31",
+      "skills/rclgd/references/api/RosClient.md"
+    ],
+    "confianza": "[V] protocolo; [I] composición de poses de control",
+    "coste_estimado": "PC despreciable. Vita: igual que marcadores + 1 datagrama de poses.",
+    "como_se_mediria_en_hardware": "PC: `ros2 run interactive_marker_tutorials basic_controls`; verde = mismos controles que en RViz y la pose sigue a los updates; corte de red 5 s ⇒ recupera estado por servicio."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/InteractiveMarkerFeedback (publicar; Vita con táctil)",
+    "equivalente": "RViz2 InteractiveMarkerControl::handleMouseEvent → publishFeedback (POSE_UPDATE, MOUSE_DOWN/UP, BUTTON_CLICK, MENU_SELECT)",
+    "candidato": "Arrastre con ratón (PC) o pantalla táctil frontal (Vita): rayo de cámara ∩ plano del control → nueva pose; publicar POSE_UPDATE limitado a 20 Hz entre MOUSE_DOWN y MOUSE_UP. Botón = BUTTON_CLICK; menú = PopupMenu (PC) / lista en el HUD (Vita).",
+    "pc_rclgd": "InputEventMouseButton/MouseMotion sobre el Area3D del asa; Plane(normal, punto).intersects_ray(origen, dir) con cam.project_ray_origin/normal; pose en el marco del IM → godot_to_ros_vector/quat.",
+    "vita_ros2_vita": "Feedback = 149 B (medido) ⇒ se publica DIRECTO en BE a `<ns>/feedback` (necesita el tipo en generar_esquemas.py). Táctil frontal disponible en el port (docs/28:59: solo FRONT); panel trasero pendiente de parche (docs/28:15) — uso propuesto: trasero = rotar (ROTATE_AXIS) sin tapar la vista. Sin servicios: la pose de partida llega por `/vita/im_poses`.",
+    "campos": "header (frame del IM), client_id (\"/vita\"), marker_name, control_name, event_type (0 KEEP_ALIVE … 5 MOUSE_UP), pose, menu_entry_id, mouse_point (+ valid).",
+    "codigo": "extends Node3D\n## Arrastre MOVE_PLANE de un IM y publicación de feedback (PC ratón / Vita táctil frontal).\n@export var ns := \"/simple_marker\"\n@export var hz_feedback := 20.0\nvar ctx\nvar cam: Camera3D\nvar im_nombre := \"\"\nvar control := \"\"\nvar frame := \"map\"\nvar _pub: RosPublisher; var _plano: Plane\nvar _activo := false; var _t := 0\n\nfunc _ready() -> void:\n\t_pub = ctx.nodo.create_publisher(ns + \"/feedback\", \"visualization_msgs/msg/InteractiveMarkerFeedback\", ctx.qos(true, 1))\n\nfunc _unhandled_input(ev: InputEvent) -> void:\n\tvar pulsado := (ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT) or ev is InputEventScreenTouch\n\tif pulsado and ev.pressed and not _activo:\n\t\t_activo = true; _plano = Plane(global_basis.x, global_position)   # MOVE_PLANE: plano y-z ⇒ normal = eje x del control\n\t\t_enviar(4)                                                         # MOUSE_DOWN\n\telif pulsado and not ev.pressed and _activo:\n\t\t_activo = false; _enviar(5)                                        # MOUSE_UP\n\telif _activo and (ev is InputEventMouseMotion or ev is InputEventScreenDrag):\n\t\tvar p = _plano.intersects_ray(cam.project_ray_origin(ev.position), cam.project_ray_normal(ev.position))\n\t\tif p != null:\n\t\t\tglobal_position = p\n\t\t\tif Time.get_ticks_msec() - _t >= int(1000.0 / hz_feedback):\n\t\t\t\t_t = Time.get_ticks_msec(); _enviar(1)                     # POSE_UPDATE\n\nfunc _enviar(evento: int) -> void:\n\tvar f := RosMsg.from_type(\"visualization_msgs/msg/InteractiveMarkerFeedback\")\n\tf.header.frame_id = frame; f.header.stamp = ctx.nodo.now()\n\tf.client_id = \"/vita\" if OS.has_feature(\"vita\") else \"/godot\"\n\tf.marker_name = im_nombre; f.control_name = control; f.event_type = evento\n\tvar p := rclgd.godot_to_ros_vector(global_position)\n\tvar q := rclgd.godot_to_ros_quat(global_basis.get_rotation_quaternion())\n\tf.pose.position.x = p.x; f.pose.position.y = p.y; f.pose.position.z = p.z\n\tf.pose.orientation.x = q.x; f.pose.orientation.y = q.y; f.pose.orientation.z = q.z; f.pose.orientation.w = q.w\n\t_pub.publish(f)",
+    "parametros": [
+      "hz_feedback (20)",
+      "client_id",
+      "QoS (BE en la Vita)",
+      "trasero = rotar (Vita)"
+    ],
+    "evidencia": "Campos y constantes de evento (InteractiveMarkerFeedback.msg) [V]; MOVE_PLANE = plano y-z del control (InteractiveMarkerControl.msg:31) [V]; servidor suscrito a `<ns>/feedback` (interactive_marker_server.cpp:90) [V]; 149 B medido con rosbags [V]; táctil frontal leído por el port, trasero no (docs/28:15, :59) [V]. QoS del suscriptor del servidor: si es fiable, un publicador BE no casa (regla 5 de la skill rclgd) — comprobar con `ros2 topic info -v` [?].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/InteractiveMarkerFeedback.msg",
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/InteractiveMarkerControl.msg",
+      "https://github.com/ros-visualization/interactive_markers/blob/jazzy/src/interactive_marker_server.cpp#L87-L91",
+      "docs/28-sensores-y-vision-vita.md:15",
+      "docs/28-sensores-y-vision-vita.md:59",
+      "skills/rclgd/SKILL.md"
+    ],
+    "confianza": "[V] mensaje y táctil; [?] casamiento de QoS BE→servidor",
+    "coste_estimado": "149 B × 20 Hz ≈ 3 KB/s de TX desde la Vita (presupuesto ~30 KB/s, docs/27:113).",
+    "como_se_mediria_en_hardware": "Vita con `basic_controls`: arrastrar el asa con el dedo; `ros2 topic echo /basic_controls/feedback`. Verde: POSE_UPDATE a ≈ 20 Hz, el servidor mueve el marcador (lo ve RViz) y la latencia percibida < 150 ms."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "visualization_msgs/msg/ImageMarker",
+    "equivalente": "image_view / rqt_image_overlay (RViz2 no tiene display para ImageMarker)",
+    "candidato": "Superposición 2D sobre la imagen de cámara (TextureRect del HUD): un Control con `_draw` que escala de píxeles de la imagen a píxeles de pantalla; mismo gestor ns+id+lifetime que Marker, en 2D.",
+    "pc_rclgd": "Control hijo del TextureRect de la cámara; CIRCLE → draw_circle/draw_arc (scale = diámetro), LINE_STRIP → draw_polyline_colors, LINE_LIST → draw_multiline_colors, POLYGON → draw_colored_polygon (si filled) + contorno, POINTS → rects.",
+    "vita_ros2_vita": "Ideal para la Vita: solo 2D (H16-H17). Tamaño 124 B + 24/punto (medido: 10 puntos = 368 B) ⇒ ≤ 15 puntos directo (añadir el tipo a generar_esquemas.py). Coordenadas en píxeles de la imagen ORIGINAL: si el relay reduce la imagen a 160×120 (docs/27:107), escalar con el ancho real (CameraInfo o meta).",
+    "campos": "position (px), scale (diámetro del círculo), outline_color, filled + fill_color, points (px), outline_colors, lifetime, action ADD/REMOVE.",
+    "codigo": "extends Control\n## Superposición de ImageMarker sobre la imagen (PC y Vita). Coordenadas en px de la imagen original.\n@export var ancho_imagen := 640.0\nvar _m := {}                                   # \"ns/id\" → [msg, expira_ms]\n\nfunc on_image_marker(m) -> void:\n\tvar k := \"%s/%d\" % [m.ns, m.id]\n\tif m.action == 1:\n\t\t_m.erase(k)\n\telse:\n\t\tvar vida: float = m.lifetime.sec + m.lifetime.nanosec * 1e-9\n\t\t_m[k] = [m, Time.get_ticks_msec() + int(vida * 1000.0) if vida > 0.0 else -1]\n\tqueue_redraw()\n\nfunc _draw() -> void:\n\tvar s := size.x / ancho_imagen\n\tvar ahora := Time.get_ticks_msec()\n\tfor k in _m.keys():\n\t\tvar m = _m[k][0]\n\t\tif _m[k][1] >= 0 and ahora > _m[k][1]:\n\t\t\t_m.erase(k); continue\n\t\tvar oc := Color(m.outline_color.r, m.outline_color.g, m.outline_color.b, m.outline_color.a)\n\t\tvar fc := Color(m.fill_color.r, m.fill_color.g, m.fill_color.b, m.fill_color.a)\n\t\tvar pts := PackedVector2Array()\n\t\tfor p in m.points:\n\t\t\tpts.append(Vector2(p.x, p.y) * s)\n\t\tmatch m.type:\n\t\t\t0:\n\t\t\t\tvar c := Vector2(m.position.x, m.position.y) * s\n\t\t\t\tif m.filled: draw_circle(c, m.scale * 0.5 * s, fc)\n\t\t\t\tdraw_arc(c, m.scale * 0.5 * s, 0.0, TAU, 24, oc, 1.0)\n\t\t\t1:\n\t\t\t\tif pts.size() > 1: draw_polyline(pts, oc, 1.0)\n\t\t\t2:\n\t\t\t\tif pts.size() > 1: draw_multiline(pts, oc, 1.0)\n\t\t\t3:\n\t\t\t\tif m.filled and pts.size() > 2: draw_colored_polygon(pts, fc)\n\t\t\t\tif pts.size() > 1: draw_polyline(pts + PackedVector2Array([pts[0]]), oc, 1.0)\n\t\t\t4:\n\t\t\t\tfor p in pts: draw_rect(Rect2(p - Vector2.ONE, Vector2(2, 2)), oc)",
+    "parametros": [
+      "ancho/alto de la imagen original",
+      "grosor de línea",
+      "máx. marcadores"
+    ],
+    "evidencia": "ImageMarker.msg: CIRCLE/LINE_STRIP/LINE_LIST/POLYGON/POINTS, ADD/REMOVE, position en px, scale = diámetro del círculo, lifetime 0 = siempre (https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/ImageMarker.msg) [V]; tamaños medidos [V]. RViz2 jazzy no trae display de ImageMarker (no aparece en displays/) [I].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/visualization_msgs/msg/ImageMarker.msg",
+      "docs/31-render-visualizacion-vita.md:48-49",
+      "docs/27-xrce-limites-y-relay.md:107"
+    ],
+    "confianza": "[V] mensaje; [I] ausencia en RViz",
+    "coste_estimado": "Vita: 1–2 quads por segmento, ≤ 1 lote de color plano (H16).",
+    "como_se_mediria_en_hardware": "Detector en el PC que publica 5 ImageMarker CIRCLE a 10 Hz sobre `/vita/camara`; verde = círculos alineados con el objeto y FPS sin cambio."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "shape_msgs/msg/SolidPrimitive",
+    "equivalente": "Sin display RViz propio (lo usan MoveIt PlanningScene / CollisionObject; MoveIt lo dibuja con su plugin)",
+    "candidato": "Misma fábrica de primitivas unidad con conversión de dimensions: BOX lados, SPHERE **radio** (Marker usa diámetro), CYLINDER/CONE altura+radio sobre Z, PRISM extrusión de polygon. Útil en un visor de escena de colisión.",
+    "pc_rclgd": "BoxMesh/SphereMesh/CylinderMesh/CylinderMesh(top_radius 0) escalados; PRISM: Polygon → ArrayMesh por extrusión (SurfaceTool).",
+    "vita_ros2_vita": "Mismo tratamiento que los sólidos de Marker (instancia rígida + paleta). Tamaño pequeño (sin polygon ≈ 40 B [I]); viaja dentro de CollisionObject (no medido) ⇒ relay probablemente.",
+    "campos": "type (1 BOX … 5 PRISM), dimensions float64[≤3] (índices BOX_X/Y/Z, SPHERE_RADIUS, CYLINDER_HEIGHT=0/RADIUS=1, CONE igual), polygon (PRISM, solo x,y, CCW).",
+    "codigo": "## fabrica.gd — SolidPrimitive → (malla unidad, escala Godot). Ojo: SPHERE = radio, no diámetro.\nconst CONO := 4\n\nstatic func primitiva(sp) -> Array:\n\tvar d: PackedFloat64Array = sp.dimensions\n\tmatch sp.type:\n\t\t1:   # BOX: lados x, y, z\n\t\t\treturn [malla(CUBO), Vector3(d[1], d[2], d[0])]\n\t\t2:   # SPHERE: radio\n\t\t\treturn [malla(ESFERA), Vector3.ONE * d[0] * 2.0]\n\t\t3:   # CYLINDER: [altura, radio], eje Z ROS = Y Godot\n\t\t\treturn [malla(CILINDRO), Vector3(d[1] * 2.0, d[0], d[1] * 2.0)]\n\t\t4:   # CONE: [altura, radio], punta hacia +Z\n\t\t\tif not _mallas.has(CONO):\n\t\t\t\tvar c := CylinderMesh.new(); c.top_radius = 0.0; c.bottom_radius = 0.5; c.height = 1.0\n\t\t\t\tc.radial_segments = 8 if OS.has_feature(\"vita\") else 32\n\t\t\t\t_mallas[CONO] = c\n\t\t\treturn [_mallas[CONO], Vector3(d[1] * 2.0, d[0], d[1] * 2.0)]\n\t\t5:   # PRISM: extrusión ±altura/2 del polígono (CCW)\n\t\t\treturn [prisma(sp.polygon.points, d[0]), Vector3.ONE]\n\treturn [null, Vector3.ZERO]\n\nstatic func prisma(pts: Array, alto: float) -> ArrayMesh:\n\tvar st := SurfaceTool.new()\n\tst.begin(Mesh.PRIMITIVE_TRIANGLES)\n\tvar n := pts.size()\n\tfor i in n:\n\t\tvar a := Vector2(pts[i].x, pts[i].y); var b := Vector2(pts[(i + 1) % n].x, pts[(i + 1) % n].y)\n\t\tvar q := [Vector3(a.x, a.y, -alto / 2), Vector3(b.x, b.y, -alto / 2), Vector3(b.x, b.y, alto / 2), Vector3(a.x, a.y, alto / 2)]\n\t\tfor k in [0, 1, 2, 0, 2, 3]:\n\t\t\tst.add_vertex(rclgd.ros_to_godot_vector(q[k]))\n\t\tif i > 0 and i < n - 1:                      # tapas en abanico (polígono convexo)\n\t\t\tfor z in [-alto / 2, alto / 2]:\n\t\t\t\tfor p in [pts[0], pts[i], pts[i + 1]]:\n\t\t\t\t\tst.add_vertex(rclgd.ros_to_godot_vector(Vector3(p.x, p.y, z)))\n\treturn st.commit()",
+    "parametros": [
+      "segmentos",
+      "color"
+    ],
+    "evidencia": "SolidPrimitive.msg: tipos, índices de dimensions, SPHERE = radio, cilindro/cono sobre Z con punta del cono en +Z, PRISM con polygon CCW extruido ±h/2 (https://github.com/ros2/common_interfaces/blob/jazzy/shape_msgs/msg/SolidPrimitive.msg:1-47) [V]. Tapas en abanico solo valen para polígonos convexos [I].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/shape_msgs/msg/SolidPrimitive.msg"
+    ],
+    "confianza": "[V] mensaje; [I] tapas",
+    "coste_estimado": "Como los sólidos de Marker; PRISM n lados = 4n − 4 tri.",
+    "como_se_mediria_en_hardware": "Solo PC por ahora (escena de colisión de MoveIt); prueba headless de dimensiones."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "shape_msgs/msg/Mesh",
+    "equivalente": "Sin display RViz propio (MoveIt CollisionObject meshes)",
+    "candidato": "ArrayMesh indexada (triangles[].vertex_indices + vertices[]); en la Vita, aplanada (el port no usa índices, H3) y estática.",
+    "pc_rclgd": "ARRAY_VERTEX + ARRAY_INDEX; normales con SurfaceTool.generate_normals si se quiere luz.",
+    "vita_ros2_vita": "H3: 20 B por vértice sin índices (60 B/tri) en el arena; solo mallas estáticas ≤ 1 000 tri (pasada de luz, H5). Nunca cabe en XRCE salvo mallas mínimas ⇒ hornear en el PC (como el URDF, ADR 0009).",
+    "campos": "triangles[] (MeshTriangle uint32[3] vertex_indices), vertices[] Point.",
+    "codigo": "## fabrica.gd — shape_msgs/Mesh → ArrayMesh (PC indexada; la Vita la aplana sola al subirla, H3).\nstatic func malla_shape(msh) -> ArrayMesh:\n\tvar v := PackedVector3Array()\n\tfor p in msh.vertices:\n\t\tv.append(rclgd.ros_to_godot_vector(Vector3(p.x, p.y, p.z)))\n\tvar idx := PackedInt32Array()\n\tfor t in msh.triangles:\n\t\tvar vi = t.vertex_indices\n\t\t# Godot usa sentido horario como cara frontal; ROS no fija sentido: invertir 1-2 si se ve por dentro.\n\t\tidx.append_array([int(vi[0]), int(vi[2]), int(vi[1])])\n\tvar st := SurfaceTool.new()\n\tst.begin(Mesh.PRIMITIVE_TRIANGLES)\n\tfor i in idx:\n\t\tst.add_vertex(v[i])\n\tst.index()\n\tst.generate_normals()\n\treturn st.commit()",
+    "parametros": [
+      "invertir caras",
+      "color",
+      "sombreado"
+    ],
+    "evidencia": "Mesh.msg: MeshTriangle[] triangles, Point[] vertices (https://github.com/ros2/common_interfaces/blob/jazzy/shape_msgs/msg/Mesh.msg) [V]. Aplanado sin índices en el port (docs/31 H3) [V]. Sentido de cara frontal de Godot (horario) [V docs Godot]; sentido en ROS no especificado [I].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/shape_msgs/msg/Mesh.msg",
+      "docs/31-render-visualizacion-vita.md:35 (H3)",
+      "docs/31-render-visualizacion-vita.md:37 (H5)",
+      "docs/adr/0009-urdf-horneado-en-pc.md"
+    ],
+    "confianza": "[V] mensaje; [I] sentido",
+    "coste_estimado": "Vita: 60 B/tri de arena por construcción; 1 draw.",
+    "como_se_mediria_en_hardware": "Solo PC por ahora."
+  },
+  {
+    "workshop": "W13",
+    "autor": "mapas-marcadores (opus)",
+    "tipo": "shape_msgs/msg/Plane",
+    "equivalente": "Sin display RViz propio",
+    "candidato": "Quad grande (p. ej. 4×4 m) en el plano ax+by+cz+d=0, centrado en el punto del plano más cercano al origen del marco, semitransparente; en la Vita, quad con paleta (alfa ⇒ sin luz) o rejilla de líneas.",
+    "pc_rclgd": "MeshInstance3D con PlaneMesh (normal +Y) orientado con Basis alineando +Y a la normal convertida a Godot.",
+    "vita_ros2_vita": "2 tri, 1 draw; Plane = 32 B de coeficientes (cabe directo dentro de un mensaje mayor).",
+    "campos": "coef[4] = a, b, c, d (float64); normal n = (a,b,c)/|n|; punto = −d·n/|n|².",
+    "codigo": "## fabrica.gd — shape_msgs/Plane → transform de un PlaneMesh (normal +Y de Godot).\nstatic func plano(pl, lado := 4.0) -> MeshInstance3D:\n\tvar c: PackedFloat64Array = pl.coef\n\tvar n_ros := Vector3(c[0], c[1], c[2])\n\tvar l2 := n_ros.length_squared()\n\tif l2 < 1e-12:\n\t\treturn null\n\tvar punto := rclgd.ros_to_godot_vector(-c[3] * n_ros / l2)\n\tvar n := rclgd.ros_to_godot_vector(n_ros).normalized()\n\tvar x := n.cross(Vector3.FORWARD if absf(n.z) < 0.99 else Vector3.RIGHT).normalized()\n\tvar mi := MeshInstance3D.new()\n\tvar pm := PlaneMesh.new()\n\tpm.size = Vector2(lado, lado)\n\tmi.mesh = pm\n\tmi.transform = Transform3D(Basis(x, n, x.cross(n)), punto)\n\tvar mat := StandardMaterial3D.new()\n\tmat.albedo_color = Color(0.2, 0.6, 1.0, 0.35)\n\tmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA\n\tmat.cull_mode = BaseMaterial3D.CULL_DISABLED\n\tmi.material_override = mat\n\treturn mi",
+    "parametros": [
+      "lado del quad",
+      "color/alfa"
+    ],
+    "evidencia": "Plane.msg: float64[4] coef, ax+by+cz+d=0 (https://github.com/ros2/common_interfaces/blob/jazzy/shape_msgs/msg/Plane.msg) [V]; geometría elemental [V].",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/shape_msgs/msg/Plane.msg"
+    ],
+    "confianza": "[V]",
+    "coste_estimado": "2 tri.",
+    "como_se_mediria_en_hardware": "No prioritario."
+  }
+]

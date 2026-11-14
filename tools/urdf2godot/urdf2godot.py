@@ -34,6 +34,16 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+RAIZ_REPO = os.path.normpath(os.path.join(AQUI, "..", ".."))
+
+
+def ruta_informe(p):
+    """Ruta para informe.json sin datos de la máquina (repo público, ADR 0014): relativa a la raíz del repo si
+    está dentro; si no (p. ej. un URDF en un directorio temporal), solo el nombre del fichero."""
+    ab = os.path.abspath(p)
+    if os.path.commonpath([ab, RAIZ_REPO]) == RAIZ_REPO:
+        return os.path.relpath(ab, RAIZ_REPO)
+    return os.path.basename(ab)
 
 # Matriz que lleva un vector de ROS a Godot: g = (-ros.y, ros.z, -ros.x)  (inversa de rclgd)
 ROS_A_GODOT = [[0, -1, 0], [0, 0, 1], [-1, 0, 0]]
@@ -261,7 +271,10 @@ def main():
 
     total_antes = sum(x["antes"] for x in informe)
     total_desp = sum(x["despues"] for x in informe)
-    resumen = {"urdf": os.path.abspath(a.urdf), "escena": ruta_esc, "links": len(links), "joints": len(joints),
+    # Blender necesita rutas absolutas en `trabajos` (arriba); el informe guarda rutas relativas al repo.
+    for x in informe:
+        x["salida"] = ruta_informe(x["salida"])
+    resumen = {"urdf": ruta_informe(a.urdf), "escena": ruta_informe(ruta_esc), "links": len(links), "joints": len(joints),
                "movibles": sum(1 for j in joints if j.get("type") not in ("fixed",)),
                "triangulos_original": total_antes, "triangulos_escena": total_desp, "mallas": informe}
     open(os.path.join(dir_mallas, "informe.json"), "w").write(json.dumps(resumen, indent=1))

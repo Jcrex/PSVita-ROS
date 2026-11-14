@@ -21,16 +21,16 @@ set(VITA_TITLEID "VHWP00001")
 option(EXTENDED_MEMORY "mksfoex -d ATTRIBUTE2=12 (memoria ampliada)" OFF)
 
 set(MODULES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../modules)
-set(APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../vita-app/src)
+# netlog.{c,h}: copia de la app histórica (archivo/vita-app/src/) desde el 2026-11-13 (ADR 0014).
 
 add_executable(${PROJECT_NAME}
     src/hwprobe.c
-    ${APP_DIR}/netlog.c
+    src/netlog.c
     ${MODULES_DIR}/net-udp/impl-c/net_udp.c
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${MODULES_DIR}/net-udp/include
-    ${APP_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     NETLOG_IP="${NETLOG_IP}" NETLOG_PORT=${NETLOG_PORT})

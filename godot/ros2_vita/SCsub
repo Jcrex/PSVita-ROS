@@ -21,16 +21,21 @@ here = Dir(".").abspath
 repo = os.path.abspath(os.path.join(here, "..", ".."))
 mods = os.path.join(repo, "modules")
 
-for m in ("msg-schema", "msg-ring"):
+# V13a: tf-tree (+ viz-math y msg-cdr, que usa) para RosTfListener (ros_tf.cpp).
+for m in ("msg-schema", "msg-ring", "tf-tree", "viz-math", "msg-cdr"):
     env_ros.Prepend(CPPPATH=[os.path.join(mods, m, "include")])
 
 # --- Transporte XRCE (puerta G5) ---------------------------------------------------------------
-# Libs de vita-app/scripts/build-xrce-client-vita.sh: XRCE_PIC=1 -> xrce-vita-pic (Vita, PIC para
-# libgodot.so); XRCE_HOST=1 -> xrce-vita-host (pruebas de host). Se puede forzar otra ruta con
-# ros2_vita_xrce_prefix=... Sin libs, el módulo compila igual y el transporte xrce da ERR_UNAVAILABLE.
+# Libs de tools/build-xrce-client-vita.sh en toolchains/xrce/: XRCE_PIC=1 -> xrce-vita-pic (Vita, PIC
+# para libgodot.so); XRCE_HOST=1 -> xrce-vita-host (pruebas de host). Se puede forzar otra ruta con
+# ros2_vita_xrce_prefix=... Sin libs, el módulo compila igual y el transporte xrce da ERR_UNAVAILABLE
+# (tools/build-godot-template.sh aborta antes si faltan, salvo ROS2_VITA_SIN_XRCE=1).
+# Ruta de las libs cambiada el 2026-11-13 (ADR 0014; antes vita-app/third_party/). Validada en el PC al
+# recompilar la plantilla en V13a (2026-11-14): "transporte XRCE activado (…/toolchains/xrce/xrce-vita-pic)",
+# verify_runtime.py PASS con 694 imports.
 is_vita = env["platform"] == "vita"
 xrce_prefix = ARGUMENTS.get("ros2_vita_xrce_prefix", os.path.join(
-    repo, "vita-app", "third_party", "xrce-vita-pic" if is_vita else "xrce-vita-host"))
+    repo, "toolchains", "xrce", "xrce-vita-pic" if is_vita else "xrce-vita-host"))
 xrce_libs = [os.path.join(xrce_prefix, "lib", n) for n in ("libmicroxrcedds_client.a", "libmicrocdr.a")]
 with_xrce = all(os.path.isfile(f) for f in xrce_libs)
 if with_xrce:
@@ -38,7 +43,7 @@ if with_xrce:
     for m in ("net-udp", "microros-transport"):
         env_ros.Prepend(CPPPATH=[os.path.join(mods, m, "include")])
     env_ros.Prepend(CPPPATH=[os.path.join(xrce_prefix, "include")])
-    # Los callbacks uxr <-> microros-transport van en xrce_transport.cpp (como vita-app/src/uxr_glue.c,
+    # Los callbacks uxr <-> microros-transport van en xrce_transport.cpp (como archivo/vita-app/src/uxr_glue.c,
     # pero con contadores de diagnóstico).
     # OJO (Vita): LIBS como File, no str (la plataforma descarta los str; ver la nota de Rust abajo).
     env.Append(LIBS=[env.File(f) for f in xrce_libs])
@@ -59,6 +64,10 @@ else:
         [
             os.path.join(mods, "msg-schema", "impl-c", "msg_schema.c"),
             os.path.join(mods, "msg-ring", "impl-c", "msg_ring.c"),
+            # V13a (RosTfListener). La staticlib Rust del paraguas ya los trae (modules/paraguas-rust/src/lib.rs).
+            os.path.join(mods, "tf-tree", "impl-c", "tf_tree.c"),
+            os.path.join(mods, "viz-math", "impl-c", "viz_math.c"),
+            os.path.join(mods, "msg-cdr", "impl-c", "msg_cdr.c"),
         ],
     )
     if with_xrce:  # la staticlib Rust ya trae net-udp y microros-transport

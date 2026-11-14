@@ -20,6 +20,7 @@ extends Node3D
 
 const Marcha := preload("res://marcha.gd")
 const ColisionCasa := preload("res://colision_casa.gd")
+const Minimapa := preload("res://minimapa.gd")
 
 const MODOS := ["marcha", "ros", "de pie", "barrido"]
 const POSE_DEFECTO := {   # deploy/deploy_mujoco/configs/g1.yaml (default_angles) de unitree_rl_gym
@@ -59,6 +60,8 @@ var _arrastrando := false
 var node: RosNode
 var pub_cmd: RosPublisher
 var sub_estado: RosSubscriber   # guardar las referencias: RefCounted, si se sueltan se cancelan
+var subs_relay: Array = []      # suscripciones del minimapa (vita_relay)
+var minimapa: Control
 var ros_listo := false
 var ros_error := ""
 var estado_n := 0
@@ -84,8 +87,12 @@ func _ready() -> void:
 	var lod := "g1_vita" if OS.has_feature("vita") else "g1_pc"
 	if lod_forzado != "":
 		lod = lod_forzado
-	casa = load("res://casa/casa.tscn").instantiate()
-	add_child(casa)
+	# Regla de escenas (doc 35): la casa, la luz y el ambiente están en main.tscn para verlos en el editor. OJO: la
+	# casa se GENERA desde docker/g1/casa.json (la misma de MuJoCo y de casa/mapa.pgm); cámbiala allí, no aquí.
+	casa = get_node_or_null("Casa")
+	if casa == null:
+		casa = load("res://casa/casa.tscn").instantiate()
+		add_child(casa)
 	inicio = casa.get_meta("inicio_robot", Vector3.ZERO)
 	colision.cargar(casa)
 	robot = load("res://robot/%s.tscn" % lod).instantiate()
@@ -110,14 +117,18 @@ func _leer_tris(lod: String) -> String:
 
 
 func _montar_escena() -> void:
-	var luz := DirectionalLight3D.new()
-	luz.rotation = Vector3(deg_to_rad(-55), deg_to_rad(35), 0)
-	add_child(luz)
-	var amb := WorldEnvironment.new()
-	amb.environment = Environment.new()
-	amb.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	amb.environment.ambient_light_color = Color(0.5, 0.52, 0.58)
-	add_child(amb)
+	if get_node_or_null("Luz") == null:
+		var luz := DirectionalLight3D.new()
+		luz.name = "Luz"
+		luz.rotation = Vector3(deg_to_rad(-55), deg_to_rad(35), 0)
+		add_child(luz)
+	if get_node_or_null("Ambiente") == null:
+		var amb := WorldEnvironment.new()
+		amb.name = "Ambiente"
+		amb.environment = Environment.new()
+		amb.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		amb.environment.ambient_light_color = Color(0.5, 0.52, 0.58)
+		add_child(amb)
 	camara = Camera3D.new()
 	camara.fov = 55
 	camara.far = 60
@@ -129,6 +140,11 @@ func _montar_escena() -> void:
 	hud.add_theme_constant_override("outline_size", 4)
 	var capa := CanvasLayer.new()
 	capa.add_child(hud)
+	# Minimapa del modo ros (abajo a la derecha; se muestra al llegar /vita/mapa_meta del relay del PC).
+	minimapa = Minimapa.new()
+	minimapa.position = Vector2(960 - 250, 544 - 222)
+	minimapa.size = Vector2(240, 196)
+	capa.add_child(minimapa)
 	add_child(capa)
 
 
@@ -278,6 +294,16 @@ func _iniciar_ros() -> void:
 	qos.set_reliability(RosQoS.BEST_EFFORT)   # g1_sim publica /g1/estado en best effort
 	pub_cmd = node.create_publisher("/cmd_vel", "geometry_msgs/msg/Twist", qos)
 	sub_estado = node.create_subscription("/g1/estado", "std_msgs/msg/Float32MultiArray", _on_estado, qos)
+	# Minimapa: mapa por teselas + pose desde `docker/vita-ros.sh relay` (doc 27). La meta va en fiable +
+	# TRANSIENT_LOCAL para que llegue aunque la Vita se conecte después de publicarse el mapa.
+	var latched := RosQoS.new()
+	latched.set_reliability(RosQoS.RELIABLE)
+	latched.set_durability(RosQoS.TRANSIENT_LOCAL)
+	subs_relay = [
+		node.create_subscription("/vita/mapa_meta", "std_msgs/msg/Float32MultiArray", minimapa.relay.on_mapa_meta, latched),
+		node.create_subscription("/vita/mapa_tesela", "std_msgs/msg/UInt8MultiArray", minimapa.relay.on_mapa_tesela, qos),
+		node.create_subscription("/vita/pose2d", "std_msgs/msg/Float32MultiArray", minimapa.on_pose, qos),
+	]
 	ros_listo = true
 
 

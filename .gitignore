@@ -36,9 +36,6 @@ practica/
 
 # Toolchains locales del PC de desarrollo (VitaSDK, rustup, cargo, cmake)
 toolchains/
-# Solo la carpeta de la raíz (compilaciones de prueba de rviz2, docs/04);
-# sin la barra inicial ignoraría también docs/ia/auditoria/.
-/auditoria/
 Videos/
 
 # Clon local de Ozuba/rclgd (rama jazzy; trae su propio Godot 4.7.1). Repo
@@ -46,8 +43,23 @@ Videos/
 godot/rclgd/
 
 # Objetos sueltos de la compilación del template Godot 3.5 (SCons los deja
-# junto a las fuentes: modules/*/impl-c/, vita-app/src/, godot/godot35/modules/)
+# junto a las fuentes: modules/*/impl-c/, archivo/vita-app/src/, archivo/godot/godot35/modules/)
 *.vita.opt.32.o
 
 # Caché del editor de Godot 4 (se regenera al abrir el proyecto)
 .godot/
+
+# Mallas del G1 copiadas por g1_sim (52 MB, BSD-3 de Unitree; se regeneran solas)
+docker/g1/cache/
+
+# Respaldos locales de chats de IA (no versionar: el repo es público)
+respaldo-chat-claude/
+# Configuración local de otros agentes/editores
+.codex/
+.obsidian/
+
+# Foto generada de referencias (Fase O); caduca con cada movimiento
+docs/ia/organizacion/O1a-mapa-rutas.json
+
+# Estado local de Claude Code (worktrees de subagentes, ajustes): no se versiona
+/.claude/

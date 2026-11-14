@@ -5,6 +5,7 @@
 #include "core/object/class_db.h"
 #include "ros_msg.h"
 #include "ros_runtime.h"
+#include "ros_tf.h"
 
 static rclgd *_rclgd_singleton = nullptr;
 
@@ -20,6 +21,7 @@ void initialize_ros2_vita_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_ABSTRACT_CLASS(RosPublisher);
 	GDREGISTER_ABSTRACT_CLASS(RosSubscriber);
 	GDREGISTER_ABSTRACT_CLASS(RosTimer);
+	GDREGISTER_ABSTRACT_CLASS(RosTfListener); // V13a: RosNode.create_tf_listener() (ros_tf.cpp)
 
 	_rclgd_singleton = memnew(rclgd);
 	Engine::get_singleton()->add_singleton(Engine::Singleton("rclgd", rclgd::get_singleton()));

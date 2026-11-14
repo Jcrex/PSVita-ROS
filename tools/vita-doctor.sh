@@ -34,25 +34,26 @@ if have rustup; then
     rustup toolchain list 2>/dev/null | grep -q nightly && ok "rust nightly" "" || miss "rust nightly" "-Zbuild-std (ADR 0003)"
 else miss rustup "toolchain Rust del PC"; fi
 have scons && ok scons "$(scons --version 2>/dev/null | grep -m1 -o 'v[0-9.]*')" || miss scons "solo para compilar Godot"
-have cmake && ok cmake "$(cmake --version | head -1 | cut -d' ' -f3)" || miss cmake "vita-app"
+have cmake && ok cmake "$(cmake --version | head -1 | cut -d' ' -f3)" || miss cmake "tools/hwprobe"
 if [[ -n "${VITASDK:-}" ]]; then
-    for lib in vitaGL libvita2d; do
+    for lib in vitaGL; do
         find "$VITASDK/arm-vita-eabi/lib" -name "*${lib#lib}*" 2>/dev/null | grep -q . \
             && ok "$lib" "" || miss "$lib" "vdpm"
     done
 fi
 
 echo "== Artefactos del repo =="
-# build-xrce-client-vita.sh instala en third_party/xrce-vita$SUFFIX:
-# xrce-vita (estático, vita-app), xrce-vita-pic (Godot 4), xrce-vita-host (pruebas).
-for v in xrce-vita xrce-vita-pic xrce-vita-host; do
-    [[ -f "$REPO_ROOT/vita-app/third_party/$v/lib/libmicroxrcedds_client.a" ]] \
+# tools/build-xrce-client-vita.sh instala en toolchains/xrce/xrce-vita$SUFFIX (ADR 0014):
+# xrce-vita-pic (Godot 4) y xrce-vita-host (pruebas de host). La variante estática xrce-vita solo
+# la usaba la app histórica (archivo/vita-app/), así que ya no se comprueba.
+for v in xrce-vita-pic xrce-vita-host; do
+    [[ -f "$REPO_ROOT/toolchains/xrce/$v/lib/libmicroxrcedds_client.a" ]] \
         && ok "cliente XRCE ($v)" "" \
-        || miss "cliente XRCE ($v)" "vita-app/scripts/build-xrce-client-vita.sh (PC)"
+        || miss "cliente XRCE ($v)" "tools/build-xrce-client-vita.sh (PC)"
 done
 [[ -d "$REPO_ROOT/toolchains/pic" ]] && ok "toolchains/pic (Rust PIC)" "" || miss "toolchains/pic" "tools/build-rust-pic.sh (PC)"
-ls "$REPO_ROOT"/build/*.vpk "$REPO_ROOT"/vita-app/build*/*.vpk >/dev/null 2>&1 \
-    && ok ".vpk" "" || miss ".vpk" "Godot 4: tools/export-vita-vpk.sh; Fase 1: vita-build-package"
+ls "$REPO_ROOT"/build/*.vpk >/dev/null 2>&1 \
+    && ok ".vpk" "" || miss ".vpk" "tools/export-vita-vpk.sh"
 
 echo "== Godot 4 / godot4-vita (docs/18) =="
 [[ -d "$REPO_ROOT/toolchains/godot4-vita/engine" ]] && ok "godot4-vita clonado" "" \

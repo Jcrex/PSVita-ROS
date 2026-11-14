@@ -1,0 +1,172 @@
+CMake Deprecation Warning at CMakeLists.txt:17 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+CMake Deprecation Warning at CMakeLists.txt:37 (cmake_policy):
+  The OLD behavior for policy CMP0078 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+CMake Deprecation Warning at CMakeLists.txt:40 (cmake_policy):
+  The OLD behavior for policy CMP0086 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+-- The C compiler identification is GNU 15.2.0
+-- The CXX compiler identification is GNU 15.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /home/jcrex/Proyectos/PSVita-ROS/toolchains/vitasdk/bin/arm-vita-eabi-gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /home/jcrex/Proyectos/PSVita-ROS/toolchains/vitasdk/bin/arm-vita-eabi-g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring OGRE 1.12.13
+-- Check size of void*
+-- Check size of void* - done
+-- Search path: /home/jcrex/Proyectos/PSVita-ROS/auditoria/build-ogre/Dependencies;/home/jcrex/Proyectos/PSVita-ROS/auditoria/ogre/Dependencies;/home/jcrex/Proyectos/PSVita-ROS/auditoria/build-ogre/../Dependencies;/home/jcrex/Proyectos/PSVita-ROS/auditoria/ogre/../Dependencies
+-- Building ZZIPlib
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "/home/jcrex/Proyectos/PSVita-ROS/toolchains/vitasdk/bin"
+
+
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "/share"
+
+
+CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 has been removed from CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+  Or, add -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+
+
+-- Configuring incomplete, errors occurred!
+Error: could not find CMAKE_PROJECT_NAME in Cache
+-- Building pugixml
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "/home/jcrex/Proyectos/PSVita-ROS/toolchains/vitasdk/bin"
+
+
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "/share"
+
+
+CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 has been removed from CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+  Or, add -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+
+
+-- Configuring incomplete, errors occurred!
+Error: could not find CMAKE_PROJECT_NAME in Cache
+-- Building freetype
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "/home/jcrex/Proyectos/PSVita-ROS/toolchains/vitasdk/bin"
+
+
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "/share"
+
+
+CMake Error at CMakeLists.txt:88 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 has been removed from CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+  Or, add -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+
+
+-- Configuring incomplete, errors occurred!
+Error: could not find CMAKE_PROJECT_NAME in Cache
+-- Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR) 
+-- Looking for FreeImage...
+-- Found PkgConfig: /home/jcrex/Proyectos/PSVita-ROS/toolchains/vitasdk/bin/arm-vita-eabi-pkg-config (found version "2.5.1")
+-- Checking for module 'freeimage'
+--   Package 'freeimage' not found
+-- Could not locate FreeImage
+-- Could NOT find Freetype (missing: FREETYPE_LIBRARY FREETYPE_INCLUDE_DIRS) 
+-- Could NOT find OpenGL (missing: OPENGL_opengl_LIBRARY OPENGL_glx_LIBRARY OPENGL_INCLUDE_DIR) 
+-- Looking for Cg...
+-- Cg_PREFIX_PATH changed.
+-- Checking for module 'Cg'
+--   Package 'Cg' not found
+-- Could not locate Cg
+CMake Warning (dev) at CMake/Dependencies.cmake:302 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:290 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Found PythonInterp: /usr/bin/python (found version "3.14.6")
+CMake Warning (dev) at CMake/Dependencies.cmake:303 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:290 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find PythonLibs (missing: PYTHON_LIBRARIES PYTHON_INCLUDE_DIRS) 
+-- Looking for Softimage...
+-- Softimage_PREFIX_PATH changed.
+-- Could not locate Softimage
+-- Looking for strtol_l
+-- Looking for strtol_l - found
+CMake Error at CMake/InstallResources.cmake:141 (install):
+  install FILES given no DESTINATION!
+Call Stack (most recent call first):
+  CMakeLists.txt:455 (include)
+
+
+CMake Error at /home/jcrex/Proyectos/PSVita-ROS/toolchains/cmake/share/cmake-4.3/Modules/CMakePackageConfigHelpers.cmake:454 (message):
+  Variable OGRE_MEDIA_PATH does not exist
+Call Stack (most recent call first):
+  CMake/InstallResources.cmake:220 (configure_package_config_file)
+  CMakeLists.txt:455 (include)
+
+
+-- Configuring incomplete, errors occurred!

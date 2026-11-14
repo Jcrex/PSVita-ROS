@@ -1,0 +1,485 @@
+extends RefCounted
+## Contrato VC/1 de formatos compactos para la Vita (docs/ia/revision-kimi/R4-integracion.md §1.6).
+## Referencia de formato: las funciones puras de `docker/scripts/vita_relay.py`; estas son su copia en GDScript
+## y `pruebas/runner.gd` comprueba que dan los MISMOS bytes con vectores generados por el script de Python.
+##
+##   scan_compacto  Int16MultiArray  [seq & 0x7FFF, ang_min_cdeg, inc_cdeg, n, r0..] en cm; 0 = sin dato
+##                  (sin impacto, NaN/Inf o fuera de [range_min, range_max]); como mucho MAX_RAYOS rayos
+##   mapa_tesela    UInt8MultiArray  [ver_lo, ver_hi, tx, ty, 256 B: 32×32 celdas a 2 bit, LSB primero]
+##                  celda: 0 desconocido, 1 libre (0 ≤ p ≤ 25), 2 ocupado (p ≥ 65); 26–64 = desconocido
+##   mapa_meta      Float32MultiArray [res, ancho, alto, ox, oy, teselas_x, teselas_y, version]; version = época
+##   joints_orden   String «nombre1,nombre2,…» fiable + TRANSIENT_LOCAL
+##   (época, V6: `version` solo sube si cambian resolución, tamaño u origen del mapa; antes con cada OccupancyGrid.
+##    El cliente `vita_relay.gd` no cambia: una época nueva con el mismo tamaño solo sobrescribe teselas.)
+##
+## VC/1 rev. 2 (V6; doc 36 §5.2, sentencia W13 D5). Aditiva: los formatos de arriba no cambian ni un byte.
+## Referencia: `docker/scripts/vita_relay_formatos.py` (antes en vita_relay.py, que ahora es solo el nodo).
+##   cabecera común de todo formato NUEVO troceado (Float32/Int16MultiArray):
+##                  [seq & 0x7FFF, trozo, n_trozos, n, …campos propios…, elementos del trozo], n = elementos de
+##                  ESTE trozo; se lee con `cabecera(d)` y se genera con `trocear` (misma salida que Python)
+##   relay_info     String fiable + TRANSIENT_LOCAL «VC/1.2;mód1,mód2,…» → `leer_relay_info(s)`
+##   rosout         rcl_interfaces/msg/Log (≥ WARN, msg ≤ 200 car.) y diagnostics (DiagnosticArray de UN estado):
+##                  tipos estándar, sin formato propio (los leen `visor/displays/hud/{consola,diagnostico}.gd`)
+
+const TESELA := 32
+const MAX_RAYOS := 180
+const MASCARA_SEQ := 0x7FFF
+## Tamaño de diseño de todo /vita/* (D4): ≤ 488 B medidos con rosbags (CDR con encapsulación). = MAX_BE de Python.
+const MAX_BE := 488
+const MAX_F32 := (MAX_BE - 16) / 4             # 118 floats por Float32MultiArray (16 + 4N)
+const MAX_I16 := (MAX_BE - 16) / 2             # 236 int16 por Int16MultiArray (16 + 2N)
+const VERSION_CONTRATO := "VC/1.2"
+
+
+static func _i16(v: float) -> int:
+	return clampi(int(v), -32768, 32767)
+
+
+## Igual que `round()` de Python 3 (redondeo al par en los empates .5) para que los bytes coincidan.
+static func _redondear_py(v: float) -> float:
+	var r := roundf(v)
+	if absf(v - floorf(v) - 0.5) < 1e-9 and fmod(r, 2.0) != 0.0:
+		r -= signf(v)
+	return r
+
+
+## LaserScan → [seq, ang_min_cdeg, inc_cdeg, n, r…]; diezma por paso fijo hasta ≤ max_rayos (= vita_relay.py).
+static func empaquetar_scan(rangos: PackedFloat32Array, angulo_min: float, incremento: float,
+		rango_min: float, rango_max: float, seq: int, max_rayos: int = MAX_RAYOS) -> PackedInt32Array:
+	var n_in := rangos.size()
+	var paso := maxi(1, ceili(float(n_in) / float(max_rayos)))
+	var sel := PackedFloat32Array()
+	var i := 0
+	while i < n_in and sel.size() < max_rayos:
+		sel.append(rangos[i])
+		i += paso
+	var out := PackedInt32Array([seq & MASCARA_SEQ, _i16(_redondear_py(rad_to_deg(angulo_min) * 100.0)),
+		_i16(_redondear_py(rad_to_deg(incremento * paso) * 100.0)), sel.size()])
+	for r in sel:
+		if is_nan(r) or is_inf(r) or r < rango_min or r > rango_max:
+			out.append(0)   # VC/1: 0 = sin dato, también «sin impacto» (antes se enviaba range_max: anillo falso)
+		else:
+			out.append(_i16(_redondear_py(r * 100.0)))
+	return out
+
+
+## OccupancyGrid (-1 desconocido, 0..100) → 0 desconocido, 1 libre, 2 ocupado (umbrales de map_server, como
+## `celda_2bit` de vita_relay.py). Antes las plantillas daban «libre» a todo lo < 65 (R4 §1.2).
+static func celda_2bit(v: int) -> int:
+	if v < 0:
+		return 0
+	if v >= 65:
+		return 2
+	return 1 if v <= 25 else 0
+
+
+## Una tesela de 32×32 celdas a 2 bit = 4 B de cabecera + 256 B. Celdas fuera del mapa = desconocido.
+static func empaquetar_tesela(data: PackedInt32Array, ancho: int, alto: int, tx: int, ty: int,
+		version: int) -> PackedByteArray:
+	var b := PackedByteArray()
+	b.resize(4 + TESELA * TESELA / 4)
+	b.fill(0)   # VC/1: cuerpo a cero explícito (no depender de lo que deje resize)
+	b[0] = version & 0xFF
+	b[1] = (version >> 8) & 0xFF
+	b[2] = tx
+	b[3] = ty
+	for j in TESELA:
+		var y := ty * TESELA + j
+		for i in TESELA:
+			var x := tx * TESELA + i
+			var c := celda_2bit(data[y * ancho + x]) if (x < ancho and y < alto) else 0
+			var k := j * TESELA + i
+			b[4 + (k >> 2)] |= c << ((k & 3) * 2)
+	return b
+
+
+static func orden_joints(nombres: PackedStringArray) -> String:
+	return ",".join(nombres)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# VC/1 rev. 2 (V6)
+# ---------------------------------------------------------------------------------------------------------------
+
+## Cabecera común de lo troceado [seq & 0x7FFF, trozo, n_trozos, n, …]. {} si no es válida (corta, trozo fuera de
+## rango o n negativo). `d` sin anotar: PackedFloat32Array o PackedInt32Array (Int16MultiArray, trampa T6).
+static func cabecera(d) -> Dictionary:
+	if d == null or d.size() < 4:
+		return {}
+	var c := {"seq": int(d[0]), "trozo": int(d[1]), "n_trozos": int(d[2]), "n": int(d[3])}
+	if c.n_trozos < 1 or c.trozo < 0 or c.trozo >= c.n_trozos or c.n < 0:
+		return {}
+	return c
+
+
+## Referencia de bytes: misma salida que `vita_relay_formatos.trocear` (huella cruzada en pruebas/runner.gd).
+## `elementos` = Array de Arrays de `por_elemento` números; `extra` = campos propios tras la cabecera. Corta a
+## `max_trozos` trozos (estado completo); sin elementos sale un trozo con n = 0.
+@warning_ignore("integer_division")
+static func trocear(elementos: Array, por_elemento: int, extra: Array = [], seq: int = 0,
+		max_valores: int = MAX_F32, max_trozos: int = 3) -> Array:
+	var cab := 4 + extra.size()
+	var cabe := (max_valores - cab) / por_elemento
+	if cabe < 1:
+		push_error("VC1.trocear: %d valores por elemento no caben en %d - %d" % [por_elemento, max_valores, cab])
+		return []
+	var lista := elementos.slice(0, cabe * max_trozos)
+	var n_trozos := maxi(1, ceili(float(lista.size()) / cabe))
+	var out := []
+	for t in n_trozos:
+		var parte := lista.slice(t * cabe, (t + 1) * cabe)
+		var trozo: Array = [seq & MASCARA_SEQ, t, n_trozos, parte.size()]
+		trozo.append_array(extra)
+		for e in parte:
+			trozo.append_array(e)
+		out.append(trozo)
+	return out
+
+
+# --- V9: pose_cov, poses y tf (doc 36 §5.3; referencia `vita_relay_formatos.py`, huellas en pruebas/visor_tf.gd) ---
+##   pose_cov     Float32MultiArray [x, y, yaw, σxx, σxy, σyy, σyaw] (varianzas cov[0], cov[1], cov[7], cov[35]) 2 Hz
+##   poses        Float32MultiArray cab. + [x, y, yaw]·n, n ≤ 36 (diezmado por paso fijo), un trozo, 2 Hz
+##   tf           Float32MultiArray cab. + [idx, x, y, z, qx, qy, qz, qw]·n, n ≤ 8, un trozo, 10 Hz (ejes ROS)
+##   tf_estatico  igual que tf, n ≤ 16, fiable + TRANSIENT_LOCAL
+##   tf_marcos    String «padre>hijo,padre>hijo,…» fiable + TRANSIENT_LOCAL: el índice `idx` de tf y tf_estatico
+const MAX_POSES := 36
+const MAX_TF := 8
+const MAX_TF_ESTATICOS := 16
+
+
+## `geometry_msgs/PoseWithCovariance` (x, y, yaw y la covarianza de 36 por filas) → los 7 valores de pose_cov.
+static func empaquetar_pose_cov(x: float, y: float, yaw: float, cov) -> Array:
+	return [x, y, yaw, cov[0], cov[1], cov[7], cov[35]]
+
+
+## Diezmado por paso fijo (como el scan): `lista[::ceil(n / max_n)][:max_n]`.
+static func diezmar(lista: Array, max_n: int) -> Array:
+	var paso := maxi(1, ceili(float(lista.size()) / max_n))
+	var out := []
+	var i := 0
+	while i < lista.size() and out.size() < max_n:
+		out.append(lista[i])
+		i += paso
+	return out
+
+
+## [[x, y, yaw], …] → UN trozo de `<p>/poses` (cabecera común, n ≤ max_n tras diezmar).
+static func empaquetar_poses(xyyaw: Array, seq: int, max_n: int = MAX_POSES) -> Array:
+	return trocear(diezmar(xyyaw, max_n), 3, [], seq, 4 + 3 * max_n, 1)[0]
+
+
+## [[idx, x, y, z, qx, qy, qz, qw], …] → UN trozo de `<p>/tf` (n ≤ max_n; los que sobran se cortan).
+static func empaquetar_tf(items: Array, seq: int, max_n: int = MAX_TF) -> Array:
+	return trocear(items.slice(0, max_n), 8, [], seq, 4 + 8 * max_n, 1)[0]
+
+
+## `<p>/poses` → PackedVector3Array (x, y, yaw); vacío si la cabecera no vale. Ignora los NaN (T2).
+@warning_ignore("integer_division")
+static func leer_poses(d) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var c := cabecera(d)
+	if c.is_empty():
+		return out
+	for i in mini(int(c.n), (d.size() - 4) / 3):
+		var p := Vector3(d[4 + 3 * i], d[5 + 3 * i], d[6 + 3 * i])
+		if p.is_finite():
+			out.append(p)
+	return out
+
+
+## `<p>/tf` o `<p>/tf_estatico` → [[idx, Vector3 pos ROS, Quaternion ROS], …]; [] si la cabecera no vale.
+@warning_ignore("integer_division")
+static func leer_tf(d) -> Array:
+	var out := []
+	var c := cabecera(d)
+	if c.is_empty():
+		return out
+	for i in mini(int(c.n), (d.size() - 4) / 8):
+		var b := 4 + 8 * i
+		out.append([int(d[b]), Vector3(d[b + 1], d[b + 2], d[b + 3]), Quaternion(d[b + 4], d[b + 5], d[b + 6], d[b + 7])])
+	return out
+
+
+## «padre>hijo,padre>hijo» ↔ PackedStringArray de «padre>hijo».
+static func leer_tf_marcos(s: String) -> PackedStringArray:
+	return s.split(",", false)
+
+
+static func texto_tf_marcos(pares: PackedStringArray) -> String:
+	return ",".join(pares)
+
+
+## «VC/1.2;scan,pose,…» → {"version": "VC/1.2", "modulos": PackedStringArray}; {} si no es un saludo VC/1.
+## Con él el HUD distingue «sin datos» (módulo activo, nada llega) de «módulo apagado» (no está en la lista).
+static func leer_relay_info(s: String) -> Dictionary:
+	if not s.begins_with("VC/1") or not s.contains(";"):
+		return {}
+	var k := s.find(";")
+	var mods := PackedStringArray()
+	for m in s.substr(k + 1).split(",", false):
+		mods.append(m)
+	return {"version": s.left(k), "modulos": mods}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Marcadores (V8; doc 36 §5.3, 36a §4.7.4, sentencia W13 D14). Referencia: `vita_relay_formatos.py` (bloque
+# «marcadores»); huellas cruzadas en `docker/scripts/test_vita_relay.py` y `pruebas/visor_marcadores.gd`.
+##   marcadores       Float32MultiArray BE 5 Hz, ESTADO COMPLETO: cab. común + [clave, tipo, x, y, z, yaw, sx, sy,
+##                    sz, color]·n, n ≤ 11 por trozo, ≤ 33 marcadores (3 trozos de ≤ 472 B); pose en el marco fijo
+##                    (ejes ROS). Al completar un seq, la Vita recicla lo que no llegó (sin fantasmas).
+##   marcador_puntos  Float32MultiArray BE ≤ 4/s: cab. común + [clave, tipo, color, ancho] + xyz·n, n ≤ 36 por trozo
+##   marcador_texto   String fiable ≤ 2/s: «clave|x|y|z|texto» (≤ 80 car.)
+##   clave = (id ⊕ fnv1a32(ns)) & 0xFFFFFF; color = índice de PaletaViz + 256 · alfa (0–15)
+# ---------------------------------------------------------------------------------------------------------------
+const POR_MARCADOR := 10
+const MAX_MARCADORES := 33
+const EXTRA_PUNTOS := 4
+const MAX_CAR_TEXTO_MARCADOR := 80
+
+
+## FNV-1a de 32 bit del ns en UTF-8 (= `hash_ns` de Python).
+static func hash_ns(ns: String) -> int:
+	var h := 0x811C9DC5
+	for b in ns.to_utf8_buffer():
+		h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+	return h
+
+
+static func clave_marcador(ns: String, id: int) -> int:
+	return (id ^ hash_ns(ns)) & 0xFFFFFF
+
+
+static func color_marcador(indice: int, alfa: float) -> int:
+	return clampi(indice, 0, 255) + 256 * clampi(int(alfa * 15.0 + 0.5), 0, 15)
+
+
+## color compacto → [índice de paleta, alfa 0–1].
+static func leer_color_marcador(c: int) -> Array:
+	return [c & 0xFF, float((c >> 8) & 0xF) / 15.0]
+
+
+## Estado completo → ≤ 3 trozos (≤ 33 marcadores); vacío = un trozo con n = 0.
+static func empaquetar_marcadores(elementos: Array, seq: int) -> Array:
+	return trocear(elementos.slice(0, MAX_MARCADORES), POR_MARCADOR, [], seq, MAX_F32, 3)
+
+
+## Un marcador de líneas/puntos: puntos = Array de [x, y, z] (marco fijo, ejes ROS) → ≤ 3 trozos de ≤ 36 puntos.
+static func empaquetar_puntos(clave: int, tipo: int, color: int, ancho: float, puntos: Array, seq: int) -> Array:
+	return trocear(puntos, 3, [clave, tipo, color, ancho], seq, MAX_F32, 3)
+
+
+static func texto_marcador(clave: int, x: float, y: float, z: float, texto: String) -> String:
+	return "%d|%.3f|%.3f|%.3f|%s" % [clave, x, y, z, texto.left(MAX_CAR_TEXTO_MARCADOR)]
+
+
+## «clave|x|y|z|texto» → {clave, pos (Vector3 ROS), texto}; {} si no vale.
+static func leer_texto_marcador(s: String) -> Dictionary:
+	var p := s.split("|", true, 4)
+	if p.size() != 5 or not p[0].is_valid_int():
+		return {}
+	return {"clave": p[0].to_int(), "pos": Vector3(p[1].to_float(), p[2].to_float(), p[3].to_float()), "texto": p[4]}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Percepción (V10; doc 36 §5.3, 36a §4.5.3, §4.5.6, §4.8.4, §4.8.5; sentencia W13 D12 y D13). Referencia:
+# `vita_relay_formatos.py` (bloque «percepción (V10)»); huellas cruzadas en `docker/scripts/test_vita_relay.py`
+# (HUELLA_DET2D / _DET3D / _NUBE) y `pruebas/visor_percepcion.gd`. Nombres con sufijo propio (fusión V8 + V9).
+##   detecciones    Float32MultiArray BE 5 Hz: cab. común + [ancho, alto] + [clase, score, cx, cy, w, h]·n, n ≤ 18
+##                  (472 B); px de la imagen ORIGINAL; las de más score (empate: orden de llegada); sin NaN
+##   det_clases     String fiable + TRANSIENT_LOCAL «nombre0,nombre1,…» (índice = clase; −1 = «?»)
+##   detecciones3d  Float32MultiArray BE 5 Hz: cab. común + [clase, score, x, y, z, yaw, sx, sy, sz]·n, n ≤ 12
+##                  (464 B), en el marco fijo (ejes ROS)
+##   nube2d         Int16MultiArray BE 5 Hz × ≤ 3: cab. común + [x, y, z]·n en cm, n ≤ 76 (480 B), vóxel 10 cm (el
+##                  primer punto de cada vóxel), ≤ 228 puntos, en el marco fijo
+##   camara/compressed  sensor_msgs/CompressedImage fiable 3 Hz: JPEG ≤ 160×120 q40 (≤ 2 994 B); lo decodifica el
+##                  motor (`Image.load_jpg_from_buffer`), sin formato propio
+# ---------------------------------------------------------------------------------------------------------------
+const MAX_DET2D := 18
+const MAX_DET3D := 12
+const MAX_NUBE_TROZO := 76
+const MAX_TROZOS_NUBE := 3
+const MAX_NUBE := 228
+const VOXEL_NUBE_CM := 10
+
+
+static func _finito_percepcion(e: Array) -> bool:
+	for v in e:
+		if not is_finite(float(v)):
+			return false
+	return true
+
+
+## Los `max_n` de más score (índice 1), empate por orden de llegada; fuera los que traen NaN/Inf (= Python).
+static func _mejores_percepcion(elementos: Array, max_n: int) -> Array:
+	var validos := []
+	for i in elementos.size():
+		if _finito_percepcion(elementos[i]):
+			validos.append([i, elementos[i]])
+	validos.sort_custom(func(a, b): return a[1][1] > b[1][1] or (a[1][1] == b[1][1] and a[0] < b[0]))
+	var out := []
+	for k in mini(max_n, validos.size()):
+		out.append(validos[k][1])
+	return out
+
+
+## [[clase, score, cx, cy, w, h], …] (px de la imagen original) → UN trozo de `<p>/detecciones`.
+static func empaquetar_det2d(cajas: Array, ancho: float, alto: float, seq: int, max_n: int = MAX_DET2D) -> Array:
+	return trocear(_mejores_percepcion(cajas, max_n), 6, [ancho, alto], seq, 4 + 2 + 6 * max_n, 1)[0]
+
+
+## `<p>/detecciones` → {ancho, alto, cajas: [[clase, score, cx, cy, w, h], …]}; {} si la cabecera no vale.
+## Las cajas con NaN se saltan (T2).
+@warning_ignore("integer_division")
+static func leer_det2d(d) -> Dictionary:
+	var c := cabecera(d)
+	if c.is_empty() or d.size() < 6:
+		return {}
+	var cajas := []
+	for i in mini(int(c.n), (d.size() - 6) / 6):
+		var b := 6 + 6 * i
+		var e := [int(d[b]), d[b + 1], d[b + 2], d[b + 3], d[b + 4], d[b + 5]]
+		if _finito_percepcion(e):
+			cajas.append(e)
+	return {"ancho": float(d[4]), "alto": float(d[5]), "cajas": cajas}
+
+
+## [[clase, score, x, y, z, yaw, sx, sy, sz], …] (marco fijo, ejes ROS) → UN trozo de `<p>/detecciones3d`.
+static func empaquetar_det3d(cajas: Array, seq: int, max_n: int = MAX_DET3D) -> Array:
+	return trocear(_mejores_percepcion(cajas, max_n), 9, [], seq, 4 + 9 * max_n, 1)[0]
+
+
+## `<p>/detecciones3d` → [[clase, score, x, y, z, yaw, sx, sy, sz], …]; [] si la cabecera no vale; sin NaN.
+@warning_ignore("integer_division")
+static func leer_det3d(d) -> Array:
+	var out := []
+	var c := cabecera(d)
+	if c.is_empty():
+		return out
+	for i in mini(int(c.n), (d.size() - 4) / 9):
+		var b := 4 + 9 * i
+		var e := [int(d[b])]
+		for k in range(1, 9):
+			e.append(d[b + k])
+		if _finito_percepcion(e):
+			out.append(e)
+	return out
+
+
+## «persona,coche,…» → nombres por índice.
+static func leer_det_clases(s: String) -> PackedStringArray:
+	return s.split(",", true) if s != "" else PackedStringArray()
+
+
+## m → cm int16: floor(v·100 + 0,5) (= `_cm_percepcion` de Python).
+static func _cm_percepcion(v: float) -> int:
+	return clampi(floori(v * 100.0 + 0.5), -32768, 32767)
+
+
+## [[x, y, z] m, …] → [[x, y, z] cm, …]: fuera NaN/Inf, el PRIMER punto de cada vóxel y diezmado por paso fijo
+## hasta `max_n` (= `voxelizar_nube` de Python). En la Vita no se usa (lo hace el relay); sirve de referencia y en el
+## PC para reducir un PointCloud2 directo.
+static func voxelizar_nube(puntos: Array, voxel_cm: int = VOXEL_NUBE_CM, max_n: int = MAX_NUBE) -> Array:
+	var vistos := {}
+	var out := []
+	for p in puntos:
+		if not _finito_percepcion(p):
+			continue
+		var c := [_cm_percepcion(p[0]), _cm_percepcion(p[1]), _cm_percepcion(p[2])]
+		var k := Vector3i(floori(c[0] / float(voxel_cm)), floori(c[1] / float(voxel_cm)), floori(c[2] / float(voxel_cm)))
+		if vistos.has(k):
+			continue
+		vistos[k] = true
+		out.append(c)
+	return diezmar(out, max_n)
+
+
+## [[x, y, z] cm, …] (≤ 228) → ≤ 3 trozos de `<p>/nube2d` (≤ 76 puntos). Sin puntos: un trozo con n = 0.
+static func empaquetar_nube(puntos_cm: Array, seq: int) -> Array:
+	return trocear(puntos_cm.slice(0, MAX_NUBE), 3, [], seq, 4 + 3 * MAX_NUBE_TROZO, MAX_TROZOS_NUBE)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Costmap (V11; doc 36 §5.3, 36a §4.6.2, sentencia W13 D5). Referencia: `vita_relay_formatos.py` (bloque
+# «V11: costmap»); huella cruzada de enteros en `docker/scripts/test_vita_relay.py` (HUELLA_COSTMAP) y
+# `pruebas/visor_costmap.gd`.
+##   costmap_meta    Float32MultiArray F+TL [res, ancho, alto, ox, oy, teselas_x, teselas_y, época] (teselas 32×16)
+##   costmap_tesela  UInt8MultiArray BE ≤ 10/s [ver_lo, ver_hi, tx, ty] + 32×16 celdas a 4 bit (celda k = j·32 + i en
+##                   el byte k >> 1, nibble BAJO para k par) = 260 B: 0 desconocido, 1 libre, 2–13 degradado,
+##                   14 inscrito, 15 letal (LUT de `PaletaViz.lut16_costmap()`); reducido por máximo a ≥ 10 cm
+# ---------------------------------------------------------------------------------------------------------------
+const TESELA_X_COSTMAP := 32
+const TESELA_Y_COSTMAP := 16
+const RES_MIN_COSTMAP := 0.10
+
+
+## OccupancyGrid de costmap (−1, 0..100) → nivel de 4 bit (= `celda_costmap_4bit` de Python).
+static func celda_costmap_4bit(v: int) -> int:
+	if v < 0:
+		return 0
+	if v == 0:
+		return 1
+	if v >= 100:
+		return 15
+	if v == 99:
+		return 14
+	if v >= 93:
+		return 13
+	return 2 + clampi(floori((v + 4) / 8.0) - 1, 0, 10)
+
+
+## Celdas originales por celda reducida (≥ 1).
+static func factor_costmap(res: float, res_min: float = RES_MIN_COSTMAP) -> int:
+	if res <= 0.0:
+		return 1
+	return maxi(1, ceili(res_min / res - 1e-6))
+
+
+## Rejilla → rejilla f veces más gruesa por MÁXIMO. Devuelve [datos: PackedInt32Array, ancho, alto].
+static func reducir_costmap(data: PackedInt32Array, ancho: int, alto: int, f: int) -> Array:
+	if f <= 1:
+		return [data.slice(0, ancho * alto), ancho, alto]
+	var w2 := (ancho + f - 1) / f
+	var h2 := (alto + f - 1) / f
+	var out := PackedInt32Array()
+	out.resize(w2 * h2)
+	out.fill(-1)
+	for y in alto:
+		var fila := y * ancho
+		var base := (y / f) * w2
+		for x in ancho:
+			var v := data[fila + x]
+			var k := base + x / f
+			if v > out[k]:
+				out[k] = v
+	return [out, w2, h2]
+
+
+## Tesela de 32×16 celdas a 4 bit = 4 B de cabecera + 256 B (= `empaquetar_tesela_costmap` de Python).
+static func empaquetar_tesela_costmap(data: PackedInt32Array, ancho: int, alto: int, tx: int, ty: int,
+		epoca: int) -> PackedByteArray:
+	var b := PackedByteArray()
+	b.resize(4 + TESELA_X_COSTMAP * TESELA_Y_COSTMAP / 2)
+	b.fill(0)
+	b[0] = epoca & 0xFF
+	b[1] = (epoca >> 8) & 0xFF
+	b[2] = tx
+	b[3] = ty
+	for j in TESELA_Y_COSTMAP:
+		var y := ty * TESELA_Y_COSTMAP + j
+		for i in TESELA_X_COSTMAP:
+			var x := tx * TESELA_X_COSTMAP + i
+			var c := celda_costmap_4bit(data[y * ancho + x]) if (x < ancho and y < alto) else 0
+			var k := j * TESELA_X_COSTMAP + i
+			b[4 + (k >> 1)] |= c << ((k & 1) * 4)
+	return b
+
+
+## [teselas_x, teselas_y] de un costmap (ya reducido).
+static func teselas_costmap(ancho: int, alto: int) -> Vector2i:
+	return Vector2i((ancho + TESELA_X_COSTMAP - 1) / TESELA_X_COSTMAP, (alto + TESELA_Y_COSTMAP - 1) / TESELA_Y_COSTMAP)
+
+
+## `<p>/costmap_meta` (= `meta_costmap` de Python).
+static func meta_costmap(res: float, ancho: int, alto: int, ox: float, oy: float, epoca: int) -> PackedFloat32Array:
+	var t := teselas_costmap(ancho, alto)
+	return PackedFloat32Array([res, ancho, alto, ox, oy, t.x, t.y, epoca])

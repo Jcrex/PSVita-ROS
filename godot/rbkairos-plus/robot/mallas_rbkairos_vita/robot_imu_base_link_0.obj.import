@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://uyo78jtm0lgv"
+path="res://.godot/imported/robot_imu_base_link_0.obj-0fe51142f3c8896fefb8fab2d96dfb44.mesh"
+
+[deps]
+
+files=["res://.godot/imported/robot_imu_base_link_0.obj-0fe51142f3c8896fefb8fab2d96dfb44.mesh"]
+
+source_file="res://robot/mallas_rbkairos_vita/robot_imu_base_link_0.obj"
+dest_files=["res://.godot/imported/robot_imu_base_link_0.obj-0fe51142f3c8896fefb8fab2d96dfb44.mesh", "res://.godot/imported/robot_imu_base_link_0.obj-0fe51142f3c8896fefb8fab2d96dfb44.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

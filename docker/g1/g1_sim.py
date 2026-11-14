@@ -15,6 +15,11 @@ ROS 2 (modo `ros`, por defecto):
                         marco odom (ROS, Z arriba); q en el orden JOINTS_PIERNAS.
   pub  /joint_states   sensor_msgs/JointState (29 nombres del URDF; brazos y cintura a 0), 50 Hz
   pub  /odom + /tf     odom → pelvis (para RViz2)
+  robot_state_publisher (subproceso) con el URDF oficial g1_29dof_rev_1_0: /robot_description (latched) y el TF
+                       pelvis → todos los links a partir de /joint_states. Mallas con rutas file:// de esta imagen
+                       (RViz con modelo: `docker/vita-ros.sh g1-rviz`, que corre en esta misma imagen).
+  pub  /map            nav_msgs/OccupancyGrid latched de la casa (con --casa), 5 cm, frame «map»; TF estático
+                       map → odom identidad (el odom del simulador es el mundo). Para la Vita: `vita-ros.sh relay`.
 Si el robot se cae (pelvis < 0,45 m) se reinicia de pie.
 
 Modo `grabar` (sin ROS): genera los clips de animación de desplazamiento para Godot (JSON), ver --ayuda.
@@ -169,6 +174,43 @@ def mul_q(a, b):  # xyzw
             aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz)
 
 
+URDF_G1 = os.path.join(DESC, "g1_29dof_rev_1_0.urdf")
+
+
+def carpeta_mallas():
+    """Carpeta de mallas que ven TODOS los RViz: si G1_MALLAS está definida (vita-ros.sh la monta en la misma ruta
+    absoluta en el PC, la estación y este contenedor), se copian ahí las mallas oficiales; si no, las de la imagen."""
+    import shutil
+    destino = os.environ.get("G1_MALLAS", "")
+    if not destino:
+        return os.path.join(DESC, "meshes")
+    try:
+        os.makedirs(destino, exist_ok=True)
+        for f in os.listdir(os.path.join(DESC, "meshes")):
+            d = os.path.join(destino, f)
+            if not os.path.exists(d):
+                shutil.copy2(os.path.join(DESC, "meshes", f), d)
+        return destino
+    except OSError as e:
+        print(f"[g1] no se pudieron copiar las mallas a {destino}: {e}; uso las de la imagen", flush=True)
+        return os.path.join(DESC, "meshes")
+
+
+def lanzar_robot_state_publisher():
+    """robot_state_publisher con el URDF oficial; las mallas pasan a file:// absolutas para RViz."""
+    import subprocess
+    import tempfile
+    mallas = carpeta_mallas()
+    urdf = open(URDF_G1).read().replace('filename="meshes/', f'filename="file://{mallas}/')
+    yaml = tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False)
+    # YAML con el URDF como bloque literal (indentado) para no pelearse con las comillas.
+    yaml.write("robot_state_publisher:\n  ros__parameters:\n    robot_description: |\n")
+    yaml.write("".join("      " + ln + "\n" for ln in urdf.splitlines()))
+    yaml.close()
+    return subprocess.Popen(["ros2", "run", "robot_state_publisher", "robot_state_publisher",
+                             "--ros-args", "--params-file", yaml.name])
+
+
 def modo_ros(casa, x, y, yaw):
     import rclpy
     from rclpy.node import Node
@@ -177,7 +219,9 @@ def modo_ros(casa, x, y, yaw):
     from nav_msgs.msg import Odometry
     from sensor_msgs.msg import JointState
     from std_msgs.msg import Float32MultiArray
-    from tf2_ros import TransformBroadcaster
+    from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
+    from nav_msgs.msg import OccupancyGrid
+    from rclpy.qos import DurabilityPolicy
 
     rclpy.init()
     nodo = Node("g1_sim")
@@ -188,6 +232,30 @@ def modo_ros(casa, x, y, yaw):
     p_js = nodo.create_publisher(JointState, "/joint_states", 10)
     p_odom = nodo.create_publisher(Odometry, "/odom", 10)
     tf = TransformBroadcaster(nodo)
+    rsp = lanzar_robot_state_publisher()
+    if casa:
+        import casa as casa_mod
+        latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        p_map = nodo.create_publisher(OccupancyGrid, "/map", latched)
+        datos, w, h, x0, y0 = casa_mod.occupancy_grid(casa)
+        mapa = OccupancyGrid()
+        mapa.header.frame_id = "map"
+        mapa.header.stamp = nodo.get_clock().now().to_msg()
+        mapa.info.resolution, mapa.info.width, mapa.info.height = 0.05, w, h
+        mapa.info.origin.position.x, mapa.info.origin.position.y = x0, y0
+        mapa.info.origin.orientation.w = 1.0
+        mapa.data = datos
+        p_map.publish(mapa)
+        # Además de latched, se republica cada 2 s: un RViz con el display Map en VOLATILE (su valor por
+        # defecto) no recibe nunca un mensaje publicado una sola vez («No map received»).
+        nodo.create_timer(2.0, lambda: p_map.publish(mapa))
+        tf_est = StaticTransformBroadcaster(nodo)
+        t0 = TransformStamped()
+        t0.header.stamp, t0.header.frame_id, t0.child_frame_id = mapa.header.stamp, "map", "odom"
+        t0.transform.rotation.w = 1.0
+        tf_est.sendTransform(t0)
+        nodo.get_logger().info(f"/map de la casa publicado ({w}×{h} a 5 cm) y TF estático map → odom")
     ultimo = [0.0]
 
     def on_cmd(m):
@@ -200,6 +268,8 @@ def modo_ros(casa, x, y, yaw):
     nodo.get_logger().info("G1 en marcha: /cmd_vel → política de Unitree; publica /g1/estado (25 Hz)")
     t_sig = time.monotonic()
     k = 0
+    import atexit
+    atexit.register(rsp.terminate)
     while rclpy.ok():
         rclpy.spin_once(nodo, timeout_sec=0)
         if time.monotonic() - ultimo[0] > 0.5:

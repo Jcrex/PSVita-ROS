@@ -1,0 +1,43 @@
+{
+  "titulo": "Unitree G1 · 29 GDL · sensores ROS 2",
+  "nodo": "g1_godot",
+  "script": "res://comun/robots/humanoide_g1.gd",
+  "visual_pc": "res://robot/g1_pc.tscn",
+  "visual_vita": "res://robot/g1_vita.tscn",
+  "radio_colision": 0.28,
+  "altura_colision": 1.45,
+  "altura_objetivo": 1.0,
+  "mundo": {"radio_visible": 12.0, "presupuesto": {"triangulos": 15000, "mallas": 80}},
+  "_nota_mundo": "Perfil Vita ligero (doc 34): el G1 ya gasta 12 633 de los 15 000 triángulos del ADR 0011 para 60 FPS, así que el mundo se dibuja solo a 12 m (14 m por defecto). pruebas/presupuesto.gd comprueba el límite.",
+  "fuente_movimiento": "local",
+  "_nota_fuente": "local = Godot es la planta (clips de marcha.gd con root motion + move_and_slide); g1_sim = docker/vita-ros.sh g1 es la planta: el cuerpo sigue /g1/estado y la orden local se publica en /cmd_vel. ✕/Espacio alterna. g1_sim_anclaje: relativo (la primera pose de g1_sim cae donde está el G1) o absoluto.",
+  "g1_sim_topic_estado": "/g1/estado",
+  "g1_sim_topic_cmd": "/cmd_vel",
+  "g1_sim_anclaje": "relativo",
+  "camara": {"nodo_objetivo": "pelvis", "desfase_objetivo": -0.2, "distancia": 3.2, "pitch": 0.45, "dist_min": 1.0, "dist_max": 14.0, "pitch_min": -0.1, "vel_zoom": 3.0, "paso_rueda": 0.3, "suavizado": 0.6},
+  "prefijo_compacto": "/vita/g1s",
+  "_nota_g1s": "Un solo productor (revisión R4, P0): docker/g1/g1_sim.py publica /g1/estado, /odom, /joint_states y /tf odom->pelvis; g1-sensores usa /g1s/... , /vita/g1s/... y marcos con prefijo g1s/ para poder convivir.",
+  "tf_estatico": [
+    {"padre":"g1s/d435_link","hijo":"g1s/d435_optical_frame","rpy_ros":[-1.5707963,0.0,-1.5707963]}
+  ],
+  "control": {
+    "topic_cmd": "/cmd_vel",
+    "velocidad_max": [1.0, 0.4, 1.0],
+    "aceleracion_max": [1.0, 0.8, 2.0]
+  },
+  "sensores": [
+    {"tipo":"odometria","nombre":"odometria","topic":"/g1s/odom","topic_compacto":"/vita/g1s/pose2d","odom_frame":"g1s/odom","base_frame":"g1s/pelvis","hz":30.0,"hz_vita":20.0},
+    {"tipo":"joint_state","nombre":"joints","topic":"/g1s/joint_states","topic_compacto":"/vita/g1s/joints","hz":30.0,"hz_vita":20.0},
+    {"tipo":"imu","nombre":"imu_pelvis","topic":"/imu/pelvis","frame_id":"g1s/imu_in_pelvis","link":"imu_in_pelvis","hz":50.0,"hz_vita":30.0,"hz_xrce":5.0},
+    {"tipo":"imu","nombre":"imu_torso","topic":"/imu/torso","frame_id":"g1s/imu_in_torso","link":"imu_in_torso","hz":50.0,"hz_vita":30.0,"hz_xrce":5.0},
+    {"tipo":"imu","nombre":"imu_mid360","topic":"/utlidar/imu","frame_id":"g1s/mid360_link","link":"mid360_link","hz":50.0,"hz_vita":30.0,"hz_xrce":5.0},
+    {"tipo":"camara","nombre":"d435","topic":"/g1/d435/color","frame_id":"g1s/d435_link","optical_frame":"g1s/d435_optical_frame","link":"d435_link","publicar_profundidad":true,"resolucion":[320,240],"resolucion_profundidad":[80,60],"hz":5.0},
+    {"tipo":"lidar_3d","nombre":"mid360","topic":"/utlidar/cloud","frame_id":"g1s/mid360_link","link":"mid360_link","anillos":16,"muestras_azimut":90,"elevacion_min":-0.261799,"elevacion_max":1.308997,"rango_max":20.0,"hz":5.0},
+    {"tipo":"lidar_2d","nombre":"mid360_scan","topic":"/utlidar/scan","topic_compacto":"/vita/g1s/scan_compacto","frame_id":"g1s/mid360_link","link":"mid360_link","muestras":180,"muestras_vita":60,"angulo_min":-3.14159265,"angulo_max":3.14159265,"hz":10.0,"hz_vita":5.0},
+    {"tipo":"bateria","nombre":"bateria","topic":"/g1/battery_state","frame_id":"g1s/pelvis","voltaje_nominal":54.0,"capacidad_ah":9.0},
+    {"tipo":"res://comun/sensores/unitree_estado.gd","nombre":"unitree_estado","topic_compacto":"/g1s/estado","hz":25.0,"hz_vita":25.0},
+    {"tipo":"res://comun/sensores/unitree_control.gd","nombre":"unitree_control"},
+    {"tipo":"res://comun/sensores/estop.gd","nombre":"estop","topic":"/g1/emergency_stop"},
+    {"tipo":"mapeo_2d","nombre":"mapeo","padre":"mid360_scan","scan_topic":"/utlidar/scan","map_topic":"/g1s/map","frame_id":"g1s/odom","topic_meta_compacto":"/vita/g1s/mapa_meta","topic_tesela_compacta":"/vita/g1s/mapa_tesela","tamano":128,"resolucion":0.25}
+  ]
+}

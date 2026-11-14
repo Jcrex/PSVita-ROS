@@ -14,7 +14,7 @@ essential: false
 Las demás guías de esta sección explican cómo **instalar** homebrew ya
 construido. Esta explica lo contrario: **cómo se construye** un homebrew
 con VitaSDK, herramienta a herramienta, usando como ejemplo real la app de
-este proyecto (`vita-app/`, la que mete a la Vita en un grafo ROS2).
+este proyecto (`archivo/vita-app/`, la que mete a la Vita en un grafo ROS2).
 
 Al terminar deberías poder responder: ¿qué hace exactamente cada paso entre
 `main.c` y el `.vpk` que instala VitaShell?
@@ -99,14 +99,15 @@ magia:
        VERSION "01.00" NAME "Mi App")         # → mi-app.vpk
    ```
 
-El `CMakeLists.txt` real de `vita-app/` es exactamente esto más nuestras
+El `CMakeLists.txt` real de `archivo/vita-app/` es exactamente esto más nuestras
 librerías (módulos duales C o Rust según `-DVITA_IMPL`, y el cliente XRCE
-cross-compilado). El flujo completo del proyecto:
+cross-compilado). El flujo completo del proyecto (la app es **histórica** desde el 2026-11-13 y no compila
+en `archivo/`: para recompilarla, ver «Cómo recompilar la app» en `archivo/README.md`):
 
 ```bash
 source tools/env-devpc.fish
-cd vita-app
-./scripts/build-xrce-client-vita.sh   # una vez: microcdr + cliente XRCE
+tools/build-xrce-client-vita.sh       # una vez: microcdr + cliente XRCE (en toolchains/xrce/)
+cd vita-app                           # tras devolverla a su sitio (archivo/README.md)
 cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake \
       -DVITA_IMPL=rust -B build-rust
 cmake --build build-rust              # → build-rust/vita-ros2-hello.vpk
@@ -177,14 +178,14 @@ app.vpk
     └── livearea/      # fondo/botón de la LiveArea (opcional)
 ```
 
-Puedes comprobarlo: `unzip -l vita-app/build-rust/vita-ros2-hello.vpk`.
+Puedes comprobarlo: `unzip -l archivo/vita-app/build-rust/vita-ros2-hello.vpk`.
 VitaShell lo descomprime en `ux0:app/<TITLE_ID>/` al instalar.
 
 ## 5. Enlazar con el sistema: stubs y módulos
 
 En la Vita no enlazas "librerías del sistema" sino **stubs**: librerías
 `.a` diminutas que solo declaran los imports. Ejemplo real de
-`vita-app/CMakeLists.txt`:
+`archivo/vita-app/CMakeLists.txt`:
 
 ```cmake
 target_link_libraries(vita-ros2-hello
@@ -218,7 +219,7 @@ Ese baile completo está en `modules/net-udp/impl-c/net_udp.c` (rama
    reenviaba `CMAKE_TOOLCHAIN_FILE` a sus sub-proyectos y compilaba para
    el host. Solución: compilar cada sub-proyecto con su propio
    `cmake -DCMAKE_TOOLCHAIN_FILE=…` encadenado por `CMAKE_PREFIX_PATH`
-   (así funciona `vita-app/scripts/build-xrce-client-vita.sh`).
+   (así funciona `tools/build-xrce-client-vita.sh`).
 3. **Rust también compila para la Vita**: el target
    `armv7-sony-vita-newlibeabihf` (tier 3) viene en rustc nightly y
    funciona con `-Zbuild-std`. Los `.a` de Rust se enlazan en el mismo
@@ -240,8 +241,8 @@ source tools/env-devpc.fish
 arm-vita-eabi-gcc --version
 echo $VITASDK
 
-# 3. Dependencias cross-compiladas de la app (una vez)
-cd vita-app && ./scripts/build-xrce-client-vita.sh
+# 3. Dependencias cross-compiladas de la app (una vez; instala en toolchains/xrce/)
+tools/build-xrce-client-vita.sh && cd vita-app   # app devuelta a su sitio (archivo/README.md)
 
 # 4. Configurar y compilar la variante Rust
 cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake \

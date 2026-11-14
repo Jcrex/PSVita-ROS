@@ -1,0 +1,297 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://comun/visor/visor_ros.gd" id="1_visor"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/tf.gd" id="v9_tf"]
+[ext_resource type="Script" path="res://comun/visor/gestor_hud.gd" id="2_gestor"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/bateria.gd" id="3_bateria"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/estado_meta.gd" id="4_meta"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/barra_estado.gd" id="5_barra"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/medidor.gd" id="6_medidor"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/joy.gd" id="7_joy"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/robot_joints.gd" id="8_robot"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/pose.gd" id="9_pose3d"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/mapa.gd" id="10_mapa3d"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/mapa.gd" id="11_mapa"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/scan.gd" id="12_scan"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/pose.gd" id="13_pose"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/path.gd" id="14_path"]
+[ext_resource type="Script" path="res://comun/visor/texto_superpuesto.gd" id="15_texto"]
+[ext_resource type="Script" path="res://banco_primitivas.gd" id="16_banco"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/teleop.gd" id="17_teleop"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/meta.gd" id="18_meta_h"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/pose_inicial.gd" id="19_pose_ini"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/punto.gd" id="20_punto"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/diagnostico.gd" id="21_diagnostico"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/consola.gd" id="22_consola"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/marcadores.gd" id="v8_marcadores"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/marcadores_2d.gd" id="v8_marcadores_2d"]
+[ext_resource type="Script" path="res://selector_escena.gd" id="v2_selector"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/costmap.gd" id="v11_costmap"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/trazador.gd" id="v12_trazador"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/inspector_texto.gd" id="v12_inspector"]
+[ext_resource type="Script" path="res://comun/visor/explorador_topics.gd" id="v12_explorador"]
+
+[sub_resource type="Environment" id="Environment_visor"]
+ambient_light_source = 2
+ambient_light_color = Color(0.58, 0.62, 0.68, 1)
+ambient_light_energy = 0.8
+
+[node name="Main" type="Node3D"]
+
+[node name="Ambiente" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_visor")
+
+[node name="Luz" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.81915206, -0.46984634, 0.32898995, 0, 0.57357645, 0.81915206, -0.57357645, -0.6710101, 0.46984634, 0, 0, 0)
+
+[node name="Camara" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 6, 6)
+current = true
+
+[node name="BancoPrimitivas" type="Node3D" parent="."]
+script = ExtResource("16_banco")
+boton = 6
+
+[node name="VisorRos" type="Node" parent="." node_paths=PackedStringArray("camara", "texto")]
+script = ExtResource("1_visor")
+camara = NodePath("../Camara")
+texto = NodePath("Hud/Texto")
+marco_pose2d = "odom"
+tf_relay = true
+tf_estaticos = PackedStringArray("base_link>base_scan -0.032 0 0.172 0")
+
+[node name="Robot" type="Node3D" parent="VisorRos"]
+script = ExtResource("8_robot")
+topic = "/joint_states"
+tipo = "sensor_msgs/msg/JointState"
+
+[node name="TF" type="Node3D" parent="VisorRos"]
+script = ExtResource("v9_tf")
+
+[node name="Meta3D" type="Node3D" parent="VisorRos"]
+script = ExtResource("9_pose3d")
+topic = "/goal_pose"
+tipo = "geometry_msgs/msg/PoseStamped"
+topic_vita = ""
+tipo_vita = ""
+solo_pc = true
+
+[node name="Mapa3D" type="Node3D" parent="VisorRos"]
+script = ExtResource("10_mapa3d")
+topic = "/map"
+tipo = "nav_msgs/msg/OccupancyGrid"
+solo_pc = true
+
+[node name="Planta" type="CanvasLayer" parent="VisorRos"]
+
+[node name="Vista" type="Node2D" parent="VisorRos/Planta"]
+position = Vector2(480, 272)
+
+[node name="Mapa" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("11_mapa")
+topic = "/map"
+tipo = "nav_msgs/msg/OccupancyGrid"
+
+[node name="Costmap" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("v11_costmap")
+topic = "/global_costmap/costmap"
+tipo = "nav_msgs/msg/OccupancyGrid"
+
+[node name="Plan" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("14_path")
+topic = "/plan"
+tipo = "nav_msgs/msg/Path"
+
+[node name="Scan" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("12_scan")
+topic = "/scan"
+tipo = "sensor_msgs/msg/LaserScan"
+frame_id = "base_scan"
+
+[node name="Odom" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("13_pose")
+topic = "/odom"
+tipo = "nav_msgs/msg/Odometry"
+
+[node name="Hud" type="CanvasLayer" parent="VisorRos"]
+layer = 2
+
+[node name="Texto" type="Control" parent="VisorRos/Hud" node_paths=PackedStringArray("camara")]
+offset_right = 960.0
+offset_bottom = 544.0
+mouse_filter = 2
+script = ExtResource("15_texto")
+camara = NodePath("../../../Camara")
+
+[node name="GestorHud" type="Control" parent="VisorRos/Hud" node_paths=PackedStringArray("barra", "pestanas")]
+offset_right = 960.0
+offset_bottom = 544.0
+mouse_filter = 2
+script = ExtResource("2_gestor")
+barra = NodePath("Barra")
+pestanas = NodePath("Pestanas")
+boton_siguiente = -1
+
+[node name="Barra" type="Control" parent="VisorRos/Hud/GestorHud"]
+offset_right = 960.0
+offset_bottom = 24.0
+mouse_filter = 2
+
+[node name="Fondo" type="ColorRect" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_right = 960.0
+offset_bottom = 24.0
+mouse_filter = 2
+color = Color(0.08, 0.09, 0.12, 0.85)
+
+[node name="Bateria" type="Control" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_right = 240.0
+offset_bottom = 24.0
+script = ExtResource("3_bateria")
+topic = "/battery_state"
+tipo = "sensor_msgs/msg/BatteryState"
+
+[node name="Meta" type="Control" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_left = 240.0
+offset_right = 540.0
+offset_bottom = 24.0
+script = ExtResource("4_meta")
+
+[node name="Estado" type="Control" parent="VisorRos/Hud/GestorHud/Barra"]
+offset_left = 540.0
+offset_right = 960.0
+offset_bottom = 24.0
+script = ExtResource("5_barra")
+
+[node name="Pestanas" type="Control" parent="VisorRos/Hud/GestorHud"]
+offset_left = 640.0
+offset_top = 24.0
+offset_right = 960.0
+offset_bottom = 520.0
+mouse_filter = 2
+
+[node name="Estado" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Temperatura" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Estado"]
+offset_right = 320.0
+offset_bottom = 72.0
+script = ExtResource("6_medidor")
+topic = "/temperature"
+tipo = "sensor_msgs/msg/Temperature"
+
+[node name="Presion" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Estado"]
+offset_top = 80.0
+offset_right = 320.0
+offset_bottom = 152.0
+script = ExtResource("6_medidor")
+topic = "/barometer"
+tipo = "sensor_msgs/msg/FluidPressure"
+etiqueta = "Pres"
+campo = "fluid_pressure"
+escala = 0.01
+unidad = "hPa"
+minimo = 950.0
+maximo = 1050.0
+aviso = 1040.0
+
+[node name="Mando" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Joy" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Mando"]
+offset_right = 320.0
+offset_bottom = 160.0
+script = ExtResource("7_joy")
+
+[node name="Diagnostico" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Diagnostico" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Diagnostico"]
+offset_right = 320.0
+offset_bottom = 120.0
+script = ExtResource("21_diagnostico")
+
+[node name="Consola" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Consola" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Consola"]
+offset_right = 320.0
+offset_bottom = 90.0
+script = ExtResource("22_consola")
+
+[node name="Graficas" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Trazador" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Graficas"]
+offset_right = 320.0
+offset_bottom = 160.0
+script = ExtResource("v12_trazador")
+topic = "/odom"
+tipo = "nav_msgs/msg/Odometry"
+topic_vita = "pose2d"
+tipo_vita = "std_msgs/msg/Float32MultiArray"
+campos_vita = PackedStringArray("data[3]", "data[5]")
+
+[node name="Inspector" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Inspector" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Inspector"]
+offset_right = 320.0
+offset_bottom = 140.0
+script = ExtResource("v12_inspector")
+topic = "/odom"
+tipo = "nav_msgs/msg/Odometry"
+topic_vita = "pose2d"
+tipo_vita = "std_msgs/msg/Float32MultiArray"
+
+[node name="ExploradorTopics" type="Node" parent="VisorRos"]
+script = ExtResource("v12_explorador")
+
+[node name="Herramientas" type="Node2D" parent="VisorRos/Hud"]
+
+[node name="Teleop" type="Node2D" parent="VisorRos/Hud/Herramientas"]
+script = ExtResource("17_teleop")
+
+[node name="Meta" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("planta")]
+script = ExtResource("18_meta_h")
+planta = NodePath("../../../Planta/Vista")
+
+[node name="PoseInicial" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("planta")]
+script = ExtResource("19_pose_ini")
+planta = NodePath("../../../Planta/Vista")
+
+[node name="Punto" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("planta")]
+script = ExtResource("20_punto")
+planta = NodePath("../../../Planta/Vista")
+
+[node name="Marcadores" type="Node3D" parent="VisorRos"]
+script = ExtResource("v8_marcadores")
+topic = "/visualization_marker_array"
+tipo = "visualization_msgs/msg/MarkerArray"
+
+[node name="Marcas2D" type="CanvasLayer" parent="VisorRos"]
+
+[node name="Marcadores2D" type="Node2D" parent="VisorRos/Marcas2D" node_paths=PackedStringArray("gestor_3d")]
+script = ExtResource("v8_marcadores_2d")
+topic = "/visualization_marker_array"
+tipo = "visualization_msgs/msg/MarkerArray"
+gestor_3d = NodePath("../../Marcadores")
+
+[node name="SelectorEscena" type="Node" parent="."]
+script = ExtResource("v2_selector")

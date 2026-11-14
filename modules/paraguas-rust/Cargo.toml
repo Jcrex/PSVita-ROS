@@ -1,0 +1,40 @@
+# Movido desde vita-app/rust-modules el 2026-11-13 (ADR 0014); el nombre del crate y de la lib no cambian.
+# Hoy lo consume tools/build-rust-pic.sh (variante PIC para el módulo Godot ros2_vita).
+#
+# Crate "paraguas" de la app Vita: junta TODOS los módulos duales Rust en
+# un único staticlib (libvita_modules_rust.a) que CMake enlaza cuando se
+# compila con -DVITA_IMPL=rust.
+#
+# ¿Por qué un paraguas? Un binario no puede enlazar dos staticlibs de Rust
+# (cada una arrastra su copia de `core` y su panic_handler: símbolos
+# duplicados). La solución es UNA compilación de Rust que contenga todos
+# los crates como rlibs internas. Este crate no tiene lógica: depende de
+# los módulos (re-exportándolos para que el linker conserve sus símbolos
+# no_mangle) y aporta el único panic_handler del lado Rust.
+[package]
+name = "vita_modules_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+# default-features = false: ningún módulo trae su panic_handler `standalone`;
+# lo aporta este crate exactamente una vez.
+mem_pool_rust = { path = "../mem-pool/impl-rust", default-features = false }
+net_udp_rust = { path = "../net-udp/impl-rust", default-features = false }
+microros_transport_rust = { path = "../microros-transport/impl-rust", default-features = false }
+# Módulos de visualización / hilos (2026-10-27). Aún no los llama main.c: se
+# enlazan para validar en el PC que el staticlib único compila para la Vita.
+msg_ring_rust = { path = "../msg-ring/impl-rust", default-features = false }
+viz_math_rust = { path = "../viz-math/impl-rust", default-features = false }
+msg_cdr_rust = { path = "../msg-cdr/impl-rust", default-features = false }
+tf_tree_rust = { path = "../tf-tree/impl-rust", default-features = false }
+msg_schema_rust = { path = "../msg-schema/impl-rust", default-features = false }
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

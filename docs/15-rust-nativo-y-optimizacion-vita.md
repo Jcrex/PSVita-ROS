@@ -7,10 +7,10 @@
 ## 1. Qué es hoy Rust en este repo (hecho)
 
 - Target `armv7-sony-vita-newlibeabihf` (Tier 3) con `-Zbuild-std=std,panic_abort`,
-  nightly **[V]** (ADR 0003; `vita-app/CMakeLists.txt`).
+  nightly **[V]** (ADR 0003; `archivo/vita-app/CMakeLists.txt`).
 - Todos los módulos son **crates `rlib` `#![no_std]`** con ABI C; la app C
   enlaza **un único staticlib** producido por el crate paraguas
-  `vita-app/rust-modules/` **[V]**. Desde 2026-10-27 el paraguas incluye
+  `modules/paraguas-rust/` **[V]**. Desde 2026-10-27 el paraguas incluye
   `msg-ring`, `viz-math`, `msg-cdr` y `tf-tree` (compila y enlaza en host,
   sin símbolos duplicados). Cross-compilado para la Vita en G2/G3 (2026-10-29/30) en su
   variante PIC (`tools/build-rust-pic.sh`) **[V]**; la variante estática de `vita-app` con los 8 **[?]**.

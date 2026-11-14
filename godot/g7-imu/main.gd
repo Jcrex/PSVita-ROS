@@ -20,7 +20,7 @@ extends Control
 ## ESTADO (2026-11-01): corre en la Vita. Unidades y ejes MEDIDOS en hardware (lección 08, retos 1–2):
 ## la Vita da g y rad/s con ejes de Sony (x derecha, y hacia los gatillos, z saliendo de la pantalla) y
 ## el acelerómetro mide la GRAVEDAD (z ≈ −1 g con la pantalla arriba). Ver escala_acel y ejes.
-## G7c (2026-11-01): optimizaciones O1–O4 (guion docs/ia/guion-g7c-3d-en-la-vita.md) y modelo 3D.
+## G7c (2026-11-01): optimizaciones O1–O4 (guion docs/ia/tutorial/guion-g7c-3d-en-la-vita.md) y modelo 3D.
 ## El 3D de Godot en la Vita es EXPERIMENTAL: validar en hardware los FPS (se muestran en el HUD).
 
 # --- Constantes -----------------------------------------------------------------------------------

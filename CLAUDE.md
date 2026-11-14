@@ -6,11 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The PS Vita ↔ ROS2 project: turn a PS Vita 1000 into a real ROS2 Jazzy node
 via micro-ROS (XRCE-DDS) over WiFi/UDP. The repo now contains **everything**:
-docs, the dual Rust+C modules, the Vita homebrew app, the MCP server, the
-Claude Code skills and the project website. Current state and exact next
+docs, the dual Rust+C modules, the Godot 4 module and apps, the MCP server, the
+Claude Code skills and the (paused) project website. Current state and exact next
 steps live in `docs/06-bitacora-estado.md` — **read that first** when
-resuming work, and **update it** when closing milestones. (`web/src/data/fases.ts`
-too, but the web is **paused** since 2026-11-01 — see `web/` below.) The latest full-repo
+resuming work, and **update it** when closing milestones; older sessions are in `docs/bitacora/`
+(one file per month). Docs index: `docs/README.md`. Where things live and how they are archived:
+`docs/adr/0014-organizacion-del-repositorio.md`. The latest full-repo
 audit is `docs/ia/auditoria/README.md` (2026-11-01): pending cleanup lots, bugs and
 optimizations.
 
@@ -33,12 +34,16 @@ behind a shared C header (`modules/*/include/*.h` is the only source of
 truth). Both must pass the same parity suite; C/C++ is a permanent fallback.
 Key Rust rule learned: module crates are `rlib`; staticlibs are produced
 explicitly with `cargo rustc --crate-type staticlib` (one Rust staticlib per
-binary — the app uses the umbrella crate `vita-app/rust-modules/`).
+binary — the umbrella crate is `modules/paraguas-rust/`).
 
 ## Common commands
 
 ```bash
 tools/run-parity-tests.sh [module]      # C+Rust parity on host (docker for Rust)
+GH=toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64     # (PC)
+godot/test/run_host_tests.sh "$GH"      # ros2_vita host tests (test/project/runner.gd)
+"$GH" --headless --path godot/g1-sensores --script res://comun/pruebas/runner.gd   # plantillas tests
+python3 tools/check-doc-links.py        # broken doc links / cited paths (--baseline f to diff)
 cd mcp/ros2-introspection && .venv/bin/python -m pytest tests/ -q
 cd web && pnpm dev                      # site dev server
 cd web && docker compose up -d --build  # production site, localhost:4321
@@ -50,20 +55,21 @@ cd web && docker compose up -d --build  # production site, localhost:4321
   its own README with API/design/status). Platform split is *inside* each
   impl: `#ifdef __vita__` / `#[cfg(target_os = "vita")]`; the host branch
   exists so parity tests run on the laptop.
-- `vita-app/` — the Fase 1 homebrew (`main.c` + uxr glue + netlog +
-  CMake/VitaSDK + `.vpk`). Builds only on the PC. `scripts/` cross-compiles
-  microxrcedds_client.
-- `godot/` — módulo Godot **4** `ros2_vita` en árbol (godot4-vita; ADR 0008,
-  `docs/18`), compilado y probado en host (G1) y compilado para la Vita con `verify_runtime.py` PASS (G3) y
-  **corriendo en hardware** con transporte XRCE: ida y vuelta con ROS 2 Jazzy y HMI de teleop con `/odom`
-  (G4+G5+G6, 2026-10-30; G7 IMU calibrada en hardware y visor 3D en PC `godot/g7b-imu3d`, 2026-11-01; G7c = modelo 3D en la propia Vita a 59 FPS (el 3D del port solo dibuja en la pantalla principal: sin SubViewport); luego F1 `deviceQuat`, panel trasero y cámara); `godot/loader-patches/` parchea el loader; `godot/vitasdk-stubs/dlfcn.h` va al SDK;
-  `godot/test/` pruebas GDScript; `godot/g4-smoke/` + `tools/export-vita-vpk.sh` = proyecto mínimo y exportación a `.vpk` (G4, editor 4.8-dev7); el SDK Rust no depende de Godot; `tools/vita-doctor.sh` diagnostica el entorno;
-  `tools/build-godot-template.sh` es la receta (solo PC; necesita VitaGL del port en `toolchains/vitagl-src` y
-  `tools/build-pcre2-vita.sh`, docs/18 §4.5);
-  `tools/check-vita-imports.py` / `build-rust-pic.sh` / `build-c-pic.sh` verifican/construyen los enlaces (G2); `tools/hwprobe/`
-  es una sonda de hardware (sin compilar; docs/14 §9).
-  `godot/godot35/` = app teleop en Godot 3.5 (HISTÓRICO, validada en hardware; docs/20–21);
-  `godot/rclgd/` = clon local de rclgd (jazzy, trae Godot 4.7.1), no versionado.
+- `godot/` — Godot **4** (godot4-vita 4.8-dev7; ADR 0008, `docs/18`). Flat layout, grouped in `godot/README.md`
+  (which also lists the 7 versioned symlinks: never rewrite them in bulk):
+
+  | Group | Folders |
+  |---|---|
+  | Engine | `ros2_vita/` (in-tree static module, rclgd API), `loader-patches/` (loader imports), `vitasdk-stubs/` (`dlfcn.h` for the SDK), `test/` (host tests) |
+  | Shared library | `plantillas/` (seen as `res://comun` in the projects; historical name); world `plantillas/mundo/mundo.tscn` |
+  | Live apps | `g1-unitree/`, `g1-sensores/`, `rbkairos-plus/`, `dron-mapeo/` (+ `visor-ros/` in Fase V) |
+  | Closed gates (regression + lessons) | `g4-smoke/`, `g5-xrce/`, `g6-hmi/`, `g7-imu/` (G7a IMU, G7c 3D on the Vita: no SubViewport), `g7b-imu3d/` |
+  | External, not versioned | `rclgd/` (local rclgd clone, jazzy, Godot 4.7.1) |
+
+  Tools (PC only): `tools/build-godot-template.sh` (recipe; needs `toolchains/vitagl-src`, `tools/build-pcre2-vita.sh`
+  and the XRCE client in `toolchains/xrce/` from `tools/build-xrce-client-vita.sh`), `tools/export-vita-vpk.sh`,
+  `tools/deploy-vpk-ftp.sh`, `tools/vita-doctor.sh`, `tools/check-vita-imports.py` / `build-rust-pic.sh` /
+  `build-c-pic.sh` (G2), `tools/urdf2godot/`; `tools/hwprobe/` is a hardware probe (not compiled; docs/14 §9).
 - `docker/` — estación ROS 2 Jazzy propia (`vita-ros.sh`): agente micro-ROS, monitor de la Vita,
   puente Zenoh, turtlesim/TurtleBot3; `tools/vita-stack.sh` la usa por defecto.
 - `mcp/ros2-introspection/` — `FakeBackend` (laptop tests) vs `RclpyBackend`
@@ -75,8 +81,11 @@ cd web && docker compose up -d --build  # production site, localhost:4321
 - `docs/rust/` — Rust learning series tied to real repo code. The user is a
   Rust beginner: **every new Rust construct must be explained in comments
   and/or this series**.
-- `archivo/` — archived (obsolete or superseded) material, keeping its original path inside
-  (`archivo/docs/superpowers/` …). See `archivo/README.md`; pending lots in `docs/ia/auditoria/README.md`.
+- `docs/` — index `docs/README.md` (numbers never renumbered); `docs/bitacora/` (old sessions); `docs/adr/`
+  (0001–0014); `docs/ia/{tutorial,medidas,workshops,auditoria,organizacion}/` (AI working material).
+- `archivo/` — archived (obsolete or superseded) material, keeping its original path inside: the Fase 1 homebrew
+  `archivo/vita-app/` (rebuild steps in `archivo/README.md`), Godot 3.5 `archivo/godot/godot35/`, superseded docs
+  `archivo/docs/` (10, 11, 16, 19, 20, 21, …). See `archivo/README.md`; pending lots in `docs/ia/auditoria/README.md`.
 - `docs/informes/` — short reports for the user (≤ 500 words), e.g. the 2026-11-01 audit;
   their long versions are in `docs/ia/auditoria/`.
 - `docs/guias-vita/` — homebrew install guides (YAML frontmatter; the web
@@ -113,11 +122,19 @@ When the user explicitly asks to learn something, generate the guide/lesson then
 
 ## Conventions
 
+- Archiving and moving files: rules of ADR 0014 (`docs/adr/0014-organizacion-del-repositorio.md`).
 - Docs, comments and commit messages in Spanish; commit subjects use
   conventional prefixes (`feat(fase1):`, `docs(rust):`, ...).
 - One commit per coherent milestone; never leave parity tests red.
 - Code that cannot be verified on the laptop is marked "validar en el PC /
   en hardware" in code and READMEs — keep those markers accurate.
+- **Godot scenes rule (user decision, 2026-11-13; `docs/35-regla-escenas-editables.md`):** what is seen and where
+  (world, props, collisions, light, environment, robot spawn) lives in an editable `.tscn`, never built from JSON
+  in code. Code only adapts the scene to the platform (PC/Vita mesh choice, merging, culling) and creates runtime
+  things (robot physics, sensors, camera, HUD). Never save meshes the Vita must not load: store the path and show
+  an editor-only preview (child without `owner`). JSON is only for non-placement config (ROS, sensors, control).
+  The template world `godot/plantillas/mundo/mundo.tscn` is shared by all template projects. Generated scenes
+  (e.g. `g1-unitree/casa/casa.tscn` from `docker/g1/casa.json`) are edited at their source.
 
 ## Sync laptop ↔ PC
 

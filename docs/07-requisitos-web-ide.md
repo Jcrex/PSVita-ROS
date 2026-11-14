@@ -1,5 +1,7 @@
 # 07 — Requisitos: la web como IDE/panel de control del proyecto
 
+> **Estado (2026-11-13):** EN PAUSA con la web (usuario, 2026-11-01).
+
 **Fecha de creación:** 2026-07-06
 **Estado:** Recopilación de requerimientos — visión a largo plazo, sin diseño
 detallado ni compromiso de calendario.
@@ -58,7 +60,7 @@ el toolchain.
 
 **Qué se pide:** una sección de la web donde se puedan leer en vivo:
 - Los logs de la app de la Vita (hoy viajan por UDP a `tools/netlog-listen.sh`,
-  ver `vita-app/src/netlog.c`).
+  ver `archivo/vita-app/src/netlog.c`).
 - Los datos/mensajes de los topics ROS2 activos.
 - La lista de topics, nodos y tipos del grafo (ya existe introspección
   equivalente en `mcp/ros2-introspection/`, pero solo para Claude Code, no
@@ -103,7 +105,7 @@ conectividad real a ROS2 (rclpy o similar) o hablar con el MCP existente
 - Y que todo eso se traduzca en un nuevo `.vpk` instalable.
 
 **Requisitos concretos:**
-- Editor de código o editor visual (a decidir) para `vita-app/src/`.
+- Editor de código o editor visual (a decidir) para `archivo/vita-app/src/`.
 - Vista previa de cómo quedaría el diseño (aunque la emulación en
   navegador ya se evaluó y **se descartó por inviable** — ver
   `web/README.md`, sección "Decisión: previsualización/emulación en la
@@ -124,7 +126,7 @@ usuario se resolvió en dos pasos dentro del mismo hito: primero darle a la
 app la *capacidad* de dibujar UI, y sobre eso el editor. La pregunta abierta
 ("¿editor de código o editor visual?") se respondió: **editor visual de alto
 nivel**, no Monaco. La app dibuja con vita2d una UI **declarativa**
-(`vita-app/ui/layout.json` → codegen `ui_layout.h` → intérprete `ui.c`; ver
+(`archivo/vita-app/ui/layout.json` → codegen `ui_layout.h` → intérprete `ui.c`; ver
 ADR 0005 para la excepción a la regla dual) y la web la edita en
 `/taller/ui`: lienzo 960×544 con preview 2D aproximada, borrador en SQLite,
 «Aplicar al proyecto» (escribe el JSON + regenera el header + check de
@@ -279,7 +281,7 @@ el diseño (opción 1 vs. 2 de arriba).
   para VitaSDK sin tooling adicional (existe algo de soporte con
   `vita-parse-core`/`psp2gdb` en la escena homebrew, no evaluado aún en
   este proyecto). Hoy la única "depuración" real en hardware es el netlog
-  UDP (`vita-app/src/netlog.c`) — logs de texto, no breakpoints.
+  UDP (`archivo/vita-app/src/netlog.c`) — logs de texto, no breakpoints.
 
 **Objetivo del proyecto que lo desbloquea:** transversal, pero la parte
 "depurar en la Vita real" depende de investigar herramientas del

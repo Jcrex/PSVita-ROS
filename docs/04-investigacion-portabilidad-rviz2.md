@@ -1,11 +1,13 @@
 # Investigación de portabilidad de rviz2 a VitaSDK
 
+> **Estado (2026-11-13):** Histórico. Conclusión vigente (rviz2 no portable). El Plan B mini-rviz está superado por ADR 0008 §5 y ADR 0013.
+
 **Fecha de creación:** 2026-06-08
 **Estado:** **Investigación EJECUTADA (2026-07-10, en el PC)** — decisión:
 rviz2 nativo NO es portable; **Plan B activado** (mini-rviz con vitaGL).
 Decisión formal y evidencia citada en `docs/adr/0006-decision-rviz2-vs-mini-rviz.md`;
-logs completos en `auditoria/` (gitignored). Ejecutada según la Etapa A de
-`docs/10-plan-objetivos-3-4.md`.
+logs en `archivo/auditoria/`; clones en `toolchains/auditoria-rviz2/` (sin versionar). Ejecutada según la Etapa A de
+`archivo/docs/10-plan-objetivos-3-4.md`.
 
 ---
 
@@ -108,13 +110,13 @@ Este "mini-rviz" estaría alimentado por el cliente micro-ROS de la Vita y serí
 
 ## Resultado de la investigación (2026-07-10, en el PC)
 
-La auditoría se ejecutó tal como este documento la fijó (Etapa A de `docs/10-plan-objetivos-3-4.md`), en el PC de desarrollo con VitaSDK v2.540 / gcc 15.2.0 / cmake 4.3.3. Resumen del recorrido del árbol de decisión:
+La auditoría se ejecutó tal como este documento la fijó (Etapa A de `archivo/docs/10-plan-objetivos-3-4.md`), en el PC de desarrollo con VitaSDK v2.540 / gcc 15.2.0 / cmake 4.3.3. Resumen del recorrido del árbol de decisión:
 
 - **¿Compila rclcpp con VitaSDK/newlib?** → **NO.** Ni siquiera `rcutils` (su base C) supera el configure: `find_package(ament_cmake_python)` no existe para el target. Aislando el build system, el C choca con `dlfcn.h` inexistente (newlib no tiene dlopen), `program_invocation_name` (glibc) y headers generados por Python/empy.
 - **¿Compila Qt con VitaSDK/newlib?** → **NO EXISTE port** (404 en vitasdk/packages, ausente del listado del repositorio; sin backend de ventanas posible).
 - **¿Compila rviz_rendering (OGRE GLES2)?** → **NO.** El configure de OGRE 1.12.13 aborta: plataforma no reconocida (`OGRE_MEDIA_PATH does not exist`) y cero dependencias encontradas para el target (`Could NOT find OpenGL ...GLX...`).
 - **¿Funciona el conjunto completo?** → No aplica: los tres muros anteriores lo impiden.
 
-**Decisión final: Plan B activado** — mini-rviz propio con vitaGL, alimentado por el cliente micro-ROS/XRCE ya validado en hardware (Fase 1 y Objetivo 2). Formalizada en `docs/adr/0006-decision-rviz2-vs-mini-rviz.md`; el diseño fino del mini-rviz va en `docs/11-diseno-mini-rviz.md` (Etapa B0 del plan). Los logs crudos de la auditoría (`log-rcutils-configure.txt`, `log-rcutils-manual.txt`, `log-ogre-configure.txt`) quedan en `auditoria/` en el PC (carpeta gitignored; si se pierde, los comandos exactos para regenerarlos están en la Etapa A del plan).
+**Decisión final: Plan B activado** — mini-rviz propio con vitaGL, alimentado por el cliente micro-ROS/XRCE ya validado en hardware (Fase 1 y Objetivo 2). Formalizada en `docs/adr/0006-decision-rviz2-vs-mini-rviz.md`; el diseño fino del mini-rviz va en `archivo/docs/11-diseno-mini-rviz.md` (Etapa B0 del plan). Los logs crudos de la auditoría (`log-rcutils-configure.txt`, `log-rcutils-manual.txt`, `log-ogre-configure.txt`) quedan en `auditoria/` en el PC (carpeta gitignored; si se pierde, los comandos exactos para regenerarlos están en la Etapa A del plan).
 
 El valor del documento pasó de fijar el método a **registrar la respuesta del Objetivo 3 con evidencia**: rviz2 nativo no es portable a la Vita, y ahora se sabe exactamente por qué (ament/Python, dlopen, glibc, Qt inexistente, OGRE sin soporte de plataforma), no por intuición.

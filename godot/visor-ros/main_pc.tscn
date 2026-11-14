@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://main.tscn" id="1_main"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/nube_puntos.gd" id="v14_nube"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/im_cliente.gd" id="v14_im"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/octomap.gd" id="v14_octomap"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/grid_map.gd" id="v14_grid_map"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/imagen_pc.gd" id="v14_imagen"]
+[ext_resource type="Script" path="res://comun/visor/herramientas/im_feedback.gd" id="v14_interactuar"]
+
+[node name="Main" instance=ExtResource("1_main")]
+
+[node name="NubePuntos" type="Node3D" parent="VisorRos"]
+script = ExtResource("v14_nube")
+topic = "/points"
+
+[node name="MarcadoresInteractivos" type="Node3D" parent="VisorRos"]
+script = ExtResource("v14_im")
+
+[node name="Octomap" type="Node3D" parent="VisorRos"]
+script = ExtResource("v14_octomap")
+topic = "/octomap_binary"
+
+[node name="GridMap" type="Node3D" parent="VisorRos"]
+script = ExtResource("v14_grid_map")
+topic = "/elevation_map"
+
+[node name="Profundidad" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="ImagenPC" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Profundidad"]
+offset_right = 320.0
+offset_bottom = 240.0
+script = ExtResource("v14_imagen")
+topic = "/camera/depth/image_raw"
+
+[node name="Interactuar" type="Node2D" parent="VisorRos/Hud/Herramientas" node_paths=PackedStringArray("cliente")]
+script = ExtResource("v14_interactuar")
+cliente = NodePath("../../../MarcadoresInteractivos")

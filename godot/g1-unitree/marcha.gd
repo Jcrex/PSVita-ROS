@@ -22,6 +22,17 @@ var pos := Vector2.ZERO     # posición en el mundo (ROS, m)
 var yaw := 0.0              # guiñada en el mundo (rad)
 var bloqueado := false
 
+# Perfil «Vita ligero» (2026-11-13): nada de arrays nuevos por tick. Antes cada tick hacía 4–5 `_muestra()` (un
+# PackedFloat32Array de 19 valores cada una) más dos `slice()`; ahora se interpola una sola vez por (clip, fotograma)
+# sobre estos búferes y el desplazamiento solo interpola x, y y el cuaternión.
+var _m := PackedFloat32Array()        # muestra completa de (actual, f)
+var _m_clip := ""
+var _m_f := -1.0
+var _q := PackedFloat32Array()        # juntas que devuelve q_joints() (búfer reutilizado)
+var _fin_clip := ""                   # (clip, fotograma) → Vector3(x, y, yaw) del final del último tramo
+var _fin_f := -1.0
+var _fin := Vector3.ZERO
+
 
 func cargar(ruta: String) -> bool:
 	var fa := FileAccess.open(ruta, FileAccess.READ)
@@ -49,13 +60,14 @@ func pedir(clip: String) -> void:
 	mezcla = 0.0
 
 
-## Avanza `dt` segundos. `libre` es un Callable(Vector2) -> bool que dice si el robot cabe en ese punto.
+## Avanza `dt` segundos. `libre` es un Callable(Vector2) -> bool que dice si el robot cabe en ese punto; con un
+## Callable vacío (`Callable()`) no se pregunta (la colisión la hace otro, p. ej. `move_and_slide`).
 func avanzar(dt: float, libre: Callable) -> void:
 	var f0 := f
 	f += dt * hz
 	mezcla = minf(1.0, mezcla + dt / T_MEZCLA)
 	if f >= largo:
-		f -= largo
+		f = fmod(f, largo)   # un tirón de varios ciclos (fotograma muy lento) no deja f fuera del clip
 		_mover(f0, largo, libre)
 		_mover(0.0, f, libre)
 	else:
@@ -63,14 +75,16 @@ func avanzar(dt: float, libre: Callable) -> void:
 
 
 func _mover(fa: float, fb: float, libre: Callable) -> void:
-	var a := _muestra(actual, fa)
-	var b := _muestra(actual, fb)
-	var ya := _yaw(a)
-	var d := Vector2(b[0] - a[0], b[1] - a[1]).rotated(-ya)   # avance en el marco del robot
+	var a := _xy_yaw(actual, fa)
+	var b := _xy_yaw(actual, fb)
+	_fin_clip = actual
+	_fin_f = fb
+	_fin = b
+	var d := Vector2(b.x - a.x, b.y - a.y).rotated(-a.z)   # avance en el marco del robot
 	var paso := d.rotated(yaw)
 	var nueva := pos + paso
 	bloqueado = false
-	if libre.call(nueva):
+	if not libre.is_valid() or libre.call(nueva):
 		pos = nueva
 	elif libre.call(pos + Vector2(paso.x, 0)):   # deslizar a lo largo de la pared
 		pos += Vector2(paso.x, 0)
@@ -80,27 +94,80 @@ func _mover(fa: float, fb: float, libre: Callable) -> void:
 		bloqueado = true
 	else:
 		bloqueado = true
-	yaw = wrapf(yaw + wrapf(_yaw(b) - ya, -PI, PI), -PI, PI)
+	yaw = wrapf(yaw + wrapf(b.z - a.z, -PI, PI), -PI, PI)
 
 
 ## Pose de la base para urdf_robot.set_base_pose_ros(): posición 3D y cuaternión (ROS).
 func pose_base() -> Array:
-	var m := _muestra(actual, f)
+	_actualizar_muestra()
+	var m := _m
 	var q := Quaternion(m[3], m[4], m[5], m[6]).normalized()
 	var inclinacion := Quaternion(Vector3(0, 0, 1), -_yaw(m)) * q   # quitar la guiñada del clip
 	return [Vector3(pos.x, pos.y, m[2]), Quaternion(Vector3(0, 0, 1), yaw) * inclinacion]
 
 
+## Juntas de las piernas en el orden de `joints`. OJO: devuelve un búfer que se reutiliza en la siguiente llamada;
+## quien quiera conservarlo debe copiarlo (`duplicate()`).
 func q_joints() -> PackedFloat32Array:
-	var m := _muestra(actual, f)
-	var q := m.slice(7)
+	_actualizar_muestra()
+	var n := _m.size() - 7
+	if _q.size() != n:
+		_q.resize(n)
 	if mezcla < 1.0 and anterior != "":
-		var p := _muestra(anterior, f).slice(7)
-		for i in q.size():
-			q[i] = lerpf(p[i], q[i], mezcla)
-	return q
+		# Mezcla con el clip anterior en el mismo fotograma, interpolando en línea (sin arrays intermedios).
+		var fr: Array = clips[anterior]
+		var i := int(f)
+		var j := mini(i + 1, fr.size() - 1)
+		var t := f - i
+		var a: PackedFloat32Array = fr[i]
+		var b: PackedFloat32Array = fr[j]
+		for k in n:
+			_q[k] = lerpf(lerpf(a[k + 7], b[k + 7], t), _m[k + 7], mezcla)
+	else:
+		for k in n:
+			_q[k] = _m[k + 7]
+	return _q
 
 
+## Interpola la muestra completa de (actual, f) en `_m` solo si cambió el clip o el fotograma.
+func _actualizar_muestra() -> void:
+	if _m_clip == actual and _m_f == f:
+		return
+	var fr: Array = clips[actual]
+	var i := int(f)
+	var j := mini(i + 1, fr.size() - 1)
+	var t := f - i
+	var a: PackedFloat32Array = fr[i]
+	var b: PackedFloat32Array = fr[j]
+	var n := a.size()
+	if _m.size() != n:
+		_m.resize(n)
+	for k in n:
+		_m[k] = lerpf(a[k], b[k], t)
+	_m_clip = actual
+	_m_f = f
+
+
+## (x, y, yaw) de la base en el fotograma `x` del clip: lo único que necesita el desplazamiento. El final de un
+## tramo es el principio del siguiente, así que se guarda y casi siempre solo se interpola un extremo por tick.
+func _xy_yaw(clip: String, x: float) -> Vector3:
+	if clip == _fin_clip and x == _fin_f:
+		return _fin
+	var fr: Array = clips[clip]
+	var i := int(x)
+	var j := mini(i + 1, fr.size() - 1)
+	var t := x - i
+	var a: PackedFloat32Array = fr[i]
+	var b: PackedFloat32Array = fr[j]
+	var qx := lerpf(a[3], b[3], t)
+	var qy := lerpf(a[4], b[4], t)
+	var qz := lerpf(a[5], b[5], t)
+	var qw := lerpf(a[6], b[6], t)
+	return Vector3(lerpf(a[0], b[0], t), lerpf(a[1], b[1], t),
+			atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz)))
+
+
+## Muestra interpolada en un array NUEVO (API antigua; se conserva para pruebas y herramientas, no se usa por tick).
 func _muestra(clip: String, x: float) -> PackedFloat32Array:
 	var fr: Array = clips[clip]
 	var i := int(x)

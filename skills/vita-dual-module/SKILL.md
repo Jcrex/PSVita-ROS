@@ -44,7 +44,7 @@ modules/<nombre>/
 **No hay `CMakeLists.txt` por módulo** (solo lo tienen los tres primeros, de la Fase 1) ni
 `crate-type = ["staticlib"]` en el `Cargo.toml`. Regla del repo (CLAUDE.md): los crates de módulo
 son `rlib`; la staticlib se produce explícitamente con `cargo rustc --crate-type staticlib`, y
-**una sola staticlib Rust por binario** (el crate paraguas `vita-app/rust-modules/`).
+**una sola staticlib Rust por binario** (el crate paraguas `modules/paraguas-rust/`).
 
 ---
 
@@ -113,8 +113,8 @@ Crear `tests/parity_test.c`:
 
 ### Paso 5b — Enlazarlo en la Vita (cuando se use desde Godot 4)
 
-1. Añadir el crate al paraguas: dependencia en `vita-app/rust-modules/Cargo.toml` (con
-   `default-features = false`) y `pub use <nombre_>_rust;` en `vita-app/rust-modules/src/lib.rs`.
+1. Añadir el crate al paraguas: dependencia en `modules/paraguas-rust/Cargo.toml` (con
+   `default-features = false`) y `pub use <nombre_>_rust;` en `modules/paraguas-rust/src/lib.rs`.
 2. Comprobar en el PC que compila PIC para el `.so` de Godot: `tools/build-c-pic.sh` (compila
    todos los `modules/*/impl-c/*.c`) y `tools/build-rust-pic.sh` (paraguas, sin relocaciones
    MOVW/MOVT_ABS); después `tools/check-vita-imports.py --dynlib … --nm $VITASDK/bin/arm-vita-eabi-nm <lib.a>`

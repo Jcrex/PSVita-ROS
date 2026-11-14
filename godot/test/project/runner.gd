@@ -5,6 +5,8 @@ extends SceneTree
 ## donde <dir> = modules/msg-schema/tests/fixtures (schema.rsch + casos .bin/.type).
 ## Cubre lo que se puede probar SIN Vita: RosMsg dinámico (CDR <-> propiedades),
 ## pub/sub con el transporte loopback, timers, resolución de topics y ejes.
+## V13a (2026-11-14): propiedades de RosQoS, latest_only y contadores por suscripción, tipo resuelto al suscribir y
+## RosTfListener (tf-tree + msg-cdr) con los casos de modules/tf-tree/tests/parity_test.c.
 
 var fixtures := ""
 var failures := 0
@@ -40,6 +42,9 @@ func _run() -> void:
 	_test_bad_values()
 	await _test_pubsub_and_timer()
 	_test_axes()
+	_test_qos_properties()
+	await _test_v13a_subscriptions()
+	await _test_tf_listener()
 
 	print("ros2_vita host tests: %d comprobaciones, %d fallos" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -222,3 +227,219 @@ func _test_axes() -> void:
 	expect(rclgd.ros_to_godot_vector(r) == v, "ros_to_godot_vector inversa")
 	var q := Quaternion(0.1, 0.2, 0.3, 0.9)
 	expect(rclgd.ros_to_godot_quat(rclgd.godot_to_ros_quat(q)).is_equal_approx(q), "quat inversa")
+
+
+# ----------------------------------------------------------------------------------------------- V13a
+func _test_qos_properties() -> void:
+	var q := RosQoS.new()
+	expect(q.reliability == RosQoS.RELIABLE and q.depth == 10 and q.history == RosQoS.KEEP_LAST
+			and q.durability == RosQoS.VOLATILE and q.liveliness == RosQoS.SYSTEM_DEFAULT, "QoS: valores por defecto de rclgd")
+	q.reliability = RosQoS.BEST_EFFORT
+	q.depth = 3
+	q.durability = RosQoS.TRANSIENT_LOCAL
+	q.history = RosQoS.KEEP_ALL
+	expect(q.get_reliability() == RosQoS.BEST_EFFORT and q.get_depth() == 3 and q.get_durability() == RosQoS.TRANSIENT_LOCAL
+			and q.get_history() == RosQoS.KEEP_ALL, "QoS: propiedades = set_*/get_* (qos.reliability = ...)")
+	q.set_reliability(RosQoS.RELIABLE)
+	expect(q.reliability == RosQoS.RELIABLE, "QoS: set_reliability() se mantiene")
+	q.deadline_seconds = 0.5
+	q.lifespan_seconds = 2.0
+	q.lease_duration_seconds = 1.5
+	q.liveliness = RosQoS.AUTOMATIC
+	expect(is_equal_approx(q.get_deadline(), 0.5) and is_equal_approx(q.get_lifespan(), 2.0)
+			and is_equal_approx(q.get_lease_duration(), 1.5) and q.get_liveliness() == RosQoS.AUTOMATIC,
+			"QoS: deadline/lifespan/liveliness/lease se guardan (XRCE los ignora)")
+	var nombres := []
+	for p in q.get_property_list():
+		nombres.append(p["name"])
+	for n in ["reliability", "history", "depth", "durability", "deadline_seconds", "lifespan_seconds", "liveliness",
+			"lease_duration_seconds"]:
+		expect(n in nombres, "QoS: propiedad " + n)
+
+
+func _twist(x: float) -> RosMsg:
+	var m := RosMsg.from_type("geometry_msgs/msg/Twist")
+	m.linear.x = x
+	return m
+
+
+func _test_v13a_subscriptions() -> void:
+	var args := PackedStringArray(["-p", "transport:=loopback", "-p", "schema:=" + fixtures.path_join("schema.rsch")])
+	expect(rclgd.init(args) == OK, "V13a: rclgd.init")
+	var node := RosNode.new()
+	node.init("v13a")
+
+	# Tipo fuera del esquema: no se suscribe (antes el callback no llegaba nunca, sin avisar)
+	var nunca := node.create_subscription("/x", "pkg_inexistente/msg/Nada", func(_m): pass)
+	expect(nunca == null, "V13a: tipo fuera del .rsch => create_subscription devuelve null")
+
+	var todos := []
+	var ultimos := []
+	var sub_todos := node.create_subscription("/v13a/cmd", "geometry_msgs/msg/Twist", func(m): todos.append(m.linear.x))
+	var sub_ult := node.create_subscription("/v13a/cmd", "geometry_msgs/msg/Twist", func(m): ultimos.append(m.linear.x))
+	expect(sub_todos != null and sub_ult != null, "V13a: suscripciones creadas")
+	expect(not sub_ult.is_latest_only(), "V13a: latest_only apagado por defecto")
+	sub_ult.set_latest_only(true)
+	expect(sub_ult.is_latest_only(), "V13a: set_latest_only(true)")
+	var pub := node.create_publisher("/v13a/cmd", "geometry_msgs/msg/Twist")
+	for i in 5:
+		pub.publish(_twist(float(i)))
+	await process_frame
+	await process_frame
+	expect(todos == [0.0, 1.0, 2.0, 3.0, 4.0], "V13a: sin latest_only llegan los 5 en orden (%s)" % [todos])
+	expect(ultimos == [4.0], "V13a: latest_only entrega solo el último (%s)" % [ultimos])
+	var st: Dictionary = sub_ult.get_stats()
+	expect(st["recibidos"] == 5 and st["descartados"] == 4 and st["decodificados"] == 1 and st["errores"] == 0
+			and st["latest_only"] and st["tipo"] == "geometry_msgs/msg/Twist", "V13a: contadores latest_only %s" % [st])
+	st = sub_todos.get_stats()
+	expect(st["recibidos"] == 5 and st["descartados"] == 0 and st["decodificados"] == 5, "V13a: contadores normales %s" % [st])
+
+	# Dos tandas separadas por un fotograma: una entrega por tanda
+	pub.publish(_twist(10.0))
+	await process_frame
+	pub.publish(_twist(11.0))
+	pub.publish(_twist(12.0))
+	await process_frame
+	await process_frame
+	expect(ultimos == [4.0, 10.0, 12.0], "V13a: latest_only por fotograma (%s)" % [ultimos])
+
+	# Apagar latest_only vuelve a entregar todo
+	sub_ult.set_latest_only(false)
+	pub.publish(_twist(20.0))
+	pub.publish(_twist(21.0))
+	await process_frame
+	await process_frame
+	expect(ultimos.slice(-2) == [20.0, 21.0], "V13a: latest_only(false) entrega todo")
+
+	# Cola llena (256): lo expulsado cuenta como descartado de SU suscripción
+	sub_ult = null
+	var antes: int = rclgd.get_dropped()
+	for i in 300:
+		pub.publish(_twist(float(i)))
+	await process_frame
+	await process_frame
+	st = sub_todos.get_stats()
+	expect(rclgd.get_dropped() - antes == 44 and st["descartados"] == 44, "V13a: cola de 256 => 44 descartados %s" % [st])
+	rclgd.shutdown()
+
+
+## Punto ROS de `origen` expresado en `destino` (lookup en ejes de Godot, como rclgd) o null.
+func _xf(tf, destino: String, origen: String, p := Vector3.ZERO):
+	var t = tf.lookup_transform(destino, origen)
+	if t == null:
+		return null
+	return rclgd.godot_to_ros_vector((t as Transform3D) * rclgd.ros_to_godot_vector(p))
+
+
+func _cerca(v, e: Vector3) -> bool:
+	return v is Vector3 and (v as Vector3).distance_to(e) < 1e-4
+
+
+func _ts(padre: String, hijo: String, t: Vector3, q := Quaternion.IDENTITY) -> RosMsg:
+	var ts := RosMsg.from_type("geometry_msgs/msg/TransformStamped")
+	ts.header.frame_id = padre
+	ts.header.stamp.sec = 7
+	ts.child_frame_id = hijo
+	ts.transform.translation.x = t.x
+	ts.transform.translation.y = t.y
+	ts.transform.translation.z = t.z
+	ts.transform.rotation.x = q.x
+	ts.transform.rotation.y = q.y
+	ts.transform.rotation.z = q.z
+	ts.transform.rotation.w = q.w
+	return ts
+
+
+func _tfmsg(lista: Array) -> RosMsg:
+	var m := RosMsg.from_type("tf2_msgs/msg/TFMessage")
+	m.transforms = lista
+	return m
+
+
+func _test_tf_listener() -> void:
+	var args := PackedStringArray(["-p", "transport:=loopback", "-p", "schema:=" + fixtures.path_join("schema.rsch")])
+	expect(rclgd.init(args) == OK, "TF: rclgd.init")
+	expect(ClassDB.class_exists("RosTfListener"), "TF: clase RosTfListener registrada")
+	var node := RosNode.new()
+	node.init("tf_test")
+	expect(node.has_method("create_tf_listener"), "TF: RosNode.create_tf_listener existe (como rclgd)")
+	var tf = node.create_tf_listener()
+	expect(tf != null and tf.get_class() == "RosTfListener", "TF: create_tf_listener() => RosTfListener")
+	expect(is_equal_approx(tf.get_cache_time(), 10.0), "TF: cache 10 s por defecto")
+	var pub := node.create_publisher("/tf", "tf2_msgs/msg/TFMessage")
+	var pub_st := node.create_publisher("/tf_static", "tf2_msgs/msg/TFMessage")
+
+	# Árbol de parity_test.c: world→odom (1,0,0); odom→base_link (0,2,0) R90z; base_link→laser (0.5,0,0);
+	# base_link→camera (0,0,1). Los estáticos por /tf_static.
+	var qz90 := Quaternion(Vector3(0, 0, 1), PI / 2)
+	pub.publish(_tfmsg([_ts("world", "odom", Vector3(1, 0, 0)), _ts("odom", "base_link", Vector3(0, 2, 0), qz90)]))
+	pub_st.publish(_tfmsg([_ts("base_link", "laser", Vector3(0.5, 0, 0)), _ts("/base_link", "camera", Vector3(0, 0, 1))]))
+	expect(not tf.can_transform("world", "laser"), "TF: nada antes del bombeo (hilo principal)")
+	await process_frame
+	await process_frame
+	var st: Dictionary = tf.get_stats()
+	expect(st["mensajes"] == 2 and st["transformadas"] == 4 and st["marcos"] == 5, "TF: 2 mensajes, 4 transformadas, 5 marcos %s" % [st])
+	expect(_cerca(_xf(tf, "world", "laser"), Vector3(1, 2.5, 0)), "TF: laser en world = (1, 2.5, 0)")
+	expect(_cerca(_xf(tf, "world", "laser", Vector3(1, 0, 0)), Vector3(1, 3.5, 0)), "TF: laser (1,0,0) en world = (1, 3.5, 0)")
+	expect(_cerca(_xf(tf, "laser", "world", Vector3(1, 2.5, 0)), Vector3.ZERO), "TF: inversa world → laser")
+	expect(_cerca(_xf(tf, "camera", "laser"), Vector3(0.5, 0, -1)), "TF: hermanos laser en camera = (0.5, 0, −1)")
+	expect(_cerca(_xf(tf, "/world", "/laser"), Vector3(1, 2.5, 0)), "TF: barra inicial («/world» == «world»)")
+	expect(tf.lookup_transform("odom", "odom") == Transform3D.IDENTITY, "TF: mismo marco = identidad")
+	# Ejes de Godot como rclgd: base_link rota 90° en z (ROS) = 90° en y (Godot)
+	var t_bl: Transform3D = tf.lookup_transform("odom", "base_link")
+	expect(t_bl.origin.is_equal_approx(rclgd.ros_to_godot_vector(Vector3(0, 2, 0)))
+			and t_bl.basis.get_rotation_quaternion().is_equal_approx(rclgd.ros_to_godot_quat(qz90)), "TF: Transform3D en ejes de Godot")
+	expect(tf.can_transform("world", "camera", null, 0.5), "TF: can_transform (time y timeout se ignoran)")
+	expect(_cerca(rclgd.godot_to_ros_vector(tf.lookup_transform_full("world", null, "laser", null, "odom").origin), Vector3(1, 2.5, 0)),
+			"TF: lookup_transform_full = lookup (sin historial)")
+	var nombres: PackedStringArray = tf.get_frame_names()
+	nombres.sort()
+	expect(nombres == PackedStringArray(["base_link", "camera", "laser", "odom", "world"]), "TF: get_frame_names %s" % [nombres])
+	expect(tf.get_frame_parent("laser") == "base_link" and tf.get_frame_parent("world") == "" and tf.get_frame_parent("x") == "",
+			"TF: get_frame_parent")
+	expect(tf.frame_exists("/odom") and not tf.frame_exists("nada"), "TF: frame_exists")
+	expect(is_equal_approx(tf.get_frame_latest_time("odom"), 7.0) and tf.get_frame_latest_time("nada") == 0.0, "TF: get_frame_latest_time")
+	expect(tf.all_frames_as_yaml().contains("laser: \n  parent: 'base_link'"), "TF: all_frames_as_yaml")
+
+	# Errores
+	expect(tf.lookup_transform("world", "nada") == null and tf.get_last_error().contains("nada"), "TF: desconocido => null + motivo")
+	expect(tf.lookup_transform("", "world") == null and tf.get_last_error() != "", "TF: nombre vacío")
+	expect(tf.lookup_transform("world", "laser") != null and tf.get_last_error() == "", "TF: el error se borra al acertar")
+	pub.publish(_tfmsg([_ts("map", "mapchild", Vector3(1, 1, 1))]))
+	await process_frame
+	await process_frame
+	expect(not tf.can_transform("world", "mapchild") and tf.get_last_error().contains("conectados"), "TF: árboles distintos = sin camino")
+	pub.publish(_tfmsg([_ts("laser", "world", Vector3.ZERO), _ts("odom", "odom", Vector3.ZERO),
+			_ts("a", "b", Vector3(NAN, 0, 0))]))
+	await process_frame
+	await process_frame
+	expect(tf.get_stats()["rechazadas"] == 3 and _cerca(_xf(tf, "world", "laser"), Vector3(1, 2.5, 0)),
+			"TF: ciclos y NaN rechazados sin tocar el árbol")
+	# Re-padre (tf-tree reparent) y cuaternión no unitario
+	pub.publish(_tfmsg([_ts("odom", "laser", Vector3(5, 0, 0)), _ts("world", "spin", Vector3.ZERO, Quaternion(0, 0, 2, 2))]))
+	await process_frame
+	await process_frame
+	expect(_cerca(_xf(tf, "world", "laser"), Vector3(6, 0, 0)) and tf.get_frame_parent("laser") == "odom", "TF: re-padre")
+	expect(_cerca(_xf(tf, "world", "spin", Vector3(1, 0, 0)), Vector3(0, 1, 0)), "TF: cuaternión (0,0,2,2) normalizado = 90°")
+
+	# Lleno: 32 marcos como tf-tree (8 conocidos + 24 nuevos caben; el resto se rechaza)
+	var lista := []
+	for i in 30:
+		lista.append(_ts("world", "f%d" % i, Vector3(i, 0, 0)))
+	pub.publish(_tfmsg(lista))
+	await process_frame
+	await process_frame
+	st = tf.get_stats()
+	expect(st["marcos"] == 32 and tf.frame_exists("f23") and not tf.frame_exists("f24"), "TF: tope de 32 marcos %s" % [st])
+
+	# clear: como rclgd, se tiran las transformadas pero los nombres siguen
+	tf.clear()
+	expect(not tf.can_transform("world", "laser") and tf.frame_exists("laser") and tf.get_stats()["marcos"] == 0,
+			"TF: clear (nombres registrados, sin transformadas)")
+
+	# Soltar el listener cancela sus suscripciones
+	tf = null
+	pub.publish(_tfmsg([_ts("world", "odom", Vector3(1, 0, 0))]))
+	await process_frame
+	expect(true, "TF: listener liberado sin fallos")
+	rclgd.shutdown()

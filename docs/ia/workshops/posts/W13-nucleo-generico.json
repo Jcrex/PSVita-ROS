@@ -1,0 +1,480 @@
+[
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(pieza) Introspección de RosMsg: enumerar campos y tipos en tiempo de ejecución",
+    "equivalente": "rosidl_runtime_py / ros_babel_fish (rqt_topic, ros2 topic echo); Foxglove usa el esquema del canal",
+    "candidato": "Utilidad portable `introspeccion_ros.gd`: lista de campos por tipo (cacheada) con `ClassDB.class_get_property_list(clase, true)` para las clases tipadas de rclgd y `get_property_list()` para `RosMsg` dinámico (rclgd y ros2_vita), sobre un prototipo vacío `RosMsg.from_type(tipo)`; lectura de rutas con `get_member`.",
+    "pc_rclgd": "No existe `to_dict()` ni lista de campos explícita en rclgd [V]: la API pública es `from_type`, `init`, `get_member`, `set_member`, `get_type_name`, `get_ros_interface_name`, `_to_string` (ros_msg.cpp:122-149). Dos caminos: (a) `RosMsg` dinámico → `_get_property_list` recorre `msg_->keys()` del esquema BabelFish y CONVIERTE cada miembro para saber su tipo Variant (ros_msg.cpp:285-301); (b) clase tipada (`RosGeometryMsgsTwist`) → `_get_property_list` no devuelve nada (typed_) y los campos son propiedades ClassDB registradas (ros_type_registry.cpp:245-330); los submensajes y arrays de mensajes llevan `PROPERTY_USAGE_NONE` (ros_type_registry.cpp:284,306) pero siguen en `get_property_list()` (el test test_native_types.gd:40-44 encuentra `linear` y `angular`). Por eso NO se puede filtrar por `PROPERTY_USAGE_STORAGE`: se filtra por clase (`class_get_property_list(clase, true)` = solo las propias) y se quitan categorías/grupos y `script`. Campos cuyo nombre choca con palabras clave de GDScript o miembros de RosMsg/Object no son propiedades en la clase tipada (ros_type_registry.cpp:217-240,268-273): no aparecen en la lista y solo se leen con `get_member` [V]; riesgo bajo en los paquetes comunes [I].",
+    "vita_ros2_vita": "ros2_vita solo tiene `RosMsg` dinámico (API_PARITY.md, tabla «Clases tipadas nativas» ⏳ T3.2.4): `_get_property_list` recorre los campos del esquema `.rsch` y da el tipo del valor ya decodificado (ros_msg.cpp:303-316), sin coste de conversión porque la Vita decodifica entero al recibir (H25). Extra solo en la Vita: `RosMsg.list_types()` (ros_msg.cpp:34-46, ligado en :722) y la información rica del esquema (`msg_field_info`: kind/prim/array/array_len, `modules/msg-schema/include/msg_schema.h:60-65`) que NO se expone a GDScript. Mismo código GDScript funciona en las dos [I: falta prueba en la Vita].",
+    "campos": "Tipos que entrega la conversión (rclgd utils/ros_type_utils.hpp:456-513 y :46-148; Vita ros_msg.cpp:432-488, idénticos [V]): bool→bool; enteros→int; float32/64→float; string→String; submensaje→RosMsg; uint8[]→PackedByteArray; float32[]→PackedFloat32Array; float64[]→PackedFloat64Array; int32[]→PackedInt32Array; int64[]→PackedInt64Array; int8/int16/uint16[]→PackedInt32Array; uint32/uint64[]→PackedInt64Array; string[]→PackedStringArray; bool[]→Array; mensaje[]→Array (rclgd tipado: Array[RosXxx]). Se pierde el tipo primitivo exacto (int8 vs int16, byte vs char): para un inspector basta; para editar/publicar, el `set_member` ya convierte. Las constantes de los .msg no existen en ninguna de las dos (msg-schema README «Límites»; rclgd no las registra) [V].",
+    "codigo": "extends RefCounted\n## Campos de un RosMsg, portable rclgd (dinámico o tipado) ↔ ros2_vita (dinámico).\nconst _OMITIR := {\"script\": true}\nconst _NO_CAMPO := PROPERTY_USAGE_CATEGORY | PROPERTY_USAGE_GROUP | PROPERTY_USAGE_SUBGROUP\nstatic var _cache := {}   # \"pkg/msg/T\" -> PackedStringArray\n\n## Lista de campos de un tipo; se calcula UNA vez sobre un prototipo vacío (arrays vacíos:\n## en rclgd get_property_list() convierte cada miembro, ros_msg.cpp:296-300).\nstatic func campos_de_tipo(tipo: String) -> PackedStringArray:\n\tif _cache.has(tipo):\n\t\treturn _cache[tipo]\n\tvar out := PackedStringArray()\n\tvar proto = RosMsg.from_type(tipo)\n\tif proto == null:\n\t\treturn out   # tipo desconocido (sin typesupport en el PC / sin .rsch en la Vita)\n\tvar clase: String = proto.get_class()\n\tvar lista: Array = ClassDB.class_get_property_list(clase, true) if clase != \"RosMsg\" \\\n\t\t\telse proto.get_property_list()\n\tfor p in lista:\n\t\tif p.usage & _NO_CAMPO or _OMITIR.has(p.name):\n\t\t\tcontinue\n\t\tout.append(p.name)\n\t_cache[tipo] = out\n\treturn out\n\nstatic func campos(msg) -> PackedStringArray:\n\treturn campos_de_tipo(msg.get_ros_interface_name())\n\n## Ruta ya troceada: [\"twist\", \"twist\", \"linear\", \"x\"] o [\"poses\", \"3\", \"pose\"].\nstatic func leer_ruta(msg, ruta: PackedStringArray):\n\tvar v = msg\n\tfor paso in ruta:\n\t\tif v is RosMsg:\n\t\t\tv = v.get_member(StringName(paso))\n\t\telif typeof(v) >= TYPE_ARRAY and paso.is_valid_int() and paso.to_int() < v.size():\n\t\t\tv = v[paso.to_int()]\n\t\telse:\n\t\t\treturn null\n\treturn v",
+    "parametros": [
+      "(utilidad sin @export)"
+    ],
+    "evidencia": "rclgd: ros_msg.cpp:122-149 (métodos ligados), :285-301 (_get_property_list dinámico, salta si typed_), :371-380 (get_member perezoso con caché); ros_type_registry.cpp:245-330 (registro de campos, usage NONE para mensajes), :217-240 (reservados). ros2_vita: ros_msg.cpp:303-316 (_get_property_list), :34-46 (list_types). Prueba: test_native_types.gd:40-44.",
+    "fuentes": [
+      "godot/rclgd/rclgd/src/rclgd/ros_msg.cpp:122-149",
+      "godot/rclgd/rclgd/src/rclgd/ros_msg.cpp:285-301",
+      "godot/rclgd/rclgd/src/rclgd/ros_type_registry.cpp:217-330",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:46-148,456-513",
+      "godot/rclgd/rclgd/test/project/tests/test_native_types.gd:40-66",
+      "godot/rclgd/docs/classes/class_rosmsg.rst",
+      "godot/ros2_vita/ros_msg.cpp:34-46,303-316,432-488",
+      "godot/ros2_vita/API_PARITY.md",
+      "modules/msg-schema/include/msg_schema.h:60-65"
+    ],
+    "confianza": "[V] API y conversiones; [I] que `ClassDB.class_get_property_list(clase, true)` devuelva exactamente los campos de la clase tipada registrada por GDExtension (no probado); [I] portabilidad del mismo .gd a la Vita",
+    "coste_estimado": "Una vez por tipo: from_type + recorrer N campos (µs en PC; en la Vita, linealidad de find_type, ver ficha de huecos). Por mensaje: 0 (caché).",
+    "como_se_mediria_en_hardware": "Prueba GDScript en godot/test/ (host ros2_vita) y en rclgd/test/project: para 30 tipos (std_msgs, geometry_msgs, sensor_msgs, nav_msgs) comparar `campos_de_tipo` con la lista de campos de `ros2 interface show` (sin constantes). Verde: listas idénticas en ambos; en la Vita, `campos_de_tipo('sensor_msgs/msg/Imu')` < 1 ms."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(arquitectura) Registro tipo → visualizador",
+    "equivalente": "pluginlib + rviz_default_plugins/plugins_description.xml (<message_type> por display) y «Add → By topic» de RViz2; paneles de Foxglove por esquema",
+    "candidato": "`registro_displays.gd`: tabla ordenada de reglas {tipo, patrón de topic opcional, escena .tscn del display, plataformas}; la búsqueda prueba primero (tipo + topic) y luego solo tipo; si no hay regla, Inspector genérico. Un tipo puede tener varios displays (Image → Imagen HUD o Cámara), como en RViz.",
+    "pc_rclgd": "Tabla constante en GDScript (no JSON: es código de la app, no colocación; regla doc 35 §3) con rutas a escenas `res://comun/visor/displays/*.tscn`. Se consulta al elegir un topic de la lista que da `get_topic_names_and_types()` (ros_node.cpp:361-381). La instancia se añade como hija de `VisorRos` (escena) y se conecta.",
+    "vita_ros2_vita": "Mismo registro; cada regla lleva `vita: bool` (o `vita_alternativa`) porque en la Vita muchos tipos llegan por el relay como `*MultiArray` con topic propio (`/vita/scan_compacto`, `/vita/pose2d`…, docker/scripts/vita_relay.py:10-19): por eso la clave incluye el patrón de topic (Int16MultiArray en `/vita/*/scan_compacto` → LaserScan compacto; en otro topic → MultiArray genérico). Un tipo sin esquema `.rsch` no se puede ofrecer (ficha «suscribirse sin esquema»).",
+    "campos": "Entrada: (topic, tipo ROS «pkg/msg/T»). Salida: PackedScene del display + propiedades iniciales (topic, tipo).",
+    "codigo": "extends RefCounted\n## Registro tipo → display (como <message_type> de plugins_description.xml de RViz2).\n## Orden = prioridad: las reglas con topic van antes que las genéricas.\nconst D := \"res://comun/visor/displays/\"\nconst REGLAS := [\n\t{\"tipo\": \"std_msgs/msg/Int16MultiArray\", \"topic\": \"*/scan_compacto\", \"escena\": D + \"scan_compacto.tscn\"},\n\t{\"tipo\": \"std_msgs/msg/Float32MultiArray\", \"topic\": \"*/pose2d\", \"escena\": D + \"pose2d.tscn\"},\n\t{\"tipo\": \"sensor_msgs/msg/LaserScan\", \"escena\": D + \"laser_scan.tscn\", \"vita\": false},\n\t{\"tipo\": \"nav_msgs/msg/Odometry\", \"escena\": D + \"odometria.tscn\"},\n\t{\"tipo\": \"std_msgs/msg/Bool\", \"escena\": D + \"valor.tscn\"},\n\t{\"tipo\": \"std_msgs/msg/Float64\", \"escena\": D + \"valor.tscn\"},\n\t{\"tipo\": \"std_msgs/msg/ColorRGBA\", \"escena\": D + \"color.tscn\"},\n\t{\"tipo\": \"std_msgs/msg/*MultiArray\", \"escena\": D + \"multiarray.tscn\"},\n\t{\"tipo\": \"*\", \"escena\": D + \"inspector.tscn\"},   # comodín: rqt_topic / topic echo\n]\n\nstatic func candidatos(topic: String, tipo: String, en_vita: bool) -> Array:\n\tvar out := []\n\tfor r in REGLAS:\n\t\tif en_vita and not r.get(\"vita\", true):\n\t\t\tcontinue\n\t\tif not tipo.match(r.tipo):\n\t\t\tcontinue\n\t\tif r.has(\"topic\") and not topic.match(r.topic):\n\t\t\tcontinue\n\t\tout.append(r.escena)\n\treturn out   # el primero es el display por defecto; el resto, alternativas del menú\n\nstatic func crear(topic: String, tipo: String, en_vita: bool) -> Node:\n\tvar escenas := candidatos(topic, tipo, en_vita)\n\tvar d: Node = load(escenas[0]).instantiate()\n\td.topic = topic\n\td.tipo = tipo\n\treturn d",
+    "parametros": [
+      "REGLAS (constante)",
+      "vita (por regla)",
+      "topic (patrón glob, `String.match`)"
+    ],
+    "evidencia": "RViz2 declara qué tipos acepta cada display con <message_type> en plugins_description.xml (LaserScan → sensor_msgs/msg/LaserScan; Camera → Image y CompressedImage; varios displays sin tipo: Grid, Axes, RobotModel). El relay de la Vita reutiliza tipos genéricos con significado por topic (vita_relay.py:10-19), así que el tipo solo no basta.",
+    "fuentes": [
+      "https://raw.githubusercontent.com/ros2/rviz/jazzy/rviz_default_plugins/plugins_description.xml",
+      "godot/rclgd/rclgd/src/rclgd/ros_node.cpp:361-381",
+      "docker/scripts/vita_relay.py:10-19",
+      "docs/35-regla-escenas-editables.md §3"
+    ],
+    "confianza": "[V] fuentes; [I] diseño (decisión propia: tabla en GDScript y no plugins cargados dinámicamente, porque godot4-vita no tiene GDExtension y el conjunto de displays es pequeño)",
+    "coste_estimado": "Despreciable (búsqueda lineal en ≤ 40 reglas al añadir un display).",
+    "como_se_mediria_en_hardware": "Prueba de host: para cada tipo de la lista de generar_esquemas.py y para los topics del relay, `candidatos()` devuelve un display existente (la escena carga). Verde: 0 tipos sin display (como mínimo el inspector)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(arquitectura) VisorRos: contexto común de los displays (= rviz_common::DisplayContext)",
+    "equivalente": "rviz_common::DisplayContext / VisualizationManager (frame fijo, FrameManager/TF, nodo ROS) y el archivo .rviz",
+    "candidato": "Nodo `VisorRos` (Node) colocado en la escena; posee el ContextoRos (contexto_ros.gd), el frame fijo, el oyente TF (solo si existe) y conecta a todos sus displays descendientes del grupo `display_ros`. El conjunto de displays de un proyecto es un subárbol editable del .tscn (equivale al .rviz).",
+    "pc_rclgd": "`contexto_ros.gd` crea RosNode y QoS (contexto_ros.gd:9-30); `create_tf_listener(cache)` y `lookup_transform(target, source)` devuelven Transform3D ya en convención Godot o null (ros_tf_listener.cpp:11-13,123-125). `transformada(frame)` = pose de `frame` en el frame fijo.",
+    "vita_ros2_vita": "Sin `RosTfListener` ni `create_tf_listener` (API_PARITY.md: ⏳, corregido 2026-11-11). Hay que llamar por `call()` y sin anotar el tipo `RosTfListener`, o el script no compila en la Vita [I: el analizador de GDScript da error con métodos/clases nativas inexistentes]. Mientras no exista TF: solo displays en el frame fijo o con la pose del relay (`/vita/pose2d`).",
+    "campos": "frame_id del header → `transformada()` → `transform` del nodo display (hijo del VisorRos, que está en el frame fijo; la base ROS→Godot ya va dentro del Transform3D de rclgd).",
+    "codigo": "extends Node\n## VisorRos: contexto compartido de los displays (equivale a rviz_common::DisplayContext).\nconst Contexto = preload(\"res://comun/ros/contexto_ros.gd\")\n@export var frame_fijo := \"map\"\n@export var nombre_nodo := \"visor\"\n@export var transporte := \"\"          # \"\" = el de la plataforma\nvar contexto = Contexto.new()\nvar en_vita := OS.has_feature(\"vita\")\nvar tf = null                          # RosTfListener solo en rclgd: sin anotar el tipo (no existe en la Vita)\n\nfunc _ready() -> void:\n\tif contexto.iniciar(nombre_nodo, \"\", transporte) != OK:\n\t\tpush_error(\"VisorRos: no arranca ROS\")\n\t\treturn\n\tif contexto.nodo.has_method(\"create_tf_listener\"):\n\t\ttf = contexto.nodo.call(\"create_tf_listener\", 10.0)\n\t# Los hijos ya están listos (_ready va de hojas a raíz): se conectan aquí.\n\tfor d in get_tree().get_nodes_in_group(\"display_ros\"):\n\t\tif is_ancestor_of(d):\n\t\t\td.conectar(self)\n\n## Pose de `frame` en el frame fijo, convención Godot; null si TF no la conoce aún.\nfunc transformada(frame: String):\n\tif frame == \"\" or frame == frame_fijo:\n\t\treturn Transform3D.IDENTITY\n\tif tf == null or not tf.can_transform(frame_fijo, frame):\n\t\treturn null\n\treturn tf.lookup_transform(frame_fijo, frame)\n\nfunc _exit_tree() -> void:\n\ttf = null\n\tcontexto.cerrar()",
+    "parametros": [
+      "frame_fijo",
+      "nombre_nodo",
+      "transporte"
+    ],
+    "evidencia": "MessageFilterDisplay de RViz2 retiene cada mensaje en un tf2_ros::MessageFilter hasta poder transformarlo al frame fijo y llama a processMessage en el hilo principal; fixedFrameChanged() cambia el destino y hace reset().",
+    "fuentes": [
+      "https://raw.githubusercontent.com/ros2/rviz/jazzy/rviz_common/include/rviz_common/message_filter_display.hpp",
+      "godot/plantillas/ros/contexto_ros.gd:9-30",
+      "godot/rclgd/rclgd/src/rclgd/ros_tf_listener.cpp:11-28,123-125",
+      "godot/ros2_vita/API_PARITY.md (RosNode: create_tf_listener ⏳)"
+    ],
+    "confianza": "[V] API; [I] decisión de diseño (composición en vez de un único árbol de clases); [?] que `has_method` + `call` evite el error de análisis en la Vita (comprobar con el exportador)",
+    "coste_estimado": "lookup_transform por mensaje y display (PC: µs). Vita: 0 hasta que exista tf-tree.",
+    "como_se_mediria_en_hardware": "Exportar una escena con VisorRos + 1 display a la Vita: el script analiza sin errores (log del cargador) y el display recibe; en el PC, mover el frame del robot y comprobar que el display sigue al frame (gizmo vs `ros2 run tf2_ros tf2_echo`)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(arquitectura) DisplayRos: clase base de los displays (= rviz_common::RosTopicDisplay / MessageFilterDisplay)",
+    "equivalente": "rviz_common::MessageFilterDisplay<MessageType>: propiedades Topic, QoS, Filter size, estado «N messages received / Hz», processMessage(), reset(), onEnable/onDisable",
+    "candidato": "Composición: `canal_display.gd` (RefCounted: suscripción, coalescencia «el último gana», Hz máx., contadores, Hz medido, decaimiento) + tres bases delgadas según la capa de ADR 0011 (`display_ros_3d.gd` extends Node3D, `display_ros_2d.gd` extends Node2D, `display_ros_hud.gd` extends Control) con los mismos @export. Las subclases solo implementan `_procesar(msg)` y `_caducar()`.",
+    "pc_rclgd": "La suscripción de rclgd entrega CADA mensaje con `call_deferred` desde el hilo del ejecutor (ros_subscriber.cpp:22-37), sin límite: un topic a 100 Hz encola 100 llamadas/s. El canal guarda solo el último y lo entrega como mucho una vez por fotograma y a `hz_max` (los displays de estado no necesitan los intermedios; el trazador sí y desactiva la coalescencia).",
+    "vita_ros2_vita": "ros2_vita ya acota la cola a 256 y descarta el más antiguo (ros_runtime.cpp:473-484), pero DECODIFICA ENTERO cada mensaje antes del callback (ros_runtime.cpp:118-133; H25 de doc 31), así que el límite de Hz en GDScript no ahorra la decodificación. Propuesta (hueco): limitar en C++ antes de `from_type` (ver ficha de huecos). QoS: contexto_ros.qos() ya da best effort + profundidad 1 (contexto_ros.gd:16-22). Presupuesto por display: ≤ 2 ms por mensaje y ≤ 1 ms por fotograma de media (doc 31 §4.1).",
+    "campos": "header.frame_id → VisorRos.transformada(); header.stamp → latencia (ficha Header). `frame_id` @export vacío = el del mensaje (como RViz, que usa el del header).",
+    "codigo": "extends Node3D\n## Base de los displays 3D (las de 2D y HUD son idénticas salvo `extends`). Subclases: _procesar/_caducar.\nconst Canal = preload(\"res://comun/visor/canal_display.gd\")\n@export var habilitado := true\n@export var topic := \"\"\n@export var tipo := \"\"\n@export var frame_id := \"\"            # \"\" = header.frame_id del mensaje\n@export var hz_max := 15.0                   # hz_max_vita: el de la Vita (0 = el mismo)\n@export var hz_max_vita := 5.0\n@export var best_effort := true              # profundidad: KEEP_LAST n\n@export var profundidad := 1\n@export var decaimiento_s := 0.0      # 0 = el último dato no caduca\n@export var solo_pc := false\nvar visor\nvar canal = Canal.new()\nvar estado := \"sin conectar\"\nfunc _enter_tree() -> void:\n\tadd_to_group(\"display_ros\")\nfunc conectar(v) -> void:\n\tvisor = v\n\tif not habilitado or (solo_pc and v.en_vita) or topic == \"\":\n\t\tvisible = false\n\t\treturn\n\tcanal.hz_max = hz_max_vita if v.en_vita and hz_max_vita > 0.0 else hz_max\n\tcanal.mensaje.connect(_al_mensaje)\n\testado = \"ok\" if canal.abrir(v.contexto.nodo, topic, tipo, v.contexto.qos(best_effort, profundidad)) else \"error al suscribir\"\nfunc _process(_dt: float) -> void:\n\tcanal.bombear()\n\tif canal.caducado(decaimiento_s): _caducar()\nfunc _al_mensaje(msg) -> void:\n\tvar f := frame_id\n\tif f == \"\" and \"header\" in msg: f = msg.header.frame_id\n\tvar t = visor.transformada(f)\n\tif t == null:\n\t\testado = \"sin TF %s→%s\" % [f, visor.frame_fijo]\n\t\treturn\n\ttransform = t\n\t_procesar(msg)\nfunc _procesar(_msg) -> void: pass     # = processMessage()\nfunc _caducar() -> void: visible = false",
+    "parametros": [
+      "habilitado",
+      "topic",
+      "tipo",
+      "frame_id",
+      "hz_max",
+      "hz_max_vita",
+      "best_effort",
+      "profundidad",
+      "decaimiento_s",
+      "solo_pc"
+    ],
+    "evidencia": "RViz2: MessageFilterDisplay tiene «Filter size» (10 por defecto), cuenta messages_received_ y muestra Hz = cuenta / tiempo desde la suscripción; reset() en onDisable y al cambiar de frame fijo. Las plantillas ya usan el mismo patrón de @export (topic, tipo, frame_id, hz, hz_vita, best_effort, habilitado, solo_pc) en sensor_base.gd:6-14, que esta base copia para que el usuario reconozca los nombres.",
+    "fuentes": [
+      "https://raw.githubusercontent.com/ros2/rviz/jazzy/rviz_common/include/rviz_common/message_filter_display.hpp",
+      "godot/rclgd/rclgd/src/rclgd/ros_subscriber.cpp:16-37",
+      "godot/ros2_vita/ros_runtime.cpp:118-133,473-484",
+      "godot/plantillas/ros/sensor_base.gd:6-43",
+      "godot/plantillas/ros/contexto_ros.gd:16-22",
+      "docs/31-render-visualizacion-vita.md §4.1",
+      "docs/adr/0011-presupuesto-render-vita.md §Decisión 1"
+    ],
+    "confianza": "[V] comportamiento de las colas; [I] diseño; `\"header\" in msg` funciona con RosMsg dinámico y tipado porque `in` usa `_get`/propiedades [I: comprobar en rclgd tipado]",
+    "coste_estimado": "Por fotograma y display: 1 llamada a bombear (≈ 10 instrucciones GDScript ≈ 15 µs en la Vita con la hipótesis de 1,5 µs/instr. del doc 31 §4.1). Por mensaje entregado: lookup TF + _procesar.",
+    "como_se_mediria_en_hardware": "Topic a 100 Hz (ros2 topic pub -r 100) hacia un display con hz_max 10: en el PC `canal.mostrados` ≈ 10/s y FPS estable; en la Vita medir con el perfil (Perfil.sumar como sensor_base.gd:58-64) que el display cuesta ≤ 1 ms/fotograma de media. Verde: Hz mostrado = min(hz_max, Hz real) ± 10 %."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(arquitectura) CanalDisplay: suscripción, coalescencia y medida de Hz (= `ros2 topic hz` por display)",
+    "equivalente": "RosTopicDisplay (topic + QoS) y la línea de estado «Topic: N messages received, X Hz» de RViz2; `ros2 topic hz`",
+    "candidato": "RefCounted reutilizable por los displays, el inspector y el trazador; guarda la referencia al RosSubscriber (soltarla cancela la suscripción, API_PARITY.md «Reglas de hilos»).",
+    "pc_rclgd": "`RosNode.create_subscription(topic, tipo, callable, qos)` (ros_node.cpp:255-264). Callback en el hilo principal (directo o diferido).",
+    "vita_ros2_vita": "Misma llamada (ros_runtime.cpp:265-279). Callback desde process_frame (ros_runtime.cpp:490-511).",
+    "campos": "Sin campos: cuenta recibidos/mostrados, Hz medido por ventana de 1 s, instante del último mensaje (decaimiento).",
+    "codigo": "extends RefCounted\n## Canal de un display: suscripción + «el último gana» + Hz máx. + Hz medido + decaimiento.\nsignal mensaje(msg)\nvar hz_max := 0.0\nvar coalescer := true         # false = entregar todos (trazador de series)\nvar recibidos := 0\nvar mostrados := 0\nvar hz_medido := 0.0\nvar _sub                       # RosSubscriber: guardarlo mantiene viva la suscripción\nvar _pendientes := []\nvar _t_ultimo := -1000000\nvar _t_ventana := 0\nvar _n_ventana := 0\nfunc abrir(nodo, topic: String, tipo: String, qos) -> bool:\n\t_sub = nodo.create_subscription(topic, tipo, _al_recibir, qos)\n\treturn _sub != null\nfunc cerrar() -> void:\n\t_sub = null\nfunc _al_recibir(msg) -> void:\n\trecibidos += 1\n\t_n_ventana += 1\n\tif coalescer:\n\t\t_pendientes.clear()\n\t_pendientes.append(msg)\nfunc bombear() -> void:\n\tvar ahora := Time.get_ticks_msec()\n\tif ahora - _t_ventana >= 1000:\n\t\thz_medido = _n_ventana * 1000.0 / maxi(ahora - _t_ventana, 1)\n\t\t_n_ventana = 0\n\t\t_t_ventana = ahora\n\tif _pendientes.is_empty() or (hz_max > 0.0 and ahora - _t_ultimo < 1000.0 / hz_max):\n\t\treturn\n\t_t_ultimo = ahora\n\tfor m in _pendientes:\n\t\tmostrados += 1\n\t\tmensaje.emit(m)\n\t_pendientes.clear()\nfunc caducado(segundos: float) -> bool:\n\treturn segundos > 0.0 and mostrados > 0 and Time.get_ticks_msec() - _t_ultimo > segundos * 1000.0",
+    "parametros": [
+      "hz_max",
+      "coalescer"
+    ],
+    "evidencia": "rclgd no limita la entrega (ros_subscriber.cpp:33-36); ros2_vita entrega todo lo encolado en cada process_frame (ros_runtime.cpp:496-511).",
+    "fuentes": [
+      "godot/rclgd/rclgd/src/rclgd/ros_node.cpp:255-264",
+      "godot/rclgd/rclgd/src/rclgd/ros_subscriber.cpp:16-37",
+      "godot/ros2_vita/ros_runtime.cpp:265-279,490-511",
+      "godot/ros2_vita/API_PARITY.md"
+    ],
+    "confianza": "[V] API; [I] diseño. Nota: `caducado()` devuelve true en todos los fotogramas tras caducar; la base solo oculta (idempotente).",
+    "coste_estimado": "O(1) por mensaje y por fotograma.",
+    "como_se_mediria_en_hardware": "Como la ficha DisplayRos; además, comparar hz_medido con `ros2 topic hz` en el PC (±5 %)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(arquitectura) Displays como nodos de escena editable (regla doc 35)",
+    "equivalente": "Archivo .rviz (lista de displays y propiedades) + panel «Displays» de RViz2",
+    "candidato": "Los displays fijos de un proyecto son nodos colocados en `main.tscn` bajo `VisorRos` (grupo `Displays`), con sus @export en el inspector de Godot; las escenas de display (`displays/*.tscn`) solo contienen el nodo raíz con su script y, si acaso, recursos compartidos (material-paleta). La geometría que cambia con los datos (polilíneas, mallas de scan, textura del mapa) es «cosa de ejecución» y la crea el código; los paneles HUD (trazador, inspector) SÍ se colocan en la escena (posición y tamaño del Control). Displays añadidos por el usuario en ejecución (menú «Añadir por topic») se instancian con el registro y no se guardan.",
+    "pc_rclgd": "Igual en las dos plataformas: el .tscn es el mismo; `solo_pc` / `hz_max_vita` adaptan.",
+    "vita_ros2_vita": "La escena no guarda mallas (corolario de doc 35 §3): un display 3D crea su malla al conectar según la plataforma; presupuesto vigilado por pruebas (doc 35 §5), no por el editor.",
+    "campos": "—",
+    "codigo": "# main.tscn (extracto conceptual del árbol, no formato .tscn literal)\n# Main (Node3D)\n# ├─ Mundo (instancia de plantillas/mundo/mundo.tscn)\n# ├─ VisorRos (Node, visor_ros.gd)           frame_fijo = \"odom\"\n# │  ├─ Odometria (display_odometria.gd)     topic = \"/odom\", tipo = \"nav_msgs/msg/Odometry\"\n# │  ├─ Scan (display_laser_scan.gd)         topic = \"/scan\", hz_max_vita = 5, solo_pc = false\n# │  └─ Panel (CanvasLayer)\n# │     ├─ Trazador (trazador_series.gd)     rutas = [\"/odom.twist.twist.linear.x\"], 300×120 px\n# │     └─ Inspector (inspector_tree.gd)     topic = \"/diagnostics\", solo_pc = true\n# └─ HUD …\n#\n# Regla: se GUARDA posición/tamaño y @export; NO se guarda geometría generada por datos\n# (las subclases la crean en conectar() o en el primer _procesar(), sin owner).",
+    "parametros": [
+      "(los de DisplayRos)"
+    ],
+    "evidencia": "Doc 35 §3: «lo que se ve y dónde» en .tscn; el código adapta a la plataforma y crea lo que depende de la ejecución; JSON solo para configuración que no es colocar. Un display fijo es colocación (dónde va el panel) + configuración (topic, Hz): el topic es parámetro del nodo, como en sensor_base.gd:6-14 que ya se edita así.",
+    "fuentes": [
+      "docs/35-regla-escenas-editables.md §3",
+      "godot/plantillas/ros/sensor_base.gd:6-14"
+    ],
+    "confianza": "[I] (decisión de diseño: @export en el nodo en lugar de topics.json para displays, porque el display ES un nodo colocado; los topics de los sensores siguen en topics.json como hoy)",
+    "coste_estimado": "—",
+    "como_se_mediria_en_hardware": "Abrir main.tscn en el editor: se ven los paneles HUD y los nodos display con sus propiedades; exportar a la Vita y comprobar que no se carga ninguna malla de PC (log de `[gxm3d]` sin instancias inesperadas)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "* (cualquier tipo): Inspector genérico en árbol",
+    "equivalente": "rqt_topic (árbol desplegable con valores) / `ros2 topic echo` / Foxglove Raw Messages",
+    "candidato": "`inspector_tree.gd` (extends Tree) para PC: árbol de 2 columnas (campo, valor) construido perezosamente (solo baja a los nodos desplegados), actualizado en sitio por ruta (diccionario ruta→TreeItem) a ≤ 5 Hz, arrays truncados a `limite_array` elementos con fila «… N elementos» y `uint8[]` mostrado como tamaño + primeros bytes en hex.",
+    "pc_rclgd": "Tree (Control) en CanvasLayer. Cuidado: en rclgd `get_member` de un array CONVIERTE el array entero (memcpy de Image.data o PointCloud2.data, ros_type_utils.hpp:51-61) aunque solo se muestren 32 elementos; el inspector no lee los campos de nodos plegados, y la fila del array plegado solo pide `size()` tras convertir, así que un `data` de 1 MB cuesta un memcpy a 5 Hz [I: aceptable en PC]. Valores: `str(v)`; floats con `\"%.4f\"`.",
+    "vita_ros2_vita": "Tree funciona en el 2D de la Vita, pero cada glifo es un quad y el lienzo se recalcula cada fotograma (H16; doc 34 §: HUD 305 quads ≈ 1,85–1,9 ms). Un árbol de 20 filas × 30 caracteres ≈ 600 quads ≈ 3,7 ms/fotograma [I, extrapolado] = más que todo el lienzo de ADR 0011 §6 (1 500 quads, 3/2 ms). En la Vita: vista de texto plana (ficha siguiente) de ≤ 12 filas, paginada con la cruceta, mismo aplanado de datos.",
+    "campos": "Recorre `introspeccion_ros.campos(msg)`; RosMsg → nodo desplegable; Packed*Array/Array → nodo con «tipo[n]»; escalares → texto. stamp → «sec.nanosec».",
+    "codigo": "extends Tree\n## Inspector genérico (rqt_topic / ros2 topic echo) para CUALQUIER RosMsg. Solo PC (coste de glifos en la Vita).\nconst Intro = preload(\"res://comun/visor/introspeccion_ros.gd\")\n@export var limite_array := 32\n@export var hz_refresco := 5.0\nvar _filas := {}              # ruta -> TreeItem\nvar _msg = null\nvar _t := 0.0\nfunc _ready() -> void:\n\tcolumns = 2; create_item().set_text(0, \"(esperando mensajes)\")\nfunc mostrar(msg) -> void:     # conectar a canal.mensaje\n\t_msg = msg\nfunc _process(dt: float) -> void:\n\t_t += dt\n\tif _msg == null or _t < 1.0 / hz_refresco: return\n\t_t = 0.0\n\tget_root().set_text(0, _msg.get_ros_interface_name())\n\t_rellenar(get_root(), _msg, \"\")\n\t_msg = null\nfunc _rellenar(padre: TreeItem, v, ruta: String) -> void:\n\tvar claves: Array = Array(Intro.campos(v)) if v is RosMsg else range(mini(v.size(), limite_array))\n\tfor c in claves:\n\t\tvar hijo = v.get_member(c) if v is RosMsg else v[c]\n\t\t_fila(padre, \"%s/%s\" % [ruta, c], str(c) if v is RosMsg else \"[%d]\" % c, hijo)\n\tif not v is RosMsg:\n\t\t_fila(padre, ruta + \"/…\", \"…\", \"%d elementos\" % v.size()).visible = v.size() > limite_array\nfunc _fila(padre: TreeItem, ruta: String, nombre: String, v) -> TreeItem:\n\tvar it: TreeItem = _filas.get(ruta)\n\tif it == null:\n\t\tit = create_item(padre)\n\t\tit.set_text(0, nombre)\n\t\tit.collapsed = true\n\t\t_filas[ruta] = it\n\tvar compuesto: bool = v is RosMsg or (typeof(v) >= TYPE_ARRAY and typeof(v) != TYPE_PACKED_BYTE_ARRAY)\n\tit.set_text(1, \"\" if v is RosMsg else (\"%s[%d]\" % [type_string(typeof(v)), v.size()] if typeof(v) >= TYPE_ARRAY\n\t\t\telse (\"%.4f\" % v if v is float else str(v))))\n\tif compuesto and not it.collapsed:\n\t\t_rellenar(it, v, ruta)      # perezoso: solo lo desplegado\n\treturn it",
+    "parametros": [
+      "limite_array (32)",
+      "hz_refresco (5)",
+      "topic/tipo (vía DisplayRos HUD)",
+      "solo_pc = true por defecto"
+    ],
+    "evidencia": "La API no da tamaño de array sin convertirlo (ros_type_utils.hpp:51-61); el árbol en sitio evita recrear TreeItems a cada mensaje. Coste de glifos en la Vita: doc 31 H16 y doc 34 (HUD 1,85–1,9 ms con 305 quads).",
+    "fuentes": [
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:46-148",
+      "godot/rclgd/rclgd/src/rclgd/ros_msg.cpp:371-380",
+      "docs/31-render-visualizacion-vita.md H16",
+      "docs/34-perfil-vita-ligero.md:52",
+      "docs/adr/0011-presupuesto-render-vita.md §Decisión 6"
+    ],
+    "confianza": "[V] API y costes citados; [I] extrapolación de quads; [I] el código no se ha ejecutado (escrito contra la API real). Limitación conocida: si un array encoge, las filas sobrantes no se ocultan (añadir barrido de `_filas` con prefijo).",
+    "coste_estimado": "PC: O(filas desplegadas) a 5 Hz; despreciable. Vita (si se usara Tree): ≈ 6 µs/quad × glifos visibles CADA fotograma [I].",
+    "como_se_mediria_en_hardware": "PC: inspeccionar /scan (LaserScan 360) y /camera/image_raw (Image 640×480) a 30 Hz: FPS del editor ≥ 55 y el árbol sigue el valor de `ros2 topic echo --once`. Verde: valores iguales y sin fugas de TreeItems (contar hijos tras 5 min)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "* (cualquier tipo): Inspector de texto para la Vita (lista plana paginada)",
+    "equivalente": "`ros2 topic echo` en una consola de 12 líneas",
+    "candidato": "`inspector_texto.gd` (extends Control): aplana el mensaje en filas «sangría campo: valor» (máx. `filas` visibles), dibuja con `draw_string` en `_draw()` solo cuando cambia el texto, a ≤ 4 Hz; cruceta arriba/abajo = desplazar, derecha/izquierda = desplegar/plegar el submensaje de la fila seleccionada. Mismo aplanado sirve en PC.",
+    "pc_rclgd": "Funciona igual (útil como vista compacta en el HUD).",
+    "vita_ros2_vita": "≤ 12 filas × ≤ 32 caracteres ≈ 384 quads como máximo [I], bajo el tope de 1 500 de ADR 0011 §6 compartido con el resto del HUD; recalcular el texto a 4 Hz como el HUD del perfil ligero (doc 34 §: refresco a 4 Hz y solo si cambia). Cadenas largas (frame_id, String.data) recortadas a 32.",
+    "campos": "Igual que el inspector en árbol; arrays: «nombre: Packed…[n] = v0, v1, v2…» en una sola fila (los 4 primeros).",
+    "codigo": "extends Control\n## Inspector compacto (Vita y PC): filas planas dibujadas con draw_string, ≤ 4 Hz, solo si cambian.\nconst Intro = preload(\"res://comun/visor/introspeccion_ros.gd\")\n@export var filas := 12\n@export var ancho_max := 32\n@export var hz_refresco := 4.0\nvar desplegados := {}          # ruta -> true\nvar _lineas := PackedStringArray()\nvar _primera := 0\nvar _msg = null\nvar _t := 0.0\nfunc mostrar(msg) -> void:\n\t_msg = msg\nfunc _process(dt: float) -> void:\n\t_t += dt\n\tif _msg == null or _t < 1.0 / hz_refresco:\n\t\treturn\n\t_t = 0.0\n\tvar nuevas := PackedStringArray()\n\t_aplanar(_msg, \"\", 0, nuevas)\n\t_msg = null\n\tif nuevas != _lineas:\n\t\t_lineas = nuevas\n\t\tqueue_redraw()\nfunc _aplanar(m, ruta: String, nivel: int, out: PackedStringArray) -> void:\n\tfor c in Intro.campos(m):\n\t\tvar v = m.get_member(c)\n\t\tvar r := ruta + \"/\" + c\n\t\tout.append((\"  \".repeat(nivel) + \"%s: %s\" % [c, _corto(v)]).left(ancho_max))\n\t\tif v is RosMsg and desplegados.has(r):\n\t\t\t_aplanar(v, r, nivel + 1, out)\nfunc _corto(v) -> String:\n\tif v is RosMsg: return \"{…}\"\n\tif typeof(v) >= TYPE_ARRAY: return \"%s[%d] %s\" % [type_string(typeof(v)), v.size(), str(v.slice(0, 4))]\n\treturn \"%.3f\" % v if v is float else str(v)\nfunc _draw() -> void:\n\tvar f := get_theme_default_font()\n\tfor i in mini(filas, _lineas.size() - _primera):\n\t\tdraw_string(f, Vector2(4, 16 + 16 * i), _lineas[_primera + i])",
+    "parametros": [
+      "filas (12)",
+      "ancho_max (32)",
+      "hz_refresco (4)"
+    ],
+    "evidencia": "H16/H17 del doc 31 (coste por quad y lotes); doc 34 (HUD a 4 Hz, solo si cambia el texto, de ~305 a ~45 quads).",
+    "fuentes": [
+      "docs/31-render-visualizacion-vita.md H16-H18",
+      "docs/34-perfil-vita-ligero.md:25,52,93",
+      "docs/adr/0011-presupuesto-render-vita.md §Decisión 6"
+    ],
+    "confianza": "[I] (no medido). `slice(0, 4)` evita convertir arrays grandes en GDScript (en rclgd el array ya se copió entero al hacer get_member).",
+    "coste_estimado": "Vita: ≤ 384 quads cuando visible (≈ 2,3 ms/fotograma con 6 µs/quad [I]); aplanado ≈ 20 instrucciones × campos a 4 Hz.",
+    "como_se_mediria_en_hardware": "Vita: inspector sobre /vita/pose2d y sobre un Imu con el perfil activo; leer `[gxm2d-canvas] avg_canvas_us` (H18). Verde: ≤ 1 ms/fotograma de media del display + lienzo total ≤ 3 ms (ADR 0011 §6, Viz a 30 FPS)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "* campos numéricos: Trazador de series (rqt_plot / Foxglove Plot / PlotJuggler)",
+    "equivalente": "rqt_plot, Foxglove Plot (rutas de mensaje `/topic.campo[i]`), PlotJuggler",
+    "candidato": "`trazador_series.gd` (extends Control): N series, cada una con búfer circular `PackedVector2Array` de (t, y) en unidades de datos; el dibujo NO recorre puntos en GDScript: `draw_set_transform(desplazamiento, 0, escala)` mapea datos→píxeles en el C++ del lienzo y `draw_polyline(..., -1)` (fina) es 1 comando por serie (H17). Rutas con la sintaxis de Foxglove `/odom.twist.twist.linear.x` (el `.` no es válido en nombres de topic, así que separa topic y campo sin ambigüedad); en el PC se acepta también la de rqt_plot `/odom/twist/twist/linear/x` resolviendo el prefijo más largo contra `get_topic_names_and_types()`.",
+    "pc_rclgd": "Suscripción por topic distinto (varias series del mismo topic comparten canal con `coalescer = false`, para no perder muestras). Eje X = tiempo de llegada (`Time.get_ticks_msec`) o `header.stamp` si se activa `usar_stamp` (requiere relojes alineados).",
+    "vita_ros2_vita": "Mismo código. Coste GDScript por muestra: leer la ruta (3–5 `get_member`) + 3 asignaciones; por redibujo: O(1) llamadas (2 `slice` + 1 polyline por serie). El búfer ordenado se obtiene con `slice(cab) + slice(0, cab)` (C++). Tope razonable: 3 series × 300 puntos; refresco ≤ 15 Hz. El tiempo se guarda relativo al arranque (float32 en Vector2: resolución ≈ 0,25 ms a 1 h [I]). Sin glifos salvo 2 etiquetas de escala (min/max) para no gastar quads.",
+    "campos": "Ruta → `Intro.leer_ruta(msg, campos)`; acepta int/float/bool (bool→0/1). Índices `[i]` de la sintaxis Foxglove se convierten en pasos numéricos. Ejes: ninguna conversión ROS→Godot (son valores, no posiciones).",
+    "codigo": "extends Control\n## Trazador de series (rqt_plot/Foxglove Plot). Rutas «/topic.campo.sub[i]». Sin bucles por punto al dibujar.\nconst Intro = preload(\"res://comun/visor/introspeccion_ros.gd\")\n@export var ventana_s := 10.0\n@export var capacidad := 300\n@export var colores := PackedColorArray([Color.ORANGE, Color.CYAN, Color.LIME])\nvar series := []              # {campos, pts: PackedVector2Array, cab, n}\nvar _y_min := INF; var _y_max := -INF; var _sucio := false\nstatic func trocear(ruta: String) -> Array:     # \"/odom.pose.pose.position.x\" -> [\"/odom\", [...]]\n\tvar i := ruta.find(\".\")\n\treturn [ruta.left(i), ruta.substr(i + 1).replace(\"[\", \".\").replace(\"]\", \"\").split(\".\")]\nfunc anadir_serie(ruta: String) -> int:\n\tvar pts := PackedVector2Array()\n\tpts.resize(capacidad)\n\tseries.append({\"campos\": trocear(ruta)[1], \"pts\": pts, \"cab\": 0, \"n\": 0})\n\treturn series.size() - 1\nfunc al_mensaje(i: int, msg) -> void:           # conectar con canal.mensaje.connect(al_mensaje.bind(i))\n\tvar v = Intro.leer_ruta(msg, series[i].campos)\n\tif not (v is float or v is int or v is bool): return\n\tvar s = series[i]\n\tvar y := float(v)\n\ts.pts[s.cab] = Vector2(Time.get_ticks_msec() * 0.001, y)\n\ts.cab = (s.cab + 1) % capacidad\n\ts.n = mini(s.n + 1, capacidad)\n\t_y_min = minf(_y_min, y); _y_max = maxf(_y_max, y); _sucio = true\nfunc _process(_dt: float) -> void:\n\tif _sucio: _sucio = false; queue_redraw()\nfunc _draw() -> void:\n\tvar ahora := Time.get_ticks_msec() * 0.001\n\tvar esc := Vector2(size.x / ventana_s, -size.y / maxf(_y_max - _y_min, 1e-6))\n\tdraw_set_transform(Vector2(size.x - ahora * esc.x, size.y - _y_min * esc.y), 0.0, esc)\n\tfor k in series.size():\n\t\tvar s = series[k]\n\t\tvar orden: PackedVector2Array = s.pts.slice(s.cab) + s.pts.slice(0, s.cab) if s.n == capacidad else s.pts.slice(0, s.n)\n\t\tif orden.size() > 1:\n\t\t\tdraw_polyline(orden, colores[k % colores.size()], -1.0)",
+    "parametros": [
+      "ventana_s (10)",
+      "capacidad (300)",
+      "colores",
+      "rutas (@export PackedStringArray en la escena; el padre crea canales)",
+      "usar_stamp (opcional)",
+      "y_min/y_max fijos opcionales (autoescala por defecto: solo crece; botón «reajustar»)"
+    ],
+    "evidencia": "H17: `draw_polyline` fina = un comando; el `transform` del CanvasItem lo aplica el C++ por vértice (doc 31 §3, `CAN:26-30`). Foxglove Plot usa rutas de mensaje `/topic.field[index]`; rqt_plot usa `/topic/field/subfield` [I: de memoria, no verificado en esta sesión]. El minimapa del G1 ya usa draw_polyline (godot/g1-unitree/minimapa.gd:39-49) con ancho 2.0, que NO es la variante fina.",
+    "fuentes": [
+      "docs/31-render-visualizacion-vita.md H17 y §3 (Planta 2D: transform del nodo)",
+      "godot/g1-unitree/minimapa.gd:39-49",
+      "https://docs.foxglove.dev/docs/visualization/message-path-syntax",
+      "https://github.com/ros-visualization/rqt_plot"
+    ],
+    "confianza": "[V] H17; [I] que `draw_set_transform` con escala no engorde la línea fina (en Godot 4 la línea de ancho negativo es una primitiva de 1 px que no escala) y que el port la dibuje igual; [I] sintaxis rqt/Foxglove",
+    "coste_estimado": "Por muestra: ~25 instrucciones GDScript (≈ 40 µs Vita [I]). Por redibujo: 1 comando + copia de ≤ 300 Vector2 en C++ por serie; ≤ 3 polilíneas = 3 lotes 2D. ≈ 0 quads de texto.",
+    "como_se_mediria_en_hardware": "Vita: 3 series de /vita/pose2d (30 Hz) durante 5 min; `[gxm2d-perf] draws=` sube ≤ 3 y `avg_canvas_us` sube ≤ 300 µs; FPS ≥ 58 en g1-sensores perfil ligero. PC: comparar la curva con rqt_plot sobre el mismo topic. Verde: ambos."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(pieza) Descubrimiento de topics y tipos en el PC (grafo ROS)",
+    "equivalente": "`ros2 topic list -t`, «Add → By topic» de RViz2, lista de topics de Foxglove",
+    "candidato": "`explorador_topics.gd`: sondea `RosNode.get_topic_names_and_types()` cada 2 s (no hay señal de cambios de grafo en rclgd), calcula altas/bajas y emite señales; `count_publishers(topic)` para marcar topics sin publicador. Por cada topic, `RegistroDisplays.candidatos()` da los displays posibles; los tipos sin display caen al inspector.",
+    "pc_rclgd": "`get_topic_names_and_types()` → Dictionary {\"/odom\": [\"nav_msgs/msg/Odometry\"]} (ros_node.cpp:361-381); un topic puede tener varios tipos (se avisa y se usa el primero). Llamar por `call()` para que el mismo .gd compile en la Vita.",
+    "vita_ros2_vita": "❌ sin API de grafo en XRCE (API_PARITY.md, fila `get_topic_names_and_types`): ver ficha siguiente.",
+    "campos": "—",
+    "codigo": "extends RefCounted\n## Explorador de topics: grafo en el PC; catálogo del relay o estático en la Vita (misma salida).\nsignal topic_nuevo(topic: String, tipo: String)\nsignal topic_perdido(topic: String)\nvar topics := {}               # topic -> tipo (el primero si hay varios)\nvar _nodo\n\nfunc _init(nodo) -> void:\n\t_nodo = nodo\n\nfunc tiene_grafo() -> bool:\n\treturn _nodo.has_method(\"get_topic_names_and_types\")\n\n## Llamar con un RosTimer de 2 s (o al pulsar «refrescar»).\nfunc sondear() -> void:\n\tif not tiene_grafo():\n\t\treturn                 # en la Vita lo alimenta aplicar_catalogo()\n\taplicar(_nodo.call(\"get_topic_names_and_types\"))\n\nfunc aplicar(grafo: Dictionary) -> void:\n\tvar vistos := {}\n\tfor t in grafo:\n\t\tvar tipos: Array = grafo[t]\n\t\tif tipos.is_empty():\n\t\t\tcontinue\n\t\tvistos[t] = tipos[0]\n\t\tif not topics.has(t):\n\t\t\ttopics[t] = tipos[0]\n\t\t\ttopic_nuevo.emit(t, tipos[0])\n\tfor t in topics.keys():\n\t\tif not vistos.has(t):\n\t\t\ttopics.erase(t)\n\t\t\ttopic_perdido.emit(t)\n\nfunc publicadores(topic: String) -> int:\n\treturn _nodo.call(\"count_publishers\", topic) if tiene_grafo() else -1",
+    "parametros": [
+      "periodo_sondeo_s (2)"
+    ],
+    "evidencia": "rclgd liga get_topic_names_and_types, count_publishers y count_subscribers (ros_node.cpp:52-54) y no expone eventos de grafo.",
+    "fuentes": [
+      "godot/rclgd/rclgd/src/rclgd/ros_node.cpp:52-54,361-395",
+      "godot/ros2_vita/API_PARITY.md (RosNode)"
+    ],
+    "confianza": "[V] API; [I] periodo de sondeo",
+    "coste_estimado": "PC: una consulta de grafo cada 2 s (ms en grafos de ~100 topics [I]).",
+    "como_se_mediria_en_hardware": "PC con la estación `docker/vita-ros.sh sim`: la lista coincide con `ros2 topic list -t`; lanzar/parar turtlesim emite topic_nuevo/topic_perdido en ≤ 2 s."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(pieza) Descubrimiento de topics y tipos en la Vita (sin grafo)",
+    "equivalente": "—(no existe en micro-ROS; el agente no reenvía el grafo al cliente XRCE)",
+    "candidato": "Tres fuentes con la MISMA salida que el grafo del PC (Dictionary topic → [tipo]), por orden: (1) catálogo vivo del relay: nuevo módulo `catalogo` de vita_relay.py que publica `/vita/catalogo` (std_msgs/String, FIABLE + TRANSIENT_LOCAL, como /vita/joints_orden) con líneas «topic tipo» del grafo del PC, filtradas a los tipos del esquema de la app; (2) catálogo estático `res://ros/catalogo.json` generado en el PC al exportar (con `ros2 topic list -t` o el MCP `list_topics`); (3) `RosMsg.list_types()` (solo Vita) para saber qué tipos se pueden decodificar y ofrecer suscripción manual (topic escrito a mano).",
+    "pc_rclgd": "El catálogo del relay también se puede consumir en el PC (útil para probar la UI de la Vita en el editor).",
+    "vita_ros2_vita": "(1) cabe: 40 topics × ~45 B ≈ 1,8 KB → fiable fragmentado (corte RX ~7,5 KiB, doc 27 §1) y a ≤ 1 Hz o solo al cambiar; (2) es configuración no-colocación (permitido en JSON por doc 35 §3) pero se queda viejo; (3) ya existe (ros_msg.cpp:34-46). El MCP `mcp/ros2-introspection` sirve a Claude, NO a la app en ejecución (habla stdio con Claude Code, README del MCP): útil para generar (2) en tiempo de desarrollo.",
+    "campos": "Formato propuesto de /vita/catalogo: «v1\\n/odom nav_msgs/msg/Odometry\\n/scan sensor_msgs/msg/LaserScan\\n…» (texto: sin esquema extra, String ya está en todos los .rsch).",
+    "codigo": "## Cliente del catálogo (Vita y PC). Formato de /vita/catalogo: \"v1\\n<topic> <tipo>\\n…\"\n## Suscripción: contexto.nodo.create_subscription(prefijo + \"/catalogo\", \"std_msgs/msg/String\",\n##     _al_catalogo, contexto.qos(false, 1, true))   # fiable + TRANSIENT_LOCAL (como joints_orden)\nvar explorador                 # explorador_topics.gd\nvar solo_decodificables := true\n\nfunc _al_catalogo(msg) -> void:\n\tvar lineas: PackedStringArray = String(msg.data).split(\"\\n\", false)\n\tif lineas.is_empty() or lineas[0] != \"v1\":\n\t\tpush_warning(\"catálogo: versión desconocida\")\n\t\treturn\n\tvar grafo := {}\n\tfor i in range(1, lineas.size()):\n\t\tvar partes := lineas[i].split(\" \", false)\n\t\tif partes.size() < 2:\n\t\t\tcontinue\n\t\tif not solo_decodificables or _decodificable(partes[1]):\n\t\t\tgrafo[partes[0]] = [partes[1]]\n\texplorador.aplicar(grafo)\n\nvar _decod := {}\nfunc _decodificable(tipo: String) -> bool:   # portable: from_type da null sin .rsch/typesupport\n\tif not _decod.has(tipo):\n\t\t_decod[tipo] = RosMsg.from_type(tipo) != null\n\treturn _decod[tipo]\n\n## Respaldo sin relay: res://ros/catalogo.json = {\"/odom\": [\"nav_msgs/msg/Odometry\"], …}\nfunc catalogo_estatico() -> void:\n\tvar f := FileAccess.open(\"res://ros/catalogo.json\", FileAccess.READ)\n\tif f:\n\t\texplorador.aplicar(JSON.parse_string(f.get_as_text()))",
+    "parametros": [
+      "prefijo (/vita o /vita/<robot>, contrato VC/1)",
+      "solo_decodificables (true)"
+    ],
+    "evidencia": "Sin API de grafo en XRCE (API_PARITY.md). El relay ya publica un String fiable latched (/vita/joints_orden, vita_relay.py:13,162) y su lista de módulos es parámetro (vita_relay.py:21). Filtro portable con `RosMsg.from_type(tipo) != null` (null si no hay esquema, ros_msg.cpp:162-170, igual que rclgd ros_msg.cpp:152-159) en vez de `RosMsg.list_types()`, que solo existe en ros2_vita y no compilaría en rclgd [I].",
+    "fuentes": [
+      "godot/ros2_vita/API_PARITY.md",
+      "docker/scripts/vita_relay.py:10-21,149-179",
+      "docs/27-xrce-limites-y-relay.md §1-2",
+      "godot/ros2_vita/ros_msg.cpp:34-46,722",
+      "mcp/ros2-introspection/README.md",
+      "docs/35-regla-escenas-editables.md §3"
+    ],
+    "confianza": "[V] restricciones; [I] diseño del módulo `catalogo` (no existe aún); from_type de un tipo ausente imprime un error una vez por tipo (caché)",
+    "coste_estimado": "≈ 2 KB fiable al conectar y al cambiar el grafo; parseo ≈ 40 líneas × 10 instrucciones (≈ 0,6 ms Vita [I]) una vez.",
+    "como_se_mediria_en_hardware": "Con la estación (vita-ros.sh up + sim) y el relay con el módulo catálogo: en la Vita, la lista de topics coincide con `ros2 topic list -t` filtrada por el esquema en ≤ 3 s tras conectar y tras reconectar (TRANSIENT_LOCAL). Verde: igualdad de listas."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(pieza) Suscribirse en la Vita a un tipo sin esquema .rsch",
+    "equivalente": "rqt_topic / ros2 topic hz con un tipo no instalado (en el PC falla igual: «type support not found»)",
+    "candidato": "Hoy NO se puede ver el contenido: la suscripción XRCE se crea (el transporte solo necesita el nombre DDS, xrce_transport.cpp:152,637-653) pero cada muestra falla en `RosMsg.from_type(type_name)` (ros_runtime.cpp:122-123: `ERR_FAIL_COND`) y el callback no se llama. Propuesta: (a) el display «Desconocido» muestra solo «sin esquema» y sugiere regenerar el esquema; (b) hueco a cerrar en ros2_vita: contar bytes/muestras por suscripción aunque no haya esquema (Hz y tamaño, como `ros2 topic hz/bw`) y entregar un `PackedByteArray` al callback si se pide modo crudo (`qos`→ no; mejor un método nuevo `create_raw_subscription` solo Vita).",
+    "pc_rclgd": "En el PC un tipo sin typesupport instalado falla al crear la suscripción (BabelFish lanza, ros_subscriber.cpp:39-42); se resuelve instalando el paquete. El inspector cubre todo lo instalado.",
+    "vita_ros2_vita": "Esquema único global: `load_schema_file` REEMPLAZA el blob (ros_msg.cpp:14-24), no hay mezcla de esquemas; añadir un tipo = añadirlo a TIPOS de generar_esquemas.py (godot/plantillas/generar_esquemas.py:12-39) y reexportar. Coste de un esquema grande: ≈ 137 B/tipo (dron-mapeo: 44 tipos, 182 campos, 6 030 B, cabecera RSCH leída) → todo common_interfaces + visualization_msgs + nav_msgs + tf2_msgs + diagnostic_msgs (~250 tipos [?]) ≈ 35 KB [I], irrelevante en 512 MB; PERO `msg_schema_find_type` es lineal con strcmp (msg-schema impl-c:125-139) y se llama por mensaje recibido (from_type, ros_runtime.cpp:122) → cachear el índice en RosSubscriber antes de inflar el esquema.",
+    "campos": "—",
+    "codigo": "extends \"res://comun/visor/display_ros_hud.gd\"\n## Display de reserva para un tipo que la Vita no puede decodificar (sin .rsch) o sin display propio.\n@export var etiqueta: Label\n\nfunc conectar(v) -> void:\n\tvar decodificable := RosMsg.from_type(tipo) != null     # null si no está en el esquema (igual que rclgd)\n\tif not decodificable:\n\t\tetiqueta.text = \"%s\\n%s\\nsin esquema: añadir a generar_esquemas.py\" % [topic, tipo]\n\t\treturn                     # no suscribir: cada muestra daría ERR_FAIL_COND en ros_runtime.cpp:123\n\tsuper.conectar(v)\n\nfunc _procesar(msg) -> void:\n\tetiqueta.text = \"%s  %.1f Hz\\n%s\" % [topic, canal.hz_medido, str(msg).left(200)]",
+    "parametros": [
+      "etiqueta (Label en la escena)"
+    ],
+    "evidencia": "Ver campos `vita_ros2_vita`; [?] que el agente micro-ROS acepte crear un DataReader de un tipo cuyo typesupport no tiene: en modo XML el agente usa un tipo genérico de bytes [I, no verificado en el código del agente].",
+    "fuentes": [
+      "godot/ros2_vita/xrce_transport.cpp:152,637-653",
+      "godot/ros2_vita/ros_runtime.cpp:118-133",
+      "godot/ros2_vita/ros_msg.cpp:14-24,150-160",
+      "modules/msg-schema/impl-c (msg_schema_find_type, líneas 125-139)",
+      "godot/plantillas/generar_esquemas.py:12-66",
+      "godot/dron-mapeo/ros/schema.rsch (cabecera: 44 tipos, 182 campos)"
+    ],
+    "confianza": "[V] comportamiento del módulo; [?] comportamiento del agente con tipos desconocidos; [I] tamaño de un esquema completo",
+    "coste_estimado": "0 si no se suscribe. Con suscripción y sin esquema hoy: 1 ERR por muestra (spam de log).",
+    "como_se_mediria_en_hardware": "Vita: suscribirse a un tipo fuera del esquema (p. ej. sensor_msgs/msg/Temperature) con publicador en el PC: confirmar que el agente crea el reader (log del agente) y que el netlog muestra el ERR por muestra; después del parche (b), Hz medido = `ros2 topic hz` ± 10 %."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "std_msgs/msg/{Bool, Byte, Char, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64, String, Empty}",
+    "equivalente": "No hay display en RViz2 (plugins_description.xml no lista std_msgs); rqt_topic / Foxglove «Indicator» y «Gauge», PlotJuggler",
+    "candidato": "Display HUD `valor.gd`: un Label «nombre: valor» (+ unidad @export) y, opcional, un trazador de 1 serie con la ruta `<topic>.data`. Bool → indicador de color (ColorRect verde/rojo). Empty → contador de eventos y destello. String → Label recortado. Char → número y carácter (`String.chr`).",
+    "pc_rclgd": "Campo único `data` (Empty no tiene campos visibles). Clases tipadas `RosStdMsgsFloat64` si std_msgs está en package.xml.",
+    "vita_ros2_vita": "CDR ≤ 4+8 B (+ cadena): siempre cabe en 488 B salvo String > ~480 caracteres. En el esquema actual solo Bool y String (generar_esquemas.py:13-14); el resto hay que añadirlo [V]. Empty: msg-schema rechaza tipos sin campos (README «Límites»), así que depende de que rosbags genere el miembro `structure_needs_at_least_one_member` [?].",
+    "campos": "data: bool→bool; int*/uint*/byte/char→int; float*→float; string→String. Unidades: ninguna en el mensaje (std_msgs no lleva Header ni unidades): @export `unidad`.",
+    "codigo": "extends \"res://comun/visor/display_ros_hud.gd\"\n## Valor escalar de std_msgs (Bool, Int*, UInt*, Float*, Byte, Char, String, Empty).\n@export var etiqueta: Label\n@export var indicador: ColorRect        # opcional, para Bool\n@export var unidad := \"\"\n@export var decimales := 3\nvar eventos := 0                         # para std_msgs/Empty\n\nfunc _procesar(msg) -> void:\n\tif tipo == \"std_msgs/msg/Empty\":\n\t\teventos += 1\n\t\tetiqueta.text = \"%s: %d eventos\" % [topic, eventos]\n\t\treturn\n\tvar v = msg.data\n\tvar txt := str(v)\n\tif v is float:\n\t\ttxt = String.num(v, decimales)\n\telif v is bool and indicador:\n\t\tindicador.color = Color.LIME_GREEN if v else Color.DARK_RED\n\telif tipo == \"std_msgs/msg/Char\":\n\t\ttxt = \"%d '%s'\" % [v, String.chr(v)]\n\telif v is String:\n\t\ttxt = v.left(64)\n\tvar nuevo := \"%s: %s %s\" % [topic.get_file(), txt, unidad]\n\tif nuevo != etiqueta.text:           # no rehacer glifos si no cambia (doc 34)\n\t\tetiqueta.text = nuevo\n\nfunc _caducar() -> void:\n\tetiqueta.modulate = Color(1, 1, 1, 0.4)   # dato viejo: atenuado en vez de ocultar",
+    "parametros": [
+      "unidad",
+      "decimales",
+      "indicador (Bool)",
+      "hz_max (por defecto 10)",
+      "decaimiento_s"
+    ],
+    "evidencia": "Lista oficial de std_msgs en Jazzy (30 .msg, incluidos los MultiArray, ColorRGBA, Header, Empty, MultiArrayLayout/Dimension).",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/tree/jazzy/std_msgs/msg",
+      "godot/plantillas/generar_esquemas.py:12-39",
+      "modules/msg-schema/README.md (Límites)",
+      "docs/34-perfil-vita-ligero.md:93"
+    ],
+    "confianza": "[V] tipos y esquema actual; [?] Empty en la Vita",
+    "coste_estimado": "1 Label (≈ 20–30 quads); por mensaje ≈ 15 instrucciones.",
+    "como_se_mediria_en_hardware": "`ros2 topic pub -r 20 /x std_msgs/msg/Float64 '{data: 1.5}'` → la Vita muestra 1.500 y Hz 20; con Empty, el contador sube. Verde: valores y Hz correctos sin bajar FPS > 1."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "std_msgs/msg/{Byte,Int8,Int16,Int32,Int64,UInt8,UInt16,UInt32,UInt64,Float32,Float64}MultiArray (+ MultiArrayLayout, MultiArrayDimension)",
+    "equivalente": "Sin display en RViz2; Foxglove Plot sobre `data[i]`, PlotJuggler (arrays), rqt_topic",
+    "candidato": "`multiarray.gd` (HUD): según `layout.dim`: 0–1 dimensiones → perfil (polilínea fina de `data` frente al índice, 1 comando, escala por `draw_set_transform`) o barras si n ≤ 16; 2 dimensiones → mapa de calor como textura (Image L8/RF con `create_from_data`, filtro POINT) a ≤ 4 Hz; ≥ 3 → inspector. Si el topic es un formato compacto del relay (`/vita/*`), el registro elige antes el display específico (ficha del registro).",
+    "pc_rclgd": "data llega como Packed*Array por memcpy (ros_type_utils.hpp:51-122). `layout.dim` = Array de RosMsg (label, size, stride); `data_offset` int.",
+    "vita_ros2_vita": "Es el formato base del relay (doc 27 §1: Int16MultiArray N ⇒ 16+2N B, N ≤ 236 en best effort) y el más barato de recibir (H25: memcpy para float32/uint8; int16 → PackedInt32Array con bucle C++). Convertir a puntos (Vector2 por índice) es un bucle GDScript: diezmar a ≤ 128 puntos (≈ 0,8 ms [I]). Mapa de calor: `Image.create_from_data` + `ImageTexture.update` (H19: caro ∝ píxeles; ≤ 4 Hz y ≤ 64×64).",
+    "campos": "layout.dim[k].size/stride/label; layout.data_offset; data (Packed*). Fila r, columna c (2D, row-major): data[data_offset + r*dim[1].stride + c]. Byte/Int8/UInt8/Char → PackedByteArray o PackedInt32Array según firma (int8 → PackedInt32Array, ros_type_utils.hpp:103-112).",
+    "codigo": "extends \"res://comun/visor/display_ros_hud.gd\"\n## Cualquier *MultiArray: perfil 1D (polilínea fina) o mapa de calor 2D (textura).\n@export var max_puntos := 128\n@export var mapa: TextureRect           # en la escena; solo se usa con 2 dimensiones\nvar _pts := PackedVector2Array()\nvar _min := 0.0\nvar _max := 1.0\n\nfunc _procesar(msg) -> void:\n\tvar dims: Array = msg.layout.dim\n\tvar d = msg.data\n\tif dims.size() == 2 and mapa:\n\t\t_calor(d, int(dims[0].size), int(dims[1].size), int(msg.layout.data_offset))\n\t\treturn\n\tvar paso := maxi(1, ceili(d.size() / float(max_puntos)))\n\t_pts.resize(ceili(d.size() / float(paso)))\n\t_min = INF\n\t_max = -INF\n\tfor i in _pts.size():                 # bucle GDScript: acotado por max_puntos\n\t\tvar y := float(d[i * paso])\n\t\t_pts[i] = Vector2(i * paso, y)\n\t\t_min = minf(_min, y)\n\t\t_max = maxf(_max, y)\n\tqueue_redraw()\n\nfunc _draw() -> void:\n\tif _pts.size() < 2:\n\t\treturn\n\tvar esc := Vector2(size.x / maxf(_pts[-1].x, 1.0), -size.y / maxf(_max - _min, 1e-6))\n\tdraw_set_transform(Vector2(0, size.y - _min * esc.y), 0.0, esc)\n\tdraw_polyline(_pts, Color.ORANGE, -1.0)\n\nfunc _calor(d, filas: int, cols: int, ofs: int) -> void:\n\tvar bytes: PackedByteArray = d.slice(ofs, ofs + filas * cols) if d is PackedByteArray else PackedByteArray()\n\tif bytes.size() == filas * cols:      # UInt8: directo; otros tipos: normalizar a 0–255 en el PC/relay\n\t\tmapa.texture = ImageTexture.create_from_image(Image.create_from_data(cols, filas, false, Image.FORMAT_L8, bytes))",
+    "parametros": [
+      "max_puntos (128)",
+      "mapa (TextureRect opcional)",
+      "hz_max (10; 2D ≤ 4)"
+    ],
+    "evidencia": "Formatos compactos del relay y su tamaño (doc 27 §1, vita_relay.py:10-19); coste de texturas H19; recepción barata H25.",
+    "fuentes": [
+      "docs/27-xrce-limites-y-relay.md:85,98-104",
+      "docker/scripts/vita_relay.py:10-19",
+      "docs/31-render-visualizacion-vita.md H19,H25",
+      "godot/rclgd/rclgd/src/rclgd/utils/ros_type_utils.hpp:51-122",
+      "godot/plantillas/vita_relay.gd:1-40"
+    ],
+    "confianza": "[V] formatos y costes citados; [I] código no ejecutado; el mapa de calor crea textura nueva por mensaje (en la Vita mejor reutilizar ImageTexture.update, como vita_relay.gd hace con HZ_TEXTURA = 4)",
+    "coste_estimado": "1D: ≤ 128 iteraciones × ~8 instr. ≈ 1,5 ms Vita a hz_max [I] + 1 lote 2D; 2D: ∝ píxeles (H19).",
+    "como_se_mediria_en_hardware": "Vita: suscribir el display genérico a /vita/scan_compacto (Int16MultiArray, 10 Hz): perfil visible, ≤ 1 ms/fotograma de media del display con Perfil. Verde: ADR 0011 §5 (≤ 2 ms por mensaje)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "std_msgs/msg/ColorRGBA",
+    "equivalente": "Sin display propio en RViz2 (va dentro de Marker); Foxglove: muestra de color en Raw Messages",
+    "candidato": "Muestra de color: ColorRect con `Color(r, g, b, a)` y texto «#rrggbbaa»; además utilidad `color_ros(msg) -> Color` que reutilizan Marker/MarkerArray. En la Vita el color 3D sale de la textura-paleta (ADR 0011 §3), así que la utilidad también da el índice de paleta más cercano.",
+    "pc_rclgd": "r,g,b,a float32 → float (0–1). Sin conversión de espacio de color (RViz los usa como sRGB lineal sin gamma [?]).",
+    "vita_ros2_vita": "16 B CDR. En 3D sin color por vértice (H3): cuantizar a la paleta 16×16; en 2D, color por primitiva gratis (H16).",
+    "campos": "r, g, b, a (float32, 0–1) → Color.",
+    "codigo": "extends \"res://comun/visor/display_ros_hud.gd\"\n## std_msgs/ColorRGBA: muestra de color. `color_ros` la reutilizan Marker y MarkerArray.\n@export var muestra: ColorRect\n@export var etiqueta: Label\n\nstatic func color_ros(c) -> Color:\n\treturn Color(c.r, c.g, c.b, c.a)\n\n## Índice en una paleta de N colores (textura-paleta de ADR 0011 §3), por distancia RGB.\nstatic func indice_paleta(c: Color, paleta: PackedColorArray) -> int:\n\tvar mejor := 0\n\tvar dmin := INF\n\tfor i in paleta.size():\n\t\tvar p := paleta[i]\n\t\tvar d := Vector3(p.r - c.r, p.g - c.g, p.b - c.b).length_squared()\n\t\tif d < dmin:\n\t\t\tdmin = d\n\t\t\tmejor = i\n\treturn mejor\n\nfunc _procesar(msg) -> void:\n\tvar c := color_ros(msg)\n\tmuestra.color = c\n\tetiqueta.text = \"#\" + c.to_html(true)",
+    "parametros": [
+      "muestra",
+      "etiqueta"
+    ],
+    "evidencia": "H3 (color = albedo × tinte, sin color por vértice) y H16 (2D con color por primitiva).",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/std_msgs/msg/ColorRGBA.msg",
+      "docs/31-render-visualizacion-vita.md H3,H16",
+      "docs/adr/0011-presupuesto-render-vita.md §Decisión 3"
+    ],
+    "confianza": "[V] campos y H3/H16; [?] tratamiento de gamma en RViz2",
+    "coste_estimado": "Trivial; indice_paleta ≈ 256 × 8 instr. si la paleta es de 256 (cachear por color).",
+    "como_se_mediria_en_hardware": "Publicar 3 colores; comparar la muestra en PC y Vita con un colorímetro de pantalla/captura. Verde: mismo tono a ojo (sin gamma doble)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "std_msgs/msg/Header + builtin_interfaces/msg/{Time, Duration}",
+    "equivalente": "RViz2 usa header.frame_id para TF (MessageFilter) y stamp para el lookup; `ros2 topic delay` (latencia = now − stamp)",
+    "candidato": "Utilidades en `util_ros.gd`/visor: `segundos(t) = t.sec + t.nanosec * 1e-9` (float64), `latencia(msg) = now − stamp`; el Header no tiene display propio: lo consumen la base DisplayRos (frame) y el monitor de topic (latencia). El inspector lo muestra como «stamp: 1731500000.123456789, frame_id: base_link».",
+    "pc_rclgd": "`RosNode.now()` devuelve un builtin_interfaces/Time como RosMsg (ros_node.cpp:344-358; `sec`, `nanosec`); `lookup_transform(target, source, time)` acepta el stamp (ros_tf_listener.cpp:8-13). Con `use_sim_time` el reloj es el de /clock.",
+    "vita_ros2_vita": "`now()` = hora del agente tras `uxr_sync_session` al abrir la sesión (API_PARITY.md, fila now()); si falla, reloj local → la latencia no tiene sentido (mostrar «sin sincronía»). Sin `use_sim_time` (⏳): con simulación (Gazebo/MuJoCo con /clock) la latencia es basura; detectarlo (|latencia| > 1 h) y ocultar. Header ocupa 8 + 4 + len(frame_id) + 1 B CDR (alineado) [I].",
+    "campos": "stamp.sec int32 → int; stamp.nanosec uint32 → int; frame_id string → String (TF). Duration: sec int32 con signo + nanosec uint32 (siempre ≥ 0).",
+    "codigo": "extends RefCounted\n## Tiempo ROS (builtin_interfaces/Time y Duration) y Header, portable rclgd ↔ ros2_vita.\n\nstatic func segundos(t) -> float:          # Time o Duration -> s (float64 de GDScript)\n\treturn float(t.sec) + float(t.nanosec) * 1e-9\n\nstatic func a_texto(t) -> String:\n\treturn \"%d.%09d\" % [t.sec, t.nanosec]\n\n## Latencia del mensaje en s (now − header.stamp); NAN si el stamp es 0 o absurdo (sim_time, sin sincronía).\nstatic func latencia(nodo, msg) -> float:\n\tif not (\"header\" in msg):\n\t\treturn NAN\n\tvar st = msg.header.stamp\n\tif st.sec == 0 and st.nanosec == 0:\n\t\treturn NAN\n\tvar l := segundos(nodo.now()) - segundos(st)\n\treturn l if absf(l) < 3600.0 else NAN\n\n## Rellenar un Time (para publicar) desde segundos.\nstatic func escribir_tiempo(t, s: float) -> void:\n\tt.sec = int(floor(s))\n\tt.nanosec = int((s - floor(s)) * 1e9)",
+    "parametros": [
+      "(utilidad)"
+    ],
+    "evidencia": "Ver campos. La base DisplayRos ya lee header.frame_id; el sello al publicar ya existe (contexto_ros.gd:28-29 `sello`).",
+    "fuentes": [
+      "https://github.com/ros2/common_interfaces/blob/jazzy/std_msgs/msg/Header.msg",
+      "https://github.com/ros2/rcl_interfaces/tree/jazzy/builtin_interfaces/msg",
+      "godot/rclgd/rclgd/src/rclgd/ros_node.cpp:344-358",
+      "godot/rclgd/rclgd/src/rclgd/ros_tf_listener.cpp:8-13",
+      "godot/ros2_vita/API_PARITY.md (now, use_sim_time)",
+      "godot/plantillas/ros/contexto_ros.gd:28-29"
+    ],
+    "confianza": "[V] API; [I] umbral de 1 h",
+    "coste_estimado": "Trivial.",
+    "como_se_mediria_en_hardware": "Vita conectada al agente: publicar Header con stamp = now desde el PC a 10 Hz; latencia mostrada ≈ RTT/2 + cola (decenas de ms; comparar con `ping` de W1). Verde: 0 < latencia < 200 ms estable."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(pieza) Monitor de topic: Hz, ancho de banda, latencia (`ros2 topic hz/bw/delay`)",
+    "equivalente": "Línea de estado de cada display en RViz2 (messages received, Hz); `ros2 topic hz`, `bw`, `delay`; Foxglove Topic Stats",
+    "candidato": "Panel HUD que lista los canales activos de un VisorRos: topic, Hz medido (`canal.hz_medido`), mostrados/recibidos, latencia (Header) y estado TF. Bytes/s: solo en la Vita y solo si ros2_vita expone el tamaño (hoy no por suscripción; `get_transport_info()` da contadores globales).",
+    "pc_rclgd": "Hz y latencia sí; bytes no: un RosMsg de rclgd no expone su tamaño serializado (ros_msg.hpp:63-102) [V].",
+    "vita_ros2_vita": "`rclgd.get_transport_info()` y `get_dropped()` (ros_runtime.cpp:357-366) dan contadores del transporte (be_pending, be_dropped, reconexiones…, API_PARITY.md); `msg.serialize().size()` daría el tamaño pero re-codifica (caro, no usar por mensaje). Propuesta de hueco: contador de bytes por suscripción en `RosSubscriber::deliver`.",
+    "campos": "—",
+    "codigo": "extends Label\n## Monitor de topics de un VisorRos (Hz, recibidos/mostrados, latencia, estado). Refresco 2 Hz.\nconst Tiempo = preload(\"res://comun/visor/tiempo_ros.gd\")\n@export var visor: Node\nvar _t := 0.0\n\nfunc _process(dt: float) -> void:\n\t_t += dt\n\tif _t < 0.5 or visor == null:\n\t\treturn\n\t_t = 0.0\n\tvar lineas := PackedStringArray()\n\tfor d in visor.get_tree().get_nodes_in_group(\"display_ros\"):\n\t\tif not visor.is_ancestor_of(d) or d.topic == \"\":\n\t\t\tcontinue\n\t\tlineas.append(\"%-18s %5.1f Hz %s\" % [d.topic.right(18), d.canal.hz_medido, d.estado])\n\tif rclgd.has_method(\"get_transport_info\"):   # solo ros2_vita\n\t\tvar info: Dictionary = rclgd.call(\"get_transport_info\")\n\t\tlineas.append(\"xrce: %s\" % str(info).left(60))\n\tvar nuevo := \"\\n\".join(lineas)\n\tif nuevo != text:\n\t\ttext = nuevo",
+    "parametros": [
+      "visor",
+      "refresco (2 Hz)"
+    ],
+    "evidencia": "RViz2 muestra Hz = mensajes / tiempo desde la suscripción (message_filter_display.hpp); aquí ventana de 1 s, más útil para ver caídas.",
+    "fuentes": [
+      "https://raw.githubusercontent.com/ros2/rviz/jazzy/rviz_common/include/rviz_common/message_filter_display.hpp",
+      "godot/rclgd/rclgd/src/rclgd/ros_msg.hpp:63-102",
+      "godot/ros2_vita/ros_runtime.cpp:357-366",
+      "godot/ros2_vita/API_PARITY.md (Notas del módulo nativo)"
+    ],
+    "confianza": "[V] API; [I] diseño",
+    "coste_estimado": "Texto: ≈ 40 caracteres × displays (cuidado en la Vita: ≤ 6 líneas ≈ 240 quads) a 2 Hz.",
+    "como_se_mediria_en_hardware": "Comparar los Hz del monitor con `ros2 topic hz` en el PC para 3 topics (±10 %)."
+  },
+  {
+    "workshop": "W13",
+    "autor": "nucleo-generico (opus)",
+    "tipo": "(huecos) Lo que falta en ros2_vita para el núcleo genérico",
+    "equivalente": "Paridad con rclgd + mejoras que tampoco tiene rclgd",
+    "candidato": "Lista priorizada: P0 TF listener (ya conocido, API_PARITY.md); P1 limitar/coalescer en C++ antes de decodificar (`RosSubscriber.set_max_rate(hz)` o «solo el último» en la cola, ros_runtime.cpp:473-511 + :118-133); P1 cachear `type_idx` en RosSubscriber y decodificar sin `from_type` por mensaje (find_type lineal, impl-c:125-139) y sin `init_idx` doble (ros_msg.cpp:134-147 crea los valores por defecto y d_begin_struct vuelve a llamar init_idx para cada struct, :387-392, antes de copiar `members = ctx.root->members`, :524); P1 `_find_field` lineal por cada `set_member` del decodificador (ros_msg.cpp:173-188 llamado desde d_prim :414-418) ⇒ O(campos²) por mensaje: asignar por índice; P2 contadores por suscripción (muestras, bytes, errores de CDR, sin esquema); P2 `RosMsg.describe_type(tipo)` → [{name, kind, prim, array, len, type}] desde `msg_field_info` (útil también para un inspector con tipos exactos; rclgd no lo tiene); P3 mezclar esquemas (`load_schema_file` reemplaza, ros_msg.cpp:14-24); P3 clases tipadas (T3.2.4). Sin solución en XRCE: grafo (→ catálogo del relay).",
+    "pc_rclgd": "rclgd tampoco tiene: tamaño serializado, describe_type, límite de Hz por suscripción, eventos de grafo. Son mejoras posibles en el PC pero no necesarias.",
+    "vita_ros2_vita": "Todo lo anterior. Regla de portabilidad mientras tanto: llamar a lo que no existe en ambos con `has_method`/`ClassDB.class_has_method` + `call()`, y no anotar tipos `RosTfListener`/`RosXxx` tipados.",
+    "campos": "—",
+    "codigo": "// Esbozo C++ (ros2_vita/ros_runtime.cpp) de P1: coalescer por suscripción ANTES de decodificar.\n// Hoy: deliver() decodifica cada RxItem (ros_runtime.cpp:118-133) y process_frame entrega todos (:496-511).\nvoid RosSubscriber::deliver(const uint8_t *p_data, size_t p_len) {\n\tif (!callback.is_valid()) {\n\t\treturn;\n\t}\n\tuint64_t now = OS::get_singleton()->get_ticks_usec();\n\tstats_samples++;                       // P2: contadores (get_stats() -> Dictionary)\n\tstats_bytes += p_len;\n\tif (min_period_us && now - last_usec < min_period_us) {\n\t\treturn;                            // set_max_rate(hz): descartar SIN decodificar\n\t}\n\tif (type_idx == MSG_SCHEMA_NO_TYPE) {   // P1: resuelto una vez en setup(), no por mensaje\n\t\tstats_no_schema++;\n\t\treturn;\n\t}\n\tlast_usec = now;\n\tRef<RosMsg> msg;\n\tmsg.instantiate();\n\tmsg->set_type_index_only(type_idx);     // sin construir valores por defecto\n\tif (msg->deserialize(PackedByteArray(...)) != OK) {\n\t\tstats_cdr_errors++;\n\t\treturn;\n\t}\n\tcallback.call(msg);\n}\n// Mejor aún (coalescer): en process_frame, si dos RxItem son del mismo sub_id, quedarse con el último\n// cuando el suscriptor lo pide (latest_only), igual que hace canal_display.gd pero sin pagar el decode.",
+    "parametros": [
+      "set_max_rate(hz)",
+      "latest_only",
+      "get_stats()"
+    ],
+    "evidencia": "Ver líneas citadas; H25 del doc 31 ya registra que cada mensaje se decodifica entero antes del script.",
+    "fuentes": [
+      "godot/ros2_vita/ros_runtime.cpp:118-133,473-511",
+      "godot/ros2_vita/ros_msg.cpp:14-24,134-160,173-188,387-418,524",
+      "modules/msg-schema/impl-c (msg_schema_find_type 125-139)",
+      "godot/ros2_vita/API_PARITY.md",
+      "docs/31-render-visualizacion-vita.md H25"
+    ],
+    "confianza": "[V] código actual; [I] ganancia (no medida: la parte cara puede ser la creación de Variants y no las búsquedas)",
+    "coste_estimado": "Ahorro esperado [I]: con Odometry (≈ 50 campos hoja) a 50 Hz y hz_max 10, 80 % de decodificaciones evitadas; búsqueda de campo O(F) → O(1).",
+    "como_se_mediria_en_hardware": "Microbanco en la Vita: decodificar 1 000 Odometry y 1 000 Imu con el módulo actual vs parcheado (OS.get_ticks_usec) y con esquema de 44 vs 250 tipos. Verde: ≥ 2× menos µs por mensaje y coste independiente del tamaño del esquema."
+  }
+]

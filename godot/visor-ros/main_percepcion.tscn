@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://main.tscn" id="1_main"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/nube.gd" id="v10_nube"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/cajas_3d.gd" id="v10_cajas3d"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/imagen.gd" id="v10_imagen"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/cajas_2d.gd" id="v10_cajas2d"]
+
+[node name="Main" instance=ExtResource("1_main")]
+
+[node name="Nube" type="Node2D" parent="VisorRos/Planta/Vista" index="3"]
+script = ExtResource("v10_nube")
+topic = "/points"
+
+[node name="Odom" parent="VisorRos/Planta/Vista"]
+max_rastro = 98
+
+[node name="Cajas3D" type="Node2D" parent="VisorRos/Marcas2D"]
+script = ExtResource("v10_cajas3d")
+topic = "/detections_3d"
+
+[node name="Camara" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Imagen" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Camara"]
+offset_right = 320.0
+offset_bottom = 240.0
+script = ExtResource("v10_imagen")
+topic = "/camera/color/image_raw/compressed"
+
+[node name="Cajas2D" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Camara" node_paths=PackedStringArray("imagen")]
+offset_right = 320.0
+offset_bottom = 240.0
+script = ExtResource("v10_cajas2d")
+topic = "/detections"
+imagen = NodePath("../Imagen")
