@@ -1,5 +1,6 @@
 // ros_runtime.h — singleton `rclgd`, RosNode, RosPublisher, RosSubscriber, RosTimer, RosQoS
-// V13a (2026-11-14): propiedades de RosQoS, latest_only y contadores por suscripción, tipo resuelto al suscribir.
+// V13a (2026-11-14): propiedades de RosQoS, latest_only y contadores por suscripción, tipo resuelto al suscribir,
+// create_tf_listener (RosTfListener en ros_tf.h).
 // (Godot 4.x in-tree). Compilado y probado en host (G1). API y semántica copiadas de rclgd (docs/17,
 // godot/ros2_vita/API_PARITY.md); el transporte es intercambiable:
 //   - LoopbackTransport : publica y recibe en el propio proceso (pruebas de host, sin Vita)
@@ -13,6 +14,8 @@
 #include "core/templates/hash_map.h"
 #include "core/templates/list.h"
 #include "ros_msg.h"
+
+class RosTfListener; // ros_tf.h (V13a)
 
 // ---------------------------------------------------------------------------
 class RosQoS : public Resource {
@@ -200,6 +203,7 @@ public:
 	Ref<RosPublisher> create_publisher(const String &p_topic, const Variant &p_type, const Ref<RosQoS> &p_qos = Ref<RosQoS>());
 	Ref<RosSubscriber> create_subscription(const String &p_topic, const Variant &p_type, const Callable &p_cb, const Ref<RosQoS> &p_qos = Ref<RosQoS>());
 	Ref<RosTimer> create_timer(double p_seconds, const Callable &p_cb);
+	Ref<RosTfListener> create_tf_listener(double p_cache_time_sec = 10.0); // ros_tf.cpp (V13a)
 	// Interno (V13a): suscripción de bytes crudos para clases nativas (RosTfListener). Sin esquema.
 	Ref<RosSubscriber> create_subscription_raw(const String &p_topic, const String &p_type, RosSubscriber::RawHandler p_fn,
 			void *p_ctx, const Ref<RosQoS> &p_qos);
