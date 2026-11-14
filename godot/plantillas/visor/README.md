@@ -705,8 +705,8 @@ Estación [V]: OpenCV 4.6.0, numpy 1.26 y PIL 10.2 dentro de `vita_station`; **s
 (la nube se decodifica con numpy y dtype estructurado). En el portátil/PC sin OpenCV, `recomprimir_camara` usa PIL.
 
 **En la escena**: `godot/visor-ros/main_percepcion.tscn` hereda `main.tscn` y añade la pestaña **Cámara** (Imagen +
-Cajas2D), `Planta/Vista/Nube` y `Marcas2D/Cajas3D`. **No** entra en la lista de `SelectorEscena` (la prueba
-`visor_escenas.gd` fija el ciclo main → main_viz → banco_v5): se añade cuando toque el gate de hardware de V10.
+Cajas2D), `Planta/Vista/Nube` y `Marcas2D/Cajas3D`. Desde la revisión V3 entra en `SelectorEscena` (ciclo
+main → main_viz → banco_v5 → main_percepcion → main): una sola `.vpk` para todos los gates.
 `RegistroDisplays`: `*/detecciones`, `*/detecciones3d`, `CompressedImage`, `Image` (solo PC), `PointCloud2` y
 `vision_msgs` 2D/3D (solo PC; no están en `TIPOS_VISOR`, D10).
 
@@ -850,3 +850,24 @@ gate de hardware pendiente (pestaña Gráficas con 3 series: `draws` +≤ 3 y `a
 - **RegistroDisplays sin cambios:** el comodín `*` ya apuntaba a `hud/inspector_texto.gd`; ahora que existe, un tipo
   sin display propio crea el inspector (se actualizó la comprobación de `pruebas/visor.gd`).
 - `campos_de_tipo` no guarda en caché un tipo sin esquema (el esquema puede cargarse después).
+
+## Revisión V3 (2026-11-14)
+
+Revisión escéptica y de código de V10–V12 y de sus fusiones: `docs/ia/workshops/posts/V3-revision.md` (hallazgos,
+veredictos de las decisiones de V10–V12, desafíos para el juez y **guion único de hardware** de todos los gates
+pendientes del visor). Cambios:
+
+- `SelectorEscena`: `main_percepcion.tscn` entra en el ciclo (L + R + START / F9).
+- `2d/pose.gd`: pide `1 + (max_rastro − 1)` = **100** *quads* (doc 36 §7.2; una polilínea de N puntos son N − 1
+  segmentos); antes 101.
+- `hud/trazador.gd`: diezmado por tiempo (`paso_min_s`, −1 = `ventana_s / capacidad`): a 30 Hz con 64 puntos el
+  búfer cubría 2,1 s de una ventana de 10 s y la gráfica usaba solo la quinta parte derecha del panel.
+- `hud/inspector_texto.gd`: con `usar_cruceta` la cruceta funciona aunque la pestaña estuviera oculta al conectar.
+- `hud/imagen.gd` y relay (`recomprimir_camara`): PNG de 16/32 bit de image_transport «compressed»
+  (`16UC1; png compressed`) rechazado como `compressedDepth` (T4).
+- `costmap_textura.gd`: meta con `res` ≤ 0/NaN u origen no finito ignorada (T2).
+- `2d/nube.gd`: caché de índices con tope (en el PC crecía con cada tamaño de nube distinto).
+- Logs nuevos para los gates: `[visor-imagen] imagenes= rechazadas= ms_ultimo= ms_max=` (E-W8-5, pestaña Cámara
+  visible) y `[visor-nube] trozos= completas= us_ultimo= us_max= puntos=` (V10), cada 5 s en la Vita o con `-- perfil`.
+- Relay: aviso si `camara_hz` > 3 (el presupuesto declarado del perfil `percepcion` es a 3 Hz).
+

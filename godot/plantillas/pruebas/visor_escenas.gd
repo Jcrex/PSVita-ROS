@@ -114,7 +114,9 @@ func _probar_selector() -> void:
 	s.archivo = "user://prueba_visor_escena.txt"
 	check(s.siguiente("res://main.tscn") == "res://main_viz.tscn"
 			and s.siguiente("res://main_viz.tscn") == "res://banco_v5.tscn"
-			and s.siguiente("res://banco_v5.tscn") == "res://main.tscn", "selector: ciclo main → main_viz → banco_v5 → main")
+			and s.siguiente("res://banco_v5.tscn") == "res://main_percepcion.tscn"
+			and s.siguiente("res://main_percepcion.tscn") == "res://main.tscn",
+			"selector: ciclo main → main_viz → banco_v5 → main_percepcion → main (revisión V3)")
 	check(s.siguiente("res://otra.tscn") == "res://main.tscn", "selector: escena desconocida → la primera")
 	var existen := true
 	for e in s.escenas:

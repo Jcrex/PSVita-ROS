@@ -550,6 +550,8 @@ def _probar_camara_percepcion():
     assert vf.recomprimir_camara(("cruda", "mono8", 64, 48, 64, bytes(64 * 48)))[0] is not None
     assert vf.recomprimir_camara(("cruda", "16UC1", 64, 48, 128, bytes(128 * 48)))[0] is None       # T4
     assert vf.recomprimir_camara(("comprimida", "16UC1; compressedDepth", b"x"))[0] is None
+    assert vf.recomprimir_camara(("comprimida", "16UC1; png compressed ", b"x"))[0] is None   # revisión V3 (T4)
+    assert vf.recomprimir_camara(("comprimida", "rgb8; jpeg compressed bgr8", s.getvalue()))[0] is not None
     ruido = np.random.default_rng(5).integers(0, 256, size=(480, 640, 3), dtype=np.uint8)
     jr, qr, _ = vf.recomprimir_camara(("cruda", "rgb8", 640, 480, 640 * 3, ruido.tobytes()))
     assert jr is None or vf.cdr_compressed_image("", "jpeg", len(jr)) <= vf.CAMARA_MAX_B, qr   # peor caso: baja q o se salta

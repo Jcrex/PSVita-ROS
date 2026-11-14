@@ -306,6 +306,11 @@ func _probar_imagen() -> void:
 	im._al_mensaje(_comprimida(PackedByteArray([1, 2, 3]), "16UC1; compressedDepth"))
 	im._al_mensaje(_comprimida(PackedByteArray([1, 2, 3]), "jpeg"))
 	check(im.imagenes == antes and im.rechazadas == 2, "imagen: compressedDepth (T4) y datos rotos rechazados")
+	# Revisión V3: PNG de 16 bit de image_transport «compressed» (no compressedDepth) también fuera (T4).
+	im._al_mensaje(_comprimida(_imagen_prueba(64, 48).save_png_to_buffer(), "16UC1; png compressed "))
+	check(im.imagenes == antes and im.rechazadas == 3 and im.es_formato_profundo("mono16; png compressed")
+			and not im.es_formato_profundo("rgb8; jpeg compressed bgr8") and not im.es_formato_profundo("jpeg"),
+			"imagen: PNG de 16 bit («16UC1; png compressed») rechazado; jpeg/rgb8 no")
 	# 30 imágenes: el tiempo máximo (host) para el informe
 	for i in 30:
 		im._al_mensaje(_comprimida(_imagen_prueba(160, 120).save_jpg_to_buffer(0.4), "jpeg"))
@@ -523,6 +528,10 @@ func _probar_escena() -> void:
 	check(nb.canal.topic_abierto == "/vita/nube2d" and c3.canal.topic_abierto == "/vita/detecciones3d"
 			and im.canal.topic_abierto == "/vita/camara/compressed" and cj.canal.topic_abierto == "/vita/detecciones",
 			"escena: los 4 displays de percepción por el relay")
+	# Revisión V3: Odom pide 100 (no 101); con Mapa 1 + Costmap 1 la zona sensores_2d sigue 2 por encima (DESAFÍO).
+	var od: Node = v.get_node("Planta/Vista/Odom")
+	check(od._coste().quads == 100 and v.usado("sensores_2d") <= 800,
+			"escena: Odom pide 100 quads (doc 36 §7.2) y sensores_2d = %d ≤ 800 (Odom recibe %d)" % [v.usado("sensores_2d"), od.cupo])
 	check(nb.cupo == 228 and c3.cupo == 144 and cj.imagen == im, "escena: cupos (nube 228, cajas 3D 144 de resto_2d) y cajas sobre la imagen")
 	var g: Node = v.get_node("Hud/GestorHud")
 	var k := -1

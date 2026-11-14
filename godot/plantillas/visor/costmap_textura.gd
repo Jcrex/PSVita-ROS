@@ -68,7 +68,9 @@ func tiene_datos() -> bool:
 ## `<p>/costmap_meta` = [res, ancho, alto, ox, oy, teselas_x, teselas_y, época].
 func al_meta(m) -> void:
 	var d: PackedFloat32Array = m.data
-	if d.size() < 8 or int(d[1]) <= 0 or int(d[2]) <= 0:
+	# Revisión V3: res ≤ 0 o NaN y origen no finito darían divisiones por 0 / NaN en `_componer` (T2).
+	if d.size() < 8 or int(d[1]) <= 0 or int(d[2]) <= 0 or not (d[0] > 0.0) or not is_finite(d[0]) \
+			or not is_finite(d[3]) or not is_finite(d[4]):
 		return
 	var e := int(d[7])
 	var geo_nueva := int(d[1]) != ancho or int(d[2]) != alto or not is_equal_approx(d[0], res) \

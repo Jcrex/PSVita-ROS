@@ -396,6 +396,9 @@ static func voxelizar_nube(puntos: Array, voxel_cm: int = VOXEL_NUBE_CM, max_n: 
 ## [[x, y, z] cm, …] (≤ 228) → ≤ 3 trozos de `<p>/nube2d` (≤ 76 puntos). Sin puntos: un trozo con n = 0.
 static func empaquetar_nube(puntos_cm: Array, seq: int) -> Array:
 	return trocear(puntos_cm.slice(0, MAX_NUBE), 3, [], seq, 4 + 3 * MAX_NUBE_TROZO, MAX_TROZOS_NUBE)
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Costmap (V11; doc 36 §5.3, 36a §4.6.2, sentencia W13 D5). Referencia: `vita_relay_formatos.py` (bloque
 # «V11: costmap»); huella cruzada de enteros en `docker/scripts/test_vita_relay.py` (HUELLA_COSTMAP) y
 # `pruebas/visor_costmap.gd`.

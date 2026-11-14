@@ -6,7 +6,8 @@ extends "res://comun/visor/display_ros_2d.gd"
 ##   Vita : `<p>/pose2d` (Float32MultiArray `[x, y, yaw, vx, vy, wz]`, 40 B, 30 Hz, de `/odom`) →
 ##          `VitaRelay.pose2d`. Odometry son 724 B y no cabe en best effort (docs/27:80).
 ## Dato intermedio común: Vector3(x, y, yaw) en metros y radianes del marco del mensaje (compacto: marco fijo).
-## Planta 2D = defecto en la Vita para lo que vive en el suelo (D7). Cupo: 1 + `max_rastro` *quads*.
+## Planta 2D = defecto en la Vita para lo que vive en el suelo (D7). Cupo: 1 + (`max_rastro` − 1) *quads* (triángulo + segmentos de la polilínea de
+## `max_rastro` puntos = 100, doc 36 §7.2; revisión V3: antes pedía 101).
 
 const VitaRelay = preload("res://comun/vita_relay.gd")
 
@@ -63,7 +64,7 @@ func _pintar(d) -> void:
 	var q := Vector2(pose.x, pose.y)
 	var limite := max_rastro
 	if visor != null and visor.en_vita:
-		limite = mini(max_rastro, maxi(cupo - 1, 0))        # cupo en quads: 1 del triángulo + el rastro
+		limite = mini(max_rastro, cupo)                      # cupo en quads: 1 del triángulo + (puntos − 1) segmentos
 	if limite > 0 and (_rastro.is_empty() or _rastro[-1].distance_to(q) > tol_pos):
 		_rastro.append(q)
 		while _rastro.size() > limite:
@@ -87,4 +88,4 @@ func _draw() -> void:
 
 
 func _coste() -> Dictionary:
-	return {"instancias": 0, "triangulos": 0, "quads": 1 + max_rastro}
+	return {"instancias": 0, "triangulos": 0, "quads": 1 + maxi(max_rastro - 1, 0)}
