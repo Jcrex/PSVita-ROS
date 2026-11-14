@@ -7,6 +7,8 @@ extends "res://comun/visor/display_ros_2d.gd"
 ## Dato intermedio común: el diccionario de MapaTextura (`img`, `res`, `ancho`, `alto`, `origen`, `yaw`).
 ## Medida: en la Vita (o con `-- perfil`) escribe cada 5 s `[visor-mapa] teselas= media_us= max_us=` (gate de V3:
 ## tesela ≤ 1,5 ms). Cupo: 1 *quad*.
+## V11: con un display Costmap (`displays/2d/costmap.gd`) que apunte aquí (`sobre_mapa`), en la Vita este display dibuja
+## la textura COMPUESTA (mapa + costmap en CPU, `visor/costmap_textura.gd`): sigue siendo 1 *quad*.
 
 const MapaTextura = preload("res://comun/visor/mapa_textura.gd")
 const Paleta = preload("res://comun/visor/paleta_viz.gd")
@@ -17,6 +19,7 @@ const Paleta = preload("res://comun/visor/paleta_viz.gd")
 var mapa = MapaTextura.new()
 var _version_dibujada := -1
 var _informar := false
+var costmap_encima = null                               # V11: CostmapTextura que se compone sobre este mapa (o null)
 
 
 static func nombre_display() -> String:
@@ -55,7 +58,11 @@ func _procesar(msg):
 
 
 func _procesar_compacto(msg):
-	return mapa.de_tesela(msg)
+	var d = mapa.de_tesela(msg)
+	if costmap_encima != null and d != null:            # V11: región del mapa que hay que recomponer
+		var b: PackedByteArray = msg.data
+		costmap_encima.marcar_base(costmap_encima.rect_tesela_mapa(b[2], b[3], mapa.relay.ancho, mapa.relay.alto))
+	return d
 
 
 func _pintar(d) -> void:
@@ -66,8 +73,17 @@ func _pintar(d) -> void:
 func _process(dt: float) -> void:
 	super._process(dt)
 	if canal.compacto:
-		mapa.tic(_informar)
+		if _compone():
+			if costmap_encima.tic_compuesta(mapa.relay.mapa_img, mapa.relay.resolucion, mapa.relay.origen):
+				mapa.version += 1
+		else:
+			mapa.tic(_informar)
 	_redibujar_si_cambia()
+
+
+## V11: ¿se dibuja la composición mapa + costmap? (camino compacto, con imagen de mapa y meta de costmap)
+func _compone() -> bool:
+	return costmap_encima != null and costmap_encima.tiene_datos() and mapa.relay.mapa_img != null
 
 
 func _redibujar_si_cambia() -> void:
@@ -77,12 +93,15 @@ func _redibujar_si_cambia() -> void:
 
 
 func _draw() -> void:
-	if mapa.textura == null or mapa.ancho <= 0:
+	var tex: Texture2D = mapa.textura
+	if canal.compacto and _compone() and costmap_encima.textura_compuesta != null:
+		tex = costmap_encima.textura_compuesta          # V11: misma geometría que el mapa
+	if tex == null or mapa.ancho <= 0:
 		return
 	var tam: Vector2 = Vector2(mapa.ancho, mapa.alto) * mapa.res * visor.px_por_m
 	# Esquina (0,0) del OccupancyGrid = abajo a la izquierda de la imagen (norte arriba); giro del origen si lo hay.
 	draw_set_transform(px(mapa.origen), -mapa.yaw)
-	draw_texture_rect(mapa.textura, Rect2(Vector2(0, -tam.y), tam), false, Color(1, 1, 1, alfa))
+	draw_texture_rect(tex, Rect2(Vector2(0, -tam.y), tam), false, Color(1, 1, 1, alfa))
 	draw_set_transform(Vector2.ZERO)
 
 

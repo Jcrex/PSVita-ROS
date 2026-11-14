@@ -25,6 +25,7 @@
 [ext_resource type="Script" path="res://comun/visor/displays/hud/consola.gd" id="22_consola"]
 [ext_resource type="Script" path="res://comun/visor/displays/3d/marcadores.gd" id="v8_marcadores"]
 [ext_resource type="Script" path="res://comun/visor/displays/2d/marcadores_2d.gd" id="v8_marcadores_2d"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/costmap.gd" id="v11_costmap"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -85,6 +86,11 @@ position = Vector2(480, 272)
 [node name="Mapa" type="Node2D" parent="VisorRos/Planta/Vista"]
 script = ExtResource("11_mapa")
 topic = "/map"
+tipo = "nav_msgs/msg/OccupancyGrid"
+
+[node name="Costmap" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("v11_costmap")
+topic = "/global_costmap/costmap"
 tipo = "nav_msgs/msg/OccupancyGrid"
 
 [node name="Plan" type="Node2D" parent="VisorRos/Planta/Vista"]

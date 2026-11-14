@@ -278,3 +278,90 @@ static func leer_texto_marcador(s: String) -> Dictionary:
 	if p.size() != 5 or not p[0].is_valid_int():
 		return {}
 	return {"clave": p[0].to_int(), "pos": Vector3(p[1].to_float(), p[2].to_float(), p[3].to_float()), "texto": p[4]}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Costmap (V11; doc 36 §5.3, 36a §4.6.2, sentencia W13 D5). Referencia: `vita_relay_formatos.py` (bloque
+# «V11: costmap»); huella cruzada de enteros en `docker/scripts/test_vita_relay.py` (HUELLA_COSTMAP) y
+# `pruebas/visor_costmap.gd`.
+##   costmap_meta    Float32MultiArray F+TL [res, ancho, alto, ox, oy, teselas_x, teselas_y, época] (teselas 32×16)
+##   costmap_tesela  UInt8MultiArray BE ≤ 10/s [ver_lo, ver_hi, tx, ty] + 32×16 celdas a 4 bit (celda k = j·32 + i en
+##                   el byte k >> 1, nibble BAJO para k par) = 260 B: 0 desconocido, 1 libre, 2–13 degradado,
+##                   14 inscrito, 15 letal (LUT de `PaletaViz.lut16_costmap()`); reducido por máximo a ≥ 10 cm
+# ---------------------------------------------------------------------------------------------------------------
+const TESELA_X_COSTMAP := 32
+const TESELA_Y_COSTMAP := 16
+const RES_MIN_COSTMAP := 0.10
+
+
+## OccupancyGrid de costmap (−1, 0..100) → nivel de 4 bit (= `celda_costmap_4bit` de Python).
+static func celda_costmap_4bit(v: int) -> int:
+	if v < 0:
+		return 0
+	if v == 0:
+		return 1
+	if v >= 100:
+		return 15
+	if v == 99:
+		return 14
+	if v >= 93:
+		return 13
+	return 2 + clampi(floori((v + 4) / 8.0) - 1, 0, 10)
+
+
+## Celdas originales por celda reducida (≥ 1).
+static func factor_costmap(res: float, res_min: float = RES_MIN_COSTMAP) -> int:
+	if res <= 0.0:
+		return 1
+	return maxi(1, ceili(res_min / res - 1e-6))
+
+
+## Rejilla → rejilla f veces más gruesa por MÁXIMO. Devuelve [datos: PackedInt32Array, ancho, alto].
+static func reducir_costmap(data: PackedInt32Array, ancho: int, alto: int, f: int) -> Array:
+	if f <= 1:
+		return [data.slice(0, ancho * alto), ancho, alto]
+	var w2 := (ancho + f - 1) / f
+	var h2 := (alto + f - 1) / f
+	var out := PackedInt32Array()
+	out.resize(w2 * h2)
+	out.fill(-1)
+	for y in alto:
+		var fila := y * ancho
+		var base := (y / f) * w2
+		for x in ancho:
+			var v := data[fila + x]
+			var k := base + x / f
+			if v > out[k]:
+				out[k] = v
+	return [out, w2, h2]
+
+
+## Tesela de 32×16 celdas a 4 bit = 4 B de cabecera + 256 B (= `empaquetar_tesela_costmap` de Python).
+static func empaquetar_tesela_costmap(data: PackedInt32Array, ancho: int, alto: int, tx: int, ty: int,
+		epoca: int) -> PackedByteArray:
+	var b := PackedByteArray()
+	b.resize(4 + TESELA_X_COSTMAP * TESELA_Y_COSTMAP / 2)
+	b.fill(0)
+	b[0] = epoca & 0xFF
+	b[1] = (epoca >> 8) & 0xFF
+	b[2] = tx
+	b[3] = ty
+	for j in TESELA_Y_COSTMAP:
+		var y := ty * TESELA_Y_COSTMAP + j
+		for i in TESELA_X_COSTMAP:
+			var x := tx * TESELA_X_COSTMAP + i
+			var c := celda_costmap_4bit(data[y * ancho + x]) if (x < ancho and y < alto) else 0
+			var k := j * TESELA_X_COSTMAP + i
+			b[4 + (k >> 1)] |= c << ((k & 1) * 4)
+	return b
+
+
+## [teselas_x, teselas_y] de un costmap (ya reducido).
+static func teselas_costmap(ancho: int, alto: int) -> Vector2i:
+	return Vector2i((ancho + TESELA_X_COSTMAP - 1) / TESELA_X_COSTMAP, (alto + TESELA_Y_COSTMAP - 1) / TESELA_Y_COSTMAP)
+
+
+## `<p>/costmap_meta` (= `meta_costmap` de Python).
+static func meta_costmap(res: float, ancho: int, alto: int, ox: float, oy: float, epoca: int) -> PackedFloat32Array:
+	var t := teselas_costmap(ancho, alto)
+	return PackedFloat32Array([res, ancho, alto, ox, oy, t.x, t.y, epoca])
