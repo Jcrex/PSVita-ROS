@@ -1,6 +1,7 @@
 // ros_runtime.cpp — Godot 4.x in-tree. V13a (2026-11-14): ver la cabecera de ros_runtime.h. Compilado y probado en host (G1, 2026-10-29); corre en la Vita en loopback (G4,
 // 2026-10-30). El transporte XRCE vive en xrce_transport.cpp (G5).
 #include "ros_runtime.h"
+#include "ros_tf.h"
 
 #include "core/config/project_settings.h"
 #include "core/object/class_db.h"
@@ -258,6 +259,7 @@ void RosNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_publisher", "topic", "type", "qos"), &RosNode::create_publisher, DEFVAL(Ref<RosQoS>()));
 	ClassDB::bind_method(D_METHOD("create_subscription", "topic", "type", "callback", "qos"), &RosNode::create_subscription, DEFVAL(Ref<RosQoS>()));
 	ClassDB::bind_method(D_METHOD("create_timer", "seconds", "callback"), &RosNode::create_timer);
+	ClassDB::bind_method(D_METHOD("create_tf_listener", "cache_time_sec"), &RosNode::create_tf_listener, DEFVAL(10.0));
 	ClassDB::bind_method(D_METHOD("now"), &RosNode::now);
 	ClassDB::bind_method(D_METHOD("declare_parameter", "name", "default_value"), &RosNode::declare_parameter);
 	ClassDB::bind_method(D_METHOD("set_parameter", "name", "value"), &RosNode::set_parameter);
@@ -367,6 +369,18 @@ Ref<RosSubscriber> RosNode::create_subscription_raw(const String &p_topic, const
 	sub->set_session(r->get_session());
 	r->register_subscription(id, sub->get_instance_id());
 	return sub;
+}
+
+Ref<RosTfListener> RosNode::create_tf_listener(double p_cache_time_sec) {
+	rclgd *r = rclgd::get_singleton();
+	ERR_FAIL_COND_V_MSG(!r || !r->ok(), Ref<RosTfListener>(), "RosNode: rclgd.init() primero.");
+	ERR_FAIL_COND_V_MSG(node_name.is_empty(), Ref<RosTfListener>(), "RosNode: llama a init().");
+	Ref<RosTfListener> tf;
+	tf.instantiate();
+	if (tf->setup(this, p_cache_time_sec) != OK) {
+		return Ref<RosTfListener>();
+	}
+	return tf;
 }
 
 Ref<RosTimer> RosNode::create_timer(double p_seconds, const Callable &p_cb) {

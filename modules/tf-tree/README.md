@@ -31,5 +31,7 @@ reparentado, cuaternión no unitario, tabla llena (31 hijos + raíz) y
 
 - [x] Paridad C/Rust en host (2026-10-27).
 - [x] Cross-compilado en G2 (2026-10-29): `impl-c` con `tools/build-c-pic.sh`; Rust en el crate paraguas PIC.
-- [ ] **Validar en hardware:** medir `lookup` por frame. Sin consumidor todavía (TF de `ros2_vita`, `docs/19` T3.4.1).
+- [x] Primer consumidor (V13a, 2026-11-14): `RosTfListener` de `godot/ros2_vita/ros_tf.cpp` (impl C compilada en el
+  módulo; la Rust la trae el paraguas), con `msg-cdr` para `TFMessage`. Probado en host (`godot/test/project/runner.gd`).
+- [ ] **Validar en hardware:** medir `lookup` por frame en la Vita.
 - [ ] Integrar con `msg-cdr` en `on_topic` y con el modelo VBM (Etapa E).
