@@ -53,6 +53,7 @@ citado como fuente técnica; lleva una línea de estado bajo el título) · **Su
 | 35 | [Regla de escenas editables](35-regla-escenas-editables.md) | Vigente (regla) | — | 2026-11-13 |
 | 36 | [Visualizar topics en Godot](36-visualizacion-topics-godot.md) | Vigente (implementado en host; el código manda) | Arquitectura, relay, QoS, presupuesto, tareas V1–V15 (§0–§3, §5–§12); estado de gates §9.0 y de la implementación §13 | 2026-11-14 |
 | 36a | [Catálogo de displays por tipo](36a-catalogo-displays.md) | Vigente (implementado en host; el código manda) | La §4 del doc 36 («doc 36 §4.x» = 36a); estado por tipo con la ruta real §4.0.1 | 2026-11-14 |
+| 37 | [Guía: rclgd y el visor con interfaz gráfica en el PC](37-guia-rclgd-gui-pc.md) | Vigente (guía; verificada sin pantalla) | Contenedor jazzy con pantalla y GPU (`tools/rclgd-gui.sh`), demos de rclgd migradas, proyecto puente del visor, criterio de verde por display, problemas frecuentes y hallazgos (P1: `rclgd.init()` void) | 2026-11-15 |
 
 ## Decisiones (`adr/`)
 
