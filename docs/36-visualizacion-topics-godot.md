@@ -1563,13 +1563,19 @@ herramientas ≤ 364 B por evento; `/vita/joy` 128 B × 20 Hz = 2,6 KB/s; feedba
 | **E-W8-2** (existente) | mallas 3D dinámicas y reconstrucción | ver `docs/31` §6 | GridMap 3D en la Vita |
 | **E-W8-5** (existente) | JPEG 160×120 | ≤ 6 ms | D13, V10 |
 | **E-W8-6** (existente) | escena completa de visualización | `docs/31` §6 | V3 |
-| **G-W13-M1** | 48 (cupo) CUBE/SPHERE/CYLINDER moviéndose a 10 Hz | `drawn` +cupo, `avg_submit_us` ≤ 9 000, `invalidations` sin cambio, ≥ 30 FPS | V8 |
-| **G-W13-M2** | 48 marcadores con `lifetime` 2 s y DELETEALL por ns, 5 min | nº de hijos constante, `[vita-memory]` estable | V8 |
-| **G-W13-M3** | `<p>/marcadores` con 10 % de pérdida (netem) | sin fantasmas > 0,4 s, `process` ≤ 4 ms, ≤ 15 KB/s | D14, V8 |
+| **G-W13-M1** | perfil **HMI** (`main.tscn`): pool lleno, **12** (cupo) CUBE/SPHERE/CYLINDER/ARROW moviéndose a 10 Hz (fuente de 31; 33 en el estado del relay) | `nodos` = 12, `drawn` +12, `avg_submit_us` ≤ 6 000, `invalidations` sin cambio, ≥ 55 FPS | V8 |
+| **G-W13-M1v** | perfil **Viz** (`main_viz.tscn`): lo mismo con **32** (cupo) | `nodos` = 32, `drawn` +32, `avg_submit_us` ≤ 9 000, ≥ 30 FPS | V8; da por bueno el perfil Viz |
+| **G-W13-M2** | 48 marcadores publicados (más que el relay, 33, y que el cupo, 12 / 32) con `lifetime` 2 s y DELETEALL por ns, 5 min | nº de nodos = cupo y de hijos constante, `[vita-memory]` estable | V8 (opcional) |
+| **G-W13-M3** | `<p>/marcadores` con 33 marcadores (3 trozos) y 10 % de pérdida (netem), perfil HMI | sin fantasmas > 0,4 s, `process` ≤ 4 ms, ≤ 15 KB/s | D14, V8 |
 | **G-W13-M4** | mapa 384² por relay con LUT + `blit_rect` | `process` ≤ 4 ms, textura estable 5 min | V3 |
 | **G-W13-M5** | costmap 4 bit (Nav2 + TB3) | repaso completo ≤ 3 s, ≥ 30 FPS | V11 |
 | **G-W13-M6** | arrastre táctil de `basic_controls` | POSE_UPDATE ≈ 20 Hz, latencia < 150 ms | V14 |
 | **G-W13-M7** | LINE_STRIP 50 puntos y POINTS 180 en 2D con la cámara orbitando | `process` + `canvas` ≤ 2–3 ms | V8 |
+
+**Enmienda 2026-11-14** (juez, `docs/ia/workshops/posts/V2-juez-fable.md` F1 y F2): los gates de marcadores miden el
+**cupo del perfil** (12 en HMI, 32 en Viz), no «48» (esa cifra era marcadores + poses + rastro de `docs/31:237-246`); el
+relay sigue en 33 y los cupos de §7.1 no cambian. El gate de hardware de V5 se corre en `godot/visor-ros/banco_v5.tscn`
+y el perfil Viz en `main_viz.tscn`; se cambia de escena en la Vita sin reexportar con L + R + START (`selector_escena.gd`).
 
 ### 9.2 Fichas «Por medir» y su gate
 
@@ -1589,7 +1595,8 @@ herramientas ≤ 364 B por evento; `/vita/joy` 128 B × 20 Hz = 2,6 KB/s; feedba
    color por imagen RGB en DepthCloud, ruta GPU de PointCloud2 > 50 k puntos y estilos Boxes/Spheres.
 2. **Display «Camera»** (sens#13): sincronizar imagen y TF por `stamp` (en la Vita no hay `lookup_transform` con tiempo);
    CameraInfo con P o con K para imágenes rectificadas y signo del desplazamiento.
-3. **Marco de plan frente a real** (hmi#14): el plan va en `map`, `pose2d` sale de `/odom` (`odom`); sin el módulo `tf`
+3. **Marco de plan frente a real** (hmi#14) — **resuelto 2026-11-14** (`V2-juez-fable.md` F3: `map → odom` por la
+   lista blanca de `tf`; `pose2d` no cambia de marco; sin `tf`, pose2d cuelga del marco fijo): el plan va en `map`, `pose2d` sale de `/odom` (`odom`); sin el módulo `tf`
    (o un `pose2d` calculado con TF map→base en el relay) el rastro deriva respecto al plan. Decidir en V9 si el relay
    publica `pose2d` en `map` (parámetro `odom_in`/marco) o si `map→odom` entra siempre en la lista blanca de `tf`.
 4. **ARROW_STRIP** (mapas#24): semántica propia hasta que RViz la implemente [?].
@@ -1627,7 +1634,7 @@ Comando de host: `$GH` = `toolchains/godot4-vita/engine/bin/godot.linuxbsd.edito
 | **V2** | Primitivas y paleta | `visor/{primitivas_viz,paleta_viz,texto_superpuesto}.gd`; prueba en `pruebas/visor.gd` | V1 | cada forma: solo `PRIMITIVE_TRIANGLES`, triángulos = tabla §3.2, un material, ≤ 64 variantes | 80 instancias: `lit=` = 0 y `drawn` = 80 (E-W8-1); captura con colores exactos |
 | **V3** | Displays con el relay que ya existe | `displays/2d/{scan,path,pose,mapa}.gd`, `displays/3d/{robot_joints,pose,mapa}.gd`; arreglos de `docs/31` §4.4 en `plantillas/vita_relay.gd` (LUT + `blit_rect`, tabla de direcciones) | V1, V2; relay `scan,pose,joints,mapa,path` | con `docker/vita-ros.sh relay` y `compacto=1`: los cinco displays con datos; bytes VC/1 intactos (`pruebas/runner.gd`) | escena tipo E-W8-6 sin marcadores: ≥ 55 FPS, `process` ≤ 4 ms, tesela ≤ 1,5 ms |
 | **V4** | HUD | `visor/gestor_hud.gd`; `displays/hud/{barra_estado,medidor,bateria,joy,estado_meta}.gd` | V1 | la prueba cuenta glifos por pestaña ≤ 240 y barra ≤ 120 | **G-W13-H0**: `[gxm2d-perf] quads=` ≤ 400 y `draws` ≤ 30 con la pestaña Estado; anotar µs por glifo |
-| **V5** | Esquema de visor y displays directos pequeños | `plantillas/generar_esquemas.py` (`TIPOS_VISOR`); `displays/3d/{punto,vector,ejes,imu,fuerza,rango,marcador_simple}.gd`, `displays/2d/{poligono,covarianza,gps}.gd` | V2; D10 | `RosMsg.from_type` de cada tipo de `TIPOS_VISOR` ≠ `null`; ida y vuelta `serialize`/`deserialize` | cada tipo publicado desde el PC con `ros2 topic pub` se ve; sin `ERR_FAIL` de esquema |
+| **V5** | Esquema de visor y displays directos pequeños | `plantillas/generar_esquemas.py` (`TIPOS_VISOR`); `displays/3d/{punto,vector,ejes,imu,fuerza,rango,marcador_simple}.gd`, `displays/2d/{poligono,covarianza,gps}.gd` | V2; D10 | `RosMsg.from_type` de cada tipo de `TIPOS_VISOR` ≠ `null`; ida y vuelta `serialize`/`deserialize` | cada tipo publicado desde el PC con `ros2 topic pub` se ve en `visor-ros/banco_v5.tscn`; sin `ERR_FAIL` de esquema |
 | **V6** | Relay rev. 2: base + `rosout`, `diag`, `ritmo` | `docker/scripts/vita_relay_formatos.py` (nuevo), `vita_relay.py` (cabecera común, `relay_info`, tope de red, época del mapa), `test_vita_relay.py`; `plantillas/ros/vc1.gd`; `displays/hud/{consola,diagnostico}.gd` | V4; esquemas `Log` y `DiagnosticArray` (V5) | pruebas de bytes Python = GDScript; el relay se niega a arrancar con «todo»; `ros2 topic bw` ≤ 20 KB/s en perfil `hmi` | 20 avisos/s durante 5 min: FPS sin bajar de escalón; `reliable_dropped` = 0 |
 | **V7** | Herramientas que publican | `visor/herramienta_visor.gd`; `herramientas/{teleop,meta,pose_inicial,punto}.gd` | V1, V4; esquemas `PoseWithCovarianceStamped` y `PointStamped` (V5) | en `loopback`: un mensaje por confirmación, QoS de la tabla §6, covarianza de `initialpose` como RViz | un toque = un evento; meta con ✕ llega a Nav2 (`ros2 topic echo /goal_pose`); panel trasero no disponible [V, `docs/28:59`] |
 | **V8** | Marcadores | `visor/fabrica_marcadores.gd`; `displays/3d/marcadores.gd`, `displays/2d/marcadores_2d.gd`; módulo `marcadores` del relay | V2, V6 | estado completo: sin fantasmas tras DELETE; 33 marcadores = 3 trozos de ≤ 472 B | G-W13-M1 y G-W13-M3 |

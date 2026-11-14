@@ -653,3 +653,20 @@ veredictos de las decisiones anotadas arriba, presupuestos de `main.tscn` y guio
 $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_tf.gd          # RESULTADO: 79/79
 $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_marcadores.gd  # RESULTADO: 63/63
 ```
+
+## Decisiones del juez sobre la fase V2 (2026-11-14)
+
+`docs/ia/workshops/posts/V2-juez-fable.md` (resuelve los desafíos N3 y N7 de la revisión V2):
+
+- **Marcadores:** no cambia ningún límite (cupo 12 HMI / 32 Viz, relay 33, `TOPE_VITA` 48). Los gates miden el cupo:
+  G-W13-M1 en HMI (`nodos=12`, ≥ 55 FPS, `avg_submit_us` ≤ 6 000) y G-W13-M1v en Viz (`nodos=32`, ≥ 30 FPS).
+- **Escenas de prueba de `godot/visor-ros/`** (regla doc 35), conmutables en la Vita sin reexportar:
+  `main.tscn` (HMI), `main_viz.tscn` (heredada: `perfil = VIZ`, TF con 32 marcos) y `banco_v5.tscn` (los 10 displays
+  directos de V5 como nodos, perfil Viz; gate V5). El nodo `SelectorEscena` (`visor-ros/selector_escena.gd`) pasa a la
+  siguiente con **L + R + START** (F9 en el PC) y guarda la elección en `user://visor_escena.txt`, que la escena
+  principal lee al arrancar. **Validar en hardware.**
+- `VisorRos._conectar_deferred` no falla si la escena se cambia antes de conectar.
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_escenas.gd     # RESULTADO: 21/21
+```

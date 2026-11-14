@@ -1,0 +1,108 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://comun/visor/visor_ros.gd" id="1_visor"]
+[ext_resource type="Script" path="res://comun/visor/texto_superpuesto.gd" id="2_texto"]
+[ext_resource type="Script" path="res://selector_escena.gd" id="3_selector"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/punto.gd" id="4_punto"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/vector.gd" id="5_vector"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/ejes.gd" id="6_ejes"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/imu.gd" id="7_imu"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/fuerza.gd" id="8_fuerza"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/rango.gd" id="9_rango"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/marcador_simple.gd" id="10_marcador"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/poligono.gd" id="11_poligono"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/covarianza.gd" id="12_cov"]
+[ext_resource type="Script" path="res://comun/visor/displays/2d/gps.gd" id="13_gps"]
+
+[sub_resource type="Environment" id="Environment_banco"]
+ambient_light_source = 2
+ambient_light_color = Color(0.58, 0.62, 0.68, 1)
+ambient_light_energy = 0.8
+
+[node name="BancoV5" type="Node3D"]
+
+[node name="Ambiente" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_banco")
+
+[node name="Luz" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.81915206, -0.46984634, 0.32898995, 0, 0.57357645, 0.81915206, -0.57357645, -0.6710101, 0.46984634, 0, 0, 0)
+
+[node name="Camara" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 6, 6)
+current = true
+
+[node name="SelectorEscena" type="Node" parent="."]
+script = ExtResource("3_selector")
+
+[node name="VisorRos" type="Node" parent="." node_paths=PackedStringArray("camara", "texto")]
+script = ExtResource("1_visor")
+perfil = 1
+camara = NodePath("../Camara")
+texto = NodePath("Hud/Texto")
+
+[node name="Punto" type="Node3D" parent="VisorRos"]
+script = ExtResource("4_punto")
+topic = "/clicked_point"
+tipo = "geometry_msgs/msg/PointStamped"
+historial = 3
+
+[node name="Vector" type="Node3D" parent="VisorRos"]
+script = ExtResource("5_vector")
+topic = "/vector"
+tipo = "geometry_msgs/msg/Vector3Stamped"
+
+[node name="Orientacion" type="Node3D" parent="VisorRos"]
+script = ExtResource("6_ejes")
+topic = "/orientacion"
+tipo = "geometry_msgs/msg/QuaternionStamped"
+mostrar_flecha = false
+
+[node name="Imu" type="Node3D" parent="VisorRos"]
+script = ExtResource("7_imu")
+topic = "/imu"
+tipo = "sensor_msgs/msg/Imu"
+
+[node name="Fuerza" type="Node3D" parent="VisorRos"]
+script = ExtResource("8_fuerza")
+topic = "/ft_sensor"
+tipo = "geometry_msgs/msg/WrenchStamped"
+
+[node name="Rango" type="Node3D" parent="VisorRos"]
+script = ExtResource("9_rango")
+topic = "/sonar"
+tipo = "sensor_msgs/msg/Range"
+
+[node name="Marcador" type="Node3D" parent="VisorRos"]
+script = ExtResource("10_marcador")
+topic = "/marcador"
+tipo = "visualization_msgs/msg/Marker"
+
+[node name="Planta" type="CanvasLayer" parent="VisorRos"]
+
+[node name="Vista" type="Node2D" parent="VisorRos/Planta"]
+position = Vector2(480, 272)
+
+[node name="Huella" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("11_poligono")
+topic = "/footprint"
+tipo = "geometry_msgs/msg/PolygonStamped"
+
+[node name="Covarianza" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("12_cov")
+topic = "/amcl_pose"
+tipo = "geometry_msgs/msg/PoseWithCovarianceStamped"
+
+[node name="Gps" type="Node2D" parent="VisorRos/Planta/Vista"]
+script = ExtResource("13_gps")
+topic = "/fix"
+tipo = "sensor_msgs/msg/NavSatFix"
+
+[node name="Hud" type="CanvasLayer" parent="VisorRos"]
+layer = 2
+
+[node name="Texto" type="Control" parent="VisorRos/Hud" node_paths=PackedStringArray("camara")]
+offset_right = 960.0
+offset_bottom = 544.0
+mouse_filter = 2
+script = ExtResource("2_texto")
+camara = NodePath("../../../Camara")

@@ -110,8 +110,10 @@ func _leer_config() -> void:
 
 
 func _conectar_deferred() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
+	for _i in 2:
+		if not is_inside_tree():                 # la escena se cambió antes de conectar (SelectorEscena)
+			return
+		await get_tree().process_frame
 	if not is_inside_tree():
 		return
 	if contexto.iniciar(nombre_nodo, "", transporte) != OK:
