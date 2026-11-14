@@ -26,6 +26,14 @@
 | Ozuba/rclgd_sensors | `420d4d4f` | 2026-10-06 | MIT | 4.7 |
 | Ozuba/rclgd_arm_demo | `e6c9713d` | 2026-06-16 | sin LICENSE (package.xml: MIT) [?] | 4.6 |
 
+**Clones locales del usuario (2026-11-15, `~/Proyectos/rclgd-estudio/`, fuera del repo; activos en el proyecto):**
+
+| Repo | Rama @ commit | Fecha | Frente a lo estudiado | Uso en el proyecto |
+|---|---|---|---|---|
+| Ozuba/rclgd | `jazzy` @ `d8221d3` | 2026-11-04 | mismo código que `fb12a65` (base de la skill `rclgd` y de `godot/rclgd/`); solo cambia el CHANGELOG: «Forthcoming» (clases tipadas nativas) publicado como **3.0.0** [V] | **compilado desde fuente y 45/45 pruebas propias** (receta: `skills/rclgd/references/versiones.md` §Compilar); base para validar el visor con rclgd real en el PC (`docs/37` cuando exista) |
+| Ozuba/rclgd_sensors | `main` @ `420d4d4` | 2026-10-06 | **el mismo commit** que esta matriz (§1.4, §5) [V]: nada que revisar | referencia de sensores (LiDAR/cámara por GPU solo PC) |
+| Ozuba/roomba_ws | `main` @ `8332acb` | 2026-10-26 | estudiado en `docs/17` y la skill `godot4-ros-scripting` (patrones de `roomba_hmi`) | su `docker/` instala `ros-jazzy-rclgd` por **apt = 2.1.0** (sin clases tipadas ni RosLogger) [V, `apt-cache policy` 2026-11-14]: no vale tal cual; comparar `roomba_hmi` con las plantillas y el visor (próximas sesiones) |
+
 Salto 4.6/4.7 → 4.8-dev7: la API GDScript usada (Node3D, ArrayMesh, StandardMaterial3D, Callable, await) no cambia
 entre esas versiones [I]; lo que cambia es el **runtime** (port sin GDExtension, render GXM) y la **API ROS**
 (`ros2_vita` con paridad parcial). Tipos de mensaje por texto (`"sensor_msgs/msg/LaserScan"`), no clases tipadas
