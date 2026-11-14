@@ -5,7 +5,8 @@ Visor propio y portable: **el mismo GDScript** en el PC (rclgd, o el editor de h
 (§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); **V6** (relay
 VC/1 rev. 2, consola y diagnóstico) y V7 también, ver sus secciones; V8 (marcadores), V9 (TfLigero, TF y poses), V10 (percepción),
 V11 (costmap) y V12 (inspector, trazador y explorador) hechos (2026-11-14): **V1–V12 hechos**; **V13a** (paquete nativo de
-`ros2_vita` sin `viz-decode`, ver «Paquete nativo (V13a)») hecho en host y compilado para la Vita; V13b–V15 pendientes.
+`ros2_vita` sin `viz-decode`, ver «Paquete nativo (V13a)») hecho en host y compilado para la Vita; **V14** (extras
+solo PC, ver «Extras solo PC (V14)») hecho en host y en vivo por XRCE; V13b y V15 pendientes.
 Lo que no se puede ver en el host (render GXM, FPS, XRCE real, reconexión) está sin validar en hardware.
 
 | Archivo | Pieza | Papel |
@@ -941,3 +942,64 @@ set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
 godot/test/run_host_tests.sh $GH                                                    # 349 comprobaciones, 0 fallos
 $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_tf.gd      # RESULTADO: 84/84
 ```
+
+## Extras solo PC (V14, 2026-11-14)
+
+Doc 36 §10 V14; doc 36a §4.5.3, §4.5.5, §4.6.1, §4.6.6 y §4.7.5; ADR 0013 (displays `solo_pc`). Todo lo nuevo es
+`solo_pc`: en la Vita queda `desactivado` sin pedir cupo, el registro no lo ofrece y `godot/visor-ros/export_presets.cfg`
+lo **excluye de la `.vpk`** (`main_pc.tscn`, `mapas_color.gd` y los seis scripts de abajo; comprobado con
+`tools/export-vita-vpk.sh godot/visor-ros build/visor-ros.vpk`). Escena de ejemplo: `godot/visor-ros/main_pc.tscn`
+(hereda `main.tscn`; ábrela en el PC: no está en `SelectorEscena`, que es para la Vita).
+
+| Archivo | Tipo | Cómo (sin bucles por elemento en la ruta normal) |
+|---|---|---|
+| `mapa_textura.gd` + `2d/mapa.gd`, `3d/mapa.gd`, `2d/costmap.gd` | `OccupancyGrid` | **DESAFÍO de V1 resuelto:** con `gpu` (fuera de la Vita) el grid sube como textura `R8` de índices (`flip_y` nativo) y un *shader* `canvas_item`/`spatial` busca el color en la paleta 256×1 de RViz (`texelFetch`). 1 024² en ≈ 2,4 ms (antes, un bucle GDScript por celda). `poner_esquema()` cambia solo la paleta (binaria/umbral) |
+| `mapas_color.gd` | — | rampas 256×1: arcoíris de RViz (`getRainbowColor` literal, mín. rojo → máx. magenta), turbo, gris |
+| `displays/3d/nube_puntos.gd` | `PointCloud2` | bytes crudos → textura RGBA8 de 4 096 palabras; *vertex shader* sobre una malla `PRIMITIVE_POINTS` de `max_puntos` vértices: `VERTEX_ID·paso` (diezmado), x/y/z con `uintBitsToFloat`, NaN/Inf fuera, `row_step`; color plano, por campo (INT8…FLOAT32, rango automático en ≤ 1 024 muestras) o `rgb`/`rgba` empaquetado. Ruta CPU (reempaquetado a 16 B) para x/y/z no FLOAT32 alineados o color FLOAT64; *big endian* con `bswap32` si todos los campos son de 4 B. 100 k puntos en ≈ 0,2 ms de CPU por mensaje |
+| `displays/hud/imagen_pc.gd` | `Image` | amplía `hud/imagen.gd`: 16UC1/mono16 en RG8 (exacto), 32FC1 en RF; profundidad con mapa de color (turbo), 0/NaN/Inf transparentes, rango auto (≤ 4 096 muestras) o fijo; `bayer_*8` con demosaico 2×2; `yuyv`/`yuv422`(uyvy) BT.601; filas con relleno con `draw_texture_rect_region`. La imagen va en un hijo `Lienzo` con el material (el fondo no pasa por el *shader*) |
+| `displays/3d/im_cliente.gd` | `InteractiveMarkerUpdate` | estado por `get_interactive_markers` si el nodo tiene `create_client` (rclgd); `<ns>/update` FIABLE, profundidad 100, todos los mensajes; `seq_num` y huecos; `poses`/`erases`; asas de `autoComplete` (MOVE_AXIS 2 flechas, ROTATE_AXIS anillo, MOVE_PLANE disco, 3D esfera; color del eje) |
+| `herramientas/im_feedback.gd` | `InteractiveMarkerFeedback` | herramienta «Interactuar» (como la Interact tool de RViz): agarra el asa más cercana (≤ 24 px), arrastra por recta/plano/giro y publica MOUSE_DOWN, POSE_UPDATE ≤ 20 Hz, MOUSE_UP o BUTTON_CLICK en `<ns>/feedback` **FIABLE y profundidad 1** (C9, también en el PC) |
+| `displays/3d/octomap.gd` | `octomap_msgs/Octomap` | decodificador binario (2 bit por hijo) y completo (log-odds, `ColorOcTree`) en GDScript (`decodificar`, estático) → vóxeles ocupados en UNA `MultiMeshInstance3D`; `hz` 0,2 |
+| `displays/3d/grid_map.gd` | `grid_map_msgs/GridMap` | búfer circular *column-major* desenrollado, malla de alturas de `capa_altura` coloreada por `capa_color`; NaN = sin triángulos; `hz` 1 |
+
+Registro: `PointCloud2` → `3d/nube_puntos.gd` en el PC (orbital) y `2d/nube.gd` en la Vita; `Image` →
+`hud/imagen_pc.gd`; `InteractiveMarkerUpdate`, `Octomap`, `GridMap` → los suyos (solo PC).
+
+### Decisiones de V14 no cubiertas (las más conservadoras)
+
+1. **El camino CPU del mapa se queda** para `gpu = false` (la Vita no tiene *shaders*, D2), aunque allí no se use
+   (el mapa llega por teselas). Las pruebas leen los colores con `MapaTextura.imagen_colores()` (la paleta aplicada
+   en CPU, solo para pruebas).
+2. **Nube: textura RGBA8 de palabras y no RF**, para no depender de que la GPU conserve los NaN y los patrones de
+   `rgb` empaquetado (que son NaN como float); el *shader* reconstruye el float con `uintBitsToFloat`. AABB de la
+   malla de puntos fija y grande (no se recorta; las posiciones solo las conoce el *shader*).
+3. **Nube en la capa «mundo»** (1 instancia, 0 triángulos) y defecto orbital en el PC, como el mapa 3D.
+4. **Imagen: 16 bit en RG8, no `FORMAT_R16`**: exacto y sin depender del soporte de R16 del renderizador.
+   `mono16` es intensidad (gris, sin transparencia); `16UC1` es profundidad en mm (`escala_16` = 0,001).
+5. **IM sin servicio (ros2_vita) = solo actualizaciones**: sin estado inicial se ve lo que el servidor vuelva a
+   publicar; un hueco de `seq_num` se acepta y se cuenta. Con servicio (rclgd) un hueco pide el estado otra vez.
+6. **IM: `orientation_mode` FIXED y VIEW_FACING como INHERIT; sin menús** (MENU); los Marker de líneas, puntos y texto
+   de los controles no se dibujan (solo sólidos). El feedback lleva `header.frame_id` = marco del marcador (no el
+   marco fijo del esqueleto de mapas#27): el servidor compara con el suyo.
+7. **La herramienta Interactuar es una HerramientaVisor** (se activa con Tab/SELECT como RViz activa «Interact»): sin
+   ella activa, los clics no agarran marcadores.
+8. **Octomap y grid_map en GDScript** (sin hilo): `hz` 0,2 y 1 por defecto (los costes de la ficha); formatos [I]
+   leídos del código de `octomap` y `grid_map_core` (sin servidor real en la estación para contrastar).
+
+**Sin probar con rclgd** (no hay binario de rclgd ni de Godot 4.7.1 en el PC ni en la estación; validado con el
+editor de host de `ros2_vita` y el binario `.gui` con GPU en Compatibility **y** Forward+): el camino del servicio
+`get_interactive_markers` (`create_client`/`async_send_request`), los tipos `InteractiveMarkerUpdate`, `Octomap` y
+`GridMap` por ament (en el host se prueban con mensajes falsos: no están en el `.rsch`), y que rclgd entregue
+`int8[]`/`uint8[]` como `PackedByteArray` o `Array` (los dos caminos están cubiertos). En vivo (estación + agente,
+XRCE fiable): `PointCloud2` de 150 puntos a 5 Hz, `OccupancyGrid` *latched* y `Image` 16UC1 a 5 Hz llegan y se pintan
+por la GPU (captura comprobada).
+
+```fish
+set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_pc.gd                          # 77/77
+$GH.gui --rendering-driver opengl3 --path godot/visor-ros --script res://comun/pruebas/visor_pc.gd      # 93/93 (+ píxeles en la GPU)
+$GH.gui --rendering-method forward_plus --path godot/visor-ros --script res://comun/pruebas/visor_pc.gd # 93/93
+```
+
+Los `ERROR: RosMsg: tipo '…InteractiveMarkerUpdate' / 'octomap_msgs…' / 'grid_map_msgs…' no esta en el esquema` del
+log son esperados (el editor de host no tiene esos tipos; los displays quedan «sin esquema» y se prueban por mensajes).

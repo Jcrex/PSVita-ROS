@@ -54,7 +54,14 @@ fichero del mes en `docs/bitacora/`.
   `costmap_teselas_max` = 30 en el relay (repaso ≤ 3 s; TB3 a 20 cm), `max_rastro = 98` en `main_percepcion.tscn`
   (`sensores_2d` = 800) y `camara_hz` > 3 solo si el relay sigue ≤ 40 KB/s. `build/visor-ros.vpk` reexportada (no subida).
 - **Falta (usuario):** guion único de hardware de V1–V12: `docs/ia/workshops/posts/V3-revision.md` §5 (9 fases, fish).
-- **Siguiente:** V13 paquete nativo (solo PC, al recompilar la plantilla), V14 extras solo PC, V15 documentación.
+- **V14 extras solo PC hecho (2026-11-14, `e7427ec`…):** mapa/costmap con *shader* + paleta (DESAFÍO de V1 resuelto,
+  1 024² en ≈ 2,4 ms), nube `PointCloud2` en GPU (*vertex shader*, mapas de color, diezmado), imagen cruda con *shader*
+  (16UC1/32FC1 con mapa de color, bayer, YUV), cliente de marcadores interactivos + herramienta Interactuar (feedback
+  FIABLE prof. 1), octomap y grid_map; escena `godot/visor-ros/main_pc.tscn`, todo `solo_pc` y fuera de la `.vpk`.
+  `visor_pc.gd` 77/77 headless y 93/93 con GPU (Compatibility y Forward+); 14 suites verdes, host 349/0, runner 16/16;
+  en vivo por XRCE con una fuente sintética. Sin probar con rclgd (no instalado): ver «Extras solo PC (V14)» del
+  README del visor.
+- **Siguiente:** V13b (juez Fable: `viz-decode` aplazado), V15 documentación.
 
 ## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 
