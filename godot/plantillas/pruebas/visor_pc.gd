@@ -89,6 +89,7 @@ func _correr() -> void:
 	await _probar_octomap()
 	await _probar_grid_map()
 	await _probar_solo_pc()
+	await _probar_escena()
 	check(vigia.errores == 0, "sin errores de script ni de shader (%s)" % vigia.ultimo)
 	OS.remove_logger(vigia)
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
@@ -928,3 +929,48 @@ func _probar_solo_pc() -> void:
 		var pc: String = Registro.regla(k[0], k[1], false).get("script", "")
 		var vi: String = Registro.regla(k[0], k[1], true).get("script", "")
 		check(pc == D + k[2] and (vi == (D + k[3] if k[3] != "" else "")), "registro: %s → PC %s, Vita %s" % [k[1], k[2], k[3] if k[3] != "" else "ninguno"])
+
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 7. Escena de ejemplo godot/visor-ros/main_pc.tscn (hereda main.tscn; excluida de la .vpk)
+# ---------------------------------------------------------------------------------------------------------------
+func _probar_escena() -> void:
+	if not ResourceLoader.exists("res://main_pc.tscn"):
+		print("(sin main_pc.tscn en este proyecto: se salta)")
+		return
+	for en_vita in [false, true]:
+		var raiz: Node = load("res://main_pc.tscn").instantiate()
+		var v: Node = raiz.get_node("VisorRos")
+		v.transporte = "loopback"
+		v.config_json = ""
+		v.reintento_s = 0.0
+		v.en_vita = en_vita
+		root.add_child(raiz)
+		await _esperar(v)
+		await _fotogramas(2)
+		var nb: Node = v.get_node("NubePuntos")
+		var im: Node = v.get_node("Hud/GestorHud/Pestanas/Profundidad/ImagenPC")
+		var hf: Node = v.get_node("Hud/Herramientas/Interactuar")
+		var cl: Node = v.get_node("MarcadoresInteractivos")
+		if en_vita:
+			var todos := true
+			for n in [nb, im, hf, cl, v.get_node("Octomap"), v.get_node("GridMap")]:
+				todos = todos and n.estado == "desactivado"
+			check(todos, "escena main_pc en la Vita simulada: los extras V14 desactivados")
+		else:
+			check(nb.canal.topic_abierto == "/points" and im.canal.topic_abierto == "/camera/depth/image_raw"
+					and hf.estado == "ok" and hf.topic == "/basic_controls/feedback" and cl.topic == "/basic_controls/update",
+					"escena main_pc en el PC: nube, profundidad, Interactuar (<ns>/feedback) y cliente IM (<ns>/update)")
+		raiz.queue_free()
+		await _fotogramas(2)
+	var cfg := ConfigFile.new()
+	cfg.load("res://export_presets.cfg")
+	var excl := String(cfg.get_value("preset.0", "exclude_filter", ""))
+	var faltan := []
+	for s in ["main_pc.tscn", "comun/visor/displays/3d/nube_puntos.gd", "comun/visor/displays/hud/imagen_pc.gd",
+			"comun/visor/displays/3d/im_cliente.gd", "comun/visor/herramientas/im_feedback.gd",
+			"comun/visor/displays/3d/octomap.gd", "comun/visor/displays/3d/grid_map.gd", "comun/visor/mapas_color.gd"]:
+		if not excl.contains(s):
+			faltan.append(s)
+	check(faltan.is_empty(), "exportación: lo solo PC de V14 fuera de la .vpk (%s)" % [faltan])
