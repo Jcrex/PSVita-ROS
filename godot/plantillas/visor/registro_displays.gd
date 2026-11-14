@@ -84,6 +84,9 @@ const REGLAS := [
 	{"tipo": "vision_msgs/msg/Detection3DArray", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d", "solo_pc": true},
 	# V14 (solo PC): cliente de marcadores interactivos (`<ns>/update`; la herramienta Interactuar publica el feedback).
 	{"tipo": "visualization_msgs/msg/InteractiveMarkerUpdate", "script": D + "3d/im_cliente.gd", "capa": "marcadores", "solo_pc": true},
+	# V14 (solo PC): octomap y grid_map (rclgd los resuelve por ament; no están en TIPOS_VISOR, D10).
+	{"tipo": "octomap_msgs/msg/Octomap", "script": D + "3d/octomap.gd", "capa": "mundo", "solo_pc": true},
+	{"tipo": "grid_map_msgs/msg/GridMap", "script": D + "3d/grid_map.gd", "capa": "mundo", "solo_pc": true},
 	# V6: widgets HUD de eventos y estado (tipos estándar; en la Vita llegan por el relay `<p>/rosout` y `<p>/diagnostics`).
 	{"tipo": "rcl_interfaces/msg/Log", "script": D + "hud/consola.gd", "capa": "hud"},
 	{"tipo": "diagnostic_msgs/msg/DiagnosticArray", "script": D + "hud/diagnostico.gd", "capa": "hud"},

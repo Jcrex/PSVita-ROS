@@ -86,6 +86,9 @@ func _correr() -> void:
 	await _probar_nube()
 	await _probar_imagen()
 	await _probar_im()
+	await _probar_octomap()
+	await _probar_grid_map()
+	await _probar_solo_pc()
 	check(vigia.errores == 0, "sin errores de script ni de shader (%s)" % vigia.ultimo)
 	OS.remove_logger(vigia)
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
@@ -732,3 +735,196 @@ func _probar_im() -> void:
 	sub = null
 	hf.activar(false)
 	await _cerrar(v)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 5. Octomap (decodificador binario y completo) y grid_map (malla de alturas)
+# ---------------------------------------------------------------------------------------------------------------
+## Codificador binario de octomap para la prueba (como OccupancyOcTreeBase::writeBinaryNode): `claves` = hojas
+## ocupadas a profundidad 16 (Vector3i de 0..65535); el resto, desconocido.
+func _octomap_binario(claves: Array) -> PackedByteArray:
+	var out := PackedByteArray()
+	_nodo_binario(claves, 0, out)
+	return out
+
+
+func _nodo_binario(claves: Array, d: int, out: PackedByteArray) -> void:
+	var grupos := []
+	for i in 8:
+		grupos.append([])
+	var bit := 15 - d
+	for k in claves:
+		var i: int = ((k.x >> bit) & 1) | (((k.y >> bit) & 1) << 1) | (((k.z >> bit) & 1) << 2)
+		grupos[i].append(k)
+	var bits := 0
+	for i in 8:
+		if not grupos[i].is_empty():
+			bits |= (2 if d + 1 == 16 else 3) << (2 * i)
+	out.append(bits & 0xFF)
+	out.append((bits >> 8) & 0xFF)
+	if d + 1 < 16:
+		for i in 8:
+			if not grupos[i].is_empty():
+				_nodo_binario(grupos[i], d + 1, out)
+
+
+func _probar_octomap() -> void:
+	var Oct = load(D + "3d/octomap.gd")
+	var res := 0.1
+	var claves := [Vector3i(32768, 32768, 32768), Vector3i(32767, 32770, 32768), Vector3i(32768, 32768, 32790)]
+	var b := _octomap_binario(claves)
+	var d: Dictionary = Oct.decodificar(true, "OcTree", res, b)
+	var esperados := []
+	for k in claves:
+		esperados.append((Vector3(k) - Vector3.ONE * 32768.0 + Vector3.ONE * 0.5) * res)   # keyToCoord de octomap
+	var ok: bool = d.get("centros", PackedVector3Array()).size() == 3 and d["leidos"] == b.size()
+	if ok:
+		for e in esperados:
+			var hallado := false
+			for c in d["centros"]:
+				hallado = hallado or c.is_equal_approx(e)
+			ok = ok and hallado
+	check(ok and is_equal_approx(d["lados"][0], res), "octomap binario: 3 hojas a 10 cm en su keyToCoord (%d nodos, %d B)" % [d.get("nodos", 0), b.size()])
+	# Hoja podada en la raíz: hijo 7 ocupado → un vóxel de lado res·2^15 en (+,+,+)·res·2^14.
+	var p: Dictionary = Oct.decodificar(true, "OcTree", res, PackedByteArray([0x00, 0x80]))
+	check(p["centros"].size() == 1 and p["centros"][0].is_equal_approx(Vector3.ONE * res * 16384.0) and is_equal_approx(p["lados"][0], res * 32768.0),
+			"octomap binario: hoja podada (profundidad 1) con su lado y centro")
+	# Completo (OcTree): raíz (−1, hijos 0b1) + hijo 0 (2.0, sin hijos) → ocupado; ColorOcTree con color.
+	var f := PackedByteArray()
+	f.resize(10)
+	f.encode_float(0, -1.0)
+	f[4] = 1
+	f.encode_float(5, 2.0)
+	f[9] = 0
+	var dc: Dictionary = Oct.decodificar(false, "OcTree", res, f)
+	check(dc["centros"].size() == 1 and dc["centros"][0].is_equal_approx(-Vector3.ONE * res * 16384.0), "octomap completo: hoja ocupada (log-odds 2 > 0)")
+	var fc := PackedByteArray()
+	fc.resize(16)
+	fc.encode_float(0, -1.0)
+	fc[4] = 1
+	fc[5] = 2
+	fc[6] = 3
+	fc[7] = 1
+	fc.encode_float(8, 2.0)
+	fc[12] = 255
+	fc[13] = 128
+	fc[14] = 0
+	fc[15] = 0
+	var dcc: Dictionary = Oct.decodificar(false, "ColorOcTree", res, fc)
+	check(dcc["colores"].size() == 1 and dcc["colores"][0] == Color8(255, 128, 0), "octomap ColorOcTree: color del vóxel")
+	check(Oct.decodificar(true, "OcTree", res, PackedByteArray([0x0F])).is_empty(), "octomap truncado: {}")
+	# Display: Falso Octomap (octomap_msgs no está en el esquema del host).
+	var oc: Node3D = Oct.new()
+	oc.name = "Octomap"
+	oc.topic = "/octomap_binary"
+	var v := _visor(false, [], [], [oc], Vector3.ZERO, 8.0)
+	await _esperar(v)
+	check(oc.solo_pc and oc.latched and oc.estado.begins_with("sin esquema"), "octomap: solo_pc, latched; en el host sin esquema")
+	var t0 := Time.get_ticks_usec()
+	oc._al_mensaje(Falso.new({"binary": true, "id": "OcTree", "resolution": res, "data": b}))
+	print("octomap: 3 hojas, %d nodos en %d µs" % [oc.nodos, Time.get_ticks_usec() - t0])
+	var mm: MultiMesh = oc._mmi.multimesh
+	check(oc.voxeles == 3 and mm.instance_count == 3, "octomap: 3 vóxeles en la MultiMesh")
+	if gpu:                                             # el renderizador vacío (headless) no guarda las instancias
+		check(mm.get_instance_transform(0).basis.get_scale().is_equal_approx(Vector3.ONE * res), "GPU octomap: vóxel de 10 cm")
+	# Medida: cubo de 16³ hojas (4 096 vóxeles).
+	var muchas := []
+	for x in 16:
+		for y in 16:
+			for z in 16:
+				muchas.append(Vector3i(32760 + x, 32760 + y, 32760 + z))
+	var bm := _octomap_binario(muchas)
+	t0 = Time.get_ticks_usec()
+	oc._al_mensaje(Falso.new({"binary": true, "id": "OcTree", "resolution": 0.05, "data": bm}))
+	var us := Time.get_ticks_usec() - t0
+	print("octomap: 4 096 vóxeles, %d nodos (%d B) decodificados y pintados en %d µs" % [oc.nodos, bm.size(), us])
+	check(oc.voxeles == 4096, "octomap: 16³ hojas → 4 096 vóxeles (%d µs)" % us)
+	if gpu:
+		var cap := await _captura()
+		var c := cap.get_pixelv(Vector2i(v.camara.unproject_position(rclgd.ros_to_godot_vector(Vector3(0.01, 0.01, 0.0)))))
+		check(not _cerca(c, Color(0.08, 0.11, 0.15), 10), "GPU octomap: los vóxeles se ven (%s)" % c)
+	await _cerrar(v)
+
+
+func _probar_grid_map() -> void:
+	var GM = load(D + "3d/grid_map.gd")
+	# 4 filas (x) × 3 columnas (y), búfer circular outer 1, inner 2; v(i, j) = 10·i + j.
+	var f := 4
+	var c := 3
+	var outer := 1
+	var inner := 2
+	var datos := PackedFloat32Array()
+	datos.resize(f * c)
+	for i in f:
+		for j in c:
+			datos[((j + inner) % c) * f + (i + outer) % f] = 10 * i + j
+	var u: PackedFloat32Array = GM.desenrollar(datos, f, c, outer, inner)
+	var ok := true
+	for i in f:
+		for j in c:
+			ok = ok and u[i * c + j] == 10 * i + j
+	check(ok, "grid_map: búfer circular column-major desenrollado (outer = filas, inner = columnas)")
+	var gm: Node3D = GM.new()
+	gm.name = "GridMap"
+	gm.topic = "/elevation_map"
+	var v := _visor(false, [], [], [gm], Vector3(-2, 0, -1), 4.0)
+	await _esperar(v)
+	check(gm.solo_pc and gm.estado.begins_with("sin esquema"), "grid_map: solo_pc; en el host sin esquema")
+	var info := Falso.new({"resolution": 0.1, "length_x": 0.4, "length_y": 0.3, "pose": _pose(1.0, 2.0)})
+	var capa_e := Falso.new({"data": datos})
+	var alt2 := PackedFloat32Array(datos)
+	alt2[((0 + inner) % c) * f + (0 + outer) % f] = NAN                 # celda (0, 0) vacía
+	var msg := Falso.new({"header": _cabecera("map"), "info": info, "layers": PackedStringArray(["elevation"]),
+			"basic_layers": PackedStringArray(), "data": [capa_e], "outer_start_index": outer, "inner_start_index": inner})
+	gm._al_mensaje(msg)
+	var d = gm._procesar(msg)
+	check(gm.filas == 4 and gm.columnas == 3 and gm.triangulos == 12, "grid_map: 4×3 celdas → 12 triángulos")
+	check(d["pos"][0].is_equal_approx(Vector3(1.15, 2.1, 0.0)) and d["pos"][11].is_equal_approx(Vector3(0.85, 1.9, 32.0)),
+			"grid_map: (0,0) en la esquina +x,+y (centro + (lx/2 − res/2, ly/2 − res/2)) y altura de la capa")
+	check(gm.rango_usado == Vector2(0, 32), "grid_map: rango de color automático (0–32)")
+	var msg2 := Falso.new({"header": _cabecera("map"), "info": info, "layers": PackedStringArray(["elevation"]),
+			"basic_layers": PackedStringArray(), "data": [Falso.new({"data": alt2})], "outer_start_index": outer, "inner_start_index": inner})
+	gm._al_mensaje(msg2)
+	check(gm.triangulos == 10, "grid_map: celda NaN → sin los triángulos que la tocan (10)")
+	gm.capa_altura = "no_existe"
+	check(gm._procesar(msg2) == null and gm.motivo.contains("no_existe"), "grid_map: capa inexistente → null")
+	await _cerrar(v)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 6. solo_pc: la Vita no los carga ni el registro los ofrece
+# ---------------------------------------------------------------------------------------------------------------
+func _probar_solo_pc() -> void:
+	var scripts := ["3d/nube_puntos.gd", "hud/imagen_pc.gd", "3d/im_cliente.gd", "3d/octomap.gd", "3d/grid_map.gd"]
+	var tres_d := []
+	var hud := []
+	for s in scripts:
+		var n: Node = load(D + s).new()
+		n.name = s.get_file().get_basename()
+		if n is Control:
+			hud.append(n)
+		else:
+			tres_d.append(n)
+	var hf: Node2D = load("res://comun/visor/herramientas/im_feedback.gd").new()
+	hf.name = "Interactuar"
+	hf.topic = "/basic_controls/feedback"
+	hud.append(hf)
+	var v := _visor(true, [], hud, tres_d)
+	await _esperar(v)
+	var todos := true
+	for n in tres_d + hud:
+		todos = todos and n.estado == "desactivado"
+	check(todos, "Vita simulada: los 5 displays V14 y la herramienta Interactuar quedan desactivados")
+	check(v.usado("mundo") == 0 and v.usado("marcadores") == 0, "Vita simulada: no gastan cupo")
+	await _cerrar(v)
+	var casos := [
+		["/points", "sensor_msgs/msg/PointCloud2", "3d/nube_puntos.gd", "2d/nube.gd"],
+		["/camera/depth/image_raw", "sensor_msgs/msg/Image", "hud/imagen_pc.gd", "hud/inspector_texto.gd"],
+		["/basic_controls/update", "visualization_msgs/msg/InteractiveMarkerUpdate", "3d/im_cliente.gd", "hud/inspector_texto.gd"],
+		["/octomap_binary", "octomap_msgs/msg/Octomap", "3d/octomap.gd", "hud/inspector_texto.gd"],
+		["/elevation_map", "grid_map_msgs/msg/GridMap", "3d/grid_map.gd", "hud/inspector_texto.gd"],
+	]
+	for k in casos:
+		var pc: String = Registro.regla(k[0], k[1], false).get("script", "")
+		var vi: String = Registro.regla(k[0], k[1], true).get("script", "")
+		check(pc == D + k[2] and (vi == (D + k[3] if k[3] != "" else "")), "registro: %s → PC %s, Vita %s" % [k[1], k[2], k[3] if k[3] != "" else "ninguno"])
