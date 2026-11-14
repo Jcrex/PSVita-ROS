@@ -2,7 +2,12 @@
 
 > **Estado:** workshop W13 cerrado (diseño) el 2026-11-13. Decisión formal en **ADR 0013**
 > (`docs/adr/0013-visualizacion-topics-godot.md`); sentencia detallada (D1–D15, tareas V1–V15, gates) en
-> `docs/ia/workshops/posts/W13-juez-fable.md`. **Nada está implementado**: este documento es la especificación para
+> `docs/ia/workshops/posts/W13-juez-fable.md`. **Implementación (2026-11-14, Fase V cerrada en host):** V1–V14 hechos
+> y verdes en host en `godot/plantillas/visor/` y en el relay (`docker/scripts/vita_relay*.py`); V13b decidido sin
+> módulo nativo (gate G-V13b); V15 (esta documentación) hecho. **Nada está validado aún en la Vita** (§9.0, §13).
+> **Desde V1 el código es la fuente de verdad:** los esqueletos de §2.9, §3 y §5.5 y las fichas de doc 36a se
+> conservan como diseño; donde difieren del código manda el código (estado por tipo con la ruta real en doc 36a
+> §4.0.1; decisiones de cada tarea en `godot/plantillas/visor/README.md`). Este documento era la especificación para
 > escribir `godot/plantillas/visor/` y los módulos nuevos del relay.
 > Marcas: [V] verificado (archivo:línea, medida o `--check-only`) · [I] inferencia · [?] sin confirmar. Las cifras de
 > la Vita son de diseño [I] hasta sus gates (§9).
@@ -12,7 +17,8 @@
 > **Código:** los esqueletos de las fichas originales pasaron `--check-only` contra la API de `ros2_vita` (101 PASA,
 > 4 FALLA, 2 NO APLICA; `W13-revision.md` §1). Los de **este documento** están **reescritos** al contrato del ADR 0013
 > (nombres definitivos, `_procesar` / `_pintar`, QoS por `set_*`) y llevan aplicadas las cuatro correcciones de la
-> revisión, pero **no se han pasado por el analizador** [I]: es lo primero que comprueba V1 (§10).
+> revisión; V1 los llevó a código real (el analizador ya no aplica a los esqueletos: aplica al código, que pasa las
+> pruebas de §13.2).
 > **Fuentes:** `docs/ia/workshops/W13-visualizacion-topics.md` (tablero); fichas `posts/W13-{nucleo-generico,
 > geometria-tf-robot,sensores-densos,mapas-marcadores,hmi-percepcion-acciones}.json` y sus `-borrador.md`; revisión
 > `posts/W13-revision.{json,md}`; sentencia `posts/W13-juez-fable.md`; ADR 0013. **Si una ficha contradice la
@@ -372,6 +378,14 @@ Sin `class_name` (convención de `plantillas/`: `preload`); sin addon en `addons
 fusionó en `plantillas/` el 2026-11-12, `godot/plantillas/vita_relay.gd:2`).
 
 ### 2.9 Código del núcleo (esqueletos para V1, V2, V4 y V7)
+
+> **V15 (2026-11-14):** esqueletos de diseño, superados por el código real. Fuente de verdad: `visor_ros.gd`,
+> `canal_display.gd`, `display_ros_{3d,2d,hud}.gd`, `tf_ligero.gd`, `gestor_hud.gd`, `texto_superpuesto.gd`,
+> `registro_displays.gd`, `introspeccion_ros.gd`, `tiempo_ros.gd` y `herramienta_visor.gd`, todos en
+> `godot/plantillas/visor/`. Diferencias principales con lo de abajo: la QoS se crea en `contexto_ros.gd:25-31`
+> (`set_*`); un tipo sin esquema deja el display en `sin esquema: <tipo>` (`canal_display.gd:43-46`); `VisorRos.tf` es
+> el `RosTfListener` de rclgd, el nativo de V13a (`tf_nativo`) o `TfLigero` (`visor_ros.gd:216-224`); y las
+> decisiones no cubiertas por el ADR están en `godot/plantillas/visor/README.md` por tarea.
 
 Convenciones de todo el código de este documento: `preload` por ruta `res://comun/…`; `tf`, `visor` y los mensajes
 sin anotar o anotados como `RosMsg`; tipos explícitos donde la expresión mezcla `Variant` (§8, T8); QoS solo con
@@ -1253,7 +1267,8 @@ con Jacobi cíclico (§4.2, inercia).
 
 → **[`36a-catalogo-displays.md`](36a-catalogo-displays.md)** (separado el 2026-11-13, ADR 0014 §4.3): tabla maestra §4.0
 y fichas §4.1–§4.x de cada tipo (display, capa PC/Vita, ruta en la Vita, código GDScript). La numeración se
-conserva: «doc 36 §4.x» es esa ficha del 36a.
+conserva: «doc 36 §4.x» es esa ficha del 36a. **Estado de la implementación por tipo** (✅ / ✅ PC / ⏳, con la ruta
+del display real): doc 36a **§4.0.1** (V15, 2026-11-14).
 
 ---
 
@@ -1552,6 +1567,40 @@ herramientas ≤ 364 B por evento; `/vita/joy` 128 B × 20 Hz = 2,6 KB/s; feedba
 
 ## 9. Por medir, gates y por resolver
 
+### 9.0 Estado de los gates (V15, 2026-11-14)
+
+**Ningún gate de hardware del visor está medido**: todos están «por medir en la Vita». Lo que sí está verificado es
+el lado de host de cada uno (pruebas de §13.2, bytes del relay Python = GDScript, exportación de la `.vpk`). La sesión
+única que los mide es el guion de `docs/ia/workshops/posts/V3-revision.md` §5 (fases F1–F8, criterio de verde por
+gate al final de esa sección), con la `build/visor-ros.vpk` ya exportada; G-V13b se lee en la misma sesión
+(`docs/ia/workshops/posts/V13b-juez-fable.md` §4).
+
+| Gate | Tarea | Estado en la Vita | Verificado en host [V] | Dónde se mide |
+|---|---|---|---|---|
+| G-W13-R0 | D4 | por medir | `MAX_BE` = 488 de carga sin encapsulación (`xrce_transport.cpp:147-148,678-681`) | banco de `docs/27` §4 (fuera del guion) |
+| G-W13-H0 | V4 | por medir | `pruebas/visor_hud.gd`: glifos por pestaña ≤ 240, barra ≤ 120 | guion F1 |
+| E-W8-0 | todas | por medir | — (los µs de GDScript en la Vita siguen [I]) | `docs/31` §6 |
+| E-W8-1 | V2 | por medir | `pruebas/visor_primitivas.gd`: solo triángulos, un material, texel 255 con alfa 0 | guion F1 (START) |
+| E-W8-2 | (GridMap 3D) | no aplica aún | — | `docs/31` §6 |
+| E-W8-5 | V10 | por medir | `pruebas/visor_percepcion.gd`; JPEG del relay ≤ 3 KB | guion F8 |
+| E-W8-6 / V3 | V3 | por medir | `pruebas/visor_displays.gd`; en vivo en el host con relay y `compacto=1` | guion F2 |
+| V1 (60 FPS, reconexión) | V1 | por medir | `pruebas/visor.gd`; reconexión del transporte en `godot/test/` | guion F2 (`reconexiones=`) |
+| V5 | V5 | por medir | `pruebas/visor_directos.gd`: `from_type` ≠ null e ida y vuelta de cada tipo de `TIPOS_VISOR` | guion F7 (`banco_v5.tscn`) |
+| V6 | V6 | por medir | `pruebas/visor_relay.gd` + `test_vita_relay.py` (bytes, tope de red, perfil `hmi` ≤ 20 KB/s nominal) | guion F3 |
+| V7 | V7 | por medir | `pruebas/visor_herramientas.gd`: un mensaje por ✕, QoS §6, covarianza de RViz | guion F2 |
+| G-W13-M1 / M1v | V8 | por medir | `pruebas/visor_marcadores.gd`: cupo 12 / 32, sin fantasmas tras DELETE | guion F4 / F6 |
+| G-W13-M2 (opc.) | V8 | por medir | ídem | guion F4 (`vida`) |
+| G-W13-M3 | V8 | por medir | 33 marcadores = 3 trozos ≤ 472 B (`test_vita_relay.py`) | guion F4 con netem |
+| G-W13-M4 | V3 | por medir | LUT + `blit_rect` de `vita_relay.gd` | guion F2 (`[visor-mapa]`) |
+| G-W13-M5 | V11 | por medir | `pruebas/visor_costmap.gd`; `costmap_teselas_max` = 30 en el relay | guion F5 |
+| G-W13-M6 | V14 | no aplica aún | IM solo en el PC (sin servicios en la Vita) | — |
+| G-W13-M7 | V8 | por medir | `2d/marcadores_2d.gd`: un lote por marcador | no está en el guion: añadir a F4 con `fuente-v2` [I] |
+| V9 | V9 | por medir | `pruebas/visor_tf.gd`: TfLigero = casos de `tf-tree`, ± 1 mm frente al listener | guion F2 (`visor/TF`) |
+| V10 | V10 | por medir | `pruebas/visor_percepcion.gd`; perfil `percepcion` ≤ 40 KB/s nominal | guion F8 |
+| V12 | V12 | por medir | `pruebas/visor_inspector.gd`: 3 × 64 puntos = 3 comandos de dibujo | guion F5 |
+| V13a | V13a | por medir | `godot/test/run_host_tests.sh` (349 comprobaciones); `pruebas/visor_tf.gd` con el listener nativo; plantilla compilada | fuera del guion: `/tf` real con `tf_nativo = true` |
+| **G-V13b** | V13b | por medir | banco `docs/ia/medidas/v13b-banco-decodificacion.gd` (host) | guion F2, F5, F8 (`V13b-juez-fable.md` §4) |
+
 ### 9.1 Gates de hardware (las pruebas las lanza el usuario; la Vita está en sus manos)
 
 | Gate | Qué mide | Verde | Lo necesita |
@@ -1601,6 +1650,9 @@ sigue ≤ 40 KB/s nominales (`percepcion`: 3 Hz; `hmi,camara`: hasta 5).
 1. **Imagen sin código** (D sens#7 y huecos de sensores): `16SC1` (`FORMAT_R16I` + `usampler` [?]), `64FC1`,
    `nv21`/`nv24`, codificaciones de color de 16 bit, demosaico bayer, filas con relleno (`step ≠ w·bpp`), auto-rango,
    color por imagen RGB en DepthCloud, ruta GPU de PointCloud2 > 50 k puntos y estilos Boxes/Spheres.
+   **V14 (2026-11-14):** hechos en el PC el demosaico bayer, las filas con relleno, el auto-rango, 16UC1/mono16/32FC1 y
+   la ruta GPU de PointCloud2 (para todo tamaño) (`displays/hud/imagen_pc.gd`, `displays/3d/nube_puntos.gd`); siguen
+   abiertos `16SC1`, `64FC1`, `nv21`/`nv24`, color de 16 bit, DepthCloud y Boxes/Spheres.
 2. **Display «Camera»** (sens#13): sincronizar imagen y TF por `stamp` (en la Vita no hay `lookup_transform` con tiempo);
    CameraInfo con P o con K para imágenes rectificadas y signo del desplazamiento.
 3. **Marco de plan frente a real** (hmi#14) — **resuelto 2026-11-14** (`V2-juez-fable.md` F3: `map → odom` por la
@@ -1626,8 +1678,10 @@ sigue ≤ 40 KB/s nominales (`percepcion`: 3 Hz; `hmi,camara`: hasta 5).
 14. **Escritura en `/rosout` desde la Vita**: `RosLogger` sin registrar (`API_PARITY.md:20,39,85`); publicador propio de
     `Log` posible, sin decidir.
 15. **Profundidad del feedback IM**: la tabla de C9 pide 1 en los dos, `HerramientaVisor` da 5 en el PC (V14).
+    **Resuelto en V14:** `herramientas/im_feedback.gd` publica FIABLE con profundidad 1 también en el PC.
 16. **No se ha compilado nada contra rclgd** (no instalado en la máquina del revisor, `W13-revision.md:47`); y los
-    esqueletos de este documento no se han pasado por el analizador (V1).
+    esqueletos de este documento no se han pasado por el analizador (V1). **Estado 2026-11-14:** el código real
+    compila y pasa las pruebas con el editor de host de `ros2_vita`; **con rclgd sigue sin probarse** (§13.4).
 
 ---
 
@@ -1653,6 +1707,13 @@ Comando de host: `$GH` = `toolchains/godot4-vita/engine/bin/godot.linuxbsd.edito
 | **V13** | Paquete nativo «plantilla N+1» | `godot/ros2_vita/ros_runtime.cpp` (propiedades de `RosQoS`, `latest_only`, tipo resuelto al suscribir, contadores), `RosTfListener` sobre `modules/tf-tree`, `modules/viz-decode/` | T-W4-2, T-W4-3, T-W8-7; solo PC | `tools/run-parity-tests.sh`; pruebas de `godot/test/` | `verify_runtime.py` PASS; mismos displays sin cambios de GDScript |
 | **V14** | Extras solo PC y aplazados | nube en GPU, imágenes con *shader*, cliente de marcadores interactivos, octomap, grid_map; marcadores interactivos en la Vita (`im_poses`) | V8; T-W4-9 | `--check-only` con rclgd | no aplica hasta tener servicios en la Vita |
 | **V15** | Documentación | este documento (hecho); cita corregida en `docs/27:10,33` y `docs/31:157`; nota en `docs/24` (T-W4-4 sustituida) y `docs/31` (T-W8-4 absorbida); `API_PARITY.md` (regla `set_*`, choque de `reference`); README de `visor/` | V1–V12 | enlaces y citas comprobados | — |
+
+**Estado (V15, 2026-11-14):** V1–V12 hechos y verdes en host; V13 partida en **V13a** (paquete nativo de
+`ros2_vita`: propiedades de `RosQoS`, `latest_only`, tipo resuelto al suscribir, contadores y `RosTfListener` sobre
+`tf-tree`; hecho en host y plantilla compilada) y **V13b** (`viz-decode`: **no se crea**, juez Fable,
+`docs/ia/workshops/posts/V13b-juez-fable.md`; queda detrás del gate G-V13b); V14 hecho en host y en vivo por XRCE en el
+PC; V15 hecho (este documento, doc 36a §4.0.1, `API_PARITY.md`, citas de `docs/27` y `docs/31`, notas de `docs/24` y
+`docs/31`, README del visor). La columna «Verde en hardware» está **entera por medir** (§9.0). Detalle en §13.
 
 Nombres de archivo de V5 (`ejes`, `fuerza`, `marcador_simple`) son los de la sentencia; en §4 aparecen como
 `orientacion.gd`/`transformada.gd` (ejes), `tornillo.gd` (fuerza: Twist/Accel/Wrench) y el gestor de marcadores con
@@ -1727,3 +1788,124 @@ $GH --path godot/visor-ros -- transporte=xrce compacto=1
 - **Este documento:** integración (Opus 5.5, 2026-11-13) de fichas, revisión y sentencia; aplica los nombres
   definitivos del ADR 0013 y las cuatro correcciones de `check-only`; donde una ficha contradice la sentencia, se
   indica con «⚖». No se ha ejecutado código nuevo para redactarlo.
+
+---
+
+## 13. Estado de la implementación (2026-11-14)
+
+Cierre de la Fase V (`docs/ia/plan-organizacion-y-visor-2026-11-13.md` §3). Documento de estado largo para el usuario:
+qué se hizo, qué está comprobado y dónde, qué falta medir en la Vita y qué no se ha probado nunca con rclgd. Marcas:
+[V] ejecutado y comprobado · [I] inferencia · [?] sin confirmar.
+
+### 13.1 Lo hecho (V1–V15)
+
+39 commits desde `015f350` (cierre de la Fase O) hasta `cd12885`, más los de V15. Todo en host (PC CachyOS); nada se ha
+ejecutado aún en la Vita.
+
+| Tarea | Qué quedó | Commits | Detalle |
+|---|---|---|---|
+| V1 | núcleo: `VisorRos`, `CanalDisplay`, tres bases, registro, `TiempoRos`; proyecto `godot/visor-ros/` | `35c0cae`, revisión `e45c12a` | README del visor, «V1» y «Revisión V1» |
+| V2 | `PrimitivasViz` (solo triángulos), `PaletaViz` (16×16, texel 255 con alfa 0), `TextoSuperpuesto` | `1137018` | «V2» |
+| V3 | scan, path, pose (2D/3D), mapa (2D/3D), robot_joints con el relay de siempre | `0627f0f` | «Displays V3» |
+| V4 | `GestorHud` (barra + una pestaña), barra de estado, medidor, batería, joy, estado de la meta | `8c9405e` | «HUD (V4)» |
+| V5 | `TIPOS_VISOR` en `generar_esquemas.py` y diez displays directos pequeños | `e58f389` | «V5» |
+| V6 | relay VC/1 rev. 2 (cabecera común, `relay_info`, tope de red), `rosout`, `diag`, `ritmo`; consola y diagnóstico | `045b9f3` | «Relay VC/1 rev. 2 (V6)» |
+| V7 | `HerramientaVisor` + teleop, meta, pose inicial, punto | `4a2adb0` | «Herramientas (V7)» |
+| V8 | `FabricaMarcadores`, gestor 3D, `marcadores_2d`, módulo `marcadores` | `b6e2ed3`, `8c794e0`, `6b2c348` | «Marcadores (V8)» |
+| V9 | `TfLigero`, display TF, poses y covarianza; módulos `tf`, `poses`, `pose_cov` | `47c8077` | «TF y poses (V9)» |
+| Rev. V2 | revisión de V5–V9 y juez | `7090374`, `7622701` | `posts/V2-revision.md`, `posts/V2-juez-fable.md` |
+| V10 | imagen (JPEG), cajas 2D/3D, nube en planta; módulos `camara`, `det2d`, `det3d`, `nube` | `50cf371` | «Percepción (V10)» |
+| V11 | costmap por teselas de 4 bit compuesto sobre el mapa | `71c04f7` | «Costmap (V11)» |
+| V12 | introspección, inspector de texto, trazador, explorador de topics | `91b9242`, `7111185` | «V12» |
+| Rev. V3 | revisión de V10–V12, guion único de hardware y juez | `d5b52f2`, `fa48dcc` | `posts/V3-revision.md`, `posts/V3-juez-fable.md` |
+| V13a | `ros2_vita`: propiedades de `RosQoS`, `latest_only`, tipo resuelto al suscribir, contadores, `RosTfListener` sobre `tf-tree` | `3503406`, `6b0adce`, `a25a838`, `6761836` | «Paquete nativo (V13a)»; `godot/ros2_vita/API_PARITY.md` |
+| V13b | `viz-decode` **no se crea** (ninguna ruta llega a 2 ms por mensaje); gate G-V13b | `938fa9f` | `posts/V13b-juez-fable.md` |
+| V14 | solo PC: mapa con *shader*, nube en GPU, imagen cruda con *shader*, marcadores interactivos, octomap, grid_map; `main_pc.tscn` fuera de la `.vpk` | `e7427ec`…`cd12885` | «Extras solo PC (V14)» |
+| V15 | esta sección, doc 36a §4.0.1, §9.0, `API_PARITY.md`, citas de `docs/27`/`docs/31`, notas de `docs/24`/`docs/31`, README del visor | `docs(visor): … (V15)` | — |
+
+Cobertura por tipo (doc 36a §4.0.1): de las 82 filas de la tabla maestra, 62 tienen display (7 solo en el PC), 18
+siguen ⏳ (caen en el inspector de texto) y 2 no aplican. Los ⏳ son de baja prioridad (inercia, campo magnético,
+`CameraInfo`, `GridCells`, `MapMetaData`, `ImageMarker`, `shape_msgs`, lifecycle, trayectorias, escalares y
+`*MultiArray` con widget propio, variantes 3D de lo que ya está en planta).
+
+### 13.2 Lo verificado en host [V]
+
+Ejecutado el 2026-11-14 en el PC con `set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64`
+(4.8-dev7 con `ros2_vita`, transporte `loopback`; los mensajes son `RosMsg` dinámicos del `.rsch`):
+
+| Prueba | Resultado |
+|---|---|
+| `pruebas/visor.gd` (núcleo, V1) | 57/57 |
+| `pruebas/visor_primitivas.gd` (V2) | 114/114 |
+| `pruebas/visor_hud.gd` (V4) | 72/72 |
+| `pruebas/visor_displays.gd` (V3) | 106/106 |
+| `pruebas/visor_directos.gd` (V5) | 228/228 |
+| `pruebas/visor_herramientas.gd` (V7) | 70/70 |
+| `pruebas/visor_tf.gd` (V9 + V13a) | 84/84 |
+| `pruebas/visor_relay.gd` (V6) | 80/80 |
+| `pruebas/visor_marcadores.gd` (V8) | 63/63 |
+| `pruebas/visor_escenas.gd` (selector, juez V2) | 21/21 |
+| `pruebas/visor_percepcion.gd` (V10) | 67/67 |
+| `pruebas/visor_costmap.gd` (V11) | 55/55 |
+| `pruebas/visor_inspector.gd` (V12) | 64/64 |
+| `pruebas/visor_pc.gd` (V14, `--headless`) | 77/77 (93/93 con GPU, Compatibility y Forward+, según el README del visor) |
+| `python3 docker/scripts/test_vita_relay.py` (relay, bytes Python = GDScript) | TODO OK |
+| `godot/test/run_host_tests.sh $GH` (`ros2_vita`, con V13a) | 349 comprobaciones, 0 fallos |
+| `pruebas/runner.gd` en `godot/g1-sensores` (plantillas; bytes VC/1 cruzados) | 16/16 |
+
+Además, ya anotado en cada tarea: V3, V5, V7, V8, V10, V11 y V14 **en vivo** en el host contra la estación (`docker/vita-ros.sh`,
+agente XRCE real, relay); la `.vpk` exportada sin los scripts `solo_pc`
+(`tools/export-vita-vpk.sh godot/visor-ros build/visor-ros.vpk`); la plantilla de la Vita recompilada con V13a
+(README del visor, «Paquete nativo (V13a)»).
+
+### 13.3 Lo pendiente en hardware (lo lanza el usuario)
+
+Todo el comportamiento en la Vita: render GXM, FPS, coste de GDScript, XRCE real por WiFi, reconexión, táctil y
+botones. Una sola sesión lo cubre casi todo:
+
+1. **Guion único**: `docs/ia/workshops/posts/V3-revision.md` §5 (nueve lanzamientos de `build/visor-ros.vpk`, fases
+   F1–F8, terminales T1–T6 en fish) con su tabla «Criterio de verde por gate». Cubre G-W13-H0, E-W8-1, V3/E-W8-6,
+   V9, V7, V6, G-W13-M1/M1v/M2/M3, G-W13-M5, V12, V5, E-W8-5, V10 y el selector de escenas.
+2. **Gate G-V13b** en la misma sesión (`docs/ia/workshops/posts/V13b-juez-fable.md` §4): `[visor-mapa]` (F2),
+   `[visor-costmap]` (F5), `[visor-nube]` (F8) y `[perfil-gd] visor/Scan=` (F2). Verde = no hace falta C; si una fila
+   sale roja se implementa solo esa función de `viz-decode`.
+3. **Fuera del guion** (§9.0): G-W13-R0 (banco de `docs/27` §4), G-W13-M7 (añadir a F4) y V13a con `/tf` real
+   (`tf_nativo = true` con un robot pequeño, coste de `lookup` por fotograma y efecto de `latest_only` en `_pump`).
+4. **No aplica aún:** G-W13-M6 y los marcadores interactivos en la Vita (sin servicios XRCE; T-W4-9).
+
+### 13.4 Lo no probado con rclgd
+
+**El visor no se ha ejecutado nunca con rclgd**: no hay binario de rclgd ni de Godot 4.7.1 en el PC ni en la estación
+(`godot/plantillas/visor/README.md`, «Extras solo PC (V14)»). Todo lo de §13.2 corre con el editor de host de
+`ros2_vita`, que imita la API de rclgd (`godot/ros2_vita/API_PARITY.md`). Sin probar [?]:
+
+- Las **clases tipadas** de rclgd: que `IntrospeccionRos.campos_de_tipo` (ClassDB) dé exactamente los campos (§9.3.11)
+  y que los displays, que anotan `RosMsg`, acepten las instancias tipadas sin avisos.
+- El **descubrimiento** del explorador (`get_topic_names_and_types()` cada 2 s): `ros2_vita` no tiene API de grafo
+  (`API_PARITY.md`, ❌), así que la rama del PC no se ha ejecutado contra un grafo real.
+- `RosTfListener` de rclgd como `VisorRos.tf` (historial, `time`, `timeout_sec`): TfLigero y el nativo de V13a ignoran
+  el tiempo.
+- Marcadores interactivos con el servicio `get_interactive_markers` (`create_client`/`async_send_request`).
+- Tipos fuera del `.rsch` que rclgd resuelve por ament: `InteractiveMarkerUpdate`, `Octomap`, `GridMap` (en el host se
+  prueban con mensajes falsos).
+- Entrega de `int8[]`/`uint8[]` como `PackedByteArray` o `Array` (los dos caminos están cubiertos en código).
+- La QoS por `set_*` y por propiedades con el `RosQoS` real de rclgd, y `get_member("reference")` en una clase tipada.
+
+Cuando haya rclgd en una máquina: `godot/plantillas/pruebas/visor*.gd` con el editor de rclgd y la escena
+`godot/visor-ros/main_pc.tscn` contra la estación.
+
+### 13.5 Pendientes menores anotados en V15
+
+- Los scripts de V14 (`displays/3d/{grid_map,im_cliente,nube_puntos,octomap}.gd`, `displays/hud/imagen_pc.gd`,
+  `mapas_color.gd`) no tienen su `.uid` versionado (en V8 se versionaron en `efe5f1f`); se generan al abrir el
+  proyecto en el editor.
+- El comentario de `canal_display.gd:44` cita `ros_runtime.cpp:122-123` para el `ERR_FAIL_COND` del tipo sin esquema;
+  hoy está en `ros_msg.cpp:161-162`. Es solo una cita en un comentario (V15 no toca código).
+- Las 18 filas ⏳ de doc 36a §4.0.1 y lo abierto de §9.3.
+
+### 13.6 Siguiente paso
+
+1. **Pruebas de hardware del usuario**: guion de `V3-revision.md` §5 + G-V13b; volcar los resultados en §9.0 y en la
+   bitácora.
+2. Según salgan: arreglos de los gates rojos (y, si G-V13b sale rojo, la función de `viz-decode` de esa fila).
+3. **Push / PR** de la rama de la Fase V: preguntar al usuario antes (los commits están sin publicar).
