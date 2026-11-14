@@ -136,6 +136,79 @@ static func trocear(elementos: Array, por_elemento: int, extra: Array = [], seq:
 	return out
 
 
+# --- V9: pose_cov, poses y tf (doc 36 §5.3; referencia `vita_relay_formatos.py`, huellas en pruebas/visor_tf.gd) ---
+##   pose_cov     Float32MultiArray [x, y, yaw, σxx, σxy, σyy, σyaw] (varianzas cov[0], cov[1], cov[7], cov[35]) 2 Hz
+##   poses        Float32MultiArray cab. + [x, y, yaw]·n, n ≤ 36 (diezmado por paso fijo), un trozo, 2 Hz
+##   tf           Float32MultiArray cab. + [idx, x, y, z, qx, qy, qz, qw]·n, n ≤ 8, un trozo, 10 Hz (ejes ROS)
+##   tf_estatico  igual que tf, n ≤ 16, fiable + TRANSIENT_LOCAL
+##   tf_marcos    String «padre>hijo,padre>hijo,…» fiable + TRANSIENT_LOCAL: el índice `idx` de tf y tf_estatico
+const MAX_POSES := 36
+const MAX_TF := 8
+const MAX_TF_ESTATICOS := 16
+
+
+## `geometry_msgs/PoseWithCovariance` (x, y, yaw y la covarianza de 36 por filas) → los 7 valores de pose_cov.
+static func empaquetar_pose_cov(x: float, y: float, yaw: float, cov) -> Array:
+	return [x, y, yaw, cov[0], cov[1], cov[7], cov[35]]
+
+
+## Diezmado por paso fijo (como el scan): `lista[::ceil(n / max_n)][:max_n]`.
+static func diezmar(lista: Array, max_n: int) -> Array:
+	var paso := maxi(1, ceili(float(lista.size()) / max_n))
+	var out := []
+	var i := 0
+	while i < lista.size() and out.size() < max_n:
+		out.append(lista[i])
+		i += paso
+	return out
+
+
+## [[x, y, yaw], …] → UN trozo de `<p>/poses` (cabecera común, n ≤ max_n tras diezmar).
+static func empaquetar_poses(xyyaw: Array, seq: int, max_n: int = MAX_POSES) -> Array:
+	return trocear(diezmar(xyyaw, max_n), 3, [], seq, 4 + 3 * max_n, 1)[0]
+
+
+## [[idx, x, y, z, qx, qy, qz, qw], …] → UN trozo de `<p>/tf` (n ≤ max_n; los que sobran se cortan).
+static func empaquetar_tf(items: Array, seq: int, max_n: int = MAX_TF) -> Array:
+	return trocear(items.slice(0, max_n), 8, [], seq, 4 + 8 * max_n, 1)[0]
+
+
+## `<p>/poses` → PackedVector3Array (x, y, yaw); vacío si la cabecera no vale. Ignora los NaN (T2).
+@warning_ignore("integer_division")
+static func leer_poses(d) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var c := cabecera(d)
+	if c.is_empty():
+		return out
+	for i in mini(int(c.n), (d.size() - 4) / 3):
+		var p := Vector3(d[4 + 3 * i], d[5 + 3 * i], d[6 + 3 * i])
+		if p.is_finite():
+			out.append(p)
+	return out
+
+
+## `<p>/tf` o `<p>/tf_estatico` → [[idx, Vector3 pos ROS, Quaternion ROS], …]; [] si la cabecera no vale.
+@warning_ignore("integer_division")
+static func leer_tf(d) -> Array:
+	var out := []
+	var c := cabecera(d)
+	if c.is_empty():
+		return out
+	for i in mini(int(c.n), (d.size() - 4) / 8):
+		var b := 4 + 8 * i
+		out.append([int(d[b]), Vector3(d[b + 1], d[b + 2], d[b + 3]), Quaternion(d[b + 4], d[b + 5], d[b + 6], d[b + 7])])
+	return out
+
+
+## «padre>hijo,padre>hijo» ↔ PackedStringArray de «padre>hijo».
+static func leer_tf_marcos(s: String) -> PackedStringArray:
+	return s.split(",", false)
+
+
+static func texto_tf_marcos(pares: PackedStringArray) -> String:
+	return ",".join(pares)
+
+
 ## «VC/1.2;scan,pose,…» → {"version": "VC/1.2", "modulos": PackedStringArray}; {} si no es un saludo VC/1.
 ## Con él el HUD distingue «sin datos» (módulo activo, nada llega) de «módulo apagado» (no está en la lista).
 static func leer_relay_info(s: String) -> Dictionary:

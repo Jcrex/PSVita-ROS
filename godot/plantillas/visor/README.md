@@ -82,6 +82,7 @@ compacto), `hz` / `hz_vita` (tope de entrega; `hz_vita` = 0 ⇒ el mismo), `fiab
 
 1. **TF:** `TfLigero` llega con V9. Hasta entonces `visor.tf` es el `RosTfListener` de rclgd si el nodo tiene
    `create_tf_listener`, y si no `null`: `transformada()` supone que todo está en el marco fijo (D3).
+   → **Hecho en V9**: sin `create_tf_listener`, `visor.tf` es un `TfLigero` (ver «TF y poses (V9)»).
 2. **Paleta:** ~~gris provisional~~ → integrada en la revisión V1: `COLOR_CADUCADO` es el gris 242 de la rampa de
    `PaletaViz` (no `Paleta.STALE`, ver «Revisión V1»).
 3. **Transporte:** `ros/transport` del proyecto solo se aplica con `ros2_vita` (detectado por
@@ -417,6 +418,82 @@ docker exec -it vita_station bash -lc "source /opt/ros/jazzy/setup.bash; ros2 to
 Verde: SELECT dos veces → barra «Meta»; un toque con arrastre deja la flecha naranja y **no** publica; ✕ → un solo
 mensaje en el `echo` (`frame_id: map`, posición del toque); cada toque da una sola línea `[visor-herr] Meta toque n=`
 en el log (n sube de uno en uno). Igual con `/initialpose` (covarianza 0,25 / 0,25 / 0,0685) y `/clicked_point` (sin ✕).
+
+## TF y poses (V9)
+
+Estado: **hecho y verde en host** (`pruebas/visor_tf.gd`, 78/78; `python3 docker/scripts/test_vita_relay.py`). **Sin
+probar en vivo contra la estación ni validar en hardware** (gate V9 de doc 36 §10: 8 marcos a 10 Hz con `process` +≤
+0,5 ms y ejes en su sitio frente a RViz). La comparación «mismo resultado que `RosTfListener` en el PC (± 1 mm)» queda
+para el PC con rclgd: el editor de host (ros2_vita) no tiene `create_tf_listener`; la prueba compara con la
+composición de transformadas esperada.
+
+| Archivo | Pieza | Papel |
+|---|---|---|
+| `tf_ligero.gd` | TfLigero (`RefCounted`) | subconjunto de `RosTfListener` con la semántica de `modules/tf-tree`: `lookup_transform`, `can_transform`, `frame_exists`, `get_frame_names`, `get_frame_parent`, `get_last_error`, `clear`; ejes de Godot; ≤ 32 marcos |
+| `displays/3d/tf.gd` | TF (`tf2_msgs/TFMessage`) | EJES por marco consultando `visor.tf` a 10 Hz; flechas hijo → padre y nombres solo en el PC; capa `tf` (8 HMI / 32 Viz) |
+| `displays/2d/poses.gd` | PoseArray / ParticleCloud | triángulos en un lote; en la Vita `<p>/poses` (n ≤ 36); 100 *quads* |
+| `displays/2d/covarianza.gd` | (V5, sin cambios de código) | ya leía `<p>/pose_cov`; ahora existe el módulo del relay |
+| `ros/vc1.gd` | + `empaquetar_pose_cov`, `diezmar`, `empaquetar_poses`, `empaquetar_tf`, `leer_poses`, `leer_tf`, `leer_tf_marcos` | copia de `vita_relay_formatos.py` |
+
+**Fuentes de TfLigero** (D3, 0 B extra por defecto): (1) `<p>/pose2d` → `marco_pose2d` (o el fijo) → `marco_base`,
+suscrito por `VisorRos` en el camino compacto; (2) los links del robot horneado (`robot_joints.gd` llama a
+`registrar_robot`; se leen en vivo de los nodos movidos por `/vita/joints`); (3) `VisorRos.tf_estaticos` en el `.tscn`
+(«`padre>hijo x y z yaw`», ROS); (4) opcional, `tf_relay = true`: `<p>/tf`, `<p>/tf_marcos` y `<p>/tf_estatico`.
+Con esto los displays 2D/3D dejan de dibujarse en el origen: `visor.transformada(frame)` coloca el scan (`base_scan`),
+el robot (`base_link`) y lo demás. `godot/visor-ros/main.tscn` trae el display `TF` y el estático
+`base_link>base_scan -0.032 0 0.172 0` (TurtleBot3 burger [I: valores del URDF de TB3, validar contra la estación]).
+
+**Relay** (`vita_relay.py` + `vita_relay_formatos.py`, doc 36 §5.3): `pose_cov` (2 Hz, 44 B, de `pose_cov_in` =
+`/amcl_pose`), `poses` (2 Hz, ≤ 464 B, de `poses_in` = `/particle_cloud`, `PoseArray` o `nav2_msgs/ParticleCloud`
+con el tipo descubierto en el grafo) y `tf` (10 Hz, ≤ 288 B: hijos de `tf_lista`, por defecto `[odom]` = map → odom;
+`tf_marcos` y `tf_estatico` fiables + TRANSIENT_LOCAL, ≤ 16 estáticos = 544 B). Comprobar: `python3
+docker/scripts/vita_relay.py --comprobar hmi,pose_cov,poses,tf` (23,0 KB/s, 122 dgr/s). El perfil `viz` sigue sin
+arrancar hasta que existan `marcadores` (V8) y `costmap` (V11).
+
+### Decisiones de V9 no cubiertas (las más conservadoras)
+
+1. **TfLigero sin el marco fijo = como sin TF** (D3): mientras no llegue nada que conecte con `marco_fijo` (p. ej. sin
+   relay `pose` o en el host sin relay) `transformada()` devuelve la identidad, como V1–V8. Con el marco fijo
+   conocido, un `frame` desconocido da `null` y el display se oculta con «sin TF» (como RViz).
+2. **`marco_pose2d` = "" ⇒ el fijo** (supone map ≈ odom, la deriva visible de doc 36 §9.3.3). Con el módulo `tf` del
+   relay (lista blanca por defecto `[odom]` = map → odom) la escena pone `marco_pose2d = "odom"`. `pose2d` no se amplía
+   (D5.4).
+3. **`tf_relay` apagado por defecto** (el módulo es opcional): 3 suscripciones más solo si la escena lo pide.
+4. **Estáticos de la escena** como texto `padre>hijo x y z yaw` (solo yaw: montajes planos); una línea que no vale se
+   avisa y se salta. El `tf_estatico` del relay los pisa (mismo hijo).
+5. **Tope de 32 marcos contando padres y raíces**, como `tf-tree` (el esqueleto de doc 36 §2.9.6 solo contaba hijos y
+   no pasaba `test_full`). `registrar_robot` deja 8 huecos libres para pose2d y el relay y registra solo `Node3D` puros
+   sin `urdf_joint` (ni mallas ni juntas ni `RosFrame`/`Base`); supone la estructura de urdf2godot (links bajo
+   `RosFrame`, en ejes de ROS). `link_raiz` del robot debe ser `VisorRos.marco_base`.
+6. **Robot con TfLigero:** si `frame_id` es un marco (por defecto `base_link`), cada pose2d coloca el **display** con
+   `visor.transformada(frame_id)` (no el hijo: así no se suma dos veces) y mete el mismo valor en TfLigero (idempotente;
+   el orden de los callbacks de VisorRos y del robot no está garantizado). Con `frame_id` vacío, como V3.
+7. **Display TF:** cupo `max_marcos_vita` (8) en la Vita y `max_marcos` (32) en el PC (× 2 con flechas); los marcos que
+   no caben no se crean; sin caducidad por marco (TfLigero no guarda sello); nombres apagados por defecto (glifos, D11).
+   No se suscribe a `/tf` aunque `RegistroDisplays.crear()` le ponga ese topic.
+8. **Lo demás se recoloca al llegar su mensaje** (no en cada cambio de TF): el scan a 10 Hz va con la última pose.
+9. **poses:** diezmado por paso fijo (como el scan); los pesos de `ParticleCloud` no se usan; sin `3d/poses.gd`.
+10. **pose_cov lleva varianzas** (`cov[0]`, `cov[1]`, `cov[7]`, `cov[35]`), aunque la tabla §5.3 las llame σ: es lo que
+    ya leía `covarianza.gd` (V5). Su `topic_vita` sigue vacío por defecto: el directo de 364 B cabe en la Vita.
+11. **tf del relay:** índices fijos por orden de llegada; un hijo que cambia de padre ocupa un índice nuevo; `/tf_static`
+    se suscribe fiable + TRANSIENT_LOCAL; el `tf_estatico` que llega antes que `tf_marcos` se reaplica al llegar éste.
+12. **Prueba de bytes** con la huella de los **bits float32** (`huella_f32`), en `pruebas/visor_tf.gd` y
+    `test_vita_relay.py` (no en `pruebas/runner.gd`, para no chocar con V8 en paralelo).
+
+```fish
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_tf.gd   # RESULTADO: 78/78
+python3 docker/scripts/test_vita_relay.py                                        # TODO OK
+```
+
+**En la Vita** (gate V9; con `docker/vita-ros.sh up`, una fuente con `/tf` map → odom, p. ej. Nav2 + TB3, y el `.vpk`
+de `visor-ros` con `tf_relay = true` y `marco_pose2d = "odom"` en `VisorRos`):
+
+```fish
+docker/vita-ros.sh relay hmi,tf,pose_cov,poses
+```
+
+Verde: el scan sigue al robot en la planta (no en el origen); la vista orbital enseña los EJES de map, odom, base_link
+y base_scan donde los pone RViz; `[perfil-gd] … visor/TF=` ≤ 500 µs más que sin el display; `relay_bw` +≤ 4 KB/s.
 
 ## Relay VC/1 rev. 2: base + `rosout`, `diag`, `ritmo` (V6)
 

@@ -5,7 +5,7 @@ extends "res://comun/visor/display_ros_3d.gd"
 ##   PC   : `topic` (JointState) → `_procesar`. La base se coloca con TF (`frame_id`, p. ej. "base_link").
 ##   Vita : `<p>/joints` (Float32MultiArray en el orden de `<p>/joints_orden`, String F+TL; 25 Hz, ≤ 118 juntas)
 ##          → `_procesar_compacto`. JointState del G1 son 1 668 B y no cabe (docs/27:76-77). Sin TF en la Vita
-##          (TfLigero llega con V9), la base se coloca con `<p>/pose2d` (x, y, yaw en el suelo).
+##          (sin TfLigero), la base se coloca con `<p>/pose2d` (x, y, yaw en el suelo); con TfLigero, ver «V9».
 ## Dato intermedio común: [PackedStringArray nombres, posiciones (PackedFloat64Array o PackedFloat32Array)].
 ##
 ## Decisiones de V3 (las más conservadoras):
@@ -15,6 +15,10 @@ extends "res://comun/visor/display_ros_3d.gd"
 ##     Mueve el nodo del robot en el plano (conserva la altura propia de su base).
 ##   - Sin `escena_robot`: se dibujan unos EJES (1 instancia) en la base para ver al menos dónde está.
 ##   - `instancias` (40) es lo que se reserva; si la escena tiene más mallas se avisa una vez (no se recorta).
+## V9 (TfLigero, doc 36 §2.9.6): los links de `escena_robot` se registran en `visor.tf` (fuente «por nodo», 0 B) y,
+##   si `frame_id` es un marco (p. ej. "base_link" = `VisorRos.marco_base`), la base se coloca con
+##   `visor.transformada(frame_id)` en cada pose2d (el display entero, no el hijo: así no se suma dos veces). Con
+##   `frame_id` vacío o el fijo, pose2d mueve el hijo como en V3.
 
 const Prim = preload("res://comun/visor/primitivas_viz.gd")
 const VitaRelay = preload("res://comun/vita_relay.gd")
@@ -59,6 +63,8 @@ func conectar(v) -> void:
 			robot = Prim.instancia(Prim.EJES)
 			robot.scale = Vector3.ONE * 0.5
 		add_child(robot)                                  # sin owner: no se guarda en la escena (doc 35)
+		if escena_robot != null and v.has_method("es_tf_ligero") and v.es_tf_ligero():
+			v.tf.registrar_robot(robot, link_raiz)        # V9: marcos de los links sin tráfico (D3)
 	if estado == "ok" and canal.compacto:
 		var n = v.contexto.nodo
 		var pre: String = v.prefijo_compacto.trim_suffix("/")
@@ -78,7 +84,19 @@ func _al_orden(m) -> void:
 
 
 func _al_pose2d(m) -> void:
-	if visor == null or visor.tf != null or robot == null:
+	if visor == null or robot == null:
+		return
+	var ligero: bool = visor.has_method("es_tf_ligero") and visor.es_tf_ligero()
+	if visor.tf != null and not ligero:
+		return                                            # RosTfListener: manda TF
+	if ligero and frame_id != "" and frame_id != visor.marco_fijo:
+		# V9: el mismo valor que mete VisorRos (idempotente; el orden de los dos callbacks no está garantizado).
+		visor.tf.desde_pose2d(m.data, visor.marco_mundo_pose2d(), visor.marco_base)
+		var tb = visor.transformada(frame_id)
+		if tb != null:
+			marco = tb
+			transform = tb
+			poses_base += 1
 		return
 	var d: Dictionary = VitaRelay.pose2d(m)
 	if d.is_empty():
