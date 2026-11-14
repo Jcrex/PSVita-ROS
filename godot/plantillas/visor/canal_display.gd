@@ -41,7 +41,7 @@ func abrir_para(d, v) -> String:
 	if t == "" or ti == "":
 		return "sin topic"
 	# Sin esquema (.rsch en la Vita) o sin typesupport (PC) no se suscribe: en la Vita cada muestra de un tipo
-	# desconocido sería un ERR_FAIL_COND (trampa T20; ros_runtime.cpp:122-123).
+	# desconocido sería un ERR_FAIL_COND (trampa T20; ros_msg.cpp:161-162).
 	if RosMsg.from_type(ti) == null:
 		return "sin esquema: " + ti
 	hz = d.hz_vita if (v.en_vita and d.hz_vita > 0.0) else d.hz
