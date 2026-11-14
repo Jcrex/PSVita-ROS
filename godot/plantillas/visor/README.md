@@ -697,7 +697,7 @@ Funciones puras en `vita_relay_formatos.py` (bloque «percepción (V10)»: `empa
 misma salida), `empaquetar_nube`, `cdr_compressed_image` (= rosbags), `tam_camara`, `recomprimir_camara`); el NODO de
 estos módulos va aparte en `vita_relay_percepcion.py` (`vita_relay.py` solo llama a `iniciar_percepcion`). Parámetros:
 `camara_in` (`/camera/color/image_raw/compressed`; Image o CompressedImage, tipo descubierto en el grafo),
-`camara_hz` (3; máx. 5; 0 apaga), `det2d_in` (`/detections`), `det2d_tam` (`[640, 480]`), `det3d_in`
+`camara_hz` (3; hasta 5 solo si el relay entero sigue ≤ 40 KB/s nominales, juez V3; 0 apaga), `det2d_in` (`/detections`), `det2d_tam` (`[640, 480]`), `det3d_in`
 (`/detections_3d`), `nube_in` (`/points`), `marco_fijo` (`map`, compartido con marcadores). **`vc1.gd`** gana el bloque
 «percepción» (mismas funciones; huellas cruzadas det2d/det3d float32 y nube int16 en `test_vita_relay.py` y
 `pruebas/visor_percepcion.gd`). Fuente sintética: `docker/vita-ros.sh fuente-v2 percepcion`.
@@ -738,6 +738,7 @@ main → main_viz → banco_v5 → main_percepcion → main): una sola `.vpk` pa
 10. **Prueba de bytes en `pruebas/visor_percepcion.gd`** (no en `runner.gd`, como V8).
 11. **Hallazgo** (no corregido, fuera de V10): `2d/pose.gd` (Odom) pide 101 *quads* y doc 36 §7.2 le da 100; con la
     nube (228) la zona `sensores_2d` de `main_percepcion.tscn` se pasa en 1 y Odom recibe 99 (aviso en el log).
+    **Resuelto:** revisión V3 (Odom pide 100) y juez V3 F2 (`max_rastro = 98` en `main_percepcion.tscn`: 800 justos).
 
 ```fish
 python3 docker/scripts/test_vita_relay.py                                               # … percepción ok, TODO OK
@@ -769,7 +770,8 @@ ya arranca**: 35,0 KB/s, 153 dgr/s). `vita_relay_formatos.py` gana el bloque «V
 `factor_costmap`, `reducir_costmap`, `empaquetar_tesela_costmap`/`desempaquetar_…`, `teselas_costmap`,
 `meta_costmap` y `EstadoCostmap`, el módulo sin ROS: completo, parches, época y cola). Parámetros del nodo:
 `costmap_in` (`/global_costmap/costmap`), `costmap_updates_in` (`costmap_in` + `_updates`, `map_msgs/OccupancyGridUpdate`)
-y `costmap_res_min` (0,1 m). **`vc1.gd`** gana el bloque «costmap» (mismas funciones; huella de enteros
+`costmap_res_min` (0,1 m) y `costmap_teselas_max` (30; juez V3: el relay baja la resolución hasta caber en 30
+teselas; 0 = sin tope). **`vc1.gd`** gana el bloque «costmap» (mismas funciones; huella de enteros
 `HUELLA_COSTMAP` cruzada en `test_vita_relay.py` y `pruebas/visor_costmap.gd`). Estación: `docker/vita-ros.sh
 fuente-costmap [s]` (`docker/scripts/fuente_prueba_costmap.py`). **Escena:** `godot/visor-ros/main.tscn` trae
 `Planta/Vista/Costmap` (`/global_costmap/costmap`) justo después de `Mapa`. **RegistroDisplays:** `*/costmap_tesela`
@@ -791,6 +793,7 @@ y todo `OccupancyGrid` cuyo topic contenga «costmap» → `2d/costmap.gd`.
    10 × 10 m de la prueba, pero **9,1 s** con el de 20 × 20 m a 10 cm que cita doc 36a §4.6.2 (91 teselas). Lo
    cambiado (parches) sale primero y cerca del robot antes, así que lo que se mueve llega en < 1 s. Contradicción
    anotada para el juez: o el gate se lee «parches ≤ 3 s», o `costmap` necesita ≈ 30 teselas/s (8,3 KB/s, 30 dgr/s).
+   **Resuelto (juez V3, F1):** el presupuesto no cambia; `costmap_teselas_max` = 30 limita el repaso a ≤ 3 s.
 6. **Composición por regiones** (tesela del mapa = 32×32 px; tesela del costmap = sus píxeles); más de 24 regiones
    pendientes → una completa. La mezcla es `Image.blend_rect` (alfa del costmap en la LUT, 0,7 como RViz) y la alfa
    del Mapa (0,85) se aplica al dibujar. Con escala entera y orígenes alineados al píxel del mapa, recomponer por
@@ -817,7 +820,8 @@ docker/vita-ros.sh relay hmi,costmap        # 21,9 KB/s, 118 dgr/s
 
 **En la Vita** (gate G-W13-M5; Nav2 + TB3 en la estación, o `fuente-costmap`, y el `.vpk` de `visor-ros`):
 `docker/vita-ros.sh relay hmi,costmap`. Verde: el costmap aparece sobre el mapa en la planta (paredes magenta con
-borde cian y degradado azul → rojo), un repaso completo en ≤ 3 s para un costmap de ≤ 30 teselas, ≥ 30 FPS y
+borde cian y degradado azul → rojo), un repaso completo en ≤ 3 s (el relay limita el costmap a 30 teselas con
+`costmap_teselas_max`; el mapa del TB3 viaja a 20 cm en 18 teselas), un parche visible en < 1 s, ≥ 30 FPS y
 `[visor-costmap] … composicion_us=` ≤ 4 000.
 ## Inspector, trazador y explorador de topics (V12)
 
@@ -870,4 +874,23 @@ pendientes del visor). Cambios:
 - Logs nuevos para los gates: `[visor-imagen] imagenes= rechazadas= ms_ultimo= ms_max=` (E-W8-5, pestaña Cámara
   visible) y `[visor-nube] trozos= completas= us_ultimo= us_max= puntos=` (V10), cada 5 s en la Vita o con `-- perfil`.
 - Relay: aviso si `camara_hz` > 3 (el presupuesto declarado del perfil `percepcion` es a 3 Hz).
+
+## Decisiones del juez sobre la fase V3 (2026-11-14)
+
+`docs/ia/workshops/posts/V3-juez-fable.md` (resuelve los desafíos D1–D3 de la revisión V3):
+
+- **Gate G-W13-M5 (D1):** el presupuesto del costmap no cambia (10 teselas/s). El relay gana `costmap_teselas_max`
+  (30; 0 = sin tope): `factor_costmap_tope()` sube el factor entero de reducción hasta que el costmap quepa en 30
+  teselas (TB3 384 × 384 a 5 cm → 20 cm y 18 teselas; 20 × 20 m → 28 teselas). Gate: repaso ≤ 3 s, parche < 1 s,
+  ≥ 30 FPS. Es política del relay, no formato: `vc1.gd` no cambia (la Vita lee la resolución de `costmap_meta`).
+- **`sensores_2d` (D2):** `main_percepcion.tscn` fija `max_rastro = 98` en `Planta/Vista/Odom` (regla doc 35):
+  Mapa 1 + Costmap 1 + Plan 112 + Nube 228 + Scan 360 + Odom 98 = 800 justos, sin aviso. Mapa y Costmap siguen en
+  `sensores_2d` (la capa `mundo` cuenta instancias 3D).
+- **`camara_hz` (D3):** `camara_hz_efectivo()` concede más de 3 Hz (máx. 5) solo si la suma nominal del relay con la
+  cámara a ese ritmo sigue ≤ 40 KB/s y ≤ 200 dgr/s; si no, 3 Hz y aviso. `percepcion` → 3; `hmi,camara` → 5.
+
+```fish
+python3 docker/scripts/test_vita_relay.py                                               # TODO OK
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_percepcion.gd  # RESULTADO: 66/66
+```
 

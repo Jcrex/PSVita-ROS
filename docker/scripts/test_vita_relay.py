@@ -148,6 +148,19 @@ def test_presupuesto():
     assert r.returncode == 1 and "NO arranca" in r.stdout, (r.returncode, r.stdout)
     r = subprocess.run([sys.executable, script, "--comprobar", "hmi"], capture_output=True, text=True)
     assert r.returncode == 0 and "19.1 KB/s" in r.stdout, r.stdout
+    # [juez V3, D3] camara_hz: > 3 Hz solo si el relay entero sigue ≤ 40 KB/s nominales.
+    per = vf.PERFILES["percepcion"]
+    hz, kb, motivo = vf.camara_hz_efectivo(per, 3)
+    assert hz == 3.0 and abs(kb - 39.998) < 0.001 and motivo == ""
+    hz, kb, motivo = vf.camara_hz_efectivo(per, 5)                               # 46,0 KB/s: se queda en 3
+    assert hz == 3.0 and kb <= vf.KB_PERFIL_MAX and "46.0 KB/s" in motivo, (hz, kb, motivo)
+    hz, kb, motivo = vf.camara_hz_efectivo(vf.PERFILES["hmi"] + ["camara"], 5)   # 19,1 + 15,0 = 34,1: concedido
+    assert hz == 5.0 and abs(kb - 34.1) < 0.1 and motivo == "", (hz, kb, motivo)
+    hz, kb, motivo = vf.camara_hz_efectivo(vf.PERFILES["hmi"] + ["camara"], 9)   # tope duro 5
+    assert hz == 5.0 and "máximo" in motivo
+    assert vf.camara_hz_efectivo(vf.PERFILES["viz"] + ["camara"], 5)[0] == 3.0   # 50 KB/s: no
+    assert vf.camara_hz_efectivo(["camara"], 4)[0] == 4.0 and vf.camara_hz_efectivo(per, 2)[0] == 2.0
+    assert vf.camara_hz_efectivo(per, 0)[0] == 0.0 and vf.camara_hz_efectivo(per, float("nan"))[0] == 0.0
     print("presupuesto ok")
 
 
@@ -645,6 +658,23 @@ def test_costmap():
     assert len(e.cola) == 4 and tuple(e.siguiente(pos)[2:4]) == (1, 1)            # cercanas primero
     meta2 = e.grid(cerca, 70, 37, 0.05, -0.5, -2.0)                               # origen nuevo → época nueva
     assert meta2 is not None and meta2[7] == 2.0 and len(e.cola) == 4 and e.siguiente()[0] == 2
+    # [juez V3, D1] Tope de 30 teselas (repaso ≤ 3 s a 10/s): el relay baja la resolución con factor entero.
+    assert vf.factor_costmap_tope(0.05, 200, 200) == 2                            # fuente de prueba 10 × 10 m: 28 teselas
+    assert vf.factor_costmap_tope(0.05, 400, 400) == 4                            # 20 × 20 m: 91 → 28 teselas a 20 cm
+    assert vf.factor_costmap_tope(0.05, 384, 384) == 4                            # mapa del TB3: 72 → 18 teselas a 20 cm
+    assert vf.factor_costmap_tope(0.05, 400, 400, teselas_max=0) == 2             # sin tope: solo res_min
+    assert vf.factor_costmap_tope(0.05, 70, 37) == 2 and vf.factor_costmap_tope(0.0, 10, 10) == 1
+    for (w, h) in ((1, 1), (384, 384), (1000, 300), (4000, 4000), (33, 5000)):
+        ff = vf.factor_costmap_tope(0.05, w, h)
+        nx, ny = vf.teselas_costmap(-(-w // ff), -(-h // ff))
+        assert nx * ny <= vf.TESELAS_MAX_COSTMAP and ff >= 2, (w, h, ff)
+    g = vf.EstadoCostmap()
+    mg = g.grid([0] * (384 * 384), 384, 384, 0.05, 0.0, 0.0)
+    assert g.f == 4 and abs(mg[0] - 0.2) < 1e-9 and mg[1:3] == [96.0, 96.0] and mg[5:7] == [3.0, 6.0] and len(g.cola) == 18
+    assert g.update(100, 100, 2, 2, [100] * 4) == [(0, 1)]                        # parche con f = 4: celda (25, 25)
+    assert vf.desempaquetar_tesela_costmap(g.siguiente())[3][(25 - 16) * 32 + 25] == 15
+    g0 = vf.EstadoCostmap(teselas_max=0)
+    assert g0.grid([0] * (384 * 384), 384, 384, 0.05, 0.0, 0.0)[5:7] == [6.0, 12.0]   # 72 teselas = 7,2 s
     script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
     rr = subprocess.run([sys.executable, script, "--comprobar", "viz"], capture_output=True, text=True)
     assert rr.returncode == 0 and "costmap" in rr.stdout and "35.0 KB/s" in rr.stdout, rr.stdout

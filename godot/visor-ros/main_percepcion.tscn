@@ -12,6 +12,9 @@
 script = ExtResource("v10_nube")
 topic = "/points"
 
+[node name="Odom" parent="VisorRos/Planta/Vista"]
+max_rastro = 98
+
 [node name="Cajas3D" type="Node2D" parent="VisorRos/Marcas2D"]
 script = ExtResource("v10_cajas3d")
 topic = "/detections_3d"

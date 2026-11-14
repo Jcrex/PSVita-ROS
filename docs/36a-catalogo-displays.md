@@ -1437,7 +1437,7 @@ tamaño y formato.
 #### 4.5.6 Imagen en la Vita y `CompressedImage` (`hud/imagen_comprimida.gd`) — V sens#10; D sens#9 → ⚖ D13
 
 ⚖ D13: la Vita **nunca** recibe imagen cruda. Relay `<p>/camara/compressed` = `sensor_msgs/msg/CompressedImage`
-JPEG **160×120 q40** (≤ 3 KB), **fiable**, **3 Hz** por defecto (parámetro `camara_hz`, máximo 5; la ficha decía 5).
+JPEG **160×120 q40** (≤ 3 KB), **fiable**, **3 Hz** por defecto (parámetro `camara_hz`, máximo 5 y solo si el relay entero sigue ≤ 40 KB/s nominales: con el perfil `percepcion` se queda en 3, `V3-juez-fable.md` F3; la ficha decía 5).
 Mismo script en PC y Vita (el tipo estándar ya está en `generar_esquemas.py:25`): decodifica el motor
 (`Image.load_jpg_from_buffer`/`load_png_from_buffer`, H22; libjpeg sin SIMD en la Vita). La recepción fiable no
 bloquea el hilo principal (la que bloquea es la emisión, `docs/27:13-15`). Coste Vita [I]: 1–2 ms decodificar +

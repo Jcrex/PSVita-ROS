@@ -528,10 +528,15 @@ func _probar_escena() -> void:
 	check(nb.canal.topic_abierto == "/vita/nube2d" and c3.canal.topic_abierto == "/vita/detecciones3d"
 			and im.canal.topic_abierto == "/vita/camara/compressed" and cj.canal.topic_abierto == "/vita/detecciones",
 			"escena: los 4 displays de percepción por el relay")
-	# Revisión V3: Odom pide 100 (no 101); con Mapa 1 + Costmap 1 la zona sensores_2d sigue 2 por encima (DESAFÍO).
+	# Juez V3 (D2): con Mapa 1 + Costmap 1 + Plan 112 + Nube 228 + Scan 360 quedan 98 para Odom; la escena lo dice
+	# (`max_rastro = 98`, propiedad editable, doc 35) y la zona sensores_2d suma 800 justos, sin recorte ni aviso.
 	var od: Node = v.get_node("Planta/Vista/Odom")
-	check(od._coste().quads == 100 and v.usado("sensores_2d") <= 800,
-			"escena: Odom pide 100 quads (doc 36 §7.2) y sensores_2d = %d ≤ 800 (Odom recibe %d)" % [v.usado("sensores_2d"), od.cupo])
+	check(od.max_rastro == 98 and od._coste().quads == 98 and od.cupo == 98 and v.usado("sensores_2d") == 800,
+			"escena: Odom pide 98 quads y recibe %d; sensores_2d = %d (800 justos)" % [od.cupo, v.usado("sensores_2d")])
+	var od_main: Node = load("res://main.tscn").instantiate()
+	check(od_main.get_node("VisorRos/Planta/Vista/Odom")._coste().quads == 100,
+			"escena: en main.tscn Odom sigue pidiendo 100 quads (doc 36 §7.2)")
+	od_main.free()
 	check(nb.cupo == 228 and c3.cupo == 144 and cj.imagen == im, "escena: cupos (nube 228, cajas 3D 144 de resto_2d) y cajas sobre la imagen")
 	var g: Node = v.get_node("Hud/GestorHud")
 	var k := -1

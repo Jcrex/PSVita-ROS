@@ -6,7 +6,7 @@ Parte de NODO (con ROS) de la percepción. Las funciones puras (referencia de by
 solo llama a `iniciar_percepcion(nodo, mods)`: así este bloque no se mezcla con los de otros módulos.
 
 Salidas (prefijo `<p>` = /vita o /vita/<robot>):
-  <p>/camara/compressed  sensor_msgs/CompressedImage  FIABLE (prof. 1)  `camara_hz` (3; máx. 5; 0 = apagado)
+  <p>/camara/compressed  sensor_msgs/CompressedImage  FIABLE (prof. 1)  `camara_hz` (3; hasta 5 si el relay sigue ≤ 40 KB/s; 0 = apagado)
                          JPEG ≤ 160×120 q40, mensaje ≤ 2 994 B (baja la calidad si no cabe; si ni así, se salta)
   <p>/detecciones        Float32MultiArray BE 5 Hz  [seq, 0, 1, n, ancho, alto, (clase, score, cx, cy, w, h)·n] n ≤ 18
   <p>/det_clases         String FIABLE + TRANSIENT_LOCAL  nombres de clase por índice (al cambiar)
@@ -22,7 +22,7 @@ camara no lo sabe), det3d_in (/detections_3d), nube_in (/points), marco_fijo (ma
 """
 import math
 
-from vita_relay_formatos import (CAMARA_HZ, CAMARA_HZ_MAX, MAX_BE, TablaClasesDet, cdr_compressed_image,
+from vita_relay_formatos import (CAMARA_HZ, MAX_BE, camara_hz_efectivo, TablaClasesDet, cdr_compressed_image,
                                  cdr_multiarray, componer, empaquetar_det2d, empaquetar_det3d, empaquetar_nube,
                                  recomprimir_camara, voxelizar_nube_np, yaw_de_quat, IDENTIDAD)
 
@@ -102,10 +102,12 @@ class Percepcion:
         if "det2d" in mods or "det3d" in mods:
             self.p_clases = nodo.create_publisher(String, pre + "/det_clases", latched)
         if "camara" in mods:
-            hz = min(float(_param_percepcion(nodo, "camara_hz", CAMARA_HZ)), CAMARA_HZ_MAX)
-            if hz > CAMARA_HZ:                       # revisión V3: el presupuesto declarado (PRESUPUESTO) es a 3 Hz
-                nodo.get_logger().warning(f"camara: {hz:g} Hz > {CAMARA_HZ:g} Hz declarados: +{(hz - CAMARA_HZ) * 2.994:.1f}"
-                                          " KB/s sobre el perfil (percepcion pasa de 40 KB/s)")
+            # [juez V3, D3] más de 3 Hz solo si el relay entero sigue ≤ 40 KB/s nominales (camara_hz_efectivo).
+            hz, kb_cam, motivo = camara_hz_efectivo(mods, _param_percepcion(nodo, "camara_hz", CAMARA_HZ))
+            if motivo:
+                nodo.get_logger().warning("camara: " + motivo)
+            elif hz > CAMARA_HZ:
+                nodo.get_logger().info(f"camara: {hz:g} Hz concedidos ({kb_cam:.1f} KB/s nominales ≤ 40)")
             self.cam_in = _param_percepcion(nodo, "camara_in", "/camera/color/image_raw/compressed")
             self.cam = None
             self.sub_cam = None
