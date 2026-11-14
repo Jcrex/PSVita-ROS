@@ -46,7 +46,7 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
   /vita/detecciones3d  Float32MultiArray 5 Hz   cab. + [clase, score, x, y, z, yaw, sx, sy, sz]·n, n ≤ 12   [det3d]
   /vita/nube2d         Int16MultiArray 5 Hz × ≤ 3  cab. + xyz cm·n, n ≤ 76, vóxel 10 cm, ≤ 228 puntos       [nube]
   --- V11: costmap (doc 36 §5.3, 36a §4.6.2; parámetros costmap_in (/global_costmap/costmap), costmap_updates_in
-      (costmap_in + _updates, map_msgs/OccupancyGridUpdate), costmap_res_min (0.1 m)) ---
+      (costmap_in + _updates, map_msgs/OccupancyGridUpdate), costmap_res_min (0.1 m), costmap_teselas_max (30)) ---
   /vita/costmap_meta   Float32MultiArray FIABLE + TRANSIENT_LOCAL  [res, ancho, alto, ox, oy, tx, ty, época] (32×16)
   /vita/costmap_tesela UInt8MultiArray   ≤ 10/s [ver_lo, ver_hi, tx, ty, 256 B = 32×16 celdas a 4 bit]: 0 desconocido,
                         1 libre, 2–13 degradado, 14 inscrito, 15 letal; reducido por máximo a ≥ 10 cm; primero las
@@ -80,7 +80,7 @@ from vita_relay_formatos import (MAX_BE, TESELA, PlanDiag, CuboBytes, cdr_multia
 from vita_relay_formatos import (IDENTIDAD, EstadoMarcadores, PlanRonda, empaquetar_marcadores,  # noqa: E402
                                  empaquetar_puntos, texto_marcador)
 from vita_relay_percepcion import iniciar_percepcion  # noqa: E402  (V10: camara, det2d, det3d, nube)
-from vita_relay_formatos import EstadoCostmap, RES_MIN_COSTMAP  # noqa: E402  (V11)
+from vita_relay_formatos import EstadoCostmap, RES_MIN_COSTMAP, TESELAS_MAX_COSTMAP  # noqa: E402  (V11)
 import math  # noqa: E402
 
 
@@ -256,7 +256,10 @@ def main():
                 # Módulo costmap (V11): OccupancyGrid del costmap (+ sus _updates) → teselas 32×16 a 4 bit, ≤ 10/s.
                 if "pose" not in mods and "mapa" not in mods:            # odometría: teselas cercanas primero
                     self.create_subscription(Odometry, p("odom_in", "/odom").value, self._on_odom, 10)
-                self.est_costmap = EstadoCostmap(p("costmap_res_min", RES_MIN_COSTMAP).value)
+                # [juez V3, D1] costmap_teselas_max (30): el relay baja la resolución hasta que el costmap quepa en
+                # 30 teselas (repaso ≤ 3 s a 10/s, gate G-W13-M5); 0 = sin tope (solo costmap_res_min).
+                self.est_costmap = EstadoCostmap(p("costmap_res_min", RES_MIN_COSTMAP).value,
+                                                 p("costmap_teselas_max", TESELAS_MAX_COSTMAP).value)
                 cm_in = p("costmap_in", "/global_costmap/costmap").value
                 # Nav2 publica el costmap fiable + TRANSIENT_LOCAL (costmap_2d_publisher.cpp): latched casa con él.
                 self.create_subscription(OccupancyGrid, cm_in, self._on_costmap, latched)

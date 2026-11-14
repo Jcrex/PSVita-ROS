@@ -1487,7 +1487,7 @@ de la escena por capa y falla si pasa el cupo (comprobable en host).
 | Zona | *Quads* | Contenido |
 |---|---:|---|
 | **HUD** | **400** | barra fija ≤ 120 (24 px arriba: batería, enlace y Hz, meta, herramienta) + pestaña activa ≤ 240 (320 × 496 px a la derecha) + texto superpuesto ≤ 40 |
-| Sensores 2D | 800 | scan ≤ 360, nube ≤ 228, path ≤ 112, poses y odometría ≤ 100 |
+| Sensores 2D | 800 | scan ≤ 360, nube ≤ 228, path ≤ 112, poses y odometría ≤ 100; las texturas de planta (mapa y costmap, 1 cada una) cuentan aquí: con scan, nube y path completos quedan 98 para poses (`max_rastro = 98` en `main_percepcion.tscn`; `V3-juez-fable.md` F2) |
 | Resto | 300 | marcadores 2D ≤ 150, detecciones ≤ 150 |
 
 | Pestaña (`GestorHud`, una visible) | Límite en la Vita | Displays |
@@ -1568,7 +1568,7 @@ herramientas ≤ 364 B por evento; `/vita/joy` 128 B × 20 Hz = 2,6 KB/s; feedba
 | **G-W13-M2** | 48 marcadores publicados (más que el relay, 33, y que el cupo, 12 / 32) con `lifetime` 2 s y DELETEALL por ns, 5 min | nº de nodos = cupo y de hijos constante, `[vita-memory]` estable | V8 (opcional) |
 | **G-W13-M3** | `<p>/marcadores` con 33 marcadores (3 trozos) y 10 % de pérdida (netem), perfil HMI | sin fantasmas > 0,4 s, `process` ≤ 4 ms, ≤ 15 KB/s | D14, V8 |
 | **G-W13-M4** | mapa 384² por relay con LUT + `blit_rect` | `process` ≤ 4 ms, textura estable 5 min | V3 |
-| **G-W13-M5** | costmap 4 bit (Nav2 + TB3) | repaso completo ≤ 3 s, ≥ 30 FPS | V11 |
+| **G-W13-M5** | costmap 4 bit (Nav2 + TB3) con el tope del relay `costmap_teselas_max` = 30 | repaso completo ≤ 3 s (≤ 30 teselas a 10/s), parche de `_updates` visible en < 1 s, ≥ 30 FPS, `composicion_us` ≤ 4 000 | V11 |
 | **G-W13-M6** | arrastre táctil de `basic_controls` | POSE_UPDATE ≈ 20 Hz, latencia < 150 ms | V14 |
 | **G-W13-M7** | LINE_STRIP 50 puntos y POINTS 180 en 2D con la cámara orbitando | `process` + `canvas` ≤ 2–3 ms | V8 |
 
@@ -1576,6 +1576,14 @@ herramientas ≤ 364 B por evento; `/vita/joy` 128 B × 20 Hz = 2,6 KB/s; feedba
 **cupo del perfil** (12 en HMI, 32 en Viz), no «48» (esa cifra era marcadores + poses + rastro de `docs/31:237-246`); el
 relay sigue en 33 y los cupos de §7.1 no cambian. El gate de hardware de V5 se corre en `godot/visor-ros/banco_v5.tscn`
 y el perfil Viz en `main_viz.tscn`; se cambia de escena en la Vita sin reexportar con L + R + START (`selector_escena.gd`).
+
+**Enmienda 2026-11-14 (b)** (juez, `docs/ia/workshops/posts/V3-juez-fable.md` F1–F3): **G-W13-M5** se mide con el tope
+de teselas del relay: `costmap_teselas_max` = 30 hace que el relay baje la resolución (factor entero, por máximo) hasta
+que el costmap quepa en 30 teselas, de modo que el repaso a 10 teselas/s (§5.3, sin cambios) es ≤ 3 s también con el
+mapa del TB3 (384 × 384 a 5 cm → 20 cm, 18 teselas; antes 72 teselas = 7,2 s). Con el tope a 0 el repaso tarda
+`teselas / 10` s y queda fuera del gate. `sensores_2d` (§7.2): Mapa y Costmap cuentan 1 *quad* cada uno dentro de los
+800; `main_percepcion.tscn` fija `max_rastro = 98` en Odom. `camara_hz` > 3 (§5.3) solo se concede si el relay entero
+sigue ≤ 40 KB/s nominales (`percepcion`: 3 Hz; `hmi,camara`: hasta 5).
 
 ### 9.2 Fichas «Por medir» y su gate
 

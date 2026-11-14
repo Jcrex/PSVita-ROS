@@ -813,6 +813,35 @@ CAMARA_MAX_B = 2994       # bytes del mensaje CompressedImage con rosbags (CDR +
 #                           no 3 000: el máximo con el que el perfil `percepcion` suma ≤ 40,0 KB/s (39,998; con 3 000, 40,016)
 CAMARA_HZ = 3.0
 CAMARA_HZ_MAX = 5.0
+KB_PERFIL_MAX = 40.0      # [juez V3, D3] suma nominal del mayor perfil declarado (percepcion; ADR 0013 §5, doc 36 §5.4)
+
+
+def camara_hz_efectivo(modulos, pedido):
+    """[juez V3, D3] Ritmo real del módulo `camara`: (Hz, KB/s nominales del relay con ese ritmo, motivo o "").
+    El presupuesto declarado (PRESUPUESTO["camara"]) es a CAMARA_HZ = 3 Hz. Más de 3 Hz (hasta CAMARA_HZ_MAX = 5)
+    solo se concede si la suma nominal de los módulos activos, con la cámara al ritmo pedido, sigue dentro de
+    KB_PERFIL_MAX (40 KB/s) y de DGR_MAX (200 dgr/s); si no, se queda en 3 Hz y `motivo` dice por qué.
+    Así `percepcion` (39,998 KB/s a 3 Hz) nunca pasa de 3, y `hmi,camara` admite 5 (34,2 KB/s). ≤ 0 = apagado."""
+    pedido = float(pedido)
+    if not math.isfinite(pedido) or pedido <= 0:
+        return 0.0, None, ""
+    mods = ["nucleo", *[m for m in modulos if m not in ("nucleo", "camara")]]
+    kb0 = sum(PRESUPUESTO[m][0] * PRESUPUESTO[m][1] for m in mods) / 1000.0
+    dgr0 = sum(PRESUPUESTO[m][0] * PRESUPUESTO[m][2] for m in mods)
+    _, b_cam, dgr_cam = PRESUPUESTO["camara"]
+
+    def suma(hz):
+        return kb0 + hz * b_cam / 1000.0, dgr0 + hz * dgr_cam
+
+    hz = min(pedido, CAMARA_HZ_MAX)
+    motivo = "" if pedido <= CAMARA_HZ_MAX else f"camara_hz {pedido:g} > máximo {CAMARA_HZ_MAX:g}"
+    if hz > CAMARA_HZ:
+        kb, dgr = suma(hz)
+        if kb > KB_PERFIL_MAX or dgr > DGR_MAX:
+            motivo = (f"camara_hz {hz:g} daría {kb:.1f} KB/s y {dgr:.0f} dgr/s (> {KB_PERFIL_MAX:g} KB/s o"
+                      f" {DGR_MAX:g} dgr/s): se queda en {CAMARA_HZ:g} Hz")
+            hz = CAMARA_HZ
+    return hz, suma(hz)[0], motivo
 
 
 def _finito_percepcion(*vals):
@@ -1031,6 +1060,8 @@ IMPLEMENTADOS.update({"camara", "det2d", "det3d", "nube"})    # V10 (bloque adit
 TESELA_X_COSTMAP = 32
 TESELA_Y_COSTMAP = 16
 RES_MIN_COSTMAP = 0.10            # m/celda: por debajo, el relay reduce por máximo (36a §4.6.2)
+TESELAS_MAX_COSTMAP = 30          # [juez V3, D1] teselas del costmap reducido: 30 a 10/s = repaso ≤ 3 s (G-W13-M5);
+#                                   si no caben, el relay baja más la resolución (TB3 19,2 m a 5 cm → 20 cm, 18 teselas)
 LUT16_COSTMAP = (255, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 98, 99, 100)   # nivel → valor de la paleta
 
 
@@ -1055,6 +1086,22 @@ def factor_costmap(res, res_min=RES_MIN_COSTMAP):
     if res <= 0:
         return 1
     return max(1, math.ceil(res_min / res - 1e-6))
+
+
+def factor_costmap_tope(res, ancho, alto, res_min=RES_MIN_COSTMAP, teselas_max=TESELAS_MAX_COSTMAP):
+    """[juez V3, D1] Como `factor_costmap`, pero sube el factor (entero: la escala respecto al mapa sigue entera)
+    hasta que el costmap reducido quepa en `teselas_max` teselas: a ≤ 10 teselas/s, 30 teselas = repaso completo en
+    ≤ 3 s (gate G-W13-M5). `teselas_max` ≤ 0 = sin tope (solo `res_min`; el repaso tarda teselas / 10 s).
+    Solo lo usa el relay (política de envío, no formato: la Vita lee la resolución de `costmap_meta`)."""
+    f = factor_costmap(res, res_min)
+    if teselas_max <= 0 or ancho <= 0 or alto <= 0:
+        return f
+    while f < max(ancho, alto):
+        ntx, nty = teselas_costmap(-(-ancho // f), -(-alto // f))
+        if ntx * nty <= teselas_max:
+            break
+        f += 1
+    return f
 
 
 def reducir_costmap(data, ancho, alto, f):
@@ -1115,8 +1162,9 @@ class EstadoCostmap:
     - `siguiente(pos)`: bytes de la próxima tesela (primero las cambiadas, las cercanas a `pos` (x, y) antes; si no
       hay, un repaso circular para quien se conecte tarde) o None sin costmap."""
 
-    def __init__(self, res_min=RES_MIN_COSTMAP):
+    def __init__(self, res_min=RES_MIN_COSTMAP, teselas_max=TESELAS_MAX_COSTMAP):
         self.res_min = res_min
+        self.teselas_max = teselas_max    # [juez V3, D1] 0 = sin tope de teselas
         self.orig = None              # (data, ancho, alto)
         self.f = 1
         self.red = None               # (data reducida, ancho, alto)
@@ -1143,7 +1191,7 @@ class EstadoCostmap:
         return cambiadas
 
     def grid(self, data, ancho, alto, res, ox, oy):
-        self.f = factor_costmap(res, self.res_min)
+        self.f = factor_costmap_tope(res, ancho, alto, self.res_min, self.teselas_max)
         self.orig = (list(data[:ancho * alto]), ancho, alto)
         self.red = reducir_costmap(self.orig[0], ancho, alto, self.f)
         self.res = res * self.f

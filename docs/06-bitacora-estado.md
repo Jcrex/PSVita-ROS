@@ -50,7 +50,9 @@ fichero del mes en `docs/bitacora/`.
   gates de marcadores M1 12/M1v 32/M2 estrés 48/M3 33; escena banco V5 con L+R+START); V10 percepción (`50cf371`),
   V11 costmap y V12 inspector/trazador (worktrees fusionadas, `5851d05`…`0b31c45`), revisión V3 (`d5b52f2`, 10 arreglos).
   13 suites `visor*.gd` verdes, host 294/0, runner 16/16; en vivo: hmi 12,8 · viz 23,4 · percepcion 28,1 KB/s.
-  `build/visor-ros.vpk` reexportada. Desafíos V3 (gate M5, `sensores_2d`, `camara_hz`) → juez Fable.
+  Desafíos V3 resueltos por el juez Fable (`docs/ia/workshops/posts/V3-juez-fable.md`): gate M5 con
+  `costmap_teselas_max` = 30 en el relay (repaso ≤ 3 s; TB3 a 20 cm), `max_rastro = 98` en `main_percepcion.tscn`
+  (`sensores_2d` = 800) y `camara_hz` > 3 solo si el relay sigue ≤ 40 KB/s. `build/visor-ros.vpk` reexportada (no subida).
 - **Falta (usuario):** guion único de hardware de V1–V12: `docs/ia/workshops/posts/V3-revision.md` §5 (9 fases, fish).
 - **Siguiente:** V13 paquete nativo (solo PC, al recompilar la plantilla), V14 extras solo PC, V15 documentación.
 

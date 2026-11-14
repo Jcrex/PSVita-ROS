@@ -227,3 +227,21 @@ No cambia ninguna cifra de §4 ni de §5.
 3. **HUD (§4):** los ≤ 4 *quads* de la herramienta activa cuentan dentro de la barra fija (≤ 120).
 4. **TF (§3):** con `marco_pose2d` aún sin unir al marco fijo, `pose2d` cuelga del fijo; `map → odom` llega por la
    lista blanca del módulo `tf`. El relay no publica `pose2d` en `map`.
+
+## Enmienda 2026-11-14 (b) (juez Fable 5.2, desafíos de la fase V3)
+
+Detalle en `docs/ia/workshops/posts/V3-juez-fable.md`; origen en `docs/ia/workshops/posts/V3-revision.md` §3 (D1–D3).
+No cambia ninguna cifra de §4 ni de la tabla de §5.
+
+1. **Costmap (§5): tope de 30 teselas en el relay.** El módulo `costmap` sigue en ≤ 10 teselas/s y 2,76 KB/s. El
+   parámetro `costmap_teselas_max` (30; 0 = sin tope) sube el factor de reducción (entero, por máximo) hasta que el
+   costmap reducido quepa en 30 teselas: repaso completo ≤ 3 s (gate G-W13-M5, doc 36 §9.1) a costa de celdas de 20 cm
+   en mapas de ≈ 20 m. Descartado: 30 teselas/s (saca `viz` de ≈ 35 KB/s) y ráfagas tras época nueva (presupuesto de
+   pico sin comprobar).
+2. **Sensores 2D (§4):** las texturas de planta (Mapa y Costmap, 1 *quad* cada una) cuentan dentro de los 800. La
+   escena que lleva scan (360), nube (228) y path (112) deja 98 para poses y odometría: `main_percepcion.tscn` fija
+   `max_rastro = 98` en Odom (propiedad de escena, doc 35). Mapa y Costmap **no** pasan a la capa `mundo`, que cuenta
+   instancias 3D.
+3. **Cámara (§5):** el presupuesto del módulo `camara` es a 3 Hz. `camara_hz` > 3 (máximo 5) solo se concede si la
+   suma nominal de los módulos activos con la cámara a ese ritmo sigue ≤ 40 KB/s (la del mayor perfil declarado) y
+   ≤ 200 datagramas/s; si no, el relay se queda en 3 Hz y lo avisa. Con el perfil `percepcion`: siempre 3 Hz.

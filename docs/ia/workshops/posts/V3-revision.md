@@ -68,6 +68,10 @@
 
 ## 3. DESAFÍOS para el juez (Fable)
 
+> **Resueltos** en `docs/ia/workshops/posts/V3-juez-fable.md` (2026-11-14): D1 = A + D automática (`costmap_teselas_max`
+> = 30 en el relay); D2 = D (`max_rastro = 98` en `main_percepcion.tscn`); D3 = más de 3 Hz solo si el relay sigue
+> ≤ 40 KB/s. El §5 de abajo ya lleva los criterios resultantes.
+
 ### D1 — Gate G-W13-M5 contradictorio (punto abierto a)
 
 **Hechos** [V]: `costmap` = 10 teselas/s × 276 B (`PRESUPUESTO`, doc 36 §5.3); doc 36a §4.6.2 cita un costmap de
@@ -264,7 +268,7 @@ recoger f8
 | **G-W13-M1** (V8) | F4, sin netem | `[gxm3d] drawn= avg_submit_us=`, `[visor-marc] nodos= hijos=` | `nodos=12`, `hijos` constante; `drawn` +12; `avg_submit_us` ≤ 6 000; `fps` ≥ 55 |
 | **G-W13-M3** (V8) | F4, con netem | `[vita-prof] process=`, `ros2 topic bw`, a la vista | ningún sólido fuera de sitio > 0,4 s; `process` ≤ 4 000 µs; `/vita/marcadores` ≤ 15 KB/s |
 | G-W13-M2 (V8, opc.) | F4, `vida` | `[visor-marc]`, `[vita-memory]` | 5 min: `nodos=12` e `hijos` constantes; memoria estable; `sin_sitio` creciendo es lo esperado |
-| **G-W13-M5** (V11) | F5 | `[visor-costmap] teselas= descartadas= max_us= composicion_us= compuesto=`, `[gxm2d-perf] fps=`, cronómetro | `compuesto=true`; `teselas` sube ≈ 50 cada 5 s; `descartadas` ≤ 1 tras el arranque; costmap completo en la planta (paredes magenta con borde cian, degradado azul → rojo) en **≤ 3 s para estas 28 teselas** (ver D1 para costmaps mayores); `composicion_us` ≤ 4 000; `max_us` ≤ 1 500; `fps` ≥ 30 (≥ 55 deseable: `main` es HMI) |
+| **G-W13-M5** (V11) | F5 | `[visor-costmap] teselas= descartadas= max_us= composicion_us= compuesto=`, `[gxm2d-perf] fps=`, cronómetro | `compuesto=true`; `teselas` sube ≈ 50 cada 5 s; `descartadas` ≤ 1 tras el arranque; costmap completo en la planta (paredes magenta con borde cian, degradado azul → rojo) en **≤ 3 s** (28 teselas con esta fuente; con Nav2 + TB3 el relay lo deja en 18 a 20 cm por `costmap_teselas_max` = 30, juez V3 F1) y el obstáculo móvil (parche) refrescado en **< 1 s**; `composicion_us` ≤ 4 000; `max_us` ≤ 1 500; `fps` ≥ 30 (≥ 55 deseable: `main` es HMI) |
 | **V12** (Inspector) | F5 | a la vista, `[perfil-gd] hud_pestana=Inspector hud_pestana_q=` | 8 filas de `pose2d` actualizándose; `hud_pestana_q` ≤ 240; `fps` sin bajar de escalón |
 | **V12** (Gráficas) | F5 | pares `[perfil-gd] hud_pestana=…` + `[gxm2d-perf] draws= avg_canvas_us=` siguientes, Estado frente a Gráficas | **`draws` +≤ 3** y **`avg_canvas_us` +≤ 300** respecto a Estado; 2 trazas que llenan el ancho (H3) |
 | **G-W13-M1v** (V8, perfil Viz) | F6 | `[visor-marc] nodos=`, `[gxm3d] drawn= avg_submit_us=`, `[gxm2d-perf] fps=`, `bw` | `nodos=32`; `drawn` +32; `avg_submit_us` ≤ 9 000; `fps` ≥ 30; `bw` ≤ 35 000 B/s |
@@ -274,8 +278,7 @@ recoger f8
 | **Selector** (V2 juez) | F5→F6, F6→F7, F7→F8, F8 | `[visor-escena] siguiente= guardada=true` y, en el lanzamiento siguiente, `[visor-escena] escena=` | el cambio en caliente carga la escena (o, si falla, el siguiente arranque abre la guardada) |
 | Enlace | todas | `docker/vita-ros.sh logs agent`, `[perfil-gd] reconexiones=` | sesión establecida; `reconexiones=0` salvo caída provocada |
 
-Esperable y no es fallo: aviso «Marcadores pide 48 … recibe 12» (HMI); en F8, «Odom pide 100 en «sensores_2d» y
-recibe 98» (D2); en F4, `sin_sitio` creciendo; en F5, una tesela `descartada` al arrancar (llega antes que la meta).
+Esperable y no es fallo: aviso «Marcadores pide 48 … recibe 12» (HMI); en F4, `sin_sitio` creciendo; en F5, una tesela `descartada` al arrancar (llega antes que la meta). En F8 ya **no** debe salir «Odom pide 100 … recibe 98» (juez V3 F2: la escena pide 98).
 
 ## 6. Archivos
 
@@ -283,4 +286,5 @@ recibe 98» (D2); en F4, `sin_sitio` creciendo; en F5, una tesela `descartada` a
   `displays/2d/{pose,nube}.gd`; `displays/hud/{imagen,trazador,inspector_texto}.gd`; `godot/plantillas/ros/vc1.gd`;
   pruebas `visor_{displays,escenas,inspector,percepcion}.gd`; `docker/scripts/{vita_relay_formatos,vita_relay_percepcion,test_vita_relay}.py`.
 - `.uid` que creó el editor (V10 y selector) versionados.
-- **Validar en hardware:** todo el §5. Reexportar solo si se toca código (la `.vpk` de esta revisión ya lleva los arreglos).
+- **Validar en hardware:** todo el §5. Reexportar solo si se toca código (`build/visor-ros.vpk` se reexportó tras las
+  decisiones del juez V3: lleva `main_percepcion.tscn` con `max_rastro = 98`).
