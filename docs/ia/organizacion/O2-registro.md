@@ -152,7 +152,11 @@ Verificación (PC CachyOS):
 
 Pendiente / desviaciones:
 - **Validar en el PC al recompilar la plantilla:** debe imprimir «ros2_vita: transporte XRCE activado
-  (…/toolchains/xrce/xrce-vita-pic)» (marcado en `SCsub`). `tools/hwprobe` sigue sin compilar.
+  (…/toolchains/xrce/xrce-vita-pic)» (marcado en `SCsub`). **Validado el 2026-11-14 (V13a):**
+  `tools/build-godot-template.sh` pasó la guarda («cliente XRCE PIC: …/toolchains/xrce/xrce-vita-pic/lib/…»), SCons
+  imprimió «ros2_vita: transporte XRCE activado (…/toolchains/xrce/xrce-vita-pic)» y `verify_runtime.py` dio **PASS,
+  694 imports** (los mismos que antes del traslado); `tools/export-vita-vpk.sh godot/visor-ros` → `build/visor-ros.vpk`.
+  Marcador de `SCsub` actualizado. Falta solo la prueba en hardware (conectar con el agente). `tools/hwprobe` sigue sin compilar.
 - **O2d** debe arreglar `CLAUDE.md`, `AGENTS.md`, `README.md` raíz (incluidos los `vita-app/scripts/check-*.sh` y
   `cd vita-app` de «Common commands») y skills (`vita-build-package`, `ros2-vita-godot`, `vita-dual-module`, …:
   19 menciones de `vita-app`/`godot35`).

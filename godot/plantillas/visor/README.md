@@ -4,7 +4,8 @@ Visor propio y portable: **el mismo GDScript** en el PC (rclgd, o el editor de h
 (`ros2_vita`). Diseño en `docs/adr/0013-visualizacion-topics-godot.md` y `docs/36-visualizacion-topics-godot.md`
 (§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); **V6** (relay
 VC/1 rev. 2, consola y diagnóstico) y V7 también, ver sus secciones; V8 (marcadores), V9 (TfLigero, TF y poses), V10 (percepción),
-V11 (costmap) y V12 (inspector, trazador y explorador) hechos (2026-11-14): **V1–V12 hechos**; V13–V15 pendientes.
+V11 (costmap) y V12 (inspector, trazador y explorador) hechos (2026-11-14): **V1–V12 hechos**; **V13a** (paquete nativo de
+`ros2_vita` sin `viz-decode`, ver «Paquete nativo (V13a)») hecho en host y compilado para la Vita; V13b–V15 pendientes.
 Lo que no se puede ver en el host (render GXM, FPS, XRCE real, reconexión) está sin validar en hardware.
 
 | Archivo | Pieza | Papel |
@@ -894,3 +895,49 @@ python3 docker/scripts/test_vita_relay.py                                       
 $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_percepcion.gd  # RESULTADO: 66/66
 ```
 
+
+## Paquete nativo (V13a, 2026-11-14)
+
+Doc 36 §1.5 (huecos P0–P2) y §10 V13; sentencia W13 D3 y D8. Todo en `godot/ros2_vita/` (plantilla de la Vita
+recompilada); `viz-decode` es V13b, aparte. **Los displays no cambian.**
+
+| Hueco | Qué hay ahora | Dónde |
+|---|---|---|
+| P0 `RosQoS` sin propiedades | `history`, `depth`, `reliability`, `durability`, `deadline_seconds`, `lifespan_seconds`, `liveliness`, `lease_duration_seconds` (como rclgd); `set_*()` se mantiene. XRCE solo traduce las cuatro primeras | `ros_runtime.{h,cpp}` |
+| P0 sin `RosTfListener` | `RosNode.create_tf_listener(cache=10)` → `RosTfListener` sobre `modules/tf-tree` (impl C) y `modules/msg-cdr` (decodifica `TFMessage` sin `RosMsg` ni `.rsch`), suscrito a `/tf` y `/tf_static` (fiables, profundidad 100, estático *transient local*) | `ros_tf.{h,cpp}` |
+| P1 decodificar antes de descartar | `RosSubscriber.set_latest_only(true)`: el mensaje que espera en la cola se **pisa** sin decodificar (ocupa un hueco de los 256) | `ros_runtime.cpp` `_rx_trampoline` |
+| P1 `from_type` por mensaje e `init_idx` doble | el tipo se resuelve al suscribir; `RosMsg::decode_new` decodifica sin árbol por defecto | `ros_runtime.cpp`, `ros_msg.cpp` |
+| P1 `_find_field` O(campos²) | el decodificador asigna con `set_decoded` (valor ya canónico) | `ros_msg.cpp` |
+| P2 sin contadores | `RosSubscriber.get_stats()` → `recibidos`, `descartados`, `decodificados`, `errores`, `latest_only`, `tipo`; `RosTfListener.get_stats()` | `ros_runtime.cpp`, `ros_tf.cpp` |
+
+Selección del TF en `VisorRos` (`usa_tf_nativo()`): con rclgd, su listener (como siempre); con `ros2_vita`, el
+`RosTfListener` nativo **solo** con `@export var tf_nativo = true` y si la plantilla lo trae; si no, TfLigero.
+Extensiones de `ros2_vita` en código común: siempre tras `has_method` (`set_latest_only`, `get_stats`).
+
+### Decisiones de V13a no cubiertas (las más conservadoras)
+
+1. **`tf_nativo` apagado por defecto.** El camino compacto no recibe `/tf` crudo (no cabe: G1 ≈ 4 796 B,
+   `docs/27:73-75`) y TfLigero tiene fuentes que el nativo no tiene (pose2d, robot horneado, `tf_estaticos`, relay
+   `tf`). Activarlo por escena cuando la Vita lea `/tf` directo de un robot pequeño. Con el valor por defecto, el
+   comportamiento de V9–V12 no cambia (las 13 pruebas `visor*.gd` siguen verdes).
+2. **Tipo fuera del `.rsch` ⇒ `create_subscription` devuelve `null`** con un `ERROR` que dice el tipo, el topic y cómo
+   arreglarlo (antes la suscripción XRCE se creaba y cada muestra fallaba sin llamar al callback). Es la regla de
+   doc 36 §2.9.2 llevada al módulo; `CanalDisplay` ya no suscribía en ese caso.
+3. **`latest_only` no se activa solo en `CanalDisplay`.** Cambiaría `recibidos`/`hz_medido` (el aviso D8 de
+   `hz_medido > 2·hz`) y el trazador necesita todas las muestras. Queda como opción por display (V13b o posterior).
+4. **Espejo de nombres en `RosTfListener`.** `tf_tree.h` no enumera marcos; en vez de ampliar el contrato dual (C +
+   Rust + paridad) el listener anota cada `tf_tree_update` aceptado (tf-tree nunca borra un marco salvo `clear`).
+5. **`clear()` como rclgd:** tira las transformadas y deja los nombres (`get_frame_names`, `frame_exists`); TfLigero
+   los borra (sin cambios).
+6. **Sesión en los `Ros*`:** cada `rclgd.init()` abre una sesión nueva; un publicador o suscriptor de una sesión
+   anterior ya no puede borrar ni publicar con un id reutilizado (fallo real visto en las pruebas de host).
+7. **NaN/Inf en `/tf`:** se rechazan y cuentan en `rechazadas` (como TfLigero, T2); tf-tree no los filtra.
+
+Validar en hardware: `/tf` real por XRCE (fiable fragmentado, `MAX_RX` 16 KB) con `tf_nativo`, coste de `lookup` por
+fotograma, y que `latest_only` baja el tiempo de `_pump` con un topic directo rápido.
+
+```fish
+set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+godot/test/run_host_tests.sh $GH                                                    # 349 comprobaciones, 0 fallos
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_tf.gd      # RESULTADO: 84/84
+```

@@ -26,14 +26,14 @@
 | `init(node_name, namespace="")` | 🟡 | **una sesión XRCE ⇒ un participante**; varios `RosNode` comparten sesión (nombres como prefijo de topics) **[I]** |
 | `get_name()`, `get_namespace()`, `resolve_frame(id)` | ✅ | `~frame` ⇒ espacio de nombres |
 | `create_publisher(topic, type, qos)` | 🟡 | `type` = `String` ✅ (o script con `ROS_TYPE_NAME`, que rclgd **ya no** acepta); clase nativa o instancia ⏳ (T3.2.4) |
-| `create_subscription(topic, type, callable, qos)` | ✅ | callback en el hilo principal (cola propia `inbox` + `MutexLock` en `ros_runtime.cpp`; `msg-ring` aún sin usar) |
+| `create_subscription(topic, type, callable, qos)` | ✅ | callback en el hilo principal (cola propia `inbox` + `MutexLock` en `ros_runtime.cpp`; `msg-ring` aún sin usar). **V13a:** el tipo se resuelve una vez al suscribir; si no está en el `.rsch` devuelve `null` con un `ERROR` claro (rclgd crearía la suscripción) |
 | `create_timer(seconds, callable)` | ✅ | reloj local (monotónico) |
 | `now()` | ✅ | con XRCE, hora del agente (`uxr_sync_session` al abrir la sesión, 2026-11-12); si falla o en loopback, reloj local |
 | `create_client(srv, type, qos)` + `await req.completed` | ⏳ | DDS-RPC del cliente XRCE **[?]** |
 | `create_service(...)` | ⏳ | callback en hilo de red; misma regla que rclgd |
 | `create_action_client/server` | ⏳ | no están en el cliente XRCE |
 | `create_tf_broadcaster()` → `send_transform(t, child, parent, static)` | ⏳ | objetivo: publicar `tf2_msgs/TFMessage` en `/tf` y `/tf_static`. **Corregido 2026-11-11** (revisión de la oleada 1, `docs/ia/workshops/posts/revision-oleada1.json`): no existe en `godot/ros2_vita/` (`register_types.cpp` no lo registra y el SCsub no compila `tf-tree`); estaba marcado ✅ por error. Tarea P0. Ojo: un TFMessage grande (G1 ≈ 4,8 KB) solo cabe en fiable fragmentado (W2) |
-| `create_tf_listener(cache)` → `lookup_transform`, `can_transform`, `get_frame_names`... | ⏳ | diseño: `tf-tree` (último valor, sin historial ni timeout; `time` se ignora). Sin implementar en el módulo (misma corrección del 2026-11-11) |
+| `create_tf_listener(cache)` → `lookup_transform`, `can_transform`, `get_frame_names`... | 🟡 | **V13a (2026-11-14)**, `ros_tf.cpp`: `RosTfListener` sobre `tf-tree` + `msg-cdr`, suscrito a `/tf` y `/tf_static`. Sin historial (último valor; `time`, `timeout_sec`, `*_full` y `fixed_frame` se ignoran), ≤ 32 marcos y ≤ 32 transformadas por mensaje; `clear()` deja los nombres, como rclgd. Compilado y probado en host; **validar en hardware** `/tf` real por XRCE |
 | `declare_parameter / get_parameter / set_parameter` + señal `parameter_changed` | 🟡 | **solo locales**; sin servicios `/param` |
 | `get_topic_names_and_types()`, `count_publishers/subscribers` | ❌ | sin API de grafo en XRCE |
 | `get_logger()` | ⏳ | no registrado (corrección 2026-11-11); hoy solo `print`/netlog |
@@ -76,12 +76,12 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
 ## Otras clases
 | rclgd | Vita | Nota |
 |---|---|---|
-| `RosQoS` (history, depth, reliability, durability, deadline, lifespan, liveliness) | 🟡 | XRCE solo soporta *reliable/best-effort*, *keep-last* y *volatile/transient-local* **[?]**; el resto se ignora con aviso |
-| `RosPublisher.publish(msg)`; `RosSubscriber` (sin métodos) | ✅ | |
+| `RosQoS` (history, depth, reliability, durability, deadline, lifespan, liveliness) | 🟡 | **V13a:** las 8 propiedades de rclgd (`qos.reliability = …` ya funciona) y sus `set_*/get_*`; enum `Liveliness`. XRCE traduce *reliable/best-effort*, *keep-last/all* + `depth` y *volatile/transient-local*; `deadline_seconds`, `lifespan_seconds`, `liveliness` y `lease_duration_seconds` se guardan y se ignoran (sin aviso) |
+| `RosPublisher.publish(msg)`; `RosSubscriber` (sin métodos) | ✅ | **Extensiones solo de la Vita (V13a; `has_method` en código común):** `RosSubscriber.set_latest_only(bool)` / `is_latest_only()` (el mensaje que espera en la cola se pisa sin decodificar, D8) y `get_stats()` (`recibidos`, `descartados`, `decodificados`, `errores`, `latest_only`, `tipo`). Los `Ros*` de una sesión anterior (`shutdown`+`init`) ya no tocan ids reutilizados |
 | `RosTimer` (`cancel/reset/is_canceled/is_ready/get_remaining_time`) | ✅ | |
 | `RosClient`, `RosRequest`, `RosService` | ⏳ | |
 | `RosActionClient`, `RosGoalHandle`, `RosActionServer`, `RosServerGoalHandle` | ⏳ | |
-| `RosTfBroadcaster`, `RosTfListener` | ⏳ / ⏳ | ver arriba (corrección 2026-11-11) |
+| `RosTfBroadcaster`, `RosTfListener` | ⏳ / 🟡 | ver arriba. `RosTfListener`: todos los métodos de rclgd (`all_frames_as_yaml` reducido a padre y sello) + `get_stats()` y `apply_cdr()` propios (V13a) |
 | `RosLogger` (debug/info/warning/error/fatal, filtros `once`/`throttle`/`skip_first`, `get_child`) | ⏳ | sin registrar (corrección 2026-11-11) |
 
 ## Reglas de hilos (idénticas a rclgd)
@@ -107,7 +107,8 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
   publicadores y suscriptores con los mismos ids, sin tocar GDScript). Contadores `sondas` y `reconexiones` en
   `get_transport_info()`. Clave de cliente estable por app y plataforma (`client_key`).
 - Entrega de mensajes: cola acotada (256, descarta el más antiguo) volcada al hilo
-  principal en `process_frame`.
+  principal en `process_frame`. Con `latest_only` una suscripción ocupa como mucho un hueco (V13a). El decodificador
+  ya no construye el árbol por defecto ni busca cada campo (`RosMsg::decode_new`, `set_decoded`; doc 36 §1.5 P1).
 - Publicación best effort: cola acotada de 64 mensajes copiados, un datagrama por `poll()` y descarte del más
   antiguo al llenarse; contadores `be_pending` y `be_dropped` en `get_transport_info()`.
 - Publicación fiable: cola independiente de 32 con reintento si el stream está lleno, un mensaje por `poll()` y
