@@ -75,6 +75,8 @@ const REGLAS := [
 	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/detecciones3d", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d"},
 	{"tipo": "sensor_msgs/msg/CompressedImage", "script": D + "hud/imagen.gd", "capa": "hud"},
 	{"tipo": "sensor_msgs/msg/Image", "script": D + "hud/imagen.gd", "capa": "hud", "solo_pc": true},
+	# V14 (solo PC): nube en GPU en la vista orbital (defecto del PC, como el mapa 3D); en la Vita, la planta 2D.
+	{"tipo": "sensor_msgs/msg/PointCloud2", "script": D + "3d/nube_puntos.gd", "capa": "mundo", "solo_pc": true, "orbital": true},
 	{"tipo": "sensor_msgs/msg/PointCloud2", "script": D + "2d/nube.gd", "capa": "sensores_2d"},
 	{"tipo": "vision_msgs/msg/Detection2DArray", "script": D + "hud/cajas_2d.gd", "capa": "hud", "solo_pc": true},
 	{"tipo": "vision_msgs/msg/Detection3DArray", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d", "solo_pc": true},
