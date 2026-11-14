@@ -2,12 +2,30 @@
 
 Visor propio y portable: **el mismo GDScript** en el PC (rclgd, o el editor de host con `ros2_vita`) y en la PS Vita
 (`ros2_vita`). Diseño en `docs/adr/0013-visualizacion-topics-godot.md` y `docs/36-visualizacion-topics-godot.md`
-(§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); **V6** (relay
-VC/1 rev. 2, consola y diagnóstico) y V7 también, ver sus secciones; V8 (marcadores), V9 (TfLigero, TF y poses), V10 (percepción),
-V11 (costmap) y V12 (inspector, trazador y explorador) hechos (2026-11-14): **V1–V12 hechos**; **V13a** (paquete nativo de
-`ros2_vita` sin `viz-decode`, ver «Paquete nativo (V13a)») hecho en host y compilado para la Vita; **V14** (extras
-solo PC, ver «Extras solo PC (V14)») hecho en host y en vivo por XRCE; V13b y V15 pendientes.
-Lo que no se puede ver en el host (render GXM, FPS, XRCE real, reconexión) está sin validar en hardware.
+(§2 arquitectura, §8 trampas, §10 tareas); catálogo por tipo en `docs/36a-catalogo-displays.md`.
+
+**Estado (2026-11-14, Fase V cerrada en host):** **V1–V14 hechos y verdes en host** (V13a = paquete nativo de
+`ros2_vita`, plantilla recompilada; V14 = extras solo PC, también en vivo por XRCE en el PC). **V13b**: `viz-decode`
+no se crea (juez Fable), queda **detrás del gate G-V13b**. **V15** (documentación) hecho: estado por tipo con la ruta
+real en doc 36a §4.0.1, estado de los gates en doc 36 §9.0 y resumen largo en doc 36 §13. **Nada está validado aún
+en la Vita** (render GXM, FPS, XRCE real, reconexión, táctil): guion único en
+`docs/ia/workshops/posts/V3-revision.md` §5. **El código es la fuente de verdad**: si un esqueleto de doc 36/36a
+difiere, manda el código y lo que dice este README.
+
+## Índice
+
+- [Uso en una escena](#uso-en-una-escena-regla-doc-35) · [Escribir un display](#escribir-un-display) ·
+  [Añadir un display nuevo (paso a paso)](#añadir-un-display-nuevo-paso-a-paso) ·
+  [Pruebas y comandos](#pruebas-y-comandos-todas-las-tareas)
+- Por tarea (qué hay, decisiones no cubiertas por el ADR, prueba): [V1](#decisiones-de-v1-no-cubiertas-por-el-adr-0013-las-más-conservadoras) ·
+  [V2](#v2-primitivas-paleta-y-texto-superpuesto) · [V4](#hud-v4) · [V3](#displays-v3-relay-que-ya-existe) ·
+  [Revisión V1](#revisión-v1-2026-11-13) · [V5](#esquema-tipos_visor-y-displays-directos-v5) ·
+  [V7](#herramientas-que-publican-v7) · [V9](#tf-y-poses-v9) · [V6](#relay-vc1-rev-2-base--rosout-diag-ritmo-v6) ·
+  [V8](#marcadores-v8) · [Revisión V2](#revisión-v2-2026-11-14) · [Juez V2](#decisiones-del-juez-sobre-la-fase-v2-2026-11-14) ·
+  [V10](#percepción-v10) · [V11](#costmap-v11) · [V12](#inspector-trazador-y-explorador-de-topics-v12) ·
+  [Revisión V3](#revisión-v3-2026-11-14) · [Juez V3](#decisiones-del-juez-sobre-la-fase-v3-2026-11-14) ·
+  [V13a](#paquete-nativo-v13a-2026-11-14) · [V14](#extras-solo-pc-v14-2026-11-14)
+- V13b: `docs/ia/workshops/posts/V13b-juez-fable.md` (decisión y gate G-V13b); V15: doc 36 §13.
 
 | Archivo | Pieza | Papel |
 |---|---|---|
@@ -70,6 +88,33 @@ compacto), `hz` / `hz_vita` (tope de entrega; `hz_vita` = 0 ⇒ el mismo), `fiab
 
 **Estado y diagnóstico:** `estado` (`ok`, `sin topic`, `sin esquema: …`, `sin cupo`, `desactivado`, `sin TF a→b`),
 `cupo`, `canal.hz_medido`, `canal.recibidos`, `canal.mostrados`, `canal.compacto`, `canal.topic_abierto`.
+
+### Añadir un display nuevo (paso a paso)
+
+1. **Elegir la fila** de la tabla maestra (doc 36a §4.0 y §4.0.1): capa (3D, 2D planta, 2D superpuesto, HUD), si es
+   `solo_pc`, ruta en la Vita (directo con esquema, o relay `<p>/…`) y Hz. Leer su ficha de §4.x como diseño.
+2. **Esquema (si la Vita lo recibe directo):** añadir el tipo a `TIPOS_VISOR` en `godot/plantillas/generar_esquemas.py`
+   y regenerar el `.rsch` del proyecto (`--visor`). Sin esquema, `CanalDisplay` deja el display en `sin esquema: <tipo>`
+   y no suscribe (`canal_display.gd:43-46`; `API_PARITY.md`, «Reglas para código común»).
+3. **Relay (si el mensaje no cabe en 488 B o va a > 10 Hz):** formato en `docker/scripts/vita_relay_formatos.py`
+   (cabecera VC/1 rev. 2 `[seq, trozo, n_trozos, n, …]`), módulo y presupuesto en `vita_relay.py` (el relay comprueba el
+   tope de red al arrancar), decodificador gemelo en `godot/plantillas/ros/vc1.gd` o `vita_relay.gd`, y **prueba de
+   bytes** Python = GDScript (huella) en `docker/scripts/test_vita_relay.py` y en la prueba del visor.
+4. **Script** en `displays/{3d,2d,hud}/<nombre>.gd` (o `herramientas/` si publica) con `extends` de la base que toque
+   (esquema de «Escribir un display»): `nombre_display()`, `tipos_ros()`, `_procesar(msg)` (y `_procesar_compacto`
+   si hay relay) que devuelven **el mismo dato intermedio**, `_pintar(datos)` con dibujo en lote, `_coste()` con los
+   máximos y, si hace falta, `_caducar()`. Fijar `capa` en `_init`; en el PC-only, `solo_pc = true`. Sin `class_name`.
+   Cumplir las reglas de abajo (T1–T20).
+5. **Registro:** una regla en `REGLAS` de `registro_displays.gd` en su sitio de prioridad (las de topic del relay antes
+   que las genéricas; el comodín `*` al final). Con `solo_pc` u `orbital`, la Vita la salta.
+6. **Escena (regla doc 35):** el display es un nodo del `.tscn` bajo `VisorRos` con sus `@export` (topic, `topic_vita`,
+   `hz`/`hz_vita`, posición); el código solo crea lo que depende de los datos (sin `owner`). Si es solo PC, ponerlo en
+   `godot/visor-ros/main_pc.tscn` y añadir el script a la exclusión de `godot/visor-ros/export_presets.cfg`.
+7. **Prueba:** casos en el `pruebas/visor_*.gd` de su familia (o uno nuevo) en `loopback`: recibe, «el último gana»,
+   caduca, cupo con `en_vita = true`, NaN/Inf, y los bytes del relay. Todo en verde (tabla de abajo).
+8. **Docs:** fila de doc 36a §4.0.1 a ✅ con la ruta real, decisiones no cubiertas en una sección de este README y, si
+   tiene coste en la Vita, su gate en doc 36 §9.0 y en el guion de hardware.
+9. **Hardware:** marcar «validar en hardware» en el código y el README hasta que el gate salga verde en la Vita.
 
 ### Reglas (trampas de doc 36 §8)
 
@@ -1003,3 +1048,50 @@ $GH.gui --rendering-method forward_plus --path godot/visor-ros --script res://co
 
 Los `ERROR: RosMsg: tipo '…InteractiveMarkerUpdate' / 'octomap_msgs…' / 'grid_map_msgs…' no esta en el esquema` del
 log son esperados (el editor de host no tiene esos tipos; los displays quedan «sin esquema» y se prueban por mensajes).
+
+## Pruebas y comandos (todas las tareas)
+
+Resultados del 2026-11-14 (V15) en el PC CachyOS. En fish:
+
+```fish
+set GH toolchains/godot4-vita/engine/bin/godot.linuxbsd.editor.x86_64
+for t in visor visor_primitivas visor_hud visor_displays visor_directos visor_herramientas visor_tf visor_relay visor_marcadores visor_escenas visor_percepcion visor_costmap visor_inspector visor_pc
+    $GH --headless --path godot/visor-ros --script res://comun/pruebas/$t.gd 2>&1 | grep -a RESULTADO
+end
+python3 docker/scripts/test_vita_relay.py                                    # TODO OK
+godot/test/run_host_tests.sh $GH                                             # 349 comprobaciones, 0 fallos
+$GH --headless --path godot/g1-sensores --script res://comun/pruebas/runner.gd   # 16/16
+```
+
+| Prueba (`godot/plantillas/pruebas/`) | Tarea | Resultado |
+|---|---|---|
+| `visor.gd` | V1 | 57/57 |
+| `visor_primitivas.gd` | V2 | 114/114 |
+| `visor_hud.gd` | V4 | 72/72 |
+| `visor_displays.gd` | V3 | 106/106 |
+| `visor_directos.gd` | V5 | 228/228 |
+| `visor_herramientas.gd` | V7 | 70/70 |
+| `visor_tf.gd` | V9, V13a | 84/84 |
+| `visor_relay.gd` | V6 | 80/80 |
+| `visor_marcadores.gd` | V8 | 63/63 |
+| `visor_escenas.gd` | selector (juez V2) | 21/21 |
+| `visor_percepcion.gd` | V10 | 67/67 |
+| `visor_costmap.gd` | V11 | 55/55 |
+| `visor_inspector.gd` | V12 | 64/64 |
+| `visor_pc.gd` | V14 | 77/77 (`--headless`); 93/93 con GPU (`$GH.gui`, Compatibility y Forward+) |
+| `docker/scripts/test_vita_relay.py` | V3, V6, V8–V11 | TODO OK |
+| `godot/test/run_host_tests.sh` | `ros2_vita` (V13a) | 349 comprobaciones, 0 fallos |
+| `runner.gd` (`godot/g1-sensores`) | plantillas, bytes VC/1 | 16/16 |
+
+Los recuentos citados en las secciones de cada tarea son los de su día; los de esta tabla son los vigentes.
+
+Estación y app en el PC (fish):
+
+```fish
+docker/vita-ros.sh up                                   # agente micro-ROS (UDP 8888)
+docker/vita-ros.sh relay scan,pose,joints,mapa,path     # relay VC/1 (módulos a elegir)
+$GH --path godot/visor-ros -- transporte=xrce compacto=1
+tools/export-vita-vpk.sh godot/visor-ros build/visor-ros.vpk
+```
+
+En la Vita: guion único de `docs/ia/workshops/posts/V3-revision.md` §5 (más G-V13b, `V13b-juez-fable.md` §4).
