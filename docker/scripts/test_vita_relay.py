@@ -130,12 +130,12 @@ def test_presupuesto():
     mods, kb, dgr = vf.resolver_modulos(["hmi"])
     assert mods == ["scan", "pose", "joints", "mapa", "path", "rosout", "diag"] and kb < 20.0
     assert vf.resolver_modulos(["scan,pose"[0:4], "pose", "scan"])[0] == ["scan", "pose"]   # sin repetidos
-    for malo in (["viz"], ["costmap"]):                                          # cabe, pero llega con V9–V11
+    for malo in ([m] for m in vf.FASE if m not in vf.IMPLEMENTADOS):           # cabe, pero aún no existe (V11: dinámico)
         try:
             vf.resolver_modulos(malo)
             assert False
         except ValueError as e:
-            assert "sin implementar" in str(e) and "V11" in str(e), e
+            assert "sin implementar" in str(e) and vf.FASE[malo[0]] in str(e), e
     for malo in (["nada"], ["nucleo"], []):
         try:
             vf.resolver_modulos(malo)
@@ -567,6 +567,86 @@ def _comparar_compressed_rosbags_percepcion():
             data=np.zeros(n, dtype=np.uint8))
         assert len(ts.serialize_cdr(m, "sensor_msgs/msg/CompressedImage")) == vf.cdr_compressed_image(f, fmt, n)
     print("  CompressedImage: tamaño CDR = rosbags")
+# ----------------------------------------------------------------------------- V11: costmap por teselas de 4 bit
+# Huella cruzada: la misma en `godot/plantillas/pruebas/visor_costmap.gd` (vc1.gd: reducir_costmap +
+# empaquetar_tesela_costmap con los mismos datos).
+HUELLA_COSTMAP = "3814fb5781c2a0f19d936fc85e5b6d87"
+
+
+def rejilla_costmap(w, h):
+    """−2 … 100 (desconocido, libre, degradado, 99 inscrito y 100 letal); la misma fórmula en visor_costmap.gd."""
+    return [(x * 7 + y * 13) % 103 - 2 for y in range(h) for x in range(w)]
+
+
+def vector_costmap():
+    """70×37 a 5 cm → factor 2 → 35×19 a 10 cm → 2×2 teselas de 32×16; época 513. Enteros de los 4 mensajes."""
+    w, h = 70, 37
+    f = vf.factor_costmap(0.05)
+    d, w2, h2 = vf.reducir_costmap(rejilla_costmap(w, h), w, h, f)
+    ntx, nty = vf.teselas_costmap(w2, h2)
+    out = []
+    for ty in range(nty):
+        for tx in range(ntx):
+            out += list(vf.empaquetar_tesela_costmap(d, w2, h2, tx, ty, 513))
+    return (f, w2, h2, ntx, nty), out
+
+
+def test_costmap():
+    # Niveles: los de la LUT de 16 colores (RViz costmap: 0 libre, 99 inscrito, 100 letal, −1 desconocido).
+    assert [vf.celda_costmap_4bit(v) for v in (-1, 0, 1, 50, 92, 93, 98, 99, 100, 120)] == \
+        [0, 1, 2, 7, 12, 13, 13, 14, 15, 15]
+    for v in range(1, 99):                                                        # el nivel más cercano de la LUT
+        n = vf.celda_costmap_4bit(v)
+        assert 2 <= n <= 13
+        assert abs(vf.LUT16_COSTMAP[n] - v) <= min(abs(c - v) for c in vf.LUT16_COSTMAP[2:14]), v
+    # Reducción por máximo (lo conocido gana a −1; un obstáculo no desaparece).
+    assert vf.factor_costmap(0.05) == 2 and vf.factor_costmap(0.1) == 1 and vf.factor_costmap(0.03) == 4
+    assert vf.reducir_costmap([-1, 5, -1, -1, 100, 0, 0, 0, -1], 3, 3, 2) == ([100, 0, 0, -1], 2, 2)
+    # Bytes y tamaño.
+    (f, w2, h2, ntx, nty), plano = vector_costmap()
+    assert (f, w2, h2, ntx, nty) == (2, 35, 19, 2, 2) and len(plano) == 4 * 260
+    assert vf.cdr_multiarray(260, 1) == 276 <= vf.MAX_BE
+    rej = rejilla_costmap(70, 37)
+    d, _, _ = vf.reducir_costmap(rej, 70, 37, 2)
+    for ty in range(nty):
+        for tx in range(ntx):
+            b = vf.empaquetar_tesela_costmap(d, w2, h2, tx, ty, 513)
+            ver, x, y, niv = vf.desempaquetar_tesela_costmap(b)
+            assert (ver, x, y) == (513, tx, ty)
+            for j in range(16):
+                for i in range(32):
+                    gx, gy = tx * 32 + i, ty * 16 + j
+                    esp = vf.celda_costmap_4bit(d[gy * w2 + gx]) if gx < w2 and gy < h2 else 0
+                    assert niv[j * 32 + i] == esp
+    assert vf.huella(plano) == HUELLA_COSTMAP, vf.huella(plano)
+    # Repaso completo, actualización parcial y época (EstadoCostmap = el módulo sin ROS).
+    e = vf.EstadoCostmap()
+    meta = e.grid(rej, 70, 37, 0.05, -1.0, -2.0)
+    assert meta == [0.1, 35.0, 19.0, -1.0, -2.0, 2.0, 2.0, 1.0] and len(e.cola) == 4
+    vistas = {tuple(e.siguiente()[2:4]) for _ in range(4)}
+    assert vistas == {(0, 0), (1, 0), (0, 1), (1, 1)} and not e.cola              # repaso completo: las 4
+    assert [tuple(e.siguiente()[2:4]) for _ in range(5)] == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 0)]   # repaso circular
+    assert e.grid(rej, 70, 37, 0.05, -1.0, -2.0) is None and not e.cola           # mismo costmap: nada que mandar
+    cambia = list(rej)
+    cambia[30 * 70 + 66] = 100                                                    # celda reducida (33, 15) → tesela (1, 0)
+    assert e.grid(cambia, 70, 37, 0.05, -1.0, -2.0) is None and e.cola == [(1, 0)] and e.epoca == 1
+    e.siguiente()
+    assert e.update(66, 34, 2, 2, [99, 99, 99, 99]) == [(1, 1)]                  # parche → (33, 17) → tesela (1, 1)
+    b = e.siguiente()
+    assert tuple(b[2:4]) == (1, 1) and vf.desempaquetar_tesela_costmap(b)[3][1 * 32 + 1] == 14   # (33−32, 17−16)
+    assert e.update(69, 36, 2, 1, [0, 0]) == [] and e.ignorados == 1              # fuera de límites: se ignora
+    pos = (-1.0 + 3.3, -2.0 + 1.7)                                                # el robot junto a la tesela (1, 1)
+    cerca = list(rej)
+    for k in range(len(cerca)):
+        cerca[k] = 100 if cerca[k] == 50 else cerca[k]                             # cambian las cuatro teselas
+    e.grid(cerca, 70, 37, 0.05, -1.0, -2.0)
+    assert len(e.cola) == 4 and tuple(e.siguiente(pos)[2:4]) == (1, 1)            # cercanas primero
+    meta2 = e.grid(cerca, 70, 37, 0.05, -0.5, -2.0)                               # origen nuevo → época nueva
+    assert meta2 is not None and meta2[7] == 2.0 and len(e.cola) == 4 and e.siguiente()[0] == 2
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    rr = subprocess.run([sys.executable, script, "--comprobar", "viz"], capture_output=True, text=True)
+    assert rr.returncode == 0 and "costmap" in rr.stdout and "35.0 KB/s" in rr.stdout, rr.stdout
+    print("costmap ok")
 
 
 def _md5(s):
@@ -580,4 +660,5 @@ if __name__ == "__main__":
     test_trocear(); test_presupuesto(); test_relay_info_y_epoca(); test_rosout_y_diag(); test_ritmo()
     test_marcadores()
     test_percepcion()                                                     # V10
+    test_costmap()                                                        # V11
     print("TODO OK")

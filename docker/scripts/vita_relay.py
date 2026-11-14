@@ -45,6 +45,12 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
   /vita/det_clases     String  FIABLE + TRANSIENT_LOCAL  nombres de clase por índice                      [det2d, det3d]
   /vita/detecciones3d  Float32MultiArray 5 Hz   cab. + [clase, score, x, y, z, yaw, sx, sy, sz]·n, n ≤ 12   [det3d]
   /vita/nube2d         Int16MultiArray 5 Hz × ≤ 3  cab. + xyz cm·n, n ≤ 76, vóxel 10 cm, ≤ 228 puntos       [nube]
+  --- V11: costmap (doc 36 §5.3, 36a §4.6.2; parámetros costmap_in (/global_costmap/costmap), costmap_updates_in
+      (costmap_in + _updates, map_msgs/OccupancyGridUpdate), costmap_res_min (0.1 m)) ---
+  /vita/costmap_meta   Float32MultiArray FIABLE + TRANSIENT_LOCAL  [res, ancho, alto, ox, oy, tx, ty, época] (32×16)
+  /vita/costmap_tesela UInt8MultiArray   ≤ 10/s [ver_lo, ver_hi, tx, ty, 256 B = 32×16 celdas a 4 bit]: 0 desconocido,
+                        1 libre, 2–13 degradado, 14 inscrito, 15 letal; reducido por máximo a ≥ 10 cm; primero las
+                        cambiadas (cercanas al robot antes) y un repaso de todas                             [costmap]
 
 Módulos: scan, pose, joints, mapa, path, rosout, diag, ritmo, o un perfil: hmi (= los 7 primeros), viz,
 percepcion (sus módulos extra llegan con V8–V11) y todo. TOPE DE RED (D5.7): al arrancar se suma lo declarado por
@@ -74,6 +80,7 @@ from vita_relay_formatos import (MAX_BE, TESELA, PlanDiag, CuboBytes, cdr_multia
 from vita_relay_formatos import (IDENTIDAD, EstadoMarcadores, PlanRonda, empaquetar_marcadores,  # noqa: E402
                                  empaquetar_puntos, texto_marcador)
 from vita_relay_percepcion import iniciar_percepcion  # noqa: E402  (V10: camara, det2d, det3d, nube)
+from vita_relay_formatos import EstadoCostmap, RES_MIN_COSTMAP  # noqa: E402  (V11)
 import math  # noqa: E402
 
 
@@ -245,6 +252,23 @@ def main():
                 self.create_timer(0.5, self._tx_mtexto)          # ≤ 2/s
             # --- V10: percepción (bloque aditivo; nodo en vita_relay_percepcion.py)
             self.percepcion = iniciar_percepcion(self, mods)
+            if "costmap" in mods:
+                # Módulo costmap (V11): OccupancyGrid del costmap (+ sus _updates) → teselas 32×16 a 4 bit, ≤ 10/s.
+                if "pose" not in mods and "mapa" not in mods:            # odometría: teselas cercanas primero
+                    self.create_subscription(Odometry, p("odom_in", "/odom").value, self._on_odom, 10)
+                self.est_costmap = EstadoCostmap(p("costmap_res_min", RES_MIN_COSTMAP).value)
+                cm_in = p("costmap_in", "/global_costmap/costmap").value
+                # Nav2 publica el costmap fiable + TRANSIENT_LOCAL (costmap_2d_publisher.cpp): latched casa con él.
+                self.create_subscription(OccupancyGrid, cm_in, self._on_costmap, latched)
+                try:
+                    from map_msgs.msg import OccupancyGridUpdate
+                    self.create_subscription(OccupancyGridUpdate, p("costmap_updates_in", cm_in + "_updates").value,
+                                             self._on_costmap_upd, 10)
+                except ImportError:
+                    self.get_logger().warning("costmap: sin map_msgs; solo costmaps completos (sin _updates)")
+                self.p_cm_meta = self.create_publisher(Float32MultiArray, pre + "/costmap_meta", latched)
+                self.p_cm_tes = self.create_publisher(UInt8MultiArray, pre + "/costmap_tesela", be)
+                self.create_timer(0.1, self._tx_costmap)                             # ≤ 10 teselas/s
             self.p_bw = self.create_publisher(Float32MultiArray, pre + "/relay_bw", be)
             self.create_timer(1.0, self._tx_bw)
             # relay_info (D5.8): saludo de versión y lista de módulos activos (fiable + TRANSIENT_LOCAL).
@@ -543,6 +567,29 @@ def main():
             clave, (x, y, z, texto) = s
             m = String(data=texto_marcador(clave, x, y, z, texto))
             self._pub(self.p_mtxt, m, len(serialize_message(m)))
+
+        # --- V11: costmap por teselas de 4 bit (funciones puras: EstadoCostmap en vita_relay_formatos.py)
+        def _on_costmap(self, m):
+            i = m.info
+            meta = self.est_costmap.grid(m.data, i.width, i.height, i.resolution, i.origin.position.x,
+                                         i.origin.position.y)
+            e = self.est_costmap
+            if meta is not None:                         # época nueva (geometría): meta latched y repaso completo
+                self.p_cm_meta.publish(Float32MultiArray(data=meta))
+            self.get_logger().info(f"costmap {i.width}×{i.height} → {e.red[1]}×{e.red[2]} a {e.res:.2f} m, "
+                                   f"{len(e.cola)} teselas en cola, época {e.epoca}"
+                                   f"{' (nueva)' if meta is not None else ''}")
+
+        def _on_costmap_upd(self, u):
+            self.est_costmap.update(u.x, u.y, u.width, u.height, u.data)
+
+        def _tx_costmap(self):
+            pos = None
+            if self.odom is not None:
+                pos = (self.odom.pose.pose.position.x, self.odom.pose.pose.position.y)
+            b = self.est_costmap.siguiente(pos)
+            if b is not None:
+                self._pub(self.p_cm_tes, UInt8MultiArray(data=b), cdr_multiarray(len(b), 1))
 
         def _tx_bw(self):
             self.p_bw.publish(Float32MultiArray(data=[float(self.bytes), float(self.msgs)]))
