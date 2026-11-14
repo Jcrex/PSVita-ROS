@@ -97,3 +97,22 @@ La decisión no cambia. Se añaden datos de hardware y una consecuencia que el d
   alternar en marcha (START). Si la prueba de hardware confirma que hace falta desactivarlo para 60 FPS, el punto 3
   (paleta con UV por triángulo) pasa de «color» a «color + sombreado horneado» y este ADR se actualizará con esa
   decisión.
+
+## Enmienda 2026-11-14 (juez Fable 5.2, V13b: `viz-decode` no se crea todavía)
+
+Detalle y medidas en `docs/ia/workshops/posts/V13b-juez-fable.md`. No cambia el punto 5 de la decisión: lo aplica.
+
+- **El módulo dual `viz-decode` no se crea ahora.** Medido en el host (`docs/ia/medidas/v13b-banco-decodificacion.gd`,
+  mediana): tesela de mapa 16 µs, tesela de costmap 31 µs, trozo de nube de 76 puntos 36 µs, scan compacto de 180
+  rayos 33 µs. Con el factor Vita/PC medido en hardware para GDScript (×18–25: `[perfil-gd]` de `g1-sensores`, doc 34
+  §6 frente a `docs/ia/medidas/g1-sensores-ligero-vita-2026-11-13.log`) eso son 0,4–0,9 ms por mensaje y 1,3 ms por
+  fotograma en total a 30 FPS [I]; con ×40, 0,6–1,4 ms y 2,0 ms. Ninguna ruta del camino compacto llega al umbral
+  de 2 ms por mensaje ni de 1 ms por fotograma.
+- **Las rutas directas que sí lo pasarían** (PointCloud2 de 468 puntos ≈ 6,5 ms, OccupancyGrid de 86 × 86 ≈ 9,3 ms
+  [I]) están cerradas por la regla de bytes (un mensaje real no cabe por XRCE), no por CPU: C no las abre.
+- **Gate G-V13b** (hardware, en la sesión de `docs/ia/workshops/posts/V3-revision.md` §5): `[visor-mapa] max_us`,
+  `[visor-costmap] max_us` y `[visor-nube] us_max` ≤ 2 000 µs, y `[perfil-gd] visor/Scan` ≤ 1 000 µs por fotograma.
+  Si uno sale rojo se implementa solo esa función (`vizd_tile_rgba`, `vizd_cloud_tris` o `vizd_scan_tris`; cabecera
+  en el documento del juez §5, que sustituye a la de `docs/31` §4.3). Validar en hardware.
+- La decodificación de JPEG y la composición del costmap son C++ del motor: quedan fuera de `viz-decode` en
+  cualquier caso (gates E-W8-5 y `composicion_us` de G-W13-M5).

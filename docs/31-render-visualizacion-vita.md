@@ -185,6 +185,10 @@ Notas de coste (todas [I] hasta medir, §6):
 
 ### 4.3 Módulo dual `viz-decode` (propuesta de cabecera, sin implementar)
 
+> **Decisión V13b (2026-11-14):** el módulo no se crea todavía; ninguna ruta del camino compacto llega a 2 ms
+> por mensaje con el factor Vita/PC medido. Gate G-V13b y cabecera reducida (tres funciones) en
+> `docs/ia/workshops/posts/V13b-juez-fable.md`; enmienda en ADR 0011.
+
 Funciones puras sobre búferes del llamador (sin `malloc`, sin estado), C y Rust con paridad en host:
 
 | Función | Entrada → salida |
