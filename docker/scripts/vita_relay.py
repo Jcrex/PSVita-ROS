@@ -39,6 +39,12 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
   /vita/tf             Float32MultiArray 10 Hz  cab. + [idx, x, y, z, qx, qy, qz, qw]·n, n ≤ 8 hijos de tf_lista    [tf]
   /vita/tf_marcos      String  FIABLE + TRANSIENT_LOCAL  «padre>hijo,…»: el `idx` de tf y tf_estatico           [tf]
   /vita/tf_estatico    Float32MultiArray FIABLE + TRANSIENT_LOCAL  como tf, ≤ 16 de /tf_static (al cambiar)        [tf]
+  --- V10: percepción (doc 36 §5.3, D12, D13; nodo en vita_relay_percepcion.py) ---
+  /vita/camara/compressed CompressedImage FIABLE 3 Hz  JPEG ≤ 160×120 q40, ≤ 2 994 B (camara_in, camara_hz)    [camara]
+  /vita/detecciones    Float32MultiArray 5 Hz   cab. + [ancho, alto] + [clase, score, cx, cy, w, h]·n, n ≤ 18    [det2d]
+  /vita/det_clases     String  FIABLE + TRANSIENT_LOCAL  nombres de clase por índice                      [det2d, det3d]
+  /vita/detecciones3d  Float32MultiArray 5 Hz   cab. + [clase, score, x, y, z, yaw, sx, sy, sz]·n, n ≤ 12   [det3d]
+  /vita/nube2d         Int16MultiArray 5 Hz × ≤ 3  cab. + xyz cm·n, n ≤ 76, vóxel 10 cm, ≤ 228 puntos       [nube]
 
 Módulos: scan, pose, joints, mapa, path, rosout, diag, ritmo, o un perfil: hmi (= los 7 primeros), viz,
 percepcion (sus módulos extra llegan con V8–V11) y todo. TOPE DE RED (D5.7): al arrancar se suma lo declarado por
@@ -67,6 +73,7 @@ from vita_relay_formatos import (MAX_BE, TESELA, PlanDiag, CuboBytes, cdr_multia
                                  parsear_ritmo, relay_info, resolver_modulos, yaw_de_quat)
 from vita_relay_formatos import (IDENTIDAD, EstadoMarcadores, PlanRonda, empaquetar_marcadores,  # noqa: E402
                                  empaquetar_puntos, texto_marcador)
+from vita_relay_percepcion import iniciar_percepcion  # noqa: E402  (V10: camara, det2d, det3d, nube)
 import math  # noqa: E402
 
 
@@ -236,6 +243,8 @@ def main():
                 self.create_timer(0.2, self._tx_marcadores)      # 5 Hz, ≤ 3 trozos
                 self.create_timer(0.25, self._tx_mpuntos)        # ≤ 4 trozos/s
                 self.create_timer(0.5, self._tx_mtexto)          # ≤ 2/s
+            # --- V10: percepción (bloque aditivo; nodo en vita_relay_percepcion.py)
+            self.percepcion = iniciar_percepcion(self, mods)
             self.p_bw = self.create_publisher(Float32MultiArray, pre + "/relay_bw", be)
             self.create_timer(1.0, self._tx_bw)
             # relay_info (D5.8): saludo de versión y lista de módulos activos (fiable + TRANSIENT_LOCAL).

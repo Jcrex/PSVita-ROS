@@ -16,6 +16,11 @@ Modos:
   tf          gate V9: /tf con 8 hijos dinámicos a 10 Hz (map → odom y 7 eslabones bajo base_link), odom → base_link
               sacado de /odom (el de `fuente-visor`) y /tf_static base_link → base_scan (TurtleBot3). Con
               `relay hmi,tf /vita "" odom,rueda_izq,rueda_der,torre,brazo,pinza,antena,camara` llegan los 8.
+  percepcion  gate V10: /camera/color/image_raw/compressed (CompressedImage JPEG 640×480 q85, 10 Hz, escena con
+              degradado, rectángulos móviles y ruido), /detections (Detection2DArray, 20 cajas: el relay deja 18),
+              /detections_3d (Detection3DArray, 14 cajas en «map»: el relay deja 12) y /points (PointCloud2 xyz
+              float32, ≈ 6 000 puntos de paredes y un cilindro en «map», 10 Hz). Con `relay percepcion` (y
+              `fuente-visor` para el perfil hmi) se mide /vita/relay_bw ≤ 40 KB/s.
 
 Uso (dentro de la estación): python3 fuente_prueba_v2.py avisos,marcadores,tf [--n 31]
 """
@@ -28,13 +33,14 @@ MARCOS_TF = ["odom", "rueda_izq", "rueda_der", "torre", "brazo", "pinza", "anten
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("modos", help="avisos, marcadores, vida, tf (separados por comas)")
+    ap.add_argument("modos", help="avisos, marcadores, vida, tf, percepcion (separados por comas)")
     ap.add_argument("--n", type=int, default=31, help="sólidos del modo marcadores (defecto 31)")
     a = ap.parse_args()
     modos = [m.strip() for m in a.modos.split(",") if m.strip()]
-    malos = [m for m in modos if m not in ("avisos", "marcadores", "vida", "tf")]
+    malos = [m for m in modos if m not in ("avisos", "marcadores", "vida", "tf", "percepcion")]
     if malos or not modos:
-        print(f"modo desconocido: {malos or '(ninguno)'}; válidos: avisos, marcadores, vida, tf", file=sys.stderr)
+        print(f"modo desconocido: {malos or '(ninguno)'}; válidos: avisos, marcadores, vida, tf, percepcion",
+              file=sys.stderr)
         sys.exit(2)
 
     import rclpy
@@ -189,6 +195,10 @@ def main():
 
         tics.append((2, tf))
 
+    # --- percepción (V10) ----------------------------------------------------------------------------------------
+    if "percepcion" in modos:
+        tics.append((2, fuente_percepcion(n, seg)))
+
     def tic():
         k[0] += 1
         for cada, f in tics:
@@ -201,6 +211,104 @@ def main():
         rclpy.spin(n)
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         pass
+
+
+def fuente_percepcion(n, seg):
+    """Gate V10: cámara JPEG, detecciones 2D/3D y nube sintéticas a 10 Hz. Devuelve la función del tic."""
+    import numpy as np
+    from sensor_msgs.msg import CompressedImage, PointCloud2, PointField
+    from vision_msgs.msg import (Detection2D, Detection2DArray, Detection3D, Detection3DArray,
+                                 ObjectHypothesisWithPose)
+    try:
+        import cv2
+    except ImportError:
+        cv2 = None
+    p_img = n.create_publisher(CompressedImage, "/camera/color/image_raw/compressed", 10)
+    p_d2 = n.create_publisher(Detection2DArray, "/detections", 10)
+    p_d3 = n.create_publisher(Detection3DArray, "/detections_3d", 10)
+    p_nube = n.create_publisher(PointCloud2, "/points", 10)
+    clases = ["persona", "coche", "perro", "bici"]
+    rng = np.random.default_rng(1)
+    yy, xx = np.mgrid[0:480, 0:640]
+    fondo = np.stack([xx * 255 // 640, yy * 255 // 480, np.full_like(xx, 90)], axis=2).astype(np.int16)
+    # Nube fija (paredes de un cuarto de 6 × 4 m y un cilindro), ≈ 6 000 puntos con algo de ruido
+    a = np.linspace(0, 1, 500)
+    paredes = []
+    for z in np.linspace(0.0, 1.5, 3):
+        paredes += [np.stack([a * 6 - 3, np.full_like(a, 2.0), np.full_like(a, z)], 1),
+                    np.stack([a * 6 - 3, np.full_like(a, -2.0), np.full_like(a, z)], 1),
+                    np.stack([np.full_like(a, 3.0), a * 4 - 2, np.full_like(a, z)], 1),
+                    np.stack([np.full_like(a, -3.0), a * 4 - 2, np.full_like(a, z)], 1)]
+    t = np.linspace(0, 2 * np.pi, 300)
+    for z in np.linspace(0.0, 1.0, 4):
+        paredes.append(np.stack([1.0 + 0.3 * np.cos(t), 0.5 + 0.3 * np.sin(t), np.full_like(t, z)], 1))
+    nube = np.concatenate(paredes).astype(np.float32)
+
+    def hip(clase, score):
+        h = ObjectHypothesisWithPose()
+        h.hypothesis.class_id = clase
+        h.hypothesis.score = float(score)
+        return h
+
+    def tic():
+        s = seg()
+        stamp = n.get_clock().now().to_msg()
+        # Cámara: degradado + 6 rectángulos que se mueven + ruido
+        img = fondo.copy()
+        for i in range(6):
+            x0 = int(40 + i * 95 + 30 * math.sin(s + i)) % 560
+            y0 = int(60 + (i % 3) * 120 + 20 * math.cos(s * 0.7 + i))
+            img[y0:y0 + 80, x0:x0 + 60] = (200 - i * 30, 40 + i * 30, 220 - i * 20)
+        img = np.clip(img + rng.integers(-10, 11, size=img.shape, dtype=np.int16), 0, 255).astype(np.uint8)
+        m = CompressedImage()
+        m.header.stamp, m.header.frame_id = stamp, "camara_optica"
+        m.format = "rgb8; jpeg compressed bgr8"
+        if cv2 is not None:
+            m.data = cv2.imencode(".jpg", img[:, :, ::-1], [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes()
+        else:
+            import io
+            from PIL import Image as PilImage
+            b = io.BytesIO()
+            PilImage.fromarray(img).save(b, "JPEG", quality=85)
+            m.data = b.getvalue()
+        p_img.publish(m)
+        # Detecciones 2D: 20 cajas (el relay deja las 18 de más score)
+        d2 = Detection2DArray()
+        d2.header = m.header
+        for i in range(20):
+            d = Detection2D()
+            d.id = f"d{i}"
+            d.bbox.center.position.x = 40.0 + (i * 31 + 20 * math.sin(s + i)) % 560
+            d.bbox.center.position.y = 60.0 + (i * 23) % 360
+            d.bbox.size_x, d.bbox.size_y = 50.0 + (i % 4) * 10, 70.0
+            d.results = [hip(clases[i % 4], 0.95 - i * 0.04)]
+            d2.detections.append(d)
+        p_d2.publish(d2)
+        # Detecciones 3D: 14 cajas en «map» girando (el relay deja 12)
+        d3 = Detection3DArray()
+        d3.header.stamp, d3.header.frame_id = stamp, "map"
+        for i in range(14):
+            d = Detection3D()
+            c = d.bbox.center
+            c.position.x = 2.0 * math.cos(s * 0.2 + i * 0.45)
+            c.position.y = 2.0 * math.sin(s * 0.2 + i * 0.45)
+            c.position.z = 0.4
+            c.orientation.z, c.orientation.w = math.sin(s * 0.5 + i), math.cos(s * 0.5 + i)
+            d.bbox.size.x, d.bbox.size.y, d.bbox.size.z = 0.5, 0.3, 0.8
+            d.results = [hip(clases[i % 4], 0.9 - i * 0.05)]
+            d3.detections.append(d)
+        p_d3.publish(d3)
+        # Nube: la fija + ruido de 1 cm
+        xyz = nube + rng.normal(0.0, 0.01, nube.shape).astype(np.float32)
+        pc = PointCloud2()
+        pc.header.stamp, pc.header.frame_id = stamp, "map"
+        pc.height, pc.width = 1, len(xyz)
+        pc.fields = [PointField(name=k, offset=4 * j, datatype=PointField.FLOAT32, count=1) for j, k in enumerate("xyz")]
+        pc.is_bigendian, pc.point_step, pc.row_step, pc.is_dense = False, 12, 12 * len(xyz), True
+        pc.data = xyz.tobytes()
+        p_nube.publish(pc)
+
+    return tic
 
 
 if __name__ == "__main__":

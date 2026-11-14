@@ -278,3 +278,121 @@ static func leer_texto_marcador(s: String) -> Dictionary:
 	if p.size() != 5 or not p[0].is_valid_int():
 		return {}
 	return {"clave": p[0].to_int(), "pos": Vector3(p[1].to_float(), p[2].to_float(), p[3].to_float()), "texto": p[4]}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Percepción (V10; doc 36 §5.3, 36a §4.5.3, §4.5.6, §4.8.4, §4.8.5; sentencia W13 D12 y D13). Referencia:
+# `vita_relay_formatos.py` (bloque «percepción (V10)»); huellas cruzadas en `docker/scripts/test_vita_relay.py`
+# (HUELLA_DET2D / _DET3D / _NUBE) y `pruebas/visor_percepcion.gd`. Nombres con sufijo propio (fusión V8 + V9).
+##   detecciones    Float32MultiArray BE 5 Hz: cab. común + [ancho, alto] + [clase, score, cx, cy, w, h]·n, n ≤ 18
+##                  (472 B); px de la imagen ORIGINAL; las de más score (empate: orden de llegada); sin NaN
+##   det_clases     String fiable + TRANSIENT_LOCAL «nombre0,nombre1,…» (índice = clase; −1 = «?»)
+##   detecciones3d  Float32MultiArray BE 5 Hz: cab. común + [clase, score, x, y, z, yaw, sx, sy, sz]·n, n ≤ 12
+##                  (464 B), en el marco fijo (ejes ROS)
+##   nube2d         Int16MultiArray BE 5 Hz × ≤ 3: cab. común + [x, y, z]·n en cm, n ≤ 76 (480 B), vóxel 10 cm (el
+##                  primer punto de cada vóxel), ≤ 228 puntos, en el marco fijo
+##   camara/compressed  sensor_msgs/CompressedImage fiable 3 Hz: JPEG ≤ 160×120 q40 (≤ 2 994 B); lo decodifica el
+##                  motor (`Image.load_jpg_from_buffer`), sin formato propio
+# ---------------------------------------------------------------------------------------------------------------
+const MAX_DET2D := 18
+const MAX_DET3D := 12
+const MAX_NUBE_TROZO := 76
+const MAX_TROZOS_NUBE := 3
+const MAX_NUBE := 228
+const VOXEL_NUBE_CM := 10
+
+
+static func _finito_percepcion(e: Array) -> bool:
+	for v in e:
+		if not is_finite(float(v)):
+			return false
+	return true
+
+
+## Los `max_n` de más score (índice 1), empate por orden de llegada; fuera los que traen NaN/Inf (= Python).
+static func _mejores_percepcion(elementos: Array, max_n: int) -> Array:
+	var validos := []
+	for i in elementos.size():
+		if _finito_percepcion(elementos[i]):
+			validos.append([i, elementos[i]])
+	validos.sort_custom(func(a, b): return a[1][1] > b[1][1] or (a[1][1] == b[1][1] and a[0] < b[0]))
+	var out := []
+	for k in mini(max_n, validos.size()):
+		out.append(validos[k][1])
+	return out
+
+
+## [[clase, score, cx, cy, w, h], …] (px de la imagen original) → UN trozo de `<p>/detecciones`.
+static func empaquetar_det2d(cajas: Array, ancho: float, alto: float, seq: int, max_n: int = MAX_DET2D) -> Array:
+	return trocear(_mejores_percepcion(cajas, max_n), 6, [ancho, alto], seq, 4 + 2 + 6 * max_n, 1)[0]
+
+
+## `<p>/detecciones` → {ancho, alto, cajas: [[clase, score, cx, cy, w, h], …]}; {} si la cabecera no vale.
+## Las cajas con NaN se saltan (T2).
+@warning_ignore("integer_division")
+static func leer_det2d(d) -> Dictionary:
+	var c := cabecera(d)
+	if c.is_empty() or d.size() < 6:
+		return {}
+	var cajas := []
+	for i in mini(int(c.n), (d.size() - 6) / 6):
+		var b := 6 + 6 * i
+		var e := [int(d[b]), d[b + 1], d[b + 2], d[b + 3], d[b + 4], d[b + 5]]
+		if _finito_percepcion(e):
+			cajas.append(e)
+	return {"ancho": float(d[4]), "alto": float(d[5]), "cajas": cajas}
+
+
+## [[clase, score, x, y, z, yaw, sx, sy, sz], …] (marco fijo, ejes ROS) → UN trozo de `<p>/detecciones3d`.
+static func empaquetar_det3d(cajas: Array, seq: int, max_n: int = MAX_DET3D) -> Array:
+	return trocear(_mejores_percepcion(cajas, max_n), 9, [], seq, 4 + 9 * max_n, 1)[0]
+
+
+## `<p>/detecciones3d` → [[clase, score, x, y, z, yaw, sx, sy, sz], …]; [] si la cabecera no vale; sin NaN.
+@warning_ignore("integer_division")
+static func leer_det3d(d) -> Array:
+	var out := []
+	var c := cabecera(d)
+	if c.is_empty():
+		return out
+	for i in mini(int(c.n), (d.size() - 4) / 9):
+		var b := 4 + 9 * i
+		var e := [int(d[b])]
+		for k in range(1, 9):
+			e.append(d[b + k])
+		if _finito_percepcion(e):
+			out.append(e)
+	return out
+
+
+## «persona,coche,…» → nombres por índice.
+static func leer_det_clases(s: String) -> PackedStringArray:
+	return s.split(",", true) if s != "" else PackedStringArray()
+
+
+## m → cm int16: floor(v·100 + 0,5) (= `_cm_percepcion` de Python).
+static func _cm_percepcion(v: float) -> int:
+	return clampi(floori(v * 100.0 + 0.5), -32768, 32767)
+
+
+## [[x, y, z] m, …] → [[x, y, z] cm, …]: fuera NaN/Inf, el PRIMER punto de cada vóxel y diezmado por paso fijo
+## hasta `max_n` (= `voxelizar_nube` de Python). En la Vita no se usa (lo hace el relay); sirve de referencia y en el
+## PC para reducir un PointCloud2 directo.
+static func voxelizar_nube(puntos: Array, voxel_cm: int = VOXEL_NUBE_CM, max_n: int = MAX_NUBE) -> Array:
+	var vistos := {}
+	var out := []
+	for p in puntos:
+		if not _finito_percepcion(p):
+			continue
+		var c := [_cm_percepcion(p[0]), _cm_percepcion(p[1]), _cm_percepcion(p[2])]
+		var k := Vector3i(floori(c[0] / float(voxel_cm)), floori(c[1] / float(voxel_cm)), floori(c[2] / float(voxel_cm)))
+		if vistos.has(k):
+			continue
+		vistos[k] = true
+		out.append(c)
+	return diezmar(out, max_n)
+
+
+## [[x, y, z] cm, …] (≤ 228) → ≤ 3 trozos de `<p>/nube2d` (≤ 76 puntos). Sin puntos: un trozo con n = 0.
+static func empaquetar_nube(puntos_cm: Array, seq: int) -> Array:
+	return trocear(puntos_cm.slice(0, MAX_NUBE), 3, [], seq, 4 + 3 * MAX_NUBE_TROZO, MAX_TROZOS_NUBE)

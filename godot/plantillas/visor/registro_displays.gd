@@ -65,6 +65,16 @@ const REGLAS := [
 	{"tipo": "geometry_msgs/msg/PoseArray", "script": D + "2d/poses.gd", "capa": "sensores_2d"},
 	{"tipo": "nav2_msgs/msg/ParticleCloud", "script": D + "2d/poses.gd", "capa": "sensores_2d"},
 	{"tipo": "tf2_msgs/msg/TFMessage", "script": D + "3d/tf.gd", "capa": "tf"},
+	# V10: percepción. Relay `<p>/detecciones` y `<p>/detecciones3d` (antes del `*MultiArray` genérico; `<p>/nube2d`
+	# ya tiene su regla arriba); imagen comprimida en PC y Vita, cruda solo en el PC (D13); vision_msgs solo directo
+	# en el PC (no está en TIPOS_VISOR, D10 y D12).
+	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/detecciones", "script": D + "hud/cajas_2d.gd", "capa": "hud"},
+	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/detecciones3d", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d"},
+	{"tipo": "sensor_msgs/msg/CompressedImage", "script": D + "hud/imagen.gd", "capa": "hud"},
+	{"tipo": "sensor_msgs/msg/Image", "script": D + "hud/imagen.gd", "capa": "hud", "solo_pc": true},
+	{"tipo": "sensor_msgs/msg/PointCloud2", "script": D + "2d/nube.gd", "capa": "sensores_2d"},
+	{"tipo": "vision_msgs/msg/Detection2DArray", "script": D + "hud/cajas_2d.gd", "capa": "hud", "solo_pc": true},
+	{"tipo": "vision_msgs/msg/Detection3DArray", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d", "solo_pc": true},
 	# V6: widgets HUD de eventos y estado (tipos estándar; en la Vita llegan por el relay `<p>/rosout` y `<p>/diagnostics`).
 	{"tipo": "rcl_interfaces/msg/Log", "script": D + "hud/consola.gd", "capa": "hud"},
 	{"tipo": "diagnostic_msgs/msg/DiagnosticArray", "script": D + "hud/diagnostico.gd", "capa": "hud"},

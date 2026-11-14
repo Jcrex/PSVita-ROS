@@ -780,3 +780,238 @@ class PlanRonda:
 
 
 IMPLEMENTADOS |= {"marcadores"}    # V8
+
+
+# ============================================================================= percepción (V10)
+# Doc 36 §5.3 (filas camara/compressed, detecciones, det_clases, detecciones3d, nube2d), 36a §4.5.3, §4.5.6, §4.8.4
+# y §4.8.5; sentencia W13 D12 (detecciones) y D13 (imagen). Copia en GDScript: `godot/plantillas/ros/vc1.gd` (bloque
+# «percepción»); huellas de bytes cruzadas en `test_vita_relay.py` (HUELLA_DET2D / _DET3D / _NUBE) y
+# `godot/plantillas/pruebas/visor_percepcion.gd`. Nombres con sufijo propio (lección de la fusión V8 + V9).
+#
+#   detecciones    Float32MultiArray BE 5 Hz  cab. común + [ancho, alto] + [clase, score, cx, cy, w, h]·n, n ≤ 18
+#                  (114 floats = 472 B); px de la imagen ORIGINAL; las 18 de más score (empate: orden de llegada)
+#   det_clases     String F+TL  «nombre0,nombre1,…» (índice = `clase`); las comas de un nombre pasan a «;»
+#   detecciones3d  Float32MultiArray BE 5 Hz  cab. común + [clase, score, x, y, z, yaw, sx, sy, sz]·n, n ≤ 12
+#                  (112 floats = 464 B); pose en el marco fijo (ejes ROS), tamaño en m
+#   nube2d         Int16MultiArray BE 5 Hz × ≤ 3 trozos  cab. común + [x, y, z]·n en cm, n ≤ 76 (232 int16 =
+#                  480 B); vóxel de 10 cm (el PRIMER punto de cada vóxel, en orden de llegada), ≤ 228 puntos
+#   camara/compressed  sensor_msgs/CompressedImage FIABLE 3 Hz (máx. 5)  JPEG ≤ 160×120 (aspecto conservado)
+#                  q40; si el mensaje pasa de 2 994 B se baja la calidad (30, 20, 10) y si aun así no cabe, se salta
+
+MAX_DET2D = 18            # 4 + 2 + 6·18 = 114 floats → 472 B
+MAX_DET3D = 12            # 4 + 9·12 = 112 floats → 464 B
+MAX_NUBE_TROZO = 76       # 4 + 3·76 = 232 int16 → 480 B
+MAX_TROZOS_NUBE = 3
+MAX_NUBE = MAX_NUBE_TROZO * MAX_TROZOS_NUBE      # 228 puntos
+VOXEL_NUBE_CM = 10
+MAX_CLASES_DET = 64       # [decisión V10] nombres de clase distintos; los que llegan después van como -1 («?»)
+MAX_CAR_CLASE_DET = 24    # [decisión V10] caracteres por nombre de clase
+CAMARA_ANCHO = 160
+CAMARA_ALTO = 120
+CAMARA_CALIDAD = 40
+CAMARA_MAX_B = 2994       # bytes del mensaje CompressedImage con rosbags (CDR + encapsulación); [decisión V10] 2 994 y
+#                           no 3 000: el máximo con el que el perfil `percepcion` suma ≤ 40,0 KB/s (39,998; con 3 000, 40,016)
+CAMARA_HZ = 3.0
+CAMARA_HZ_MAX = 5.0
+
+
+def _finito_percepcion(*vals):
+    return all(isinstance(v, (int, float)) and math.isfinite(v) for v in vals)
+
+
+def _mejores_percepcion(elementos, max_n):
+    """Los `max_n` de más score (índice 1), empate por orden de llegada; descarta los que traen NaN/Inf (T2).
+    Mismo orden en Python y en GDScript (sort estable explícito por (−score, índice))."""
+    validos = [(i, e) for i, e in enumerate(elementos) if _finito_percepcion(*e)]
+    validos.sort(key=lambda ie: (-ie[1][1], ie[0]))
+    return [list(e) for _, e in validos[:max_n]]
+
+
+def empaquetar_det2d(cajas, ancho, alto, seq, max_n=MAX_DET2D):
+    """[[clase, score, cx, cy, w, h], …] (px de la imagen original) → UN trozo de <p>/detecciones."""
+    return trocear(_mejores_percepcion(cajas, max_n), 6, (float(ancho), float(alto)), seq,
+                   max_valores=4 + 2 + 6 * max_n, max_trozos=1)[0]
+
+
+def leer_det2d(d):
+    """Inverso (lo que hace la Vita): (ancho, alto, [(clase, score, cx, cy, w, h)]) o None si la cabecera no vale."""
+    c = cabecera(d)
+    if c is None or len(d) < 6:
+        return None
+    n = min(c["n"], (len(d) - 6) // 6)
+    return d[4], d[5], [tuple(d[6 + 6 * i:12 + 6 * i]) for i in range(n)]
+
+
+def empaquetar_det3d(cajas, seq, max_n=MAX_DET3D):
+    """[[clase, score, x, y, z, yaw, sx, sy, sz], …] (marco fijo, ejes ROS) → UN trozo de <p>/detecciones3d."""
+    return trocear(_mejores_percepcion(cajas, max_n), 9, (), seq, max_valores=4 + 9 * max_n, max_trozos=1)[0]
+
+
+def leer_det3d(d):
+    c = cabecera(d)
+    if c is None:
+        return None
+    n = min(c["n"], (len(d) - 4) // 9)
+    return [tuple(d[4 + 9 * i:13 + 9 * i]) for i in range(n)]
+
+
+class TablaClasesDet:
+    """class_id (texto de vision_msgs) → índice estable por orden de llegada, compartido por det2d y det3d.
+    `cambio` = hay que republicar <p>/det_clases (latched)."""
+
+    def __init__(self, max_clases=MAX_CLASES_DET):
+        self.max = max_clases
+        self.nombres = []
+        self.cambio = False
+
+    def indice(self, nombre):
+        nombre = str(nombre).replace(",", ";")[:MAX_CAR_CLASE_DET]
+        if nombre in self.nombres:
+            return self.nombres.index(nombre)
+        if len(self.nombres) >= self.max:
+            return -1
+        self.nombres.append(nombre)
+        self.cambio = True
+        return len(self.nombres) - 1
+
+    def texto(self):
+        return ",".join(self.nombres)
+
+
+def leer_det_clases(s):
+    return [x for x in s.split(",")] if s else []
+
+
+def _cm_percepcion(v):
+    """m → cm entero (int16): floor(v·100 + 0,5), igual en numpy y en GDScript (sin el empate «al par» de round)."""
+    return max(-32768, min(32767, int(math.floor(v * 100.0 + 0.5))))
+
+
+def voxelizar_nube(puntos, voxel_cm=VOXEL_NUBE_CM, max_n=MAX_NUBE):
+    """[(x, y, z) m, …] (marco fijo) → [[x, y, z] cm, …]: fuera NaN/Inf, un punto por vóxel (el PRIMERO en orden de
+    llegada, con sus cm), y diezmado por paso fijo hasta `max_n` (como el scan). Referencia pura (bucle)."""
+    vistos = set()
+    out = []
+    for p in puntos:
+        if not _finito_percepcion(*p):
+            continue
+        c = [_cm_percepcion(v) for v in p]
+        k = (c[0] // voxel_cm, c[1] // voxel_cm, c[2] // voxel_cm)
+        if k in vistos:
+            continue
+        vistos.add(k)
+        out.append(c)
+    return diezmar(out, max_n)
+
+
+def voxelizar_nube_np(xyz, voxel_cm=VOXEL_NUBE_CM, max_n=MAX_NUBE):
+    """Lo mismo con numpy (lo usa el nodo: nubes de 10⁴–10⁵ puntos a 5 Hz). `xyz`: array (N, 3) en m.
+    Misma salida que `voxelizar_nube` (lo comprueba test_vita_relay.py)."""
+    import numpy as np
+    a = np.asarray(xyz, dtype=np.float64).reshape(-1, 3)
+    a = a[np.isfinite(a).all(axis=1)]
+    c = np.clip(np.floor(a * 100.0 + 0.5), -32768, 32767).astype(np.int64)
+    if len(c) == 0:
+        return []
+    _, primeros = np.unique(np.floor_divide(c, voxel_cm), axis=0, return_index=True)
+    c = c[np.sort(primeros)]
+    paso = max(1, math.ceil(len(c) / max_n))
+    return c[::paso][:max_n].tolist()
+
+
+def empaquetar_nube(puntos_cm, seq):
+    """[[x, y, z] cm, …] (≤ 228) → ≤ 3 trozos de <p>/nube2d (≤ 76 puntos, 480 B). Sin puntos: un trozo con n = 0."""
+    return trocear(puntos_cm[:MAX_NUBE], 3, (), seq, max_valores=4 + 3 * MAX_NUBE_TROZO, max_trozos=MAX_TROZOS_NUBE)
+
+
+def leer_nube(d):
+    c = cabecera(d)
+    if c is None:
+        return None
+    n = min(c["n"], (len(d) - 4) // 3)
+    return [tuple(d[4 + 3 * i:7 + 3 * i]) for i in range(n)]
+
+
+def cdr_compressed_image(frame_id, formato, n_datos):
+    """Bytes CDR (con los 4 de encapsulación, como rosbags) de un sensor_msgs/CompressedImage: stamp (8) + frame_id
+    + format (cadenas: 4 B de longitud + texto + NUL, alineadas a 4) + data (4 + n)."""
+    off = 8                                       # stamp; offsets del cuerpo (la encapsulación no alinea)
+    for s in (frame_id, formato):
+        off = (off + 3) & ~3
+        off += 4 + len(s.encode()) + 1
+    off = (off + 3) & ~3
+    return 4 + off + 4 + n_datos
+
+
+def tam_camara(ancho, alto, max_ancho=CAMARA_ANCHO, max_alto=CAMARA_ALTO):
+    """Tamaño de salida que cabe en max_ancho × max_alto conservando el aspecto (nunca amplía)."""
+    k = min(max_ancho / ancho, max_alto / alto, 1.0)
+    return max(1, int(round(ancho * k))), max(1, int(round(alto * k)))
+
+
+def _rgb_de_image_percepcion(encoding, ancho, alto, step, data):
+    """sensor_msgs/Image (8 bit) → array numpy (alto, ancho, 3) RGB, o None si la codificación no se trata.
+    Profundidad (16UC1/32FC1) y 16 bit fuera: la imagen de la Vita es de color (D13; T4)."""
+    import numpy as np
+    canales = {"rgb8": 3, "bgr8": 3, "8UC3": 3, "rgba8": 4, "bgra8": 4, "mono8": 1, "8UC1": 1}.get(encoding)
+    if canales is None or step < ancho * canales or len(data) < step * alto:
+        return None
+    a = np.frombuffer(bytes(data), dtype=np.uint8)[:step * alto].reshape(alto, step)[:, :ancho * canales]
+    a = a.reshape(alto, ancho, canales)
+    if canales == 1:
+        return np.repeat(a, 3, axis=2)
+    if encoding in ("bgr8", "bgra8", "8UC3"):          # 8UC3 de OpenCV = BGR
+        a = a[:, :, 2::-1] if canales == 3 else a[:, :, [2, 1, 0]]
+    return np.ascontiguousarray(a[:, :, :3])
+
+
+def recomprimir_camara(entrada, frame_id="", calidad=CAMARA_CALIDAD, max_b=CAMARA_MAX_B,
+                       max_ancho=CAMARA_ANCHO, max_alto=CAMARA_ALTO):
+    """Módulo camara (D13): CompressedImage (jpeg/png) o Image (8 bit) → (jpeg, calidad usada, (ancho, alto) de la
+    imagen original) con el mensaje de salida ≤ max_b bytes, o (None, motivo, tamaño o None). `entrada` = ("comprimida", formato, bytes) o ("cruda", encoding, ancho, alto,
+    step, bytes). Usa OpenCV si está (estación: 4.6.0 [V]) y si no, PIL (sin cv_bridge en la estación [V])."""
+    import numpy as np
+    try:
+        import cv2
+    except ImportError:
+        cv2 = None
+    if entrada[0] == "comprimida":
+        formato, datos = entrada[1], entrada[2]
+        if "compressedDepth" in formato:
+            return None, "compressedDepth (PNG de 16 bit, T4): no se recomprime", None
+        if cv2 is not None:
+            bgr = cv2.imdecode(np.frombuffer(bytes(datos), np.uint8), cv2.IMREAD_COLOR)
+            if bgr is None:
+                return None, "no se pudo decodificar", None
+            rgb = bgr[:, :, ::-1]
+        else:
+            import io
+            from PIL import Image as PilImage
+            try:
+                rgb = np.asarray(PilImage.open(io.BytesIO(bytes(datos))).convert("RGB"))
+            except Exception:
+                return None, "no se pudo decodificar", None
+    else:
+        rgb = _rgb_de_image_percepcion(*entrada[1:])
+        if rgb is None:
+            return None, f"codificación «{entrada[1]}» no soportada (solo 8 bit de color o gris)", None
+    alto, ancho = rgb.shape[:2]
+    w, h = tam_camara(ancho, alto, max_ancho, max_alto)
+    for q in [calidad] + [c for c in (30, 20, 10) if c < calidad]:
+        if cv2 is not None:
+            peq = cv2.resize(np.ascontiguousarray(rgb[:, :, ::-1]), (w, h), interpolation=cv2.INTER_AREA)
+            ok, buf = cv2.imencode(".jpg", peq, [cv2.IMWRITE_JPEG_QUALITY, int(q)])
+            jpeg = buf.tobytes() if ok else b""
+        else:
+            import io
+            from PIL import Image as PilImage
+            s = io.BytesIO()
+            PilImage.fromarray(np.ascontiguousarray(rgb)).resize((w, h), PilImage.BILINEAR).save(s, "JPEG", quality=int(q))
+            jpeg = s.getvalue()
+        if jpeg and cdr_compressed_image(frame_id, "jpeg", len(jpeg)) <= max_b:
+            return jpeg, q, (ancho, alto)
+    return None, f"no cabe en {max_b} B ni con calidad 10", (ancho, alto)
+
+
+PRESUPUESTO["camara"] = (3, CAMARA_MAX_B, 7)                  # V10: 3 Hz × ≤ 2 994 B (≈ 7 datagramas)
+IMPLEMENTADOS.update({"camara", "det2d", "det3d", "nube"})    # V10 (bloque aditivo)
