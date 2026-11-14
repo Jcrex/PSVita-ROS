@@ -979,6 +979,9 @@ def recomprimir_camara(entrada, frame_id="", calidad=CAMARA_CALIDAD, max_b=CAMAR
         formato, datos = entrada[1], entrada[2]
         if "compressedDepth" in formato:
             return None, "compressedDepth (PNG de 16 bit, T4): no se recomprime", None
+        enc = formato.lower().split(";")[0].strip()       # revisión V3: «16UC1; png compressed» = PNG de 16 bit
+        if "16" in enc or "32f" in enc or "64f" in enc:
+            return None, f"imagen de 16/32 bit «{formato[:16]}» (T4): no se recomprime", None
         if cv2 is not None:
             bgr = cv2.imdecode(np.frombuffer(bytes(datos), np.uint8), cv2.IMREAD_COLOR)
             if bgr is None:

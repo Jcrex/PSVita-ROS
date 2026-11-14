@@ -30,6 +30,8 @@ var ms_ultimo := 0.0                          # decodificar + subir la última (
 var ms_max := 0.0
 var _img := Image.new()
 var _bgr := false
+var _informar := false                        # revisión V3: `[visor-imagen]` cada 5 s (gate E-W8-5)
+var _t_informe := 0
 
 
 static func nombre_display() -> String:
@@ -51,6 +53,23 @@ func _init() -> void:
 	caducidad_s = 2.0
 
 
+func conectar(v) -> void:
+	super.conectar(v)
+	_informar = v.en_vita or OS.get_cmdline_user_args().has("perfil")
+
+
+## Revisión V3: el gate E-W8-5 (JPEG ≤ 6 ms decodificar + subir) necesita una línea de log; sin ella no se medía.
+## Con la pestaña Cámara visible (una pestaña oculta no bombea su canal).
+func _process(dt: float) -> void:
+	super._process(dt)
+	if _informar and imagenes > 0:
+		var ahora := Time.get_ticks_msec()
+		if ahora - _t_informe >= 5000:
+			_t_informe = ahora
+			printerr("[visor-imagen] imagenes=%d rechazadas=%d ms_ultimo=%.2f ms_max=%.2f tam=%dx%d" % [
+					imagenes, rechazadas, ms_ultimo, ms_max, tam_imagen.x, tam_imagen.y])
+
+
 func _procesar(msg):
 	var t0 := Time.get_ticks_usec()
 	var err := ERR_INVALID_DATA
@@ -61,6 +80,8 @@ func _procesar(msg):
 		var f := String(msg.format)
 		if "compresseddepth" in f.to_lower():
 			return _rechazar("compressedDepth (16 bit, T4)")
+		if es_formato_profundo(f):
+			return _rechazar("imagen de 16/32 bit «%s» (T4)" % f.left(16))
 		var data: PackedByteArray = msg.data
 		err = _img.load_png_from_buffer(data) if "png" in f.to_lower() else _img.load_jpg_from_buffer(data)
 		if err != OK:
@@ -87,6 +108,13 @@ func _cruda(msg) -> int:
 	_img.set_data(w, h, false, CRUDOS[enc][0], data.slice(0, w * h * bpp) if data.size() > w * h * bpp else data)
 	_bgr = CRUDOS[enc][2]
 	return OK
+
+
+## Revisión V3: image_transport «compressed» escribe `format` = «<encoding>; png compressed …»; un PNG de 16 bit
+## (16UC1, mono16, rgb16…) o 32FC1 lo baja a 8 bit el cargador de Godot (T4) y se vería casi negro: se rechaza.
+static func es_formato_profundo(formato: String) -> bool:
+	var enc := formato.to_lower().get_slice(";", 0).strip_edges()
+	return enc.contains("16") or enc.contains("32f") or enc.contains("64f")
 
 
 func _rechazar(m: String):

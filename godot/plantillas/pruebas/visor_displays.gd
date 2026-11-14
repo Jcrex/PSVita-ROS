@@ -404,7 +404,7 @@ func _probar_vita() -> void:
 	check(ds.robot.cupo == 40 and v.usado("robot") == 40, "cupo Vita: robot 40 de 40")
 	check(ds.pose3.cupo == 1 and v.usado("poses") <= 4, "cupo Vita: pose 3D 1 de 4")
 	check(ds.mapa3.cupo == 1 and v.usado("mundo") <= 12, "cupo Vita: mapa 3D 1 de 12")
-	check(v.usado("sensores_2d") == 360 + 112 + 101 + 1 and v.usado("sensores_2d") <= 800,
+	check(v.usado("sensores_2d") == 360 + 112 + 100 + 1 and v.usado("sensores_2d") <= 800,
 			"cupo Vita: sensores 2D %d ≤ 800" % v.usado("sensores_2d"))
 	check(not ds.mapa.latched and not ds.mapa3.latched, "Vita: la tesela se suscribe best effort")
 
@@ -474,16 +474,16 @@ func _probar_vita() -> void:
 	check(ds.robot.poses_base >= 1 and ds.robot.robot.transform.origin.is_equal_approx(Vector3(-2, 0, -1)),
 			"robot Vita: base colocada con pose2d (sin TF)")
 
-	# Cupo 2D lleno: un segundo scan no cabe entero (800 − 574 = 226 < 360) y dibuja como mucho lo concedido.
+	# Cupo 2D lleno: un segundo scan no cabe entero (800 − 573 = 227; revisión V3: Odom pide 100 < 360) y dibuja como mucho lo concedido.
 	var scan2 = _display(D + "2d/scan.gd", "Scan2", {"hz": 0.0})
 	v.get_node("Planta").add_child(scan2)
 	scan2.conectar(v)
-	check(scan2.cupo == 226 and v.usado("sensores_2d") == 800, "cupo Vita: segundo scan recibe 226 (zona llena)")
+	check(scan2.cupo == 227 and v.usado("sensores_2d") == 800, "cupo Vita: segundo scan recibe 227 (zona llena)")
 	var mucho := PackedVector2Array()
 	for i in 300:
 		mucho.append(Vector2(1, 0))
 	scan2._pintar(mucho)
-	check(scan2.puntos_dibujados == 226, "cupo Vita: el scan dibuja ≤ su cupo")
+	check(scan2.puntos_dibujados == 227, "cupo Vita: el scan dibuja ≤ su cupo")
 	scan2.desconectar()
 	var otra_pose = _display(D + "3d/pose.gd", "Pose3D_b", {})
 	v.add_child(otra_pose)

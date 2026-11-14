@@ -6,6 +6,7 @@ extends Node
 ##   - `res://main.tscn`      visor de ejemplo, perfil HMI (gates H0, E-W8-1, V3, V6, V7, V9, M1-HMI, M2, M3)
 ##   - `res://main_viz.tscn`  la misma escena heredada con `perfil = VIZ` (gate M1-Viz: 32 marcadores a ≥ 30 FPS)
 ##   - `res://banco_v5.tscn`  displays directos de V5 (gate V5: cada tipo publicado desde el PC se ve)
+##   - `res://main_percepcion.tscn`  main.tscn + pestaña Cámara, nube y cajas 3D (gates V10 y E-W8-5; revisión V3)
 ##
 ## Cómo se cambia:
 ##   - Vita: mantener **L + R** y pulsar **START** → pasa a la siguiente de `escenas` (y da la vuelta).
@@ -17,7 +18,8 @@ extends Node
 ##
 ## Va como nodo en cada escena de la lista (no como autoload: con `--script` las pruebas de host no deben saltar).
 
-@export var escenas := PackedStringArray(["res://main.tscn", "res://main_viz.tscn", "res://banco_v5.tscn"])
+@export var escenas := PackedStringArray(["res://main.tscn", "res://main_viz.tscn", "res://banco_v5.tscn",
+		"res://main_percepcion.tscn"])
 @export var archivo := "user://visor_escena.txt"
 @export var boton := JOY_BUTTON_START                     # se pulsa…
 @export var con_botones := PackedInt32Array([JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER])   # …con estos mantenidos

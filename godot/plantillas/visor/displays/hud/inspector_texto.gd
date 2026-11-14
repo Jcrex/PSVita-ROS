@@ -50,7 +50,7 @@ func conectar(v) -> void:
 		filas = mini(filas, FILAS_VITA)
 		ancho_max = mini(ancho_max, ANCHO_VITA)
 	super.conectar(v)
-	set_process_unhandled_input(usar_cruceta and visible)
+	set_process_unhandled_input(usar_cruceta)              # revisión V3: la pestaña suele estar oculta al conectar
 
 
 func _procesar(msg):

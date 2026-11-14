@@ -103,6 +103,9 @@ class Percepcion:
             self.p_clases = nodo.create_publisher(String, pre + "/det_clases", latched)
         if "camara" in mods:
             hz = min(float(_param_percepcion(nodo, "camara_hz", CAMARA_HZ)), CAMARA_HZ_MAX)
+            if hz > CAMARA_HZ:                       # revisión V3: el presupuesto declarado (PRESUPUESTO) es a 3 Hz
+                nodo.get_logger().warning(f"camara: {hz:g} Hz > {CAMARA_HZ:g} Hz declarados: +{(hz - CAMARA_HZ) * 2.994:.1f}"
+                                          " KB/s sobre el perfil (percepcion pasa de 40 KB/s)")
             self.cam_in = _param_percepcion(nodo, "camara_in", "/camera/color/image_raw/compressed")
             self.cam = None
             self.sub_cam = None

@@ -29,6 +29,8 @@ var _lut := PackedColorArray()
 var _seq_pend := -1
 var _pend := {}                               # trozo → [v, c] de la nube en curso
 var _mostrar := {}                            # trozo → [v, c] de la que se ve
+var _informar := false                        # revisión V3: `[visor-nube]` cada 5 s (gate V10: ≤ 2 ms por trozo)
+var _t_informe := 0
 var _idx := {}                                # nº de vértices → PackedInt32Array 0..n-1 (caché)
 
 
@@ -55,6 +57,17 @@ func conectar(v) -> void:
 		canal.coalescer = false                      # cada trozo cuenta
 		canal.max_pendientes = 3 * Vc1.MAX_TROZOS_NUBE
 	super.conectar(v)
+	_informar = v.en_vita or OS.get_cmdline_user_args().has("perfil")
+
+
+func _process(dt: float) -> void:
+	super._process(dt)
+	if _informar and trozos_recibidos > 0:
+		var ahora := Time.get_ticks_msec()
+		if ahora - _t_informe >= 5000:
+			_t_informe = ahora
+			printerr("[visor-nube] trozos=%d completas=%d us_ultimo=%d us_max=%d puntos=%d" % [
+					trozos_recibidos, nubes_completas, us_ultimo_trozo, us_max_trozo, puntos_dibujados])
 
 
 func _color_z(z: float) -> Color:
@@ -173,6 +186,8 @@ func _pintar(t) -> void:
 
 func _indices(n: int) -> PackedInt32Array:
 	if not _idx.has(n):
+		if _idx.size() >= 16:
+			_idx.clear()                               # revisión V3: en el PC n cambia con cada nube (fuga sin tope)
 		var a := PackedInt32Array()
 		a.resize(n)
 		for i in n:

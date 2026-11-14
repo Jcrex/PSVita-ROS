@@ -29,6 +29,10 @@ const CAPACIDAD_VITA := 64
 @export var capacidad := 64
 @export var colores := PackedColorArray([COLOR_ACENTO, COLOR_INFO, COLOR_OK])
 @export var margen := 4.0
+## Separación mínima entre muestras guardadas (s). −1 = automática (`ventana_s / capacidad`: la ventana entera cabe en
+## el búfer); 0 = todas. Revisión V3: con `/odom` (o `<p>/pose2d`) a 30 Hz y 64 puntos el búfer cubría 2,1 s de los
+## 10 s de la ventana y la gráfica ocupaba solo la quinta parte derecha del panel.
+@export var paso_min_s := -1.0
 
 var series: Array = []                      # {ruta: PackedStringArray, nombre, pts: PackedVector2Array, cab, n}
 var y_min := INF
@@ -37,6 +41,7 @@ var comandos := 0                           # comandos de dibujo del último _dr
 var comandos_series := 0                    # de ellos, polilíneas de series (1 por serie)
 var puntos_dibujados := PackedInt32Array()  # puntos de cada polilínea del último _draw
 var _t0 := 0
+var _t_ultima := -INF                       # instante de la última muestra guardada (diezmado por tiempo)
 
 
 static func nombre_display() -> String:
@@ -64,6 +69,7 @@ func preparar(rutas: PackedStringArray) -> void:
 	series.clear()
 	y_min = INF
 	y_max = -INF
+	_t_ultima = -INF
 	_t0 = Time.get_ticks_msec()
 	for c in rutas.slice(0, SERIES_MAX):
 		var trozos: PackedStringArray = Intro.partir_ruta(c)["campos"]
@@ -78,6 +84,9 @@ func _procesar(msg):
 
 ## Añade una muestra en el instante t (s). true si alguna serie tenía un número en su ruta.
 func anadir_muestra(msg, t: float):
+	var paso := paso_min_s if paso_min_s >= 0.0 else ventana_s / maxi(capacidad, 1)
+	if t >= _t_ultima and t - _t_ultima < paso * 0.95:
+		return null                             # diezmado por tiempo (revisión V3)
 	var hubo := false
 	for s in series:
 		var v = Intro.leer_ruta(msg, s.ruta)
@@ -92,6 +101,8 @@ func anadir_muestra(msg, t: float):
 		y_min = minf(y_min, y)
 		y_max = maxf(y_max, y)
 		hubo = true
+	if hubo:
+		_t_ultima = t
 	return true if hubo else null
 
 

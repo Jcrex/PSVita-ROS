@@ -193,7 +193,7 @@ func _probar_trazador() -> void:
 			"pose.pose.position.x"]))
 	check(tr.series.size() == 3, "trazador: como mucho 3 series")
 	for i in 100:
-		tr.anadir_muestra(_odom(sin(i * 0.1), cos(i * 0.1), i * 0.01), i * 0.05)
+		tr.anadir_muestra(_odom(sin(i * 0.1), cos(i * 0.1), i * 0.01), i * 0.2)
 	tr.queue_redraw()
 	await _fotogramas(2)
 	check(tr.dibujos >= 1, "trazador: dibuja sin errores")
@@ -201,7 +201,7 @@ func _probar_trazador() -> void:
 			"trazador: 3 × 64 puntos = 3 comandos de dibujo (%d, %s)" % [tr.comandos_series, tr.puntos_dibujados])
 	check(tr.comandos <= 7, "trazador: ≤ 7 comandos en total (marco, cero, 3 series, 2 etiquetas): %d" % tr.comandos)
 	var o: PackedVector2Array = tr.ordenados(0)
-	check(o.size() == 64 and is_equal_approx(o[0].x, 36 * 0.05) and is_equal_approx(o[63].x, 99 * 0.05),
+	check(o.size() == 64 and is_equal_approx(o[0].x, 36 * 0.2) and is_equal_approx(o[63].x, 99 * 0.2),
 			"trazador: búfer circular en orden temporal (de la muestra 36 a la 99)")
 	check(tr.quads_dibujados <= 240 and tr._coste().quads <= 240,
 			"trazador: %d quads dibujados, %d declarados ≤ 240" % [tr.quads_dibujados, tr._coste().quads])
@@ -209,7 +209,15 @@ func _probar_trazador() -> void:
 	# NaN no entra (T2).
 	var n_antes: int = tr.series[0].n
 	var nan_m = _odom(NAN, NAN, NAN)
-	check(tr.anadir_muestra(nan_m, 6.0) == null and tr.series[0].n == n_antes, "trazador: NaN no entra en la serie")
+	check(tr.anadir_muestra(nan_m, 30.0) == null and tr.series[0].n == n_antes, "trazador: NaN no entra en la serie")
+	# Revisión V3: diezmado por tiempo (ventana 10 s / 64 puntos ≈ 0,156 s): 30 Hz no llena el búfer en 2 s.
+	var n_d: int = tr.series[0].n
+	var cab_d: int = tr.series[0].cab
+	for i in 30:
+		tr.anadir_muestra(_odom(0.5, 0.0, 0.0), 40.0 + i / 30.0)
+	var guardadas: int = (tr.series[0].cab - cab_d + tr.capacidad) % tr.capacidad
+	check(guardadas >= 6 and guardadas <= 8 and tr.series[0].n == n_d,
+			"trazador: 1 s a 30 Hz guarda ≈ 6,4 muestras (%d), no 30" % guardadas)
 	tr.queue_free()
 	await _fotogramas(1)
 
