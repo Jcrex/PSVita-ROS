@@ -50,13 +50,19 @@
    R1 `shutdown()` desde un timer, X1 hipótesis `poll(0)`/HEARTBEAT. Cada uno con prueba de paridad.
 3. **Optimizaciones** (lote 5): MTU XRCE 512 → ~1400, quitar pools de red duplicados, `-O2` para los `.c` en SCsub.
 4. **rclgd en el PC** — el usuario clonó el 2026-11-14 en `~/Proyectos/rclgd-estudio/` (fuera del repo, no versionado):
-   - `rclgd/` (Ozuba/rclgd, rama **`rolling`** @ `ebe74a0` «3.0.0», 2026-11-04; existen `jazzy`, `kilted`, `lyrical`).
-     El proyecto usa **jazzy**: hacer `git -C ~/Proyectos/rclgd-estudio/rclgd switch jazzy` antes de compilar, o
-     comparar `rolling` con el clon `godot/rclgd/` (jazzy) y regenerar `skills/rclgd/references/api` si cambió la API
-     (`skills/rclgd/references/versiones.md`).
-   - `roomba_ws/` (Ozuba/roomba_ws @ `8332acb`): **trae `docker/` con Ubuntu 24.04 + `ros-jazzy-rclgd`** (contenedor
-     `rclgd_ws`). Es la vía más corta para tener rclgd en el PC sin instalar ROS en CachyOS (el host no tiene `ros2` ni
-     `godot` en el PATH): levantar ese contenedor, montar `godot/visor-ros` y lanzar las suites del visor con rclgd.
+   - `rclgd/` (Ozuba/rclgd) en rama **`jazzy`** @ `d8221d3` (3.0.0, 2026-11-04): **mismo código que `fb12a65`** (la
+     base de la skill y de `godot/rclgd/`); solo cambia el CHANGELOG. **Compilado desde fuente y probado el
+     2026-11-14: 45/45 pruebas del propio rclgd** con Godot 4.7.1 (receta en `skills/rclgd/references/versiones.md`
+     §Compilar). Instalación en `~/Proyectos/rclgd-estudio/ws-jazzy/install`, Godot 4.7.1 en
+     `ws-jazzy/build/rclgd/godot-engine/`, logs en `~/Proyectos/rclgd-estudio/.build-logs/`.
+   - `roomba_ws/` (Ozuba/roomba_ws @ `8332acb`): su `docker/` instala `ros-jazzy-rclgd` por **apt, que solo ofrece
+     2.1.0** (sin clases tipadas ni RosLogger): **no vale tal cual**. Usar la compilación de fuente de arriba (o
+     cambiar su Dockerfile para montar `ws-jazzy/install`).
+   - **Siguiente paso concreto:** ejecutar las suites del visor con rclgd en el contenedor jazzy: copiar
+     `godot/visor-ros` (y `godot/plantillas` como `comun`) a un directorio temporal, añadir `librclgd.so` +
+     `rclgd.gdextension` como hace `run_tests.sh` de rclgd, y lanzar `godot/plantillas/pruebas/visor*.gd` con el
+     Godot 4.7.1 de `ws-jazzy` (ojo: las suites usan hoy `ros2_vita`; puede hacer falta un modo «rclgd» en
+     `godot/visor-ros/project.godot` y en las pruebas: decide Fable).
    - `rclgd_sensors/` (Ozuba/rclgd_sensors @ `420d4d4`): LiDAR 360 por GPU, IMU, cámara RGBA y GPS en Godot con
      `addons/rclgd-sensors`. Ya estudiado en `docs/24` (MIT; su LiDAR/cámara por GPU no van en la Vita).
    - **Tareas:** (a) validar el visor con rclgd real: lo no probado de doc 36 §13.4 (servicio de marcadores
