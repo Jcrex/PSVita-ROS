@@ -8,6 +8,8 @@ extends Node
 ## Decisiones de V1 no cubiertas por el ADR 0013 (las más conservadoras; anotadas en visor/README.md):
 ##   - TF: en V1 no hay `TfLigero` (tarea V9). Si el nodo tiene `create_tf_listener` (rclgd del PC) se usa; si no,
 ##     `tf` queda en null y `transformada()` supone que todo está ya en el marco fijo (D3).
+##     → V9: sin `create_tf_listener`, `tf` es un TfLigero (pose2d, robot horneado, `tf_estaticos` y relay `tf`
+##     opcional); mientras no conozca `marco_fijo`, `transformada()` sigue suponiendo el marco fijo.
 ##   - Transporte: argumento `transporte=` > `@export transporte` > `ros/transport` del proyecto SOLO con ros2_vita
 ##     (con rclgd «xrce» no significa nada y activaría el camino compacto en el PC por error).
 ##   - Si ROS no arranca (agente caído al abrir), se reintenta cada `reintento_s`. Las caídas posteriores las
@@ -17,6 +19,7 @@ signal listo                                   # displays conectados (o ROS no d
 
 const Contexto = preload("res://comun/ros/contexto_ros.gd")
 const PerfilGd = preload("res://comun/ros/perfil.gd")   # contadores [perfil-gd] (≠ enum Perfil)
+const TfLigero = preload("res://comun/visor/tf_ligero.gd")   # V9: TF sin RosTfListener (Vita y host)
 
 enum Perfil { HMI, VIZ }
 
@@ -40,6 +43,14 @@ const CUPOS := {
 @export var texto: Control                     # TextoSuperpuesto (V2); opcional
 @export_file("*.json") var config_json := "res://robot.json"   # solo `prefijo_compacto` en V1
 @export var reintento_s := 3.0                 # 0 = no reintentar si ROS no arranca
+@export_group("TF ligero (V9)")
+## Solo sin `create_tf_listener` (Vita y editor de host): TfLigero con fuentes locales (D3).
+@export var marco_base := "base_link"          # hijo de `<p>/pose2d` y padre de los links del robot horneado
+@export var marco_pose2d := ""                 # padre de pose2d; "" = marco_fijo (supone map ≈ odom, doc 36 §9.3.3)
+@export var tf_relay := false                  # suscribir `<p>/tf`, `tf_marcos` y `tf_estatico` (módulo tf opcional)
+## Estáticos de la escena (regla doc 35), «padre>hijo x y z yaw» en ROS (m, rad); el relay `tf_estatico` los pisa.
+@export var tf_estaticos := PackedStringArray()
+@export_group("")
 
 var contexto = Contexto.new()
 var tf = null                                  # RosTfListener (PC) o null: SIN anotar (no existe en la Vita, T7)
@@ -53,6 +64,7 @@ var _args_compacto := false
 var _perfil_propio := false                    # este visor activó PerfilGd y vuelca `[perfil-gd]` (revisión V1)
 var _perfil_n := 0
 var _gestor: Node = null                       # GestorHud bajo el visor (para el informe de *quads* del HUD)
+var _subs_tf: Array = []                       # V9: suscripciones de TfLigero (pose2d y relay tf)
 
 
 func _ready() -> void:
@@ -110,6 +122,8 @@ func _conectar_deferred() -> void:
 	estado = "ok"
 	if contexto.nodo.has_method("create_tf_listener"):
 		tf = contexto.nodo.call("create_tf_listener", 10.0)
+	else:
+		_iniciar_tf_ligero()                     # V9
 	for d in get_tree().get_nodes_in_group("display_ros"):
 		if is_ancestor_of(d):
 			d.conectar(self)
@@ -169,9 +183,76 @@ func usado(capa: String) -> int:
 func transformada(frame: String):
 	if frame == "" or frame == marco_fijo or tf == null:
 		return Transform3D.IDENTITY              # D3: sin TF se supone que el frame ya es el fijo
+	if es_tf_ligero() and not tf.frame_exists(marco_fijo):
+		return Transform3D.IDENTITY              # V9: TfLigero sin el marco fijo (sin pose2d aún) = como sin TF
 	if not tf.can_transform(marco_fijo, frame):
 		return null
 	return tf.lookup_transform(marco_fijo, frame)
+
+
+# --- V9: TfLigero (doc 36 §2.9.6; sentencia W13 D3) ---------------------------------------------------------------
+
+## true si `tf` es el TfLigero de GDScript (no el RosTfListener nativo).
+func es_tf_ligero() -> bool:
+	return tf != null and tf.has_method("desde_pose2d")
+
+
+## Padre real de pose2d.
+func marco_mundo_pose2d() -> String:
+	return marco_pose2d if marco_pose2d != "" else marco_fijo
+
+
+func _iniciar_tf_ligero() -> void:
+	tf = TfLigero.new()
+	for linea in tf_estaticos:
+		if not poner_estatico(linea):
+			push_warning("VisorRos: tf_estaticos «%s» no vale («padre>hijo x y z yaw»)" % linea)
+	if not usa_compactos():
+		return                                   # PC/host sin relay: solo estáticos y robot (registrar_robot)
+	var n = contexto.nodo
+	var pre: String = prefijo_compacto.trim_suffix("/")
+	var be = contexto.qos(true, 1, false)
+	_subs_tf.append(n.create_subscription(pre + "/pose2d", "std_msgs/msg/Float32MultiArray", _al_pose2d_tf, be))
+	if tf_relay:
+		var fiable = contexto.qos(false, 1, true)
+		_subs_tf.append(n.create_subscription(pre + "/tf_marcos", "std_msgs/msg/String", _al_tf_marcos, fiable))
+		_subs_tf.append(n.create_subscription(pre + "/tf_estatico", "std_msgs/msg/Float32MultiArray", _al_tf_estatico,
+				fiable))
+		_subs_tf.append(n.create_subscription(pre + "/tf", "std_msgs/msg/Float32MultiArray", _al_tf_relay, be))
+
+
+## «padre>hijo x y z yaw» (ROS) → TfLigero. false si la línea no vale.
+func poner_estatico(linea: String) -> bool:
+	var partes := linea.strip_edges().split(" ", false)
+	if partes.size() != 5 or partes[0].count(">") != 1 or not es_tf_ligero():
+		return false
+	var par := partes[0].split(">")
+	var v := PackedFloat64Array()
+	for k in range(1, 5):
+		if not partes[k].is_valid_float():
+			return false
+		v.append(partes[k].to_float())
+	return tf.poner_ros(par[0], par[1], Vector3(v[0], v[1], v[2]), Quaternion(Vector3(0, 0, 1), v[3])) == TfLigero.OK_TF
+
+
+func _al_pose2d_tf(m) -> void:
+	if es_tf_ligero():
+		tf.desde_pose2d(m.data, marco_mundo_pose2d(), marco_base)
+
+
+func _al_tf_marcos(m) -> void:
+	if es_tf_ligero():
+		tf.on_tf_marcos(m)
+
+
+func _al_tf_estatico(m) -> void:
+	if es_tf_ligero():
+		tf.on_tf_estatico(m)
+
+
+func _al_tf_relay(m) -> void:
+	if es_tf_ligero():
+		tf.on_tf_compacto(m)
 
 
 ## Transform3D (ejes Godot) → Transform2D de la planta: x = ROS x, y = −ROS y (norte arriba), en px.
@@ -186,6 +267,7 @@ func _exit_tree() -> void:
 		if is_instance_valid(d):
 			d.desconectar()
 	displays.clear()
+	_subs_tf.clear()
 	tf = null
 	if ros_listo:
 		contexto.cerrar()

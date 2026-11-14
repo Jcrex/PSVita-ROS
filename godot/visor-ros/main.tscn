@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://comun/visor/visor_ros.gd" id="1_visor"]
+[ext_resource type="Script" path="res://comun/visor/displays/3d/tf.gd" id="v9_tf"]
 [ext_resource type="Script" path="res://comun/visor/gestor_hud.gd" id="2_gestor"]
 [ext_resource type="Script" path="res://comun/visor/displays/hud/bateria.gd" id="3_bateria"]
 [ext_resource type="Script" path="res://comun/visor/displays/hud/estado_meta.gd" id="4_meta"]
@@ -50,11 +51,15 @@ boton = 6
 script = ExtResource("1_visor")
 camara = NodePath("../Camara")
 texto = NodePath("Hud/Texto")
+tf_estaticos = PackedStringArray("base_link>base_scan -0.032 0 0.172 0")
 
 [node name="Robot" type="Node3D" parent="VisorRos"]
 script = ExtResource("8_robot")
 topic = "/joint_states"
 tipo = "sensor_msgs/msg/JointState"
+
+[node name="TF" type="Node3D" parent="VisorRos"]
+script = ExtResource("v9_tf")
 
 [node name="Meta3D" type="Node3D" parent="VisorRos"]
 script = ExtResource("9_pose3d")
