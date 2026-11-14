@@ -274,4 +274,9 @@ func _probar_registro() -> void:
 	check(String(g[0]["script"]).ends_with("hud/multiarray.gd"), "registro: MultiArray sin topic conocido = genérico")
 	check(String(Registro.candidatos("/scan", "sensor_msgs/msg/LaserScan", false)[0]["script"]).ends_with("2d/scan.gd"),
 			"registro: LaserScan → scan")
-	check(Registro.crear("/x", "tipo/msg/SinDisplayAun", false) == null, "registro: sin script existente, crear() = null")
+	# V12: el comodín (inspector de texto) ya existe, así que un tipo sin display propio cae en él.
+	var ins: Node = Registro.crear("/x", "tipo/msg/SinDisplayAun", false)
+	check(ins != null and ins.get_script().resource_path.ends_with("hud/inspector_texto.gd"),
+			"registro: tipo sin display propio → inspector de texto (comodín, V12)")
+	if ins != null:
+		ins.free()
