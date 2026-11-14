@@ -466,6 +466,17 @@ static void test_bad_schemas(void)
     copy[32 + 9] = 0; copy[32 + 10] = 0; copy[32 + 11] = 0;
     CHECK(msg_schema_init(&s, copy, schema_len) == MSG_SCHEMA_ERR_BAD_SCHEMA);
     free(copy);
+
+    /* B1: cabecera sola (32 B) cuyas tablas dicen acabar más allá del blob:
+     * 1 tipo en [32, 44), strings_off = 44 > total = 32. Antes: C leía fuera
+     * del blob y Rust hacía panic (cuelgue). Ahora: BAD_SCHEMA en ambas. */
+    uint8_t hdr[32] = { 'R', 'S', 'C', 'H', 1, 0, 0, 0 };
+    hdr[8] = 1;              /* type_count  = 1  */
+    hdr[16] = 32;            /* types_off   = 32 */
+    hdr[20] = 44;            /* fields_off  = 44 */
+    hdr[24] = 44;            /* strings_off = 44 */
+    hdr[28] = 32;            /* total       = 32 */
+    CHECK(msg_schema_init(&s, hdr, sizeof hdr) == MSG_SCHEMA_ERR_BAD_SCHEMA);
 }
 
 static void test_cases(void)

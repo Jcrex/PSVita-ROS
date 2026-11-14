@@ -55,7 +55,10 @@ int msg_schema_init(msg_schema *s, const uint8_t *blob, size_t len)
     uint32_t tcount = ld32(blob + 8), fcount = ld32(blob + 12);
     uint32_t toff = ld32(blob + 16), foff = ld32(blob + 20), soff = ld32(blob + 24);
     uint32_t total = ld32(blob + 28);
-    if (total != len || toff < HEADER_LEN || foff < toff || soff < foff) {
+    /* soff <= total (B1): si no, `total - soff` da la vuelta y las tablas y
+     * la zona de cadenas quedarían fuera del blob (lectura fuera de límites). */
+    if (total != len || toff < HEADER_LEN || foff < toff || soff < foff ||
+        soff > total) {
         return MSG_SCHEMA_ERR_BAD_SCHEMA;
     }
     /* tablas dentro del blob (sin desbordar u32/size_t) */

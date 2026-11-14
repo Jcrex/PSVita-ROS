@@ -132,7 +132,12 @@ pub extern "C" fn msg_schema_init(s: *mut MsgSchema, data: *const u8, len: usize
     }
     let (tcount, fcount) = (ld32(b, 8), ld32(b, 12));
     let (toff, foff, soff, total) = (ld32(b, 16), ld32(b, 20), ld32(b, 24), ld32(b, 28));
-    if total as usize != len || toff < HEADER_LEN || foff < toff || soff < foff {
+    // soff <= total (B1): si no, `total - soff` da la vuelta (en release no
+    // hay comprobación de desborde) y los slices `b[..]` de las tablas o de las
+    // cadenas se saldrían del blob -> panic -> la app se queda colgada.
+    if total as usize != len || toff < HEADER_LEN || foff < toff || soff < foff
+        || soff > total
+    {
         return ERR_BAD_SCHEMA;
     }
     // u64 para que las multiplicaciones no desborden aunque el blob mienta

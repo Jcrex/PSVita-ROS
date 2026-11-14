@@ -49,6 +49,8 @@ rápidas de `rclgd` hacia `Packed*Array`.
   automáticos: se listan sus `_Goal/_Result/_Request/_Response` como mensajes.
 - Un tipo sin campos es inválido (ROS añade `structure_needs_at_least_one_member`):
   evita bucles interminables con un blob corrupto.
+- `strings_off <= total` obligatorio (bug B1, 2026-11-15): si no, las tablas y las cadenas
+  quedarían fuera del blob (C leía fuera de límites; Rust hacía panic). Caso de paridad propio.
 - Profundidad máxima 16. Longitudes de secuencia validadas contra los bytes que quedan.
 - Los *constants* de los `.msg` no van al blob (no viajan en CDR).
 
