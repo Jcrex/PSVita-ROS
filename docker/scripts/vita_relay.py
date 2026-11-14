@@ -24,6 +24,14 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
                         que cambian de nivel o mensaje y un repaso a 1 Hz por estado                         [diag]
   /vita/ritmo/<nombre> el tipo de entrada  Hz fija  el mismo mensaje (bytes tal cual), solo si ≤ 488 B;
                         ≤ 30 Hz y ≤ 10 KB/s en total                                                          [ritmo]
+  --- V8: marcadores (doc 36 §5.3, 36a §4.7.4, sentencia W13 D14) ---                                  [marcadores]
+  /vita/marcadores     Float32MultiArray 5 Hz   ESTADO COMPLETO: cab. común + [clave, tipo, x, y, z, yaw, sx, sy, sz,
+                        color]·n, n ≤ 11 por trozo, ≤ 33 marcadores (3 trozos ≤ 472 B), pose en `marco_fijo`
+  /vita/marcador_puntos Float32MultiArray ≤ 4/s  cab. común + [clave, tipo, color, ancho] + xyz·n (líneas, puntos,
+                        listas, ARROW_STRIP), n ≤ 36 por trozo; primero los que cambian y luego un repaso
+  /vita/marcador_texto String  FIABLE ≤ 2/s  «clave|x|y|z|texto» (TEXT_VIEW_FACING, ≤ 80 car.)
+                        Entradas: marcadores_in (/visualization_marker_array) y marcador_in (/visualization_marker);
+                        TF al marco fijo con tf2 (`marco_fijo`, «map»); sin TF el marcador no se manda.
   Época del mapa: `version` solo sube si cambian resolución, tamaño u origen (antes, con cada OccupancyGrid).
 
 Módulos: scan, pose, joints, mapa, path, rosout, diag, ritmo, o un perfil: hmi (= los 7 primeros), viz,
@@ -51,6 +59,8 @@ from vita_relay_formatos import *  # noqa: E402,F401,F403
 from vita_relay_formatos import (MAX_BE, TESELA, PlanDiag, CuboBytes, cdr_multiarray, compactar_estado,  # noqa: E402
                                  compactar_log, empaquetar_path, empaquetar_scan, empaquetar_tesela, epoca_mapa,
                                  parsear_ritmo, relay_info, resolver_modulos, yaw_de_quat)
+from vita_relay_formatos import (IDENTIDAD, EstadoMarcadores, PlanRonda, empaquetar_marcadores,  # noqa: E402
+                                 empaquetar_puntos, texto_marcador)
 import math  # noqa: E402
 
 
@@ -161,6 +171,33 @@ def main():
                     self.get_logger().warning("ritmo activo sin entradas: -p ritmo:='[nombre=/topic@hz]'")
                 self._t_ritmo = self.create_timer(2.0, self._buscar_ritmos)
                 self._buscar_ritmos()
+            if "marcadores" in mods:
+                # Módulo marcadores (V8, D14): el relay aplica la semántica de RViz y manda el estado completo.
+                from visualization_msgs.msg import Marker, MarkerArray
+                self.est_marc = EstadoMarcadores()
+                self.plan_puntos = PlanRonda()
+                self.plan_textos = PlanRonda()
+                self.cola_puntos = []
+                self.seq_marc = 0
+                self.seq_puntos = 0
+                self.marco_fijo = p("marco_fijo", "map").value.lstrip("/")
+                self.tf_buf = None
+                try:                                    # sin tf2 solo valen marcadores ya en el marco fijo
+                    import tf2_ros
+                    self.tf_buf = tf2_ros.Buffer()
+                    self.tf_lis = tf2_ros.TransformListener(self.tf_buf, self)
+                except ImportError:
+                    self.get_logger().warning("marcadores: sin tf2_ros; solo se mandan los del marco fijo")
+                self.create_subscription(MarkerArray, p("marcadores_in", "/visualization_marker_array").value,
+                                         self._on_marcadores, 10)
+                self.create_subscription(Marker, p("marcador_in", "/visualization_marker").value,
+                                         lambda m: self.est_marc.aplicar(m, time.monotonic()), 50)
+                self.p_marc = self.create_publisher(Float32MultiArray, pre + "/marcadores", be)
+                self.p_mpts = self.create_publisher(Float32MultiArray, pre + "/marcador_puntos", be)
+                self.p_mtxt = self.create_publisher(String, pre + "/marcador_texto", fiable)
+                self.create_timer(0.2, self._tx_marcadores)      # 5 Hz, ≤ 3 trozos
+                self.create_timer(0.25, self._tx_mpuntos)        # ≤ 4 trozos/s
+                self.create_timer(0.5, self._tx_mtexto)          # ≤ 2/s
             self.p_bw = self.create_publisher(Float32MultiArray, pre + "/relay_bw", be)
             self.create_timer(1.0, self._tx_bw)
             # relay_info (D5.8): saludo de versión y lista de módulos activos (fiable + TRANSIENT_LOCAL).
@@ -348,6 +385,52 @@ def main():
             r["pub"].publish(b)
             self.bytes += len(b)
             self.msgs += 1
+
+        # --- marcadores (V8): estado completo a 5 Hz; puntos y textos en ronda (primero lo que cambia)
+        def _on_marcadores(self, m):
+            ahora = time.monotonic()
+            for mk in m.markers:
+                self.est_marc.aplicar(mk, ahora)
+
+        def _resolver_tf(self, frame):
+            if frame in ("", self.marco_fijo):
+                return IDENTIDAD
+            if self.tf_buf is None:
+                return None
+            try:
+                from rclpy.time import Time
+                tr = self.tf_buf.lookup_transform(self.marco_fijo, frame, Time()).transform
+            except Exception:                   # sin TF todavía (o nunca): el marcador no se manda este ciclo
+                return None
+            t, r = tr.translation, tr.rotation
+            return ((t.x, t.y, t.z), (r.x, r.y, r.z, r.w))
+
+        def _tx_marcadores(self):
+            marc, puntos, textos = self.est_marc.ciclo(time.monotonic(), self._resolver_tf)
+            self.plan_puntos.actualizar(puntos)
+            self.plan_textos.actualizar(textos)
+            self.seq_marc += 1
+            for d in empaquetar_marcadores(marc, self.seq_marc):
+                self._pub(self.p_marc, Float32MultiArray(data=[float(v) for v in d]), cdr_multiarray(len(d), 4))
+
+        def _tx_mpuntos(self):
+            if not self.cola_puntos:
+                s = self.plan_puntos.siguiente()
+                if s is None:
+                    return
+                clave, (tipo, col, ancho, pts) = s
+                self.seq_puntos += 1
+                self.cola_puntos = empaquetar_puntos(clave, tipo, col, ancho, pts, self.seq_puntos)
+            d = self.cola_puntos.pop(0)
+            self._pub(self.p_mpts, Float32MultiArray(data=[float(v) for v in d]), cdr_multiarray(len(d), 4))
+
+        def _tx_mtexto(self):
+            s = self.plan_textos.siguiente()
+            if s is None:
+                return
+            clave, (x, y, z, texto) = s
+            m = String(data=texto_marcador(clave, x, y, z, texto))
+            self._pub(self.p_mtxt, m, len(serialize_message(m)))
 
         def _tx_bw(self):
             self.p_bw.publish(Float32MultiArray(data=[float(self.bytes), float(self.msgs)]))

@@ -51,6 +51,10 @@ const REGLAS := [
 	{"tipo": "sensor_msgs/msg/Range", "script": D + "3d/rango.gd", "capa": "poses"},
 	{"tipo": "visualization_msgs/msg/Marker", "script": D + "3d/marcadores.gd", "capa": "marcadores"},
 	{"tipo": "visualization_msgs/msg/Marker", "script": D + "3d/marcador_simple.gd", "capa": "marcadores"},
+	# V8: gestor de MarkerArray (3D; las líneas, puntos y textos los pinta además 2d/marcadores_2d.gd en la misma escena)
+	# y los puntos del relay (<p>/marcador_puntos).
+	{"tipo": "visualization_msgs/msg/MarkerArray", "script": D + "3d/marcadores.gd", "capa": "marcadores"},
+	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/marcador_puntos", "script": D + "2d/marcadores_2d.gd", "capa": "resto_2d"},
 	{"tipo": "geometry_msgs/msg/PolygonStamped", "script": D + "2d/poligono.gd", "capa": "sensores_2d"},
 	{"tipo": "geometry_msgs/msg/PoseWithCovarianceStamped", "script": D + "2d/covarianza.gd", "capa": "sensores_2d"},
 	{"tipo": "sensor_msgs/msg/NavSatFix", "script": D + "2d/gps.gd", "capa": "sensores_2d"},
