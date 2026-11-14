@@ -1,6 +1,6 @@
 # 06 — Bitácora de estado del proyecto
 
-**Última actualización:** 2026-11-13, cierre de sesión (regla de escenas editables, doc 35, comprobada por el usuario en el editor; `g1-sensores` a 57–58 FPS en la Vita, doc 34 §7.1). Antes, el mismo día: T1 y T2 medidos en la Vita (`g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
+**Última actualización:** 2026-11-14, Fase V del visor W13 cerrada en host (V1–V15; doc 36 §13); siguiente: pruebas de hardware del usuario. Antes: 2026-11-13, cierre de sesión (regla de escenas editables, doc 35, comprobada por el usuario en el editor; `g1-sensores` a 57–58 FPS en la Vita, doc 34 §7.1). Antes, el mismo día: T1 y T2 medidos en la Vita (`g1-sensores` de 23,5 a 57–58 FPS, doc 34 §7.1). Antes, el mismo día: perfil «Vita ligero» de las plantillas (doc 34). Antes: 2026-11-12 (plantillas RB-KAIROS+, G1 y dron con sensores ROS 2 + diagnóstico de rendimiento XRCE); 2026-11-11 (etapa «estación robótica» y proyecto Unitree G1); 2026-11-01 (cierre: G7a/G7b/G7c verdes, primer 3D de Godot en la Vita; antes,
 auditoría de la flota, índice en [`docs/ia/auditoria/README.md`](ia/auditoria/README.md)).
 El estado vivo está en el primer bloque; debajo, las sesiones abiertas (una por bloque).
 **Sesiones anteriores:** [`docs/bitacora/`](bitacora/README.md) (un fichero por mes; la Fase 0/1 en
@@ -13,7 +13,27 @@ fichero del mes en `docs/bitacora/`.
 
 ---
 
-## 2026-11-13 (PC, noche) — Visor W13, fase V1 (V1–V4) hecha en host (Estado para retomar)
+## 2026-11-14 (PC) — Fase V del visor W13 cerrada en host (Estado para retomar)
+
+- **Hecho:** V1–V15 del visor (`godot/plantillas/visor/`, ADR 0013), 39 commits desde `015f350` + los de V15. V1–V12 y
+  V14 verdes en host; V13a (paquete nativo de `ros2_vita`: propiedades de `RosQoS`, `latest_only`, tipo resuelto al
+  suscribir, contadores, `RosTfListener` sobre `tf-tree`) hecho y plantilla recompilada; **V13b**: `viz-decode` no se
+  crea (juez Fable, `docs/ia/workshops/posts/V13b-juez-fable.md`), queda detrás del gate G-V13b; **V15** documentación:
+  doc 36 §9.0 (estado de gates) y **§13 (estado largo de la implementación)**, doc 36a §4.0.1 (estado por tipo con la
+  ruta real: 62 de 82 filas con display, 7 solo PC, 18 ⏳), `godot/ros2_vita/API_PARITY.md` (reglas para código
+  común), citas `xrce_transport.cpp` corregidas en docs 27 y 31, notas en docs 24 (T-W4-4) y 31 (T-W8-4), README del
+  visor (índice, cómo añadir un display, tabla de pruebas).
+- **Verificado en host (2026-11-14):** 14 suites `visor*.gd` verdes (visor 57, primitivas 114, HUD 72, displays 106,
+  directos 228, herramientas 70, TF 84, relay 80, marcadores 63, escenas 21, percepción 67, costmap 55, inspector 64,
+  PC 77), `test_vita_relay.py` OK, `godot/test/run_host_tests.sh` 349/0, runner g1-sensores 16/16.
+- **Sin probar:** nada en la Vita; nada con rclgd (no instalado; lista en doc 36 §13.4).
+- **Siguiente (usuario):** **pruebas de hardware** con `build/visor-ros.vpk`: guion único
+  `docs/ia/workshops/posts/V3-revision.md` §5 (9 lanzamientos, fases F1–F8, fish) + gate G-V13b (mismas fases,
+  `V13b-juez-fable.md` §4). Volcar resultados en doc 36 §9.0. Fuera del guion: G-W13-R0, G-W13-M7, V13a con `/tf` real.
+- **Después:** arreglar lo que salga rojo y **push / PR** de los commits de la Fase V (sin publicar): **preguntar al
+  usuario** antes. `godot/plantillas/mundo/mundo.tscn` tiene cambios locales del usuario sin commitear (no tocar).
+
+## 2026-11-13 (PC, noche) — Visor W13, fase V1 (V1–V4) hecha en host
 
 - **Hecho (commits `35c0cae`, `1137018`, `8c9405e`, `0627f0f`, revisión `e45c12a`):** núcleo del visor en
   `godot/plantillas/visor/` (ADR 0013), primitivas y paleta, HUD con pestañas, displays scan/path/pose/mapa/robot con el
@@ -61,7 +81,7 @@ fichero del mes en `docs/bitacora/`.
   `visor_pc.gd` 77/77 headless y 93/93 con GPU (Compatibility y Forward+); 14 suites verdes, host 349/0, runner 16/16;
   en vivo por XRCE con una fuente sintética. Sin probar con rclgd (no instalado): ver «Extras solo PC (V14)» del
   README del visor.
-- **Siguiente:** V13b (juez Fable: `viz-decode` aplazado), V15 documentación.
+- **Siguiente:** V13b (juez Fable: `viz-decode` aplazado), V15 documentación. → Hechos el 2026-11-14 (bloque de arriba).
 
 ## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 
