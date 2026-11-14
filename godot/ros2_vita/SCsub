@@ -53,13 +53,22 @@ else:
 
 env_ros.add_source_files(env.modules_sources, "*.cpp")
 
+# Lote 5 de la auditoría (opt. 5, 2026-11-15): los .c de los módulos duales se compilan con -O2 en la Vita.
+# La plantilla release usa optimize=size (-Os para todo el motor, platform/vita/detect.py); estos .c son el
+# camino caliente de mensajes (msg_schema_decode midió -30 % de tiempo con -O2 en host, docs/ia/auditoria).
+# Entorno propio para no tocar los .cpp del módulo; -O2 va DESPUÉS de -Os y gcc se queda con el último.
+# Validar en hardware (la mejora en la Vita no está medida).
+env_c = env_ros.Clone()
+if is_vita:
+    env_c.Append(CCFLAGS=["-O2"])
+
 rust_lib = ARGUMENTS.get("ros2_vita_rust_lib", "")
 if rust_lib:
     # OJO: la plataforma vita filtra LIBS y descarta los str (los trata como
     # bibliotecas del SDK que resuelve el loader): la staticlib debe ser un File.
     env.Append(LIBS=[env.File(rust_lib)])
 else:
-    env_ros.add_source_files(
+    env_c.add_source_files(
         env.modules_sources,
         [
             os.path.join(mods, "msg-schema", "impl-c", "msg_schema.c"),
@@ -71,7 +80,7 @@ else:
         ],
     )
     if with_xrce:  # la staticlib Rust ya trae net-udp y microros-transport
-        env_ros.add_source_files(
+        env_c.add_source_files(
             env.modules_sources,
             [
                 os.path.join(mods, "net-udp", "impl-c", "net_udp.c"),
