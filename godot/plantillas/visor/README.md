@@ -670,3 +670,78 @@ $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_marcado
 ```fish
 $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_escenas.gd     # RESULTADO: 21/21
 ```
+
+## Percepción (V10)
+
+Estado: **hecho y verde en host** (`pruebas/visor_percepcion.gd`, 63/63; `python3 docker/scripts/test_vita_relay.py`,
+también dentro de la estación con OpenCV) y **probado en vivo en el host** contra la estación (dominio ROS 47 aislado:
+`fuente_prueba_visor.py` + `fuente_prueba_v2.py percepcion` + relay `percepcion`, 20 s): `/vita/camara/compressed` a
+2,9 Hz con 1 799 B por mensaje (JPEG 160×120 q40 de una escena 640×480 con ruido), `/vita/detecciones` 472 B a 4,9 Hz,
+`/vita/detecciones3d` 464 B a 4,9 Hz, `/vita/nube2d` 480 B a 14,8 trozos/s, `det_clases` = «persona,coche,perro,bici»;
+`relay_bw` **28,1 KB/s** medio (máx. 28,2) con el perfil `percepcion` completo (nominal 40,0 KB/s y 154 dgr/s).
+**Sin validar en hardware**: gate **E-W8-5** (JPEG ≤ 6 ms decodificar + subir en la Vita; en el host 0,1 ms) y
+`process` de un trozo de nube ≤ 2 ms (en el host 0,05–0,08 ms por trozo de 76 puntos).
+
+| Archivo | Pieza | Papel |
+|---|---|---|
+| `displays/hud/imagen.gd` | Imagen (`CompressedImage`; `Image` solo PC; relay `<p>/camara/compressed`) | decodifica el motor (jpg/png), textura reutilizada (`update`), aspecto conservado, `rect_imagen()`; BGR con *shader* en el PC; `ms_ultimo`/`ms_max` para E-W8-5 |
+| `displays/hud/cajas_2d.gd` | Cajas2D (`Detection2DArray` PC; relay `<p>/detecciones` + `<p>/det_clases`) | marcos y «clase 87%» sobre la imagen (`imagen` → hud/imagen.gd), ≤ 150 *quads* |
+| `displays/2d/cajas_3d.gd` | Cajas3D (`Detection3DArray` PC; relay `<p>/detecciones3d`) | 12 aristas por caja superpuestas al 3D en un `draw_multiline_colors`, etiqueta en TextoSuperpuesto, reproyección ≤ 20 Hz, ⌊cupo/12⌋ cajas en la Vita |
+| `displays/2d/nube.gd` | Nube (`PointCloud2` PC; relay `<p>/nube2d`) | planta 2D, color por banda de altura, un lote por trozo; PC con `to_float32_array()` y diezmado |
+| `clases_deteccion.gd` | ClasesDeteccion | suscripción auxiliar *latched* a `<p>/det_clases` y color estable por clase |
+
+**Relay** (`docker/scripts/`): módulos `camara`, `det2d`, `det3d` y `nube` (`docker/vita-ros.sh relay percepcion`).
+Funciones puras en `vita_relay_formatos.py` (bloque «percepción (V10)»: `empaquetar_det2d`/`leer_det2d`,
+`empaquetar_det3d`/`leer_det3d`, `TablaClasesDet`, `voxelizar_nube` (referencia) y `voxelizar_nube_np` (la del nodo,
+misma salida), `empaquetar_nube`, `cdr_compressed_image` (= rosbags), `tam_camara`, `recomprimir_camara`); el NODO de
+estos módulos va aparte en `vita_relay_percepcion.py` (`vita_relay.py` solo llama a `iniciar_percepcion`). Parámetros:
+`camara_in` (`/camera/color/image_raw/compressed`; Image o CompressedImage, tipo descubierto en el grafo),
+`camara_hz` (3; máx. 5; 0 apaga), `det2d_in` (`/detections`), `det2d_tam` (`[640, 480]`), `det3d_in`
+(`/detections_3d`), `nube_in` (`/points`), `marco_fijo` (`map`, compartido con marcadores). **`vc1.gd`** gana el bloque
+«percepción» (mismas funciones; huellas cruzadas det2d/det3d float32 y nube int16 en `test_vita_relay.py` y
+`pruebas/visor_percepcion.gd`). Fuente sintética: `docker/vita-ros.sh fuente-v2 percepcion`.
+Estación [V]: OpenCV 4.6.0, numpy 1.26 y PIL 10.2 dentro de `vita_station`; **sin** `cv_bridge` ni `sensor_msgs_py`
+(la nube se decodifica con numpy y dtype estructurado). En el portátil/PC sin OpenCV, `recomprimir_camara` usa PIL.
+
+**En la escena**: `godot/visor-ros/main_percepcion.tscn` hereda `main.tscn` y añade la pestaña **Cámara** (Imagen +
+Cajas2D), `Planta/Vista/Nube` y `Marcas2D/Cajas3D`. **No** entra en la lista de `SelectorEscena` (la prueba
+`visor_escenas.gd` fija el ciclo main → main_viz → banco_v5): se añade cuando toque el gate de hardware de V10.
+`RegistroDisplays`: `*/detecciones`, `*/detecciones3d`, `CompressedImage`, `Image` (solo PC), `PointCloud2` y
+`vision_msgs` 2D/3D (solo PC; no están en `TIPOS_VISOR`, D10).
+
+### Decisiones de V10 no cubiertas (las más conservadoras)
+
+1. **Tope de la cámara 2 994 B** de mensaje (no 3 000): el máximo con el que el perfil `percepcion` suma ≤ 40,0 KB/s
+   nominales (39,998; con 3 000 eran 40,016). Se aplica en `PRESUPUESTO["camara"]` desde el bloque V10 (aditivo).
+   Si el JPEG q40 no cabe, se baja a q30, q20 y q10; si ni así, la imagen se salta (`saltadas`, aviso cada 50).
+2. **Aspecto conservado** al bajar a 160×120 (16:9 → 160×90), nunca se amplía; las cajas 2D viajan en px de la imagen
+   ORIGINAL con su `[ancho, alto]` (del módulo `camara` si está activo; si no, `det2d_tam`).
+3. **Solo lo nuevo**: det2d, det3d, nube y cámara no repiten un dato viejo (a diferencia de pose o scan); el display lo
+   da por caducado (`caducidad_s` 1 s en cajas, 2 s en imagen y nube).
+4. **Detecciones**: la mejor hipótesis de cada detección; las 18 / 12 de más score (empate: orden de llegada), fuera
+   las que traen NaN/Inf. `class_id` → índice por orden de llegada en `det_clases` (≤ 64 clases, ≤ 24 caracteres, la
+   coma pasa a «;»; las que no caben van como −1 = «?»). Sin resultados: el `id` de la detección y score 1.
+5. **Det3d y nube se transforman al marco fijo en el relay** (tf2, como marcadores); sin TF ese ciclo no se manda.
+   Yaw de la caja = yaw de la orientación compuesta (se pierden cabeceo y alabeo, como D12 acepta para el HUD).
+6. **Nube**: el PRIMER punto de cada vóxel de 10 cm (con sus cm, no el centro del vóxel) y, si pasan de 228, diezmado
+   por paso fijo (como el scan). Redondeo a cm con `floor(v·100 + 0,5)` (idéntico en numpy y GDScript; `round()` de
+   Python redondea al par). En la Vita una nube nueva se enseña al completar sus trozos; si empieza otra antes, se
+   enseña lo que llegó (un trozo perdido no congela la nube).
+7. **Fiabilidad**: cajas 2D/3D directas (PC) en FIABLE con profundidad 1 (doc 36 §6); por el relay, `AUTO` = best
+   effort (un suscriptor fiable no casaría con el relay). La imagen, fiable en los dos caminos.
+8. **Imagen cruda solo PC** y solo 8 bit (rgb8, rgba8, bgr8, bgra8, mono8, 8UC1, 8UC3; BGR por *shader*); 16UC1,
+   32FC1, `compressedDepth` (T4) y filas con relleno se rechazan con `motivo` (la profundidad del PC queda para V14).
+   Un JPEG corrupto deja además un error del motor en el log (`image_loader_libjpeg_turbo`), no de script.
+9. **PointCloud2 directo (PC)**: solo x, y, z FLOAT32; *big endian* rechazado (T28: no se usa `bswap32`); color por la z
+   del marco del sensor; `max_puntos_pc` = 4 000.
+10. **Prueba de bytes en `pruebas/visor_percepcion.gd`** (no en `runner.gd`, como V8).
+11. **Hallazgo** (no corregido, fuera de V10): `2d/pose.gd` (Odom) pide 101 *quads* y doc 36 §7.2 le da 100; con la
+    nube (228) la zona `sensores_2d` de `main_percepcion.tscn` se pasa en 1 y Odom recibe 99 (aviso en el log).
+
+```fish
+python3 docker/scripts/test_vita_relay.py                                               # … percepción ok, TODO OK
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_percepcion.gd  # RESULTADO: 63/63
+docker/vita-ros.sh fuente-visor                                                         # (otra terminal)
+docker/vita-ros.sh fuente-v2 percepcion                                                 # (otra terminal)
+docker/vita-ros.sh relay percepcion                                                     # 40,0 KB/s y 154 dgr/s nominales
+```

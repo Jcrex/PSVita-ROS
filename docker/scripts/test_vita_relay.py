@@ -421,6 +421,154 @@ def test_marcadores():
     print("marcadores ok")
 
 
+# ----------------------------------------------------------------------------- percepción (V10)
+# Huellas cruzadas con godot/plantillas/pruebas/visor_percepcion.gd (`_probar_bytes_percepcion`): mismos vectores,
+# mismos float32 (MD5 del hex, `huella_f32`) y mismos enteros (MD5 de los enteros con comas, `huella`).
+HUELLA_DET2D = "ee2ba52555c851eb7215e34e3e29df65"
+HUELLA_DET3D = "85721035f7b1d215bcd3006fc4c5bcde"
+HUELLA_NUBE = "749401e964f564fdba18ef774a5e8333"
+
+
+def vector_det2d_percepcion():
+    out = []
+    for i in range(22):
+        out.append([i % 4, ((i * 7) % 20) / 20.0, 10.0 + i * 25.5, 20.0 + i * 12.25, 30.0 + (i % 5) * 8, 40.0 + (i % 3) * 10])
+    out[5][2] = float("nan")                                   # NaN: fuera (T2)
+    return out
+
+
+def vector_det3d_percepcion():
+    out = []
+    for i in range(15):
+        out.append([i % 3, ((i * 3) % 10) / 10.0, i * 0.5 - 3.0, 1.0 - i * 0.25, 0.125 * (i % 4), -1.5 + i * 0.2,
+                    0.5 + (i % 3) * 0.25, 0.4, 1.7])
+    out[4][1] = float("nan")
+    return out
+
+
+def vector_nube_percepcion():
+    out = []
+    for i in range(1200):
+        x = float("nan") if i % 97 == 0 else -4.0 + (i % 40) * 0.07
+        out.append((x, -2.0 + (i // 40) * 0.13, 0.05 * (i % 7) - 0.1))
+    return out
+
+
+def _imagen_prueba_percepcion(ancho=640, alto=480):
+    """RGB uint8 con degradado, rectángulos y algo de ruido (escena «realista» para el tope de 3 KB)."""
+    import numpy as np
+    rng = np.random.default_rng(3)
+    yy, xx = np.mgrid[0:alto, 0:ancho]
+    img = np.stack([(xx * 255 // ancho), (yy * 255 // alto), np.full_like(xx, 90)], axis=2).astype(np.int16)
+    for k in range(6):
+        x0, y0 = 40 + k * 90, 60 + (k % 3) * 110
+        img[y0:y0 + 80, x0:x0 + 60] = (200 - k * 30, 40 + k * 30, 220 - k * 20)
+    img += rng.integers(-12, 13, size=img.shape, dtype=np.int16)
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def test_percepcion():
+    import struct
+    # det2d: 22 cajas (una NaN) → las 18 de más score; 472 B
+    d2 = vf.empaquetar_det2d(vector_det2d_percepcion(), 640, 480, 70001)
+    assert d2[:6] == [70001 & 0x7FFF, 0, 1, 18, 640.0, 480.0] and len(d2) == 114, d2[:6]
+    assert vf.cdr_multiarray(len(d2), 4) == 472
+    scores = [d2[7 + 6 * i] for i in range(18)]
+    assert scores == sorted(scores, reverse=True) and all(math.isfinite(v) for v in d2)
+    an, al, cajas = vf.leer_det2d(d2)
+    assert (an, al, len(cajas)) == (640.0, 480.0, 18)
+    plano2 = [struct.unpack("<f", struct.pack("<f", v))[0] for v in d2]
+    h2 = vf.huella_f32(plano2)
+    # det3d: 15 (una NaN) → 12; 464 B
+    d3 = vf.empaquetar_det3d(vector_det3d_percepcion(), 9)
+    assert d3[:4] == [9, 0, 1, 12] and len(d3) == 112 and vf.cdr_multiarray(len(d3), 4) == 464
+    assert len(vf.leer_det3d(d3)) == 12
+    h3 = vf.huella_f32(d3)
+    # nube: 1 200 puntos (13 NaN) → vóxel 10 cm → ≤ 228 → 3 trozos de ≤ 76 (480 B)
+    pts = vf.voxelizar_nube(vector_nube_percepcion())
+    import numpy as np
+    assert vf.voxelizar_nube_np(np.array(vector_nube_percepcion())) == pts, "numpy = referencia pura"
+    crudos = len(vf.voxelizar_nube(vector_nube_percepcion(), max_n=10 ** 6))
+    assert crudos > 228 and 152 < len(pts) <= 228, (crudos, len(pts))          # diezmado por paso fijo
+    claves = {(p[0] // 10, p[1] // 10, p[2] // 10) for p in pts}
+    assert len(claves) == len(pts), "un punto por vóxel"
+    tn = vf.empaquetar_nube(pts, 123)
+    assert [t[3] for t in tn] == [76, 76, len(pts) - 152] and all(vf.cdr_multiarray(len(t), 2) <= 480 for t in tn)
+    assert vf.cdr_multiarray(len(tn[0]), 2) == 480
+    assert all(-32768 <= v <= 32767 for t in tn for v in t)
+    assert vf.leer_nube(tn[2])[0] == tuple(pts[152])
+    assert vf.empaquetar_nube([], 4) == [[4, 0, 1, 0]] and vf.voxelizar_nube([(float("inf"), 0, 0)]) == []
+    hn = vf.huella([v for t in tn for v in t])
+    print(f"percepción: huellas det2d={h2} det3d={h3} nube={hn}")
+    assert (h2, h3, hn) == (HUELLA_DET2D, HUELLA_DET3D, HUELLA_NUBE), "actualizar las huellas (y las de GDScript)"
+    # clases
+    tc = vf.TablaClasesDet(max_clases=3)
+    assert [tc.indice(n) for n in ("persona", "coche", "persona", "a,b", "perro")] == [0, 1, 0, 2, -1]
+    assert tc.texto() == "persona,coche,a;b" and tc.cambio and vf.leer_det_clases(tc.texto())[2] == "a;b"
+    try:
+        import PIL  # noqa: F401
+        _probar_camara_percepcion()
+    except ImportError:
+        print("  (sin PIL ni OpenCV: recompresión de la cámara sin probar aquí; probarla en la estación)")
+    try:
+        import rosbags  # noqa: F401
+        _comparar_compressed_rosbags_percepcion()
+    except ImportError:
+        print("  (rosbags no instalado: tamaño CDR de CompressedImage sin contrastar)")
+    # perfil percepción: arranca (todos sus módulos existen) y suma 40,0 KB/s y 154 dgr/s
+    mods, kb, dgr = vf.resolver_modulos(["percepcion"])
+    assert mods[-4:] == ["camara", "det2d", "det3d", "nube"] and abs(kb - 40.0) < 0.05 and dgr == 154 and kb <= 40.0, (mods, kb, dgr)
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    rr = subprocess.run([sys.executable, script, "--comprobar", "percepcion"], capture_output=True, text=True)
+    assert rr.returncode == 0 and "40.0 KB/s" in rr.stdout, rr.stdout
+    print("percepción ok")
+
+
+def _probar_camara_percepcion():
+    """Cámara (D13): JPEG ≤ 160×120 q40 y mensaje ≤ CAMARA_MAX_B. Necesita numpy y PIL (o OpenCV en la estación)."""
+    import numpy as np
+    assert vf.tam_camara(640, 480) == (160, 120) and vf.tam_camara(1280, 720) == (160, 90)
+    assert vf.tam_camara(100, 50) == (100, 50)
+    img = _imagen_prueba_percepcion()
+    jpeg, q, tam = vf.recomprimir_camara(("cruda", "rgb8", 640, 480, 640 * 3, img.tobytes()), "camara")
+    assert jpeg is not None and tam == (640, 480), q
+    nb = vf.cdr_compressed_image("camara", "jpeg", len(jpeg))
+    assert nb <= vf.CAMARA_MAX_B and jpeg[:2] == b"\xff\xd8", nb
+    print(f"percepción: JPEG 160×120 q{q} = {len(jpeg)} B de datos, {nb} B de mensaje (≤ 2 994)")
+    import io
+    from PIL import Image as PilImage
+    s = io.BytesIO()
+    PilImage.fromarray(img).save(s, "JPEG", quality=90)
+    jpeg2, q2, tam2 = vf.recomprimir_camara(("comprimida", "jpeg", s.getvalue()), "camara")
+    assert jpeg2 is not None and tam2 == (640, 480) and len(jpeg2) < len(s.getvalue()) // 5
+    assert PilImage.open(io.BytesIO(jpeg2)).size == (160, 120)
+    bgr = img[:, :, ::-1].copy()
+    j3 = vf.recomprimir_camara(("cruda", "bgr8", 640, 480, 640 * 3, bgr.tobytes()))[0]
+    px = np.asarray(PilImage.open(io.BytesIO(j3)).convert("RGB")).astype(int)[60, 80]
+    ref = np.asarray(PilImage.open(io.BytesIO(jpeg)).convert("RGB")).astype(int)[60, 80]
+    assert np.abs(px - ref).max() < 40, (px, ref)                # bgr8 se pasa a RGB
+    assert vf.recomprimir_camara(("cruda", "mono8", 64, 48, 64, bytes(64 * 48)))[0] is not None
+    assert vf.recomprimir_camara(("cruda", "16UC1", 64, 48, 128, bytes(128 * 48)))[0] is None       # T4
+    assert vf.recomprimir_camara(("comprimida", "16UC1; compressedDepth", b"x"))[0] is None
+    ruido = np.random.default_rng(5).integers(0, 256, size=(480, 640, 3), dtype=np.uint8)
+    jr, qr, _ = vf.recomprimir_camara(("cruda", "rgb8", 640, 480, 640 * 3, ruido.tobytes()))
+    assert jr is None or vf.cdr_compressed_image("", "jpeg", len(jr)) <= vf.CAMARA_MAX_B, qr   # peor caso: baja q o se salta
+    print(f"percepción: ruido puro → {'saltada' if jr is None else f'q{qr}, {len(jr)} B'}")
+
+
+def _comparar_compressed_rosbags_percepcion():
+    import numpy as np
+    from rosbags.typesys import Stores, get_typestore
+    ts = get_typestore(Stores.ROS2_JAZZY)
+    T = ts.types
+    for f, fmt, n in (("", "jpeg", 0), ("camara", "jpeg", 2961), ("cam", "rgb8; jpeg compressed bgr8", 13)):
+        m = T["sensor_msgs/msg/CompressedImage"](header=T["std_msgs/msg/Header"](
+            stamp=T["builtin_interfaces/msg/Time"](sec=1, nanosec=2), frame_id=f), format=fmt,
+            data=np.zeros(n, dtype=np.uint8))
+        assert len(ts.serialize_cdr(m, "sensor_msgs/msg/CompressedImage")) == vf.cdr_compressed_image(f, fmt, n)
+    print("  CompressedImage: tamaño CDR = rosbags")
+
+
 def _md5(s):
     import hashlib
     return hashlib.md5(s.encode()).hexdigest()
@@ -431,4 +579,5 @@ if __name__ == "__main__":
     test_scan(); test_tesela(); test_path(); test_limites()
     test_trocear(); test_presupuesto(); test_relay_info_y_epoca(); test_rosout_y_diag(); test_ritmo()
     test_marcadores()
+    test_percepcion()                                                     # V10
     print("TODO OK")

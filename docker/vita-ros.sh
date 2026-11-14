@@ -83,7 +83,8 @@ case "${1:-help}" in
         # temperature). Con `relay` en otra terminal, la Vita los ve por /vita/* (revisión V1 del visor).
         run "python3 /scripts/fuente_prueba_visor.py" ;;
     fuente-v2)
-        # Gates de hardware de la fase V2 del visor (revisión V2): avisos (V6), marcadores (M1/M3), vida (M2), tf (V9).
+        # Gates de hardware de la fase V2 del visor (revisión V2): avisos (V6), marcadores (M1/M3), vida (M2), tf (V9);
+        # percepcion (V10): cámara JPEG, /detections, /detections_3d y /points sintéticos.
         # $2 = modos separados por comas; $3 = nº de sólidos del modo marcadores (31 por defecto).
         run "python3 /scripts/fuente_prueba_v2.py ${2:-avisos,marcadores,tf}${3:+ --n $3}" ;;
     netem)
@@ -136,7 +137,7 @@ Uso: docker/vita-ros.sh <comando>
   g1-rviz             RViz del G1: casa (/map), modelo (/robot_description), odometría
   relay [mód] [pref] [ritmo] [tf_lista]  vita_relay VC/1.2: módulos o perfil hmi/viz/percepcion (doc 36 §5)
   fuente-visor        datos sintéticos para godot/visor-ros (mapa, scan, odom, joints, plan, batería…)
-  fuente-v2 [modos] [n]  gates V6/V8/V9 del visor: avisos, marcadores, vida, tf (docs/ia/workshops/posts/V2-revision.md)
+  fuente-v2 [modos] [n]  gates V6/V8/V9/V10 del visor: avisos, marcadores, vida, tf, percepcion (V2-revision.md)
   netem <IP_VITA> [%] | netem off   pérdida artificial solo hacia la Vita (gate G-W13-M3)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
