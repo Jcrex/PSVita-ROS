@@ -30,8 +30,10 @@ fichero del mes en `docs/bitacora/`.
 - **Siguiente (usuario):** **pruebas de hardware** con `build/visor-ros.vpk`: guion único
   `docs/ia/workshops/posts/V3-revision.md` §5 (9 lanzamientos, fases F1–F8, fish) + gate G-V13b (mismas fases,
   `V13b-juez-fable.md` §4). Volcar resultados en doc 36 §9.0. Fuera del guion: G-W13-R0, G-W13-M7, V13a con `/tf` real.
-- **Después:** arreglar lo que salga rojo y **push / PR** de los commits de la Fase V (sin publicar): **preguntar al
-  usuario** antes. `godot/plantillas/mundo/mundo.tscn` tiene cambios locales del usuario sin commitear (no tocar).
+- **Publicado (2026-11-14):** commit de todo (incluidos los cambios del usuario en `godot/plantillas/mundo/mundo.tscn`),
+  push de la rama `ccr-44e2db2a-mr6xqr` y PR a `main` (pedido por el usuario).
+- **Pasos y acciones para la próxima sesión:** [`docs/ia/siguiente-sesion.md`](ia/siguiente-sesion.md) (prioridades
+  1–3, decisiones abiertas del usuario y archivos clave).
 
 ## 2026-11-13 (PC, noche) — Visor W13, fase V1 (V1–V4) hecha en host
 
