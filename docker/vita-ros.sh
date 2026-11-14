@@ -75,12 +75,26 @@ case "${1:-help}" in
         # Adaptador PC → Vita (doc 27): topics grandes → mensajes compactos ≤ 488 B en best effort.
         # $2 = módulos o perfil (hmi, viz, percepcion; «todo» se rechaza por el tope de red de 100 KB/s, doc 36 §5),
         # $3 = prefijo de salida (contrato VC/1: /vita/<robot>, p. ej. /vita/g1),
-        # $4 = entradas del módulo ritmo separadas por comas («imu=/imu/data@20,...»; VC/1 rev. 2, V6).
-        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]' -p prefijo:=${3:-/vita}${4:+ -p ritmo:='[$4]'}" ;;
+        # $4 = entradas del módulo ritmo separadas por comas («imu=/imu/data@20,...»; VC/1 rev. 2, V6; "" = ninguna),
+        # $5 = lista blanca del módulo tf (hijos dinámicos, ≤ 8; por defecto odom; V9, revisión V2).
+        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]' -p prefijo:=${3:-/vita}${4:+ -p ritmo:='[$4]'}${5:+ -p tf_lista:='[$5]'}" ;;
     fuente-visor)
         # Datos sintéticos para godot/visor-ros (map, scan, odom, joint_states, plan, battery_state, barometer,
         # temperature). Con `relay` en otra terminal, la Vita los ve por /vita/* (revisión V1 del visor).
         run "python3 /scripts/fuente_prueba_visor.py" ;;
+    fuente-v2)
+        # Gates de hardware de la fase V2 del visor (revisión V2): avisos (V6), marcadores (M1/M3), vida (M2), tf (V9).
+        # $2 = modos separados por comas; $3 = nº de sólidos del modo marcadores (31 por defecto).
+        run "python3 /scripts/fuente_prueba_v2.py ${2:-avisos,marcadores,tf}${3:+ --n $3}" ;;
+    netem)
+        # Pérdida artificial SOLO hacia la Vita (gate G-W13-M3): netem en la interfaz del host (la estación usa la red
+        # del host y tiene NET_ADMIN). `netem <IP_VITA> [pérdida %]` la pone; `netem off` la quita.
+        if [ "${2:-}" = "off" ]; then
+            run "IF=\$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if(\$i==\"dev\") print \$(i+1)}'); tc qdisc del dev \$IF root 2>/dev/null; tc qdisc show dev \$IF"
+        else
+            VIP="${2:-${VITA_IP:-}}"; [ -z "$VIP" ] && read -rp "IP de la Vita: " VIP
+            run "IF=\$(ip -4 route get $VIP | awk '{for(i=1;i<=NF;i++) if(\$i==\"dev\") print \$(i+1)}'); tc qdisc del dev \$IF root 2>/dev/null; tc qdisc add dev \$IF root handle 1: prio bands 4 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 && tc qdisc add dev \$IF parent 1:4 handle 40: netem loss ${3:-10}% && tc filter add dev \$IF protocol ip parent 1:0 prio 4 u32 match ip dst $VIP/32 flowid 1:4 && tc qdisc show dev \$IF"
+        fi ;;
     rviz)    run "rviz2" ;;
     rqt)     run "rqt_graph" ;;
     teleop)  run "ros2 run teleop_twist_keyboard teleop_twist_keyboard" ;;
@@ -120,8 +134,10 @@ Uso: docker/vita-ros.sh <comando>
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
   g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
   g1-rviz             RViz del G1: casa (/map), modelo (/robot_description), odometría
-  relay [mód] [pref] [ritmo]  vita_relay VC/1.2: módulos o perfil hmi/viz/percepcion (doc 27, doc 36 §5)
+  relay [mód] [pref] [ritmo] [tf_lista]  vita_relay VC/1.2: módulos o perfil hmi/viz/percepcion (doc 36 §5)
   fuente-visor        datos sintéticos para godot/visor-ros (mapa, scan, odom, joints, plan, batería…)
+  fuente-v2 [modos] [n]  gates V6/V8/V9 del visor: avisos, marcadores, vida, tf (docs/ia/workshops/posts/V2-revision.md)
+  netem <IP_VITA> [%] | netem off   pérdida artificial solo hacia la Vita (gate G-W13-M3)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)
   bridge-client <IP>  puente Zenoh: conectar al servidor (otro equipo)

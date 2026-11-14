@@ -16,6 +16,9 @@ extends Node
 ##     resuelve ya el transporte XRCE (reconexión en xrce_transport.cpp). «validar en hardware».
 
 signal listo                                   # displays conectados (o ROS no disponible y sin reintentos)
+## V9 (revisión V2): cada `<p>/pose2d` que recibe TfLigero, ya aplicado. robot_joints se cuelga de aquí en lugar de
+## abrir su propia suscripción (cada lector XRCE recibe su copia: 40 B × 30 Hz y 30 datagramas/s por suscripción).
+signal pose2d_tf(m)
 
 const Contexto = preload("res://comun/ros/contexto_ros.gd")
 const PerfilGd = preload("res://comun/ros/perfil.gd")   # contadores [perfil-gd] (≠ enum Perfil)
@@ -46,7 +49,8 @@ const CUPOS := {
 @export_group("TF ligero (V9)")
 ## Solo sin `create_tf_listener` (Vita y editor de host): TfLigero con fuentes locales (D3).
 @export var marco_base := "base_link"          # hijo de `<p>/pose2d` y padre de los links del robot horneado
-@export var marco_pose2d := ""                 # padre de pose2d; "" = marco_fijo (supone map ≈ odom, doc 36 §9.3.3)
+@export var marco_pose2d := ""                 # padre de pose2d; "" = marco_fijo (supone map ≈ odom, doc 36 §9.3.3).
+                                               # Si aún no está unido al fijo (relay sin `tf`), se usa el fijo (V2).
 @export var tf_relay := false                  # suscribir `<p>/tf`, `tf_marcos` y `tf_estatico` (módulo tf opcional)
 ## Estáticos de la escena (regla doc 35), «padre>hijo x y z yaw» en ROS (m, rad); el relay `tf_estatico` los pisa.
 @export var tf_estaticos := PackedStringArray()
@@ -145,6 +149,12 @@ func _process(_dt: float) -> void:
 		var h: Dictionary = _gestor.informe()
 		extra += " hud_pestana=%s hud_barra_q=%d hud_pestana_q=%d hud_glifos=%d" % [h["pestana"], h["barra_quads"],
 				h["pestana_quads"], h["barra_glifos"] + h["pestana_glifos"]]
+	# Revisión V2: contadores del transporte (solo ros2_vita) para los gates V6 (`reliable_dropped` = 0) y M3.
+	if rclgd.has_method("get_transport_info"):
+		var ti: Dictionary = rclgd.call("get_transport_info")
+		extra += " rx_paq=%d topic_dropped=%d reliable_dropped=%d be_dropped=%d reconexiones=%d" % [
+				int(ti.get("read_packets", 0)), int(ti.get("topic_dropped", 0)), int(ti.get("reliable_dropped", 0)),
+				int(ti.get("be_dropped", 0)), int(ti.get("reconexiones", 0))]
 	printerr(PerfilGd.volcar(_perfil_n, extra))
 	_perfil_n = 0
 
@@ -197,9 +207,21 @@ func es_tf_ligero() -> bool:
 	return tf != null and tf.has_method("desde_pose2d")
 
 
-## Padre real de pose2d.
+## Padre real de pose2d. Revisión V2: con `marco_pose2d` puesto pero sin unir aún al marco fijo (relay sin el módulo
+## `tf`, o antes de que llegue map → odom) se usa el fijo, como con "": así la MISMA escena vale con y sin el módulo
+## `tf` (antes, «odom» sin `tf` dejaba todo en el origen: TfLigero nunca conocía «map»). Al llegar map → odom, el
+## siguiente pose2d cuelga la base de odom (TfLigero.poner admite el cambio de padre).
 func marco_mundo_pose2d() -> String:
-	return marco_pose2d if marco_pose2d != "" else marco_fijo
+	if marco_pose2d == "" or marco_pose2d == marco_fijo:
+		return marco_fijo
+	if es_tf_ligero() and not tf.can_transform(marco_fijo, marco_pose2d):
+		return marco_fijo
+	return marco_pose2d
+
+
+## true si VisorRos ya está suscrito a `<p>/pose2d` (TfLigero en el camino compacto): los displays usan `pose2d_tf`.
+func suscrito_pose2d() -> bool:
+	return es_tf_ligero() and not _subs_tf.is_empty()
 
 
 func _iniciar_tf_ligero() -> void:
@@ -238,6 +260,7 @@ func poner_estatico(linea: String) -> bool:
 func _al_pose2d_tf(m) -> void:
 	if es_tf_ligero():
 		tf.desde_pose2d(m.data, marco_mundo_pose2d(), marco_base)
+		pose2d_tf.emit(m)
 
 
 func _al_tf_marcos(m) -> void:

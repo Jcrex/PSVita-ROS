@@ -38,6 +38,12 @@ fichero del mes en `docs/bitacora/`.
   de la Vita ya va en `base_scan`). Al fusionar chocaban dos `huella_f32` distintas: la de V9 es ahora `huella_f32_bits`
   (`6b2c348`). Pruebas tras la fusión: visor 57, primitivas 114, HUD 70, displays 105, directos 228, herramientas 70,
   relay 80, marcadores 62, TF 78, host 294/0, runner g1-sensores 16/16, `test_vita_relay.py` OK.
+- **Revisión V2 (2026-11-14):** `docs/ia/workshops/posts/V2-revision.md`. Corregido: pose2d cuelga del fijo mientras
+  `marco_pose2d` no está unido a él (la misma `.vpk` vale con y sin módulo `tf`), robot sin tercera suscripción a
+  pose2d, malla vieja en el pool de marcadores, `poses` por el relay por defecto, contadores del transporte en
+  `[perfil-gd]` y `[visor-marc]`. Estación: `relay … [tf_lista]`, `fuente-v2`, `netem`. Pruebas: TF 79, marcadores 63,
+  resto igual; en vivo (host, relay `hmi,marcadores,tf`): 24,2 KB/s y 134 msg/s; `hmi` solo 12,9 KB/s. `.vpk`
+  exportada (no subida). **Falta (usuario):** guion único de hardware del §5 de la revisión (V1, V6, V7, V8, V9).
 - **Falta (usuario), gates de hardware:** fase V1 (con **START** para el banco E-W8-1, no Select), V6 (20 avisos/s,
   5 min), V7 (meta con ✕ hasta `/goal_pose`), V8 (G-W13-M1, M3), V9 (8 marcos a 10 Hz, `process` +≤ 0,5 ms).
 - **Siguiente:** revisión de la fase V2 (V5–V9); después fase V3 (V10 percepción ∥ V11 costmap ∥ V12 inspector).

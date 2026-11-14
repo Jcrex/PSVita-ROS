@@ -188,11 +188,12 @@ func _puntos_compactos(msg) -> void:
 	_parciales.erase(clave)
 	var c: Array = Vc1.leer_color_marcador(int(d[6]))
 	var col: Color = Paleta.color(c[0], c[1])
+	var ancho: float = absf(d[7]) if is_finite(d[7]) else 0.0   # revisión V2: NaN → ancho mínimo (T2)
 	var e = _vivos.get(clave)
 	if e != null and e.tipo != int(d[5]):
 		_borrar(clave)
 	_vivos[clave] = {"tipo": int(d[5]), "ns": "", "frame": "", "locked": false, "local": Transform3D.IDENTITY,
-		"pts": todos, "cols": PackedColorArray(), "color": col, "ancho": absf(d[7]), "alto": absf(d[7]),
+		"pts": todos, "cols": PackedColorArray(), "color": col, "ancho": ancho, "alto": ancho,
 		"texto": "", "expira": -1, "t": Transform3D.IDENTITY, "refresco": Time.get_ticks_msec()}
 
 

@@ -226,16 +226,20 @@ static func _piezas(n: MeshInstance3D, usar: bool) -> void:
 
 ## Re-hornea solo si cambian los datos (firma) y como mucho cada `intervalo_ms`: cada malla nueva gasta arena en
 ## la Vita (H9), que no la libera. Con el intervalo sin cumplir se conserva la malla anterior (meta «pendiente»).
+## Revisión V2: firma e intervalo valen solo si `n.mesh` SIGUE siendo la malla horneada (meta «malla»): un nodo del
+## pool reutilizado para otro tipo (CUBO, flecha…) y devuelto a una lista con los mismos datos conservaba el cubo.
 static func _hornear_si_cambia(n: MeshInstance3D, m, ic: int, intervalo_ms: int) -> void:
 	var firma := hash([int(m.type), ic, m.scale.x, m.scale.y, m.scale.z, _plano(m.points), _plano_c(m.colors)])
-	if n.mesh != null and n.get_meta("firma", 0) == firma:
+	var propia: bool = n.mesh != null and n.get_meta("malla", null) == n.mesh
+	if propia and n.get_meta("firma", 0) == firma:
 		n.set_meta("pendiente", false)
 		return
 	var ahora := Time.get_ticks_msec()
-	if n.mesh != null and n.has_meta("t_horneado") and ahora - int(n.get_meta("t_horneado")) < intervalo_ms:
+	if propia and n.has_meta("t_horneado") and ahora - int(n.get_meta("t_horneado")) < intervalo_ms:
 		n.set_meta("pendiente", true)
 		return
 	n.mesh = hornear(m, ic)
+	n.set_meta("malla", n.mesh)
 	n.set_meta("firma", firma)
 	n.set_meta("t_horneado", ahora)
 	n.set_meta("pendiente", false)
