@@ -47,8 +47,11 @@ tools/export-vita-vpk.sh godot/g1-sensores build/g1-sensores.vpk
 
 ## 2. Prioridad 2 — el usuario prueba rclgd con interfaz gráfica en el PC
 
-Seguir `docs/37-guia-rclgd-gui-pc.md` (contenedor jazzy con rclgd compilado + pantalla del host; demo
-`rclgd_sensors`; visor con rclgd; criterios por display). Lo marcado «[usuario] verificar en pantalla» solo lo puede
+Seguir `docs/37-guia-rclgd-gui-pc.md` con `tools/rclgd-gui.sh` (imagen jazzy con rclgd, pantalla por XWayland y GPU
+NVIDIA; subcomandos para el proyecto puente del visor, `migrar` demos y `comprobar` displays; fuente extra
+`tools/rclgd-gui/fuente_v14.py` para Octomap, GridMap, marcador interactivo e imagen de profundidad). Verificado sin
+pantalla: 5 escenas del visor cargan y reciben datos con rclgd; marcadores interactivos por servicio, Octomap, GridMap
+y el explorador de topics funcionan con rclgd por primera vez. Lo marcado «[usuario] verificar en pantalla» solo lo puede
 ver él. Volcar el resultado en doc 36 §13.4 (lo no probado con rclgd).
 
 ## 3. Prioridad 3 — Claude, tras las pruebas
@@ -56,12 +59,21 @@ ver él. Volcar el resultado en doc 36 §13.4 (lo no probado con rclgd).
 1. **Arreglar lo que salga rojo** en §1/§2: diagnóstico con logs, arreglo con prueba de host, reexportar, nueva prueba.
    Si G-V13b sale rojo en una ruta: implementar SOLO esa función en `modules/viz-decode/` (dual Rust+C con paridad;
    Rust explicado para principiante).
-2. **Bugs y optimizaciones pequeños** (autorizados el 2026-11-15 «si no duran mucho»): B1, B2, B3, `-O2` en SCsub,
-   pools de red duplicados — **estado al cerrar la sesión del 2026-11-15: ver la bitácora** (lo que no se hizo, con su
-   motivo, sigue aquí).
-3. **Decisiones de rclgd para próximas sesiones** (Fable): modo «rclgd» permanente en `godot/visor-ros` y en las
-   suites `visor*.gd` (hoy usan `ros2_vita`); si se monta un contenedor/compose propio con rclgd 3.0.0 (apt solo da
-   2.1.0); qué parte de la guía doc 37 se automatiza.
+2. **Bugs y optimizaciones pequeños — hechos el 2026-11-15** (`811ab9b` B3, `e2d8c96` B1, `893a293` B2, `c1f53b6`
+   `-O2` en los `.c` de módulos): paridad 8/8, host 349/0, plantilla recompilada (`verify_runtime` PASS) y `.vpk`
+   reexportados. **Validar en hardware:** ganancia de `-O2` (comparar FPS/`[perfil-gd]` de g1-sensores con doc 34
+   §7.1), log del panic de B2 (solo entra si la plantilla se compila con `RUST_PIC_LIB`; por defecto la Vita usa las
+   implementaciones C) y la rama Vita de B3. **No hecho: pools de red duplicados** (`net_udp.c:40`,
+   `xrce_transport.cpp:101-104`): obliga a cambiar la API de `net_udp_init` en C y Rust y depende de una hipótesis de
+   G5 sobre dónde vive la memoria del pool → pasa a §4.
+3. **Decisiones de rclgd para próximas sesiones** (Fable): modo «rclgd» permanente en `godot/visor-ros` (hoy la guía
+   usa un proyecto puente fuera del repo, `~/Proyectos/rclgd-estudio/visor-rclgd`, generado por `tools/rclgd-gui.sh`,
+   porque 4.7.1 no abre `visor-ros`: plugin `psvita`, sin `package.xml` ni `.gdextension`); suites `visor*.gd` que hoy
+   usan API solo de `ros2_vita`; si se automatiza más la guía. Hallazgos de la guía (doc 37): `rclgd.init()` es `void`
+   en rclgd → **arreglado en `godot/plantillas/ros/contexto_ros.gd`** (2026-11-15, llamada portable); las apps de
+   puertas cerradas (`g4-smoke`, `g5-xrce`, `g7-imu`, `g1-unitree/main.gd`) siguen usando el valor de retorno (solo
+   Vita: no urge); con la memoria compartida de Fast DDS no llegan datos al contenedor → el script fuerza UDP; sin
+   `/tf` los displays en `odom` no se dibujan (lanzar `fuente-v2 tf`).
 
 ## 4. Para próximas sesiones (decidido por el usuario el 2026-11-15)
 
@@ -70,7 +82,8 @@ ver él. Volcar el resultado en doc 36 §13.4 (lo no probado con rclgd).
    escenas (doc 35). Clones en `~/Proyectos/rclgd-estudio/` (estado en `docs/24` §Commits estudiados).
 3. **Gates fuera del guion:** G-W13-R0 (corte real 488/489 B, docs/27 §4), G-W13-M7, `/tf` real por XRCE con
    `tf_nativo`, coste de `lookup` por fotograma, `latest_only` con un topic directo rápido.
-4. **MTU XRCE 512 → ~1400** (transporte + agente; riesgo de fragmentación en la WiFi de la Vita).
+4. **MTU XRCE 512 → ~1400** (transporte + agente; riesgo de fragmentación en la WiFi de la Vita) y **pools de red
+   duplicados** (cambio de API de `net_udp_init` en C y Rust; medir antes dónde vive la memoria del pool).
 5. **X1** hipótesis `poll(0)`/HEARTBEAT: medir `reliable_full` en hardware antes de tocar nada.
 6. **g1-sensores a 60 FPS estables:** bajar 0,5–1 ms de scripts de física (`sensor/mapeo`, `sensor/mid360_scan`
    ~0,6 ms cada uno, robot ~1,5 ms, sensores por turnos; doc 34 §8.4).

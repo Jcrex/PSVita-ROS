@@ -13,7 +13,21 @@ fichero del mes en `docs/bitacora/`.
 
 ---
 
-## 2026-11-14 (PC) — Fase V del visor W13 cerrada en host (Estado para retomar)
+## 2026-11-15 (PC) — Decisiones del usuario, purga del historial, bugs pequeños y guía de rclgd (Estado para retomar)
+
+- **Decisiones del usuario:** PR #3 fusionado; purgar el respaldo del historial público; web y aprendizaje **en pausa**;
+  g1-sensores con **luz clara** (`"luz_por_vertice": true`); el resto, a próximas sesiones.
+- **Purga:** `respaldo-chat-claude/` fuera de todo el historial de `main` y `ccr-44e2db2a-mr6xqr` (filter-branch +
+  *force-push*; árbol actual idéntico). Copia previa: `~/Proyectos/psvita-ros-antes-purga-2026-11-15.bundle`. Quedan
+  `refs/pull/2,3/head` en GitHub (solo los quita su soporte). **Otros clones: `git fetch` + `git reset --hard origin/main`.**
+- **Bugs B1, B2, B3 y `-O2`** hechos con paridad y plantilla recompilada; pools de red duplicados, no (cambio de API).
+- **rclgd jazzy** compilado desde fuente (45/45; apt solo trae 2.1.0) y **guía con interfaz** `docs/37` +
+  `tools/rclgd-gui.sh` (verificada sin pantalla; el visor funciona con rclgd mediante un proyecto puente fuera del
+  repo). Arreglado `contexto_ros.gd` (`rclgd.init()` es `void` en rclgd). `docs/24`: estado de los clones de Ozuba.
+- **Siguiente:** [`docs/ia/siguiente-sesion.md`](ia/siguiente-sesion.md): primero el usuario prueba **todo** en la
+  Vita (g1-sensores y visor; `.vpk` ya reexportados), luego la guía de rclgd con interfaz; después Claude arregla lo rojo.
+
+## 2026-11-14 (PC) — Fase V del visor W13 cerrada en host
 
 - **Hecho:** V1–V15 del visor (`godot/plantillas/visor/`, ADR 0013), 39 commits desde `015f350` + los de V15. V1–V12 y
   V14 verdes en host; V13a (paquete nativo de `ros2_vita`: propiedades de `RosQoS`, `latest_only`, tipo resuelto al

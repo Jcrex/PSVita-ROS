@@ -13,9 +13,11 @@ func iniciar(nombre: String, espacio: String, transporte: String) -> int:
 		var args := PackedStringArray()
 		if transporte != "":
 			args = PackedStringArray(["-p", "transport:=" + transporte])
-		var err := rclgd.init(args)
-		if err != OK:
-			return err
+		# `init` devuelve un Error en ros2_vita pero no devuelve nada (void) en rclgd: con `call` el código compila
+		# en los dos y solo se comprueba el error cuando lo hay (hallazgo de la guía doc 37, 2026-11-15).
+		var res: Variant = rclgd.call("init", args)
+		if res is int and res != OK:
+			return res
 		iniciado_por_contexto = true
 	nodo = RosNode.new()
 	nodo.init(nombre, espacio)
