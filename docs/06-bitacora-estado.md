@@ -33,7 +33,14 @@ fichero del mes en `docs/bitacora/`.
   `ritmo`; pestañas Diagnóstico y Consola del HUD (D6, 240 *quads* cada una). Pruebas: visor_relay 80/80, resto del
   visor verde, host 294/0, runner g1-sensores 16/16, `test_vita_relay.py` OK (CDR = rosbags); en la estación, perfil
   `hmi` con 20 avisos/s = 14,1 KB/s y 103 msg/s medidos. Pendiente: gate V6 en la Vita (README del visor).
-- **Siguiente:** V8 ∥ V9 (V6 y V7 hechos en host).
+- **V8 y V9 hechos en host (2026-11-14):** marcadores (`b6e2ed3`: 12 tipos, estado completo sin fantasmas, módulo
+  `marcadores` del relay) y TfLigero + TF + poses (V9 en worktree, fusionado; módulos `tf`, `pose_cov`, `poses`; el scan
+  de la Vita ya va en `base_scan`). Al fusionar chocaban dos `huella_f32` distintas: la de V9 es ahora `huella_f32_bits`
+  (`6b2c348`). Pruebas tras la fusión: visor 57, primitivas 114, HUD 70, displays 105, directos 228, herramientas 70,
+  relay 80, marcadores 62, TF 78, host 294/0, runner g1-sensores 16/16, `test_vita_relay.py` OK.
+- **Falta (usuario), gates de hardware:** fase V1 (con **START** para el banco E-W8-1, no Select), V6 (20 avisos/s,
+  5 min), V7 (meta con ✕ hasta `/goal_pose`), V8 (G-W13-M1, M3), V9 (8 marcos a 10 Hz, `process` +≤ 0,5 ms).
+- **Siguiente:** revisión de la fase V2 (V5–V9); después fase V3 (V10 percepción ∥ V11 costmap ∥ V12 inspector).
 
 ## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 
