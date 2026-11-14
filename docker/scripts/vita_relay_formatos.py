@@ -250,7 +250,7 @@ def epoca_mapa(geo_anterior, geo, version):
 
 # ----------------------------------------------------------------------------- V9: pose_cov, poses y tf (doc 36 §5.3)
 # Copia en GDScript: `godot/plantillas/ros/vc1.gd` (empaquetar_pose_cov, diezmar, empaquetar_poses, empaquetar_tf,
-# leer_*); prueba de bytes en los dos lados con `huella_f32` (bits float32 = lo que viaja en Float32MultiArray):
+# leer_*); prueba de bytes en los dos lados con `huella_f32_bits` (bits float32 = lo que viaja en Float32MultiArray):
 # `test_vita_relay.py` (HUELLA_POSE_COV / _POSES / _TF) y `godot/plantillas/pruebas/visor_tf.gd`.
 
 MAX_POSES = 36            # 4 + 3·36 = 112 floats → 464 B
@@ -258,8 +258,9 @@ MAX_TF = 8                # 4 + 8·8 = 68 floats → 288 B (lista blanca de ≤ 
 MAX_TF_ESTATICOS = 16     # 4 + 8·16 = 132 floats → 544 B, fiable + TRANSIENT_LOCAL (≤ 1 100 B de la tabla §5.3)
 
 
-def huella_f32(valores):
-    """Huella de los bits float32 de cada valor (MD5 de los enteros sin signo unidos por comas)."""
+def huella_f32_bits(valores):
+    """Huella de los bits float32 de cada valor (MD5 de los enteros sin signo unidos por comas). V9; distinta de
+    `huella_f32` (V8, MD5 del hex de los bytes): se renombró al fusionar V8 y V9 porque la de V8 la tapaba."""
     import struct
     return huella(struct.unpack("<I", struct.pack("<f", float(v)))[0] for v in valores)
 
