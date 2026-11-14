@@ -745,6 +745,7 @@ docker/vita-ros.sh fuente-visor                                                 
 docker/vita-ros.sh fuente-v2 percepcion                                                 # (otra terminal)
 docker/vita-ros.sh relay percepcion                                                     # 40,0 KB/s y 154 dgr/s nominales
 ```
+
 ## Costmap (V11)
 
 Estado: **hecho y verde en host** (`pruebas/visor_costmap.gd`, 54/54; `python3 docker/scripts/test_vita_relay.py`
@@ -817,3 +818,34 @@ docker/vita-ros.sh relay hmi,costmap        # 21,9 KB/s, 118 dgr/s
 `docker/vita-ros.sh relay hmi,costmap`. Verde: el costmap aparece sobre el mapa en la planta (paredes magenta con
 borde cian y degradado azul → rojo), un repaso completo en ≤ 3 s para un costmap de ≤ 30 teselas, ≥ 30 FPS y
 `[visor-costmap] … composicion_us=` ≤ 4 000.
+## Inspector, trazador y explorador de topics (V12)
+
+Doc 36 §1.1, §1.3, §7 y §10; doc 36a §4.1.1–§4.1.4 y §4.1.11; sentencia W13 D6 y D9. Hecho en host (2026-11-14);
+gate de hardware pendiente (pestaña Gráficas con 3 series: `draws` +≤ 3 y `avg_canvas_us` +≤ 300).
+
+| Archivo | Pieza | Papel |
+|---|---|---|
+| `introspeccion_ros.gd` | IntrospeccionRos (estático) | `campos_de_tipo(tipo)` con caché por tipo sobre un prototipo vacío (ClassDB en las clases tipadas de rclgd, `get_property_list()` en el RosMsg dinámico); `leer_ruta` con `get_member`; rutas de Foxglove (`partir_ruta("/odom.twist.twist.linear.x")`, `trocear("poses[3].x")`, `unir_ruta`); `rutas_numericas(tipo)` para elegir campos |
+| `displays/hud/inspector_texto.gd` | Inspector | `ros2 topic echo` en texto plano (comodín de RegistroDisplays); pestaña Inspector |
+| `displays/hud/trazador.gd` | Trazador | hasta 3 series de un topic; `draw_set_transform` + UNA polilínea por serie; pestaña Gráficas |
+| `explorador_topics.gd` | ExploradorTopics (`Node`) | PC: sondea `get_topic_names_and_types()` cada 2 s y añade displays sin guardarlos; Vita: catálogo fijo |
+
+`main.tscn` gana las pestañas **Gráficas** (trazador de `/odom`: `twist.twist.linear.x` y `angular.z`; en la Vita
+`<p>/pose2d` con `campos_vita = data[3], data[5]` = vx y wz) e **Inspector** (`/odom`; en la Vita `<p>/pose2d`) y un
+`ExploradorTopics` bajo `VisorRos`. Prueba: `pruebas/visor_inspector.gd` (63 comprobaciones).
+
+### Decisiones de V12 no cubiertas (las más conservadoras)
+
+- **Inspector en la Vita = 8 filas × 30 car.** (tabla §7.2, ⚖ D6), recortado en `conectar` aunque la escena pida más;
+  la sentencia permite hasta 12 filas, pero se toma el límite más bajo hasta G-W13-H0. Tope de 64 líneas aplanadas.
+- **Cruceta del inspector apagada** por defecto (`usar_cruceta`): la cruceta suele ser del teleop; la navegación se
+  hace con `desplazar(n)` y `alternar(i)`. Arrays de mensajes: solo «[n] {…}» (no se despliegan).
+- **Trazador:** el rango y no se encoge (mín./máx. desde `conectar`), rango plano centrado, NaN descartado (T2),
+  `caducidad_s = 0` (una gráfica parada se sigue leyendo), tope de pendientes = `capacidad`. Etiquetas con `%.2f`
+  (Godot no admite `%g`). Capacidad recortada a 64 y series a 3 en la Vita.
+- **Explorador:** en la Vita no añade displays (D9: topics fijos en la escena); su catálogo son los topics de los
+  displays de la escena (compactos con su nombre real) y los tipos de `RosMsg.list_types()` por
+  `ClassDB.class_call_static` (así el script compila con rclgd). Sin `RosTimer`: sondeo acumulando `delta`.
+- **RegistroDisplays sin cambios:** el comodín `*` ya apuntaba a `hud/inspector_texto.gd`; ahora que existe, un tipo
+  sin display propio crea el inspector (se actualizó la comprobación de `pruebas/visor.gd`).
+- `campos_de_tipo` no guarda en caché un tipo sin esquema (el esquema puede cargarse después).
