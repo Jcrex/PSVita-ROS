@@ -2,8 +2,8 @@
 
 Visor propio y portable: **el mismo GDScript** en el PC (rclgd, o el editor de host con `ros2_vita`) y en la PS Vita
 (`ros2_vita`). Diseño en `docs/adr/0013-visualizacion-topics-godot.md` y `docs/36-visualizacion-topics-godot.md`
-(§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); V6–V15
-pendientes.
+(§2 arquitectura, §8 trampas, §10 tareas). Estado: **V1–V5 hechos y verdes en host** (V5 = esquema `TIPOS_VISOR` y displays directos pequeños); **V6** (relay
+VC/1 rev. 2, consola y diagnóstico) y V7 también, ver sus secciones; V8–V15 pendientes.
 Lo que no se puede ver en el host (render GXM, FPS, XRCE real, reconexión) está sin validar en hardware.
 
 | Archivo | Pieza | Papel |
@@ -417,3 +417,67 @@ docker exec -it vita_station bash -lc "source /opt/ros/jazzy/setup.bash; ros2 to
 Verde: SELECT dos veces → barra «Meta»; un toque con arrastre deja la flecha naranja y **no** publica; ✕ → un solo
 mensaje en el `echo` (`frame_id: map`, posición del toque); cada toque da una sola línea `[visor-herr] Meta toque n=`
 en el log (n sube de uno en uno). Igual con `/initialpose` (covarianza 0,25 / 0,25 / 0,0685) y `/clicked_point` (sin ✕).
+
+## Relay VC/1 rev. 2: base + `rosout`, `diag`, `ritmo` (V6)
+
+Estado: **hecho y verde en host** (`pruebas/visor_relay.gd`, 80/80; `python3 docker/scripts/test_vita_relay.py`;
+`pruebas/runner.gd` 16/16 con la huella cruzada). **Sin validar en hardware** (gate V6 de doc 36 §10: 20 avisos/s
+durante 5 min, FPS sin bajar de escalón y `reliable_dropped` = 0).
+
+**Relay** (`docker/scripts/`; contrato en doc 36 §5 y sentencia W13 D4–D5):
+
+| Pieza | Qué |
+|---|---|
+| `vita_relay_formatos.py` (nuevo) | funciones puras, referencia de bytes: VC/1 de siempre (sin cambiar un byte), `trocear`/`cabecera` (cabecera común `[seq & 0x7FFF, trozo, n_trozos, n, …]`), `relay_info`, `PRESUPUESTO`/`PERFILES`/`resolver_modulos` (tope 100 KB/s y 200 dgr/s), `epoca_mapa`, `cdr_log`/`cdr_diag` (tamaño exacto = rosbags), `compactar_log`, `compactar_estado`, `PlanDiag`, `parsear_ritmo`, `CuboBytes` |
+| `vita_relay.py` | solo el nodo (reexporta lo de arriba); módulos nuevos `rosout`, `diag`, `ritmo`; `relay_info`; se niega a arrancar si el presupuesto se pasa; época del mapa |
+| `docker/vita-ros.sh relay [mód] [pref] [ritmo]` | p. ej. `relay hmi` o `relay hmi,ritmo /vita imu=/imu/data@20`; `relay todo` → «NO arranca: presupuesto 65.9 KB/s, 229 dgr/s > 100/200» |
+
+Salidas nuevas: `<p>/relay_info` (String fiable + TRANSIENT_LOCAL, `VC/1.2;scan,pose,…`), `<p>/rosout` (`Log`, ≥ WARN,
+`file`/`function` vacíos, `msg` ≤ 200 car., fiable, ≤ 10/s), `<p>/diagnostics` (`DiagnosticArray` de UN estado, ≤ 3
+pares, textos ≤ 40 car., best effort ≤ 10 Hz: primero los que cambian de nivel o mensaje y un repaso a 1 Hz por
+estado) y `<p>/ritmo/<nombre>` (el mismo mensaje, bytes tal cual, a Hz fija y solo si ≤ 488 B). Perfil `hmi` =
+19,1 KB/s y 108 dgr/s nominales (doc 36 §5.4). Comprobar sin ROS: `python3 docker/scripts/vita_relay.py --comprobar hmi`.
+
+**Godot:** `ros/vc1.gd` gana `MAX_BE`, `MAX_F32`, `MAX_I16`, `cabecera(d)`, `trocear(...)` (misma salida que Python;
+huella en `pruebas/runner.gd` y en `test_vita_relay.py`) y `leer_relay_info(s)`; lo de VC/1 no cambia, así que V3 y
+g1-sensores siguen igual. `canal_display.gd` gana `max_pendientes`/`descartados` (tope de cola con `coalescer = false`).
+
+| Display | Archivo | PC | Vita | Pestaña · cupo (D6) |
+|---|---|---|---|---|
+| Consola | `displays/hud/consola.gd` | `/rosout` directo, fiable | `<p>/rosout` (mismo tipo) | Consola · 6 líneas × 40 car. = 240 |
+| Diagnostico | `displays/hud/diagnostico.gd` | `/diagnostics` directo, fiable, profundidad 1 | `<p>/diagnostics`, best effort, «solo problemas» | Diagnóstico · 8 filas × 30 = 240 |
+
+Los dos están en `RegistroDisplays` y en `godot/visor-ros/main.tscn` (pestañas `Diagnostico` y `Consola` tras `Mando`).
+
+### Decisiones de V6 no cubiertas (las más conservadoras)
+
+1. **Perfiles `viz` y `percepcion`** se expanden y caben en el presupuesto, pero el relay no arranca con ellos hasta
+   que existan sus módulos (V8–V11): dice cuáles faltan. «todo» se rechaza por presupuesto (lo pide la sentencia).
+2. **Módulos por defecto sin cambios** (`scan,pose,joints,mapa,path`): `rosout` y `diag` se piden con `hmi` o a mano.
+3. **Época del mapa:** con la misma geometría ya no se republica `mapa_meta` (es *latched* y no cambia); una época
+   nueva vacía la caché de teselas para mandarlas todas.
+4. **rosout:** nombre del nodo recortado a 60 car. (el formato no lo fijaba); cola de 20 y un mensaje por tic de 0,1 s
+   (lo que sobra se descarta); si el UTF-8 lo pasa de 488 B, se recorta más el texto.
+5. **diagnostics:** `hardware_id` vacío (el widget no lo enseña); «cambio» = nivel o mensaje (no los valores, que
+   cambian siempre y saturarían); entrada por defecto `/diagnostics` (en el PC el widget también, no
+   `/diagnostics_agg`: el agregador es opcional).
+6. **ritmo:** entradas `nombre=/topic@hz` (sin «:» para que pasen por `-p ritmo:='[…]'`), tipo descubierto en el grafo
+   (reintento cada 2 s), reenvío de bytes crudos (`raw=True`), solo mensajes nuevos, ≤ 30 Hz en total al arrancar y
+   ≤ 10 KB/s por ventana de 1 s en marcha.
+7. **D6 «8 × 30 caracteres»** más el cuadro de color daba 248 > 240: el cuadro entra en los 30 (texto ≤ 29). Consola
+   sin fondo (6 × 40 ya son los 240). Mismos números en el PC.
+8. **Diagnóstico en directo** (PC o Vita sin relay): fiable y profundidad 1 (doc 36 §6) si `fiabilidad` es AUTO;
+   nivel `byte` leído de forma defensiva (entero, `PackedByteArray` o String).
+9. `relay_info` aún no lo consume el HUD (barra de estado): el lector está en `vc1.gd`.
+10. **Qué módulo «sobra»** cuando el tope se pasa: el que más pesa en la dimensión excedida (datagramas o bytes) y, a
+    igualdad, el pedido más tarde (los extras van tras el perfil `hmi`): `relay todo` dice «sobra «ritmo»».
+
+Medido en la estación (2026-11-14, `fuente-visor` + 20 avisos/s en `/rosout` + 6 estados en `/diagnostics`, relay
+`hmi`): `relay_bw` 14,1 KB/s y 103 msg/s (≤ 20 KB/s); `ros2 topic bw` `/vita/rosout` 1,25 KB/s (10 Hz),
+`/vita/diagnostics` 1,38 KB/s, `/vita/scan_compacto` 3,87 KB/s.
+
+```fish
+python3 docker/scripts/test_vita_relay.py                                          # TODO OK
+toolchains/rosbags-venv/bin/python docker/scripts/test_vita_relay.py               # + tamaños CDR = rosbags
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_relay.gd  # RESULTADO: 80/80
+```

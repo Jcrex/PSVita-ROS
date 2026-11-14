@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Pruebas de las funciones puras de vita_relay.py (sin ROS): python3 docker/scripts/test_vita_relay.py"""
+"""Pruebas de las funciones puras del relay (sin ROS): python3 docker/scripts/test_vita_relay.py
+
+VC/1 (scan, tesela, path) y VC/1 rev. 2 (V6, doc 36 §5): cabecera común `trocear` con huellas cruzadas que
+`godot/plantillas/pruebas/runner.gd` comprueba con `vc1.gd` (mismos bytes Python = GDScript), presupuesto de red y
+perfiles (el relay NO arranca con «todo»), época del mapa, tamaños CDR exactos de Log y DiagnosticArray (contra
+rosbags si está instalado, p. ej. con toolchains/rosbags-venv/bin/python), rosout, diagnostics, ritmo y relay_info."""
 import math
 import os
 import random
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import vita_relay as vr  # noqa: E402
+import vita_relay_formatos as vf  # noqa: E402
 
 
 def test_scan():
@@ -63,6 +70,167 @@ def test_limites():
     print("límites ok")
 
 
+# ============================================================================= VC/1 rev. 2 (V6)
+
+# Huellas cruzadas: los MISMOS vectores y constantes están en godot/plantillas/pruebas/runner.gd (`_probar_vc1`).
+# Si cambia el formato en un lado, falla la prueba de ese lado.
+HUELLA_TROCEAR_F32 = "5da842991233e493fd04afd2d9c78df6"
+HUELLA_TROCEAR_I16 = "e2c81111e76c4b212dd9b5340850a655"
+
+
+def vector_trocear():
+    return [[i * 3 - 50, i % 7, 1000 + i, -i] for i in range(40)]
+
+
+def test_trocear():
+    el = vector_trocear()
+    t = vf.trocear(el, 4, (640, 480), seq=40000)
+    assert [x[:6] for x in t] == [[40000 & 0x7FFF, 0, 2, 28, 640, 480], [40000 & 0x7FFF, 1, 2, 12, 640, 480]]
+    assert len(t[0]) == vf.MAX_F32 and vf.cdr_multiarray(len(t[0]), 4) <= vf.MAX_BE
+    assert vf.huella([v for x in t for v in x]) == HUELLA_TROCEAR_F32
+    t2 = vf.trocear(el * 3, 4, (), seq=7, max_valores=vf.MAX_I16, max_trozos=3)   # 120 → corta a 3 × 58 = 174
+    assert [x[3] for x in t2] == [58, 58, 4] and all(vf.cdr_multiarray(len(x), 2) <= vf.MAX_BE for x in t2)
+    assert vf.huella([v for x in t2 for v in x]) == HUELLA_TROCEAR_I16
+    t3 = vf.trocear(el * 10, 4, (), seq=1, max_trozos=3)                            # estado completo: ≤ 3 trozos
+    assert len(t3) == 3 and sum(x[3] for x in t3) == 3 * 28
+    assert vf.trocear([], 8, (), seq=1) == [[1, 0, 1, 0]]                           # vacío = un trozo con n = 0
+    # Cuentas del catálogo (doc 36 §5.3): marcadores 11 × 10, puntos 36 × 3 + 4, det. 18 × 6 + 2, det3d 12 × 9,
+    # poses 36 × 3, tf 8 × 8, nube 76 × 3 int16.
+    for por, extra, n, esperado, tam in ((10, (), 11, 472, 4), (3, (0, 0, 0, 0), 36, 480, 4), (6, (0, 0), 18, 472, 4),
+                                         (9, (), 12, 464, 4), (3, (), 36, 464, 4), (8, (), 8, 288, 4),
+                                         (3, (), 76, 480, 2)):
+        mx = vf.MAX_F32 if tam == 4 else vf.MAX_I16
+        x = vf.trocear([[0] * por] * n, por, extra, max_valores=mx)
+        assert len(x) == 1 and x[0][3] == n and vf.cdr_multiarray(len(x[0]), tam) == esperado, (por, n, len(x[0]))
+    for x in t + t2:
+        c = vf.cabecera(x)
+        assert c is not None and c["n"] == x[3] and 0 <= c["trozo"] < c["n_trozos"]
+    assert vf.cabecera([1, 2, 2, 0]) is None and vf.cabecera([1, 0, 0, 0]) is None and vf.cabecera([1, 0]) is None
+    assert vf.cabecera([1, 0, 1, -1]) is None
+    print("trocear y cabecera ok")
+
+
+def test_presupuesto():
+    kb, dgr = vf.comprobar_presupuesto(vf.PERFILES["hmi"])
+    assert abs(kb - 19.1) < 0.1 and dgr == 108, (kb, dgr)                        # doc 36 §5.4: 19,2 / 108
+    kb, dgr = vf.comprobar_presupuesto(vf.PERFILES["viz"])
+    assert abs(kb - 35.0) < 0.05 and round(dgr) == 153, (kb, dgr)
+    kb, dgr = vf.comprobar_presupuesto(vf.PERFILES["percepcion"])
+    assert abs(kb - 40.0) < 0.05 and dgr == 154, (kb, dgr)
+    try:
+        vf.resolver_modulos(["todo"])
+        assert False, "«todo» no debe arrancar"
+    except ValueError as e:
+        assert "65.9 KB/s" in str(e) and "229" in str(e) and "sobra «ritmo»" in str(e), e
+    try:
+        vf.resolver_modulos(["hmi", "camara", "nube", "marcadores", "tf", "costmap", "ritmo"])
+        assert False
+    except ValueError as e:
+        assert "sobra" in str(e)
+    mods, kb, dgr = vf.resolver_modulos(["hmi"])
+    assert mods == ["scan", "pose", "joints", "mapa", "path", "rosout", "diag"] and kb < 20.0
+    assert vf.resolver_modulos(["scan,pose"[0:4], "pose", "scan"])[0] == ["scan", "pose"]   # sin repetidos
+    for malo in (["viz"], ["marcadores"]):                                       # cabe, pero llega con V8–V11
+        try:
+            vf.resolver_modulos(malo)
+            assert False
+        except ValueError as e:
+            assert "sin implementar" in str(e) and "V8" in str(e), e
+    for malo in (["nada"], ["nucleo"], []):
+        try:
+            vf.resolver_modulos(malo)
+            assert False
+        except ValueError:
+            pass
+    # El relay se niega a arrancar con «todo» (sin ROS: modo --comprobar, mismo camino que el nodo).
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    r = subprocess.run([sys.executable, script, "--comprobar", "todo"], capture_output=True, text=True)
+    assert r.returncode == 1 and "NO arranca" in r.stdout, (r.returncode, r.stdout)
+    r = subprocess.run([sys.executable, script, "--comprobar", "hmi"], capture_output=True, text=True)
+    assert r.returncode == 0 and "19.1 KB/s" in r.stdout, r.stdout
+    print("presupuesto ok")
+
+
+def test_relay_info_y_epoca():
+    s = vf.relay_info(["nucleo", "scan", "rosout"])
+    assert s == "VC/1.2;scan,rosout" and vf.leer_relay_info(s) == ("VC/1.2", ["scan", "rosout"])
+    assert vf.leer_relay_info("hola") is None and vf.leer_relay_info("VC/1.2;") == ("VC/1.2", [])
+    geo = (0.05, 100, 80, -2.5, -2.0)
+    v, nueva = vf.epoca_mapa(None, geo, 0)
+    assert (v, nueva) == (1, True)
+    assert vf.epoca_mapa(geo, geo, v) == (1, False)                              # mismo mapa: misma época
+    assert vf.epoca_mapa(geo, (0.05, 100, 81, -2.5, -2.0), v) == (2, True)       # tamaño
+    assert vf.epoca_mapa(geo, (0.05, 100, 80, -2.0, -2.0), v) == (2, True)       # origen
+    assert vf.epoca_mapa(geo, (0.1, 100, 80, -2.5, -2.0), 0xFFFF) == (0, True)   # resolución; vuelta a 16 bit
+    print("relay_info y época ok")
+
+
+def test_rosout_y_diag():
+    assert vf.compactar_log(20, "nodo", "info") is None
+    n, t = vf.compactar_log(30, "n" * 100, "x" * 500)
+    assert len(n) == vf.MAX_CAR_NOMBRE_LOG and len(t) == 200 and vf.cdr_log(n, t) <= vf.MAX_BE
+    n, t = vf.compactar_log(40, "nodo", "€" * 200)                               # UTF-8 de 3 B: recorta más
+    assert vf.cdr_log(n, t) <= vf.MAX_BE and 0 < len(t) < 200
+    assert vf.cdr_log("a", "b") == 52                                            # comprobado con rosbags
+    e = vf.compactar_estado(2, "d" * 60, "m" * 60, [("k%d" % i, "v" * 50) for i in range(5)])
+    assert e[0] == 2 and len(e[1]) == 40 and len(e[2]) == 40 and len(e[3]) == 3 and len(e[3][0][1]) == 40
+    assert vf.cdr_diag("", e[1], e[2], "", e[3]) <= vf.MAX_BE
+    e = vf.compactar_estado(1, "é" * 40, "ü" * 40, [("ø" * 40, "ß" * 40)] * 3)
+    assert vf.cdr_diag("", e[1], e[2], "", e[3]) <= vf.MAX_BE
+    assert vf.cdr_diag("", "a", "b", "", []) == 56                               # comprobado con rosbags
+    _comparar_con_rosbags()
+    plan = vf.PlanDiag(repaso_s=1.0)
+    plan.actualizar((0, "motor", "ok", []))
+    plan.actualizar((0, "bateria", "ok", []))
+    assert plan.siguiente(0.0)[1] == "motor" and plan.siguiente(0.1)[1] == "bateria"
+    assert plan.siguiente(0.2) is None                                           # nada cambia y aún no toca repaso
+    plan.actualizar((0, "motor", "ok", [("t", "41")]))                           # cambia un valor: no es «cambio»
+    assert plan.siguiente(0.3) is None
+    plan.actualizar((2, "motor", "caliente", []))                                # cambia el nivel: sale ya
+    assert plan.siguiente(0.4)[0] == 2
+    assert plan.siguiente(1.15)[1] == "bateria"                                  # repaso a 1 Hz por estado
+    assert plan.siguiente(1.2) is None and plan.siguiente(1.45)[1] == "motor"
+    print("rosout y diagnostics ok")
+
+
+def _comparar_con_rosbags():
+    try:
+        from rosbags.typesys import Stores, get_typestore
+    except ImportError:
+        print("  (rosbags no instalado: tamaños CDR sin comparar; usar toolchains/rosbags-venv/bin/python)")
+        return
+    ts = get_typestore(Stores.ROS2_JAZZY)
+    T = ts.types
+    for nombre, texto in (("a", "b"), ("n" * 60, "ñ" * 200), ("", "")):
+        m = T["rcl_interfaces/msg/Log"](stamp=T["builtin_interfaces/msg/Time"](sec=1, nanosec=2), level=30,
+                                         name=nombre, msg=texto, file="", function="", line=0)
+        assert len(ts.serialize_cdr(m, "rcl_interfaces/msg/Log")) == vf.cdr_log(nombre, texto)
+    for fr, nom, msg, pares in (("", "a", "b", []), ("map", "n" * 40, "é" * 40, [("k", "v")] * 3)):
+        st = T["diagnostic_msgs/msg/DiagnosticStatus"](level=1, name=nom, message=msg, hardware_id="", values=[
+            T["diagnostic_msgs/msg/KeyValue"](key=k, value=v) for k, v in pares])
+        m = T["diagnostic_msgs/msg/DiagnosticArray"](header=T["std_msgs/msg/Header"](
+            stamp=T["builtin_interfaces/msg/Time"](sec=0, nanosec=0), frame_id=fr), status=[st])
+        assert len(ts.serialize_cdr(m, "diagnostic_msgs/msg/DiagnosticArray")) == vf.cdr_diag(fr, nom, msg, "", pares)
+    print("  tamaños CDR = rosbags")
+
+
+def test_ritmo():
+    r = vf.parsear_ritmo(["imu=/imu/data@20", " temp=/temperature@2.5 ", ""])
+    assert r == [("imu", "/imu/data", 20.0), ("temp", "/temperature", 2.5)]
+    for malo in (["imu:/imu@20"], ["IMU=/imu@20"], ["imu=/imu@0"], ["imu=/imu@31"], ["a=/a@20", "b=/b@11"],
+                 ["a=/a@1", "a=/b@1"], ["a=sin_barra@1"]):
+        try:
+            vf.parsear_ritmo(malo)
+            assert False, malo
+        except ValueError:
+            pass
+    cubo = vf.CuboBytes(1000)
+    assert cubo.permitir(600, 0.0) and not cubo.permitir(600, 0.5) and cubo.permitir(400, 0.6)
+    assert cubo.permitir(1000, 1.1) and not cubo.permitir(1, 1.2)
+    print("ritmo ok")
+
+
 if __name__ == "__main__":
     test_scan(); test_tesela(); test_path(); test_limites()
+    test_trocear(); test_presupuesto(); test_relay_info_y_epoca(); test_rosout_y_diag(); test_ritmo()
     print("TODO OK")

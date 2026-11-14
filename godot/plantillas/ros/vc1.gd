@@ -9,10 +9,26 @@ extends RefCounted
 ##                  celda: 0 desconocido, 1 libre (0 ≤ p ≤ 25), 2 ocupado (p ≥ 65); 26–64 = desconocido
 ##   mapa_meta      Float32MultiArray [res, ancho, alto, ox, oy, teselas_x, teselas_y, version]; version = época
 ##   joints_orden   String «nombre1,nombre2,…» fiable + TRANSIENT_LOCAL
+##   (época, V6: `version` solo sube si cambian resolución, tamaño u origen del mapa; antes con cada OccupancyGrid.
+##    El cliente `vita_relay.gd` no cambia: una época nueva con el mismo tamaño solo sobrescribe teselas.)
+##
+## VC/1 rev. 2 (V6; doc 36 §5.2, sentencia W13 D5). Aditiva: los formatos de arriba no cambian ni un byte.
+## Referencia: `docker/scripts/vita_relay_formatos.py` (antes en vita_relay.py, que ahora es solo el nodo).
+##   cabecera común de todo formato NUEVO troceado (Float32/Int16MultiArray):
+##                  [seq & 0x7FFF, trozo, n_trozos, n, …campos propios…, elementos del trozo], n = elementos de
+##                  ESTE trozo; se lee con `cabecera(d)` y se genera con `trocear` (misma salida que Python)
+##   relay_info     String fiable + TRANSIENT_LOCAL «VC/1.2;mód1,mód2,…» → `leer_relay_info(s)`
+##   rosout         rcl_interfaces/msg/Log (≥ WARN, msg ≤ 200 car.) y diagnostics (DiagnosticArray de UN estado):
+##                  tipos estándar, sin formato propio (los leen `visor/displays/hud/{consola,diagnostico}.gd`)
 
 const TESELA := 32
 const MAX_RAYOS := 180
 const MASCARA_SEQ := 0x7FFF
+## Tamaño de diseño de todo /vita/* (D4): ≤ 488 B medidos con rosbags (CDR con encapsulación). = MAX_BE de Python.
+const MAX_BE := 488
+const MAX_F32 := (MAX_BE - 16) / 4             # 118 floats por Float32MultiArray (16 + 4N)
+const MAX_I16 := (MAX_BE - 16) / 2             # 236 int16 por Int16MultiArray (16 + 2N)
+const VERSION_CONTRATO := "VC/1.2"
 
 
 static func _i16(v: float) -> int:
@@ -79,3 +95,54 @@ static func empaquetar_tesela(data: PackedInt32Array, ancho: int, alto: int, tx:
 
 static func orden_joints(nombres: PackedStringArray) -> String:
 	return ",".join(nombres)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# VC/1 rev. 2 (V6)
+# ---------------------------------------------------------------------------------------------------------------
+
+## Cabecera común de lo troceado [seq & 0x7FFF, trozo, n_trozos, n, …]. {} si no es válida (corta, trozo fuera de
+## rango o n negativo). `d` sin anotar: PackedFloat32Array o PackedInt32Array (Int16MultiArray, trampa T6).
+static func cabecera(d) -> Dictionary:
+	if d == null or d.size() < 4:
+		return {}
+	var c := {"seq": int(d[0]), "trozo": int(d[1]), "n_trozos": int(d[2]), "n": int(d[3])}
+	if c.n_trozos < 1 or c.trozo < 0 or c.trozo >= c.n_trozos or c.n < 0:
+		return {}
+	return c
+
+
+## Referencia de bytes: misma salida que `vita_relay_formatos.trocear` (huella cruzada en pruebas/runner.gd).
+## `elementos` = Array de Arrays de `por_elemento` números; `extra` = campos propios tras la cabecera. Corta a
+## `max_trozos` trozos (estado completo); sin elementos sale un trozo con n = 0.
+@warning_ignore("integer_division")
+static func trocear(elementos: Array, por_elemento: int, extra: Array = [], seq: int = 0,
+		max_valores: int = MAX_F32, max_trozos: int = 3) -> Array:
+	var cab := 4 + extra.size()
+	var cabe := (max_valores - cab) / por_elemento
+	if cabe < 1:
+		push_error("VC1.trocear: %d valores por elemento no caben en %d - %d" % [por_elemento, max_valores, cab])
+		return []
+	var lista := elementos.slice(0, cabe * max_trozos)
+	var n_trozos := maxi(1, ceili(float(lista.size()) / cabe))
+	var out := []
+	for t in n_trozos:
+		var parte := lista.slice(t * cabe, (t + 1) * cabe)
+		var trozo: Array = [seq & MASCARA_SEQ, t, n_trozos, parte.size()]
+		trozo.append_array(extra)
+		for e in parte:
+			trozo.append_array(e)
+		out.append(trozo)
+	return out
+
+
+## «VC/1.2;scan,pose,…» → {"version": "VC/1.2", "modulos": PackedStringArray}; {} si no es un saludo VC/1.
+## Con él el HUD distingue «sin datos» (módulo activo, nada llega) de «módulo apagado» (no está en la lista).
+static func leer_relay_info(s: String) -> Dictionary:
+	if not s.begins_with("VC/1") or not s.contains(";"):
+		return {}
+	var k := s.find(";")
+	var mods := PackedStringArray()
+	for m in s.substr(k + 1).split(",", false):
+		mods.append(m)
+	return {"version": s.left(k), "modulos": mods}

@@ -27,7 +27,13 @@ fichero del mes en `docs/bitacora/`.
   85 tipos, el resto de apps sin cambios) y displays directos `3d/{punto,vector,ejes,imu,fuerza,rango,marcador_simple}`,
   `2d/{poligono,covarianza,gps}`. Pruebas: visor_directos 228/228, visor 57, primitivas 114, HUD 68, displays 105, host
   294/0, runner g1-sensores 14/14; en vivo en host con XRCE + `ros2 topic pub`: 7 tipos. Pendiente: probar en la Vita.
-- **Siguiente:** V6 relay rev. 2 ∥ V7 herramientas → V8 ∥ V9.
+- **V6 hecho en host (2026-11-14):** relay VC/1 rev. 2 (`docker/scripts/vita_relay_formatos.py` + nodo
+  `vita_relay.py`): cabecera troceada con huella cruzada Python = GDScript (`vc1.gd`), `relay_info`, tope de red
+  (`relay todo` no arranca: 65,9 KB/s y 229 dgr/s), época del mapa solo con geometría nueva, módulos `rosout`, `diag`,
+  `ritmo`; pestañas Diagnóstico y Consola del HUD (D6, 240 *quads* cada una). Pruebas: visor_relay 80/80, resto del
+  visor verde, host 294/0, runner g1-sensores 16/16, `test_vita_relay.py` OK (CDR = rosbags); en la estación, perfil
+  `hmi` con 20 avisos/s = 14,1 KB/s y 103 msg/s medidos. Pendiente: gate V6 en la Vita (README del visor).
+- **Siguiente:** V8 ∥ V9 (V6 y V7 hechos en host).
 
 ## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 

@@ -17,112 +17,61 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
                         y un repaso lento de todas para quien se conecte tarde (best effort no tiene historial)
   /vita/path_compacto  Float32MultiArray 2 Hz   [n, x0, y0, …] Douglas-Peucker ε 5 cm, ≤ 57 puntos
   /vita/relay_bw       Float32MultiArray 1 Hz   [bytes/s de salida, mensajes/s]
+  --- VC/1 rev. 2 (V6; doc 36 §5, ADR 0013, sentencia W13 D4–D5) ---
+  /vita/relay_info     String  FIABLE + TRANSIENT_LOCAL  «VC/1.2;mód1,mód2,…» (saludo de versión y módulos activos)
+  /vita/rosout         rcl_interfaces/Log  FIABLE ≤ 10/s  solo ≥ WARN, file/function vacíos, msg ≤ 200 car.  [rosout]
+  /vita/diagnostics    DiagnosticArray   ≤ 10 Hz  UN estado por mensaje, ≤ 3 pares, textos ≤ 40 car.; primero los
+                        que cambian de nivel o mensaje y un repaso a 1 Hz por estado                         [diag]
+  /vita/ritmo/<nombre> el tipo de entrada  Hz fija  el mismo mensaje (bytes tal cual), solo si ≤ 488 B;
+                        ≤ 30 Hz y ≤ 10 KB/s en total                                                          [ritmo]
+  Época del mapa: `version` solo sube si cambian resolución, tamaño u origen (antes, con cada OccupancyGrid).
 
-Parámetros: prefijo (/vita; contrato VC/1: /vita/<robot>, p. ej. -p prefijo:=/vita/g1), modulos (lista: scan,pose,joints,mapa,path), scan_in, odom_in, joints_in, map_in, path_in,
-            max_rayos (180), teselas_por_s (20).
-Uso: docker/vita-ros.sh relay [modulos]   (dentro de la estación; ver docker/README.md)
+Módulos: scan, pose, joints, mapa, path, rosout, diag, ritmo, o un perfil: hmi (= los 7 primeros), viz,
+percepcion (sus módulos extra llegan con V8–V11) y todo. TOPE DE RED (D5.7): al arrancar se suma lo declarado por
+módulo (`vita_relay_formatos.PRESUPUESTO`); si pasa de 100 KB/s o de 200 datagramas/s el relay NO arranca y dice qué
+módulo sobra («todo» se rechaza siempre: 65,9 KB/s y 229 dgr/s). Comprobar sin ROS:
+`python3 vita_relay.py --comprobar hmi`.
+
+Parámetros: prefijo (/vita; contrato VC/1: /vita/<robot>, p. ej. -p prefijo:=/vita/g1), modulos (lista; por
+            defecto scan,pose,joints,mapa,path), scan_in, odom_in, joints_in, map_in, path_in, rosout_in (/rosout),
+            rosout_nivel (30 = WARN), diag_in (/diagnostics), ritmo (lista «nombre=/topic@hz»; el tipo se descubre
+            en el grafo), max_rayos (180), teselas_por_s (20).
+Uso: docker/vita-ros.sh relay [modulos] [prefijo] [ritmo]   (dentro de la estación; ver docker/README.md)
+     p. ej. docker/vita-ros.sh relay hmi,ritmo /vita imu=/imu/data@20
+Funciones puras (referencia de bytes): vita_relay_formatos.py; pruebas: python3 docker/scripts/test_vita_relay.py
 """
-import math
-import struct
+import os
+import sys
 import time
 
-TESELA = 32               # celdas por lado de una tesela de mapa
-MAX_BE = 488              # bytes de CDR que caben en un datagrama best effort de la Vita (doc 27)
-
-
-# ----------------------------------------------------------------------------- funciones puras (con pruebas)
-
-def empaquetar_scan(ranges, angle_min, angle_increment, range_min, range_max, seq, max_rayos=180):
-    """LaserScan → lista de int16. Diezma por paso fijo para que quepan ≤ max_rayos."""
-    n_in = len(ranges)
-    paso = max(1, math.ceil(n_in / max_rayos))
-    sel = ranges[::paso][:max_rayos]
-    out = [seq & 0x7FFF, _i16(round(math.degrees(angle_min) * 100)),
-           _i16(round(math.degrees(angle_increment * paso) * 100)), len(sel)]
-    for r in sel:
-        if r is None or math.isnan(r) or math.isinf(r) or r < range_min or r > range_max:
-            out.append(0)
-        else:
-            out.append(_i16(round(r * 100)))
-    return out
-
-
-def desempaquetar_scan(d):
-    """Inverso (lo que hará la Vita): [(ángulo_rad, distancia_m)] sin los rayos vacíos."""
-    ang0, inc, n = math.radians(d[1] / 100), math.radians(d[2] / 100), d[3]
-    return [(ang0 + i * inc, d[4 + i] / 100) for i in range(n) if d[4 + i] > 0]
-
-
-def _i16(v):
-    return max(-32768, min(32767, int(v)))
-
-
-def celda_2bit(v):
-    """OccupancyGrid (-1 desconocido, 0..100) → 0 desconocido, 1 libre, 2 ocupado (umbrales de map_server)."""
-    if v < 0:
-        return 0
-    return 2 if v >= 65 else (1 if v <= 25 else 0)
-
-
-def empaquetar_tesela(data, ancho, alto, tx, ty, version):
-    """Una tesela de 32×32 celdas a 2 bit = 256 B + cabecera de 4 B. Celdas fuera del mapa = desconocido."""
-    cuerpo = bytearray(TESELA * TESELA // 4)
-    for j in range(TESELA):
-        y = ty * TESELA + j
-        for i in range(TESELA):
-            x = tx * TESELA + i
-            c = celda_2bit(data[y * ancho + x]) if (x < ancho and y < alto) else 0
-            k = j * TESELA + i
-            cuerpo[k >> 2] |= c << ((k & 3) * 2)
-    return bytes([version & 0xFF, (version >> 8) & 0xFF, tx, ty]) + bytes(cuerpo)
-
-
-def desempaquetar_tesela(b):
-    """Inverso: (version, tx, ty, lista de 1024 valores 0/1/2 por filas)."""
-    ver, tx, ty = b[0] | (b[1] << 8), b[2], b[3]
-    celdas = [(b[4 + (k >> 2)] >> ((k & 3) * 2)) & 3 for k in range(TESELA * TESELA)]
-    return ver, tx, ty, celdas
-
-
-def douglas_peucker(pts, eps):
-    if len(pts) < 3:
-        return list(pts)
-    (x0, y0), (x1, y1) = pts[0], pts[-1]
-    dx, dy = x1 - x0, y1 - y0
-    norma = math.hypot(dx, dy) or 1e-9
-    peor, idx = -1.0, 0
-    for i in range(1, len(pts) - 1):
-        d = abs(dy * pts[i][0] - dx * pts[i][1] + x1 * y0 - y1 * x0) / norma
-        if d > peor:
-            peor, idx = d, i
-    if peor <= eps:
-        return [pts[0], pts[-1]]
-    return douglas_peucker(pts[:idx + 1], eps)[:-1] + douglas_peucker(pts[idx:], eps)
-
-
-def empaquetar_path(pts, eps=0.05, max_pts=57):
-    s = douglas_peucker(pts, eps)
-    while len(s) > max_pts:          # si aún sobran, ε creciente
-        eps *= 1.5
-        s = douglas_peucker(pts, eps)
-    return [float(len(s))] + [v for p in s for v in p]
-
-
-def yaw_de_quat(x, y, z, w):
-    return math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
-
-
-def cdr_multiarray(n_elem, tam_elem):
-    """Bytes de CDR de un *MultiArray sin dimensiones: encapsulado 4 + dim seq 4 + data_offset 4 + seq 4 + datos."""
-    return 4 + 4 + 4 + 4 + n_elem * tam_elem
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Funciones puras del contrato VC/1 rev. 2 (V6, D5.3: el script se parte; aquí queda solo el nodo). Se reexportan
+# para que `import vita_relay as vr; vr.empaquetar_scan(...)` siga valiendo.
+from vita_relay_formatos import *  # noqa: E402,F401,F403
+from vita_relay_formatos import (MAX_BE, TESELA, PlanDiag, CuboBytes, cdr_multiarray, compactar_estado,  # noqa: E402
+                                 compactar_log, empaquetar_path, empaquetar_scan, empaquetar_tesela, epoca_mapa,
+                                 parsear_ritmo, relay_info, resolver_modulos, yaw_de_quat)
+import math  # noqa: E402
 
 
 # ----------------------------------------------------------------------------- nodo ROS 2
 
 def main():
+    # Sin ROS: `python3 vita_relay.py --comprobar hmi` dice si el relay arrancaría con esos módulos (tope de red).
+    if len(sys.argv) >= 3 and sys.argv[1] == "--comprobar":
+        try:
+            mods, kb, dgr = resolver_modulos(sys.argv[2].split(","))
+        except ValueError as e:
+            print(f"vita_relay NO arranca: {e}")
+            sys.exit(1)
+        print(f"vita_relay arrancaría: {','.join(mods)} = {kb:.1f} KB/s, {dgr:.0f} dgr/s nominales")
+        return
+
     import rclpy
+    import rclpy.executors
     from rclpy.node import Node
     from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy, qos_profile_sensor_data
+    from rclpy.serialization import serialize_message
     from nav_msgs.msg import Odometry, OccupancyGrid, Path
     from sensor_msgs.msg import LaserScan, JointState
     from std_msgs.msg import Float32MultiArray, Int16MultiArray, UInt8MultiArray, String
@@ -130,18 +79,25 @@ def main():
     be = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT, history=HistoryPolicy.KEEP_LAST)
     latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                          durability=DurabilityPolicy.TRANSIENT_LOCAL, history=HistoryPolicy.KEEP_LAST)
+    fiable = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE, history=HistoryPolicy.KEEP_LAST)
 
     class Relay(Node):
         def __init__(self):
             super().__init__("vita_relay")
             p = self.declare_parameter
-            mods = p("modulos", ["scan", "pose", "joints", "mapa", "path"]).value
+            pedidos = p("modulos", ["scan", "pose", "joints", "mapa", "path"]).value
             pre = p("prefijo", "/vita").value.rstrip("/")
+            self.pre = pre
             self.max_rayos = p("max_rayos", 180).value
             self.teselas_s = p("teselas_por_s", 20).value
+            # Tope de red (D5.7): si la suma nominal pasa de 100 KB/s o 200 dgr/s, NO se arranca.
+            mods, kb, dgr = resolver_modulos(pedidos)       # ValueError → main() sale con código 1
+            ritmos = parsear_ritmo(p("ritmo", [""]).value) if "ritmo" in mods else []
+            self.mods = mods
             self.bytes = 0
             self.msgs = 0
             self.pose = None
+            self.odom = None
             if "scan" in mods:
                 self.scan = None
                 self.seq = 0
@@ -149,7 +105,6 @@ def main():
                 self.p_scan = self.create_publisher(Int16MultiArray, pre + "/scan_compacto", be)
                 self.create_timer(0.1, self._tx_scan)
             if "pose" in mods or "mapa" in mods:
-                self.odom = None
                 self.create_subscription(Odometry, p("odom_in", "/odom").value, self._on_odom, 10)
             if "pose" in mods:
                 self.p_pose = self.create_publisher(Float32MultiArray, pre + "/pose2d", be)
@@ -167,6 +122,7 @@ def main():
                 self.cola = []
                 self.repaso = 0
                 self.version = 0
+                self.geo_epoca = None
                 self.create_subscription(OccupancyGrid, p("map_in", "/map").value, self._on_map, latched)
                 self.p_meta = self.create_publisher(Float32MultiArray, pre + "/mapa_meta", latched)
                 self.p_tes = self.create_publisher(UInt8MultiArray, pre + "/mapa_tesela", be)
@@ -176,9 +132,42 @@ def main():
                 self.create_subscription(Path, p("path_in", "/plan").value, self._on_path, 10)
                 self.p_path = self.create_publisher(Float32MultiArray, pre + "/path_compacto", be)
                 self.create_timer(0.5, self._tx_path)
+            if "rosout" in mods:
+                # /rosout: los emisores publican fiable + TRANSIENT_LOCAL; aquí fiable y volátil (sin historial).
+                from rcl_interfaces.msg import Log
+                self.Log = Log
+                self.cola_log = []
+                self.log_descartados = 0
+                self.log_minimo = p("rosout_nivel", 30).value
+                self.create_subscription(Log, p("rosout_in", "/rosout").value, self._on_log, 50)
+                self.p_log = self.create_publisher(Log, pre + "/rosout", fiable)   # fiable: un aviso no se repite
+                self.create_timer(0.1, self._tx_log)                                 # ≤ 10 msg/s
+            if "diag" in mods:
+                from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+                self.DA, self.DS, self.KV = DiagnosticArray, DiagnosticStatus, KeyValue
+                self.plan_diag = PlanDiag()
+                self.create_subscription(DiagnosticArray, p("diag_in", "/diagnostics").value, self._on_diag, 10)
+                self.p_diag = self.create_publisher(DiagnosticArray, pre + "/diagnostics", be)
+                self.create_timer(0.1, self._tx_diag)                                # ≤ 10 Hz, un estado por tic
+            if "ritmo" in mods:
+                # Módulo ritmo (D5.9): <p>/ritmo/<nombre> = el mismo mensaje, a Hz fija y ≤ MAX_BE. El tipo se
+                # descubre en el grafo (reintento cada 2 s) y se reenvían los bytes tal cual (raw, sin
+                # deserializar): el tamaño es exacto y la CPU mínima.
+                self.ritmos = {n: {"topic": t, "hz": hz, "ultimo": None, "pub": None, "grandes": 0}
+                               for (n, t, hz) in ritmos}
+                self.cubo_ritmo = CuboBytes()
+                self.ritmo_descartados = 0
+                if not ritmos:
+                    self.get_logger().warning("ritmo activo sin entradas: -p ritmo:='[nombre=/topic@hz]'")
+                self._t_ritmo = self.create_timer(2.0, self._buscar_ritmos)
+                self._buscar_ritmos()
             self.p_bw = self.create_publisher(Float32MultiArray, pre + "/relay_bw", be)
             self.create_timer(1.0, self._tx_bw)
-            self.get_logger().info(f"vita_relay: módulos {mods} en {pre}/…; todas las salidas ≤ {MAX_BE} B")
+            # relay_info (D5.8): saludo de versión y lista de módulos activos (fiable + TRANSIENT_LOCAL).
+            self.p_info = self.create_publisher(String, pre + "/relay_info", latched)
+            self.p_info.publish(String(data=relay_info(mods)))
+            self.get_logger().info(f"vita_relay {relay_info(mods)} en {pre}/…; {kb:.1f} KB/s y {dgr:.0f} dgr/s "
+                                   f"nominales; todas las salidas ≤ {MAX_BE} B")
 
         def _pub(self, pub, msg, nbytes):
             assert nbytes <= MAX_BE, f"{pub.topic_name}: {nbytes} B > {MAX_BE}"
@@ -232,12 +221,19 @@ def main():
         def _on_map(self, m):
             i = m.info
             self.mapa = (list(m.data), i.width, i.height)
-            self.version = (self.version + 1) & 0xFFFF
             ntx, nty = math.ceil(i.width / TESELA), math.ceil(i.height / TESELA)
             self.geo = (i.resolution, i.origin.position.x, i.origin.position.y, ntx, nty)
-            self.p_meta.publish(Float32MultiArray(data=[float(i.resolution), float(i.width), float(i.height),
-                                                        float(i.origin.position.x), float(i.origin.position.y),
-                                                        float(ntx), float(nty), float(self.version)]))
+            # Época (D5.5): solo sube si cambian resolución, tamaño u origen. Con la misma geometría (un costmap a
+            # 1–5 Hz, un mapa que crece por dentro) se reenvían SOLO las teselas cambiadas, con la misma época.
+            geo = (float(i.resolution), int(i.width), int(i.height), float(i.origin.position.x),
+                   float(i.origin.position.y))
+            self.version, nueva = epoca_mapa(self.geo_epoca, geo, self.version)
+            self.geo_epoca = geo
+            if nueva:
+                self.hash = {}          # época nueva: el cliente descarta todo, hay que mandar todas las teselas
+                self.p_meta.publish(Float32MultiArray(data=[float(i.resolution), float(i.width), float(i.height),
+                                                            float(i.origin.position.x), float(i.origin.position.y),
+                                                            float(ntx), float(nty), float(self.version)]))
             cambiadas = []
             for ty in range(nty):
                 for tx in range(ntx):
@@ -246,8 +242,10 @@ def main():
                     if self.hash.get((tx, ty)) != h:
                         self.hash[(tx, ty)] = h
                         cambiadas.append((tx, ty))
-            self.cola = cambiadas
-            self.get_logger().info(f"mapa {i.width}×{i.height} → {ntx}×{nty} teselas, {len(cambiadas)} cambiadas")
+            pend = [t for t in self.cola if t not in cambiadas] if not nueva else []
+            self.cola = cambiadas + pend
+            self.get_logger().info(f"mapa {i.width}×{i.height} → {ntx}×{nty} teselas, {len(cambiadas)} cambiadas, "
+                                   f"época {self.version}{' (nueva)' if nueva else ''}")
 
         def _tx_teselas(self):
             if self.mapa is None:
@@ -277,13 +275,96 @@ def main():
             d = empaquetar_path(self.path)
             self._pub(self.p_path, Float32MultiArray(data=d), cdr_multiarray(len(d), 4))
 
+        # --- rosout: ≥ WARN, sin file/function, msg ≤ 200 car., ≤ 10/s (cola de 20: lo que sobra se descarta)
+        def _on_log(self, m):
+            c = compactar_log(m.level, m.name, m.msg, self.log_minimo)
+            if c is None:
+                return
+            o = self.Log(stamp=m.stamp, level=m.level, name=c[0], msg=c[1], file="", function="", line=0)
+            self.cola_log.append(o)
+            if len(self.cola_log) > 20:
+                self.cola_log.pop(0)
+                self.log_descartados += 1
+
+        def _tx_log(self):
+            if self.cola_log:
+                m = self.cola_log.pop(0)
+                self._pub(self.p_log, m, len(serialize_message(m)))
+
+        # --- diagnostics: un DiagnosticArray de UN estado por tic; cambios primero y repaso a 1 Hz por estado
+        def _on_diag(self, m):
+            self.stamp_diag = m.header.stamp
+            for st in m.status:
+                self.plan_diag.actualizar(compactar_estado(
+                    st.level[0] if isinstance(st.level, bytes) else st.level, st.name, st.message,
+                    [(kv.key, kv.value) for kv in st.values]))
+
+        def _tx_diag(self):
+            e = self.plan_diag.siguiente(time.monotonic())
+            if e is None:
+                return
+            nivel, nombre, mensaje, pares = e
+            st = self.DS(level=bytes([nivel & 0xFF]), name=nombre, message=mensaje, hardware_id="",
+                         values=[self.KV(key=k, value=v) for k, v in pares])
+            m = self.DA(status=[st])
+            m.header.stamp = self.stamp_diag
+            self._pub(self.p_diag, m, len(serialize_message(m)))
+
+        # --- ritmo
+        def _buscar_ritmos(self):
+            from rosidl_runtime_py.utilities import get_message
+            tipos = dict(self.get_topic_names_and_types())
+            faltan = 0
+            for nombre, r in self.ritmos.items():
+                if r["pub"] is not None:
+                    continue
+                t = tipos.get(r["topic"])
+                if not t:
+                    faltan += 1
+                    continue
+                cls = get_message(t[0])
+                r["pub"] = self.create_publisher(cls, f"{self.pre}/ritmo/{nombre}", be)
+                r["sub"] = self.create_subscription(cls, r["topic"], lambda b, r=r: r.__setitem__("ultimo", b),
+                                                    qos_profile_sensor_data, raw=True)
+                r["timer"] = self.create_timer(1.0 / r["hz"], lambda n=nombre: self._tx_ritmo(n))
+                self.get_logger().info(f"ritmo: {r['topic']} ({t[0]}) → {self.pre}/ritmo/{nombre} a {r['hz']} Hz")
+            if faltan == 0:
+                self._t_ritmo.cancel()
+
+        def _tx_ritmo(self, nombre):
+            r = self.ritmos[nombre]
+            b = r["ultimo"]
+            if b is None:
+                return
+            r["ultimo"] = None              # solo lo nuevo: no se repite un valor viejo
+            if len(b) > MAX_BE:             # «topics pequeños»: lo que no cabe en un datagrama no se manda
+                r["grandes"] += 1
+                if r["grandes"] == 1:
+                    self.get_logger().warning(f"ritmo/{nombre}: {len(b)} B > {MAX_BE}; se descartan")
+                return
+            if not self.cubo_ritmo.permitir(len(b), time.monotonic()):
+                self.ritmo_descartados += 1
+                return
+            r["pub"].publish(b)
+            self.bytes += len(b)
+            self.msgs += 1
+
         def _tx_bw(self):
             self.p_bw.publish(Float32MultiArray(data=[float(self.bytes), float(self.msgs)]))
             self.bytes = 0
             self.msgs = 0
 
     rclpy.init()
-    rclpy.spin(Relay())
+    try:
+        nodo = Relay()
+    except ValueError as e:
+        print(f"vita_relay NO arranca: {e}", file=sys.stderr)
+        rclpy.shutdown()
+        sys.exit(1)
+    try:
+        rclpy.spin(nodo)
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass                                # Ctrl+C / timeout: salida limpia, sin traza
 
 
 if __name__ == "__main__":

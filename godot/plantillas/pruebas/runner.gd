@@ -80,6 +80,24 @@ func _probar_vc1() -> void:
 		"VC/1 tesela (0,0) con versión > 16 bit")
 	check(VC1.celda_2bit(25) == 1 and VC1.celda_2bit(26) == 0 and VC1.celda_2bit(64) == 0
 		and VC1.celda_2bit(65) == 2 and VC1.celda_2bit(-1) == 0, "VC/1 umbrales de celda 25/65")
+	# VC/1 rev. 2 (V6, doc 36 §5.2): cabecera común troceada. Mismos vectores y huellas que
+	# `docker/scripts/test_vita_relay.py` (HUELLA_TROCEAR_F32 / _I16) con `vita_relay_formatos.trocear`.
+	var el := []
+	for i in 40:
+		el.append([i * 3 - 50, i % 7, 1000 + i, -i])
+	var t: Array = VC1.trocear(el, 4, [640, 480], 40000)
+	var t2: Array = VC1.trocear(el + el + el, 4, [], 7, VC1.MAX_I16, 3)
+	var plano := []
+	for x in t:
+		plano.append_array(x)
+	var plano2 := []
+	for x in t2:
+		plano2.append_array(x)
+	check(t.size() == 2 and t[0].size() == VC1.MAX_F32 and VC1.cabecera(t[1]).n == 12
+		and _md5(plano) == "5da842991233e493fd04afd2d9c78df6"
+		and _md5(plano2) == "e2c81111e76c4b212dd9b5340850a655", "VC/1.2 trocear = vita_relay_formatos.trocear")
+	check(VC1.cabecera([1, 2, 2, 0]).is_empty() and VC1.leer_relay_info("VC/1.2;scan,rosout").modulos.size() == 2,
+		"VC/1.2 cabecera inválida y relay_info")
 
 
 func _md5(datos) -> String:

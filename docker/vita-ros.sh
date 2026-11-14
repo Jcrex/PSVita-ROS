@@ -73,8 +73,10 @@ case "${1:-help}" in
             g1sim python3 /opt/g1/g1_sim.py --grabar /salida/g1_marcha.json ;;
     relay)
         # Adaptador PC → Vita (doc 27): topics grandes → mensajes compactos ≤ 488 B en best effort.
-        # $2 = módulos, $3 = prefijo de salida (contrato VC/1: /vita/<robot>, p. ej. /vita/g1).
-        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]' -p prefijo:=${3:-/vita}" ;;
+        # $2 = módulos o perfil (hmi, viz, percepcion; «todo» se rechaza por el tope de red de 100 KB/s, doc 36 §5),
+        # $3 = prefijo de salida (contrato VC/1: /vita/<robot>, p. ej. /vita/g1),
+        # $4 = entradas del módulo ritmo separadas por comas («imu=/imu/data@20,...»; VC/1 rev. 2, V6).
+        run "python3 /scripts/vita_relay.py --ros-args -p modulos:='[${2:-scan,pose,joints,mapa,path}]' -p prefijo:=${3:-/vita}${4:+ -p ritmo:='[$4]'}" ;;
     fuente-visor)
         # Datos sintéticos para godot/visor-ros (map, scan, odom, joint_states, plan, battery_state, barometer,
         # temperature). Con `relay` en otra terminal, la Vita los ve por /vita/* (revisión V1 del visor).
@@ -118,7 +120,7 @@ Uso: docker/vita-ros.sh <comando>
   sim-tb3             TurtleBot3 en Gazebo Harmonic      rviz | rqt | teleop
   g1 | g1-build | g1-clips  Unitree G1 (MuJoCo + política oficial) para godot/g1-unitree
   g1-rviz             RViz del G1: casa (/map), modelo (/robot_description), odometría
-  relay [mód] [pref]  vita_relay: scan/pose/joints/mapa/path compactos para la Vita (doc 27)
+  relay [mód] [pref] [ritmo]  vita_relay VC/1.2: módulos o perfil hmi/viz/percepcion (doc 27, doc 36 §5)
   fuente-visor        datos sintéticos para godot/visor-ros (mapa, scan, odom, joints, plan, batería…)
 
   bridge-server       puente Zenoh: escuchar en TCP 7447 (equipo con el agente)

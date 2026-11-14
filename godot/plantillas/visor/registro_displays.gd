@@ -54,6 +54,9 @@ const REGLAS := [
 	{"tipo": "geometry_msgs/msg/PolygonStamped", "script": D + "2d/poligono.gd", "capa": "sensores_2d"},
 	{"tipo": "geometry_msgs/msg/PoseWithCovarianceStamped", "script": D + "2d/covarianza.gd", "capa": "sensores_2d"},
 	{"tipo": "sensor_msgs/msg/NavSatFix", "script": D + "2d/gps.gd", "capa": "sensores_2d"},
+	# V6: widgets HUD de eventos y estado (tipos estándar; en la Vita llegan por el relay `<p>/rosout` y `<p>/diagnostics`).
+	{"tipo": "rcl_interfaces/msg/Log", "script": D + "hud/consola.gd", "capa": "hud"},
+	{"tipo": "diagnostic_msgs/msg/DiagnosticArray", "script": D + "hud/diagnostico.gd", "capa": "hud"},
 	{"tipo": "std_msgs/msg/*MultiArray", "script": D + "hud/multiarray.gd", "capa": "hud"},
 	{"tipo": "*", "script": D + "hud/inspector_texto.gd", "capa": "hud"},
 ]
