@@ -283,7 +283,7 @@ Clones superficiales (1 commit cada uno) **[V]**. Base de paridad: rclgd `4d0a8b
 | T-W4-1 | `RosTfBroadcaster` (`send_transform` 4/5 args) y corregir la tabla de paridad | `rv:` | P0 | M |
 | T-W4-2 | `RosTfListener` + ampliar `tf-tree` (enumerar frames, padre, último sello, >32 frames opcional) con paridad C/Rust | `modules/tf-tree`, `rv:` | P0 | L |
 | T-W4-3 | `ADD_PROPERTY` en `RosQoS` (history, depth, reliability, durability) | `rv:ros_runtime.cpp` | P0 | S |
-| T-W4-4 | Capa «GXM-safe» de gdviz: líneas→cintas, MultiMesh→malla horneada, color por vértice→superficie por color/paleta, Label3D→etiqueta 2D | GDScript (`viz_shapes`, `viz_materials`, `viz_pose_visuals`) | P0 (para viz) | M |
+| T-W4-4 | Capa «GXM-safe» de gdviz: líneas→cintas, MultiMesh→malla horneada, color por vértice→superficie por color/paleta, Label3D→etiqueta 2D | GDScript (`viz_shapes`, `viz_materials`, `viz_pose_visuals`) | P0 (para viz) | M — **sustituida por ADR 0013** (2026-11-13): no se porta gdviz; visor propio `godot/plantillas/visor/` (doc 36, V1–V14 hechos en host) |
 | T-W4-5 | Decodificadores en C (scan→xy, nube→xyz, rejilla→RGBA) + exposición estática + *fallback* GDScript | módulo dual nuevo o `msg-schema` | P1 | M–L |
 | T-W4-6 | *Relay* en el PC: QoS fiable, decimación de nubes, mapa→PNG reducido, lista de topics como JSON | `docker/` estación | P1 | M |
 | T-W4-7 | Empaquetar clases sombra `gen/*.gd` como puente a T3.2.4 | proyecto Godot | P1 | S |

@@ -154,7 +154,7 @@ Notas de coste (todas [I] hasta medir, §6):
 
 ### 4.1 Regla de corte
 
-1. **Bytes.** CDR > 488 B no puede ir en *best effort* (`rv:xrce_transport.cpp:411-415`) → **relay (c)** obligatorio.
+1. **Bytes.** CDR > 488 B no puede ir en *best effort* (`rv:xrce_transport.cpp:147-148,678-681`: `len + 24 ≤ 512` con el CDR **sin** los 4 B de encapsulación, `:12-13`; cita corregida en V15) → **relay (c)** obligatorio.
    El canal fiable (≤ ≈ 7,5 KiB) solo para datos de ≤ 5 Hz o con TRANSIENT_LOCAL (meta del mapa, orden de joints,
    JPEG ≤ 3 KB).
 2. **Tiempo.** En el hilo principal, cada display dispone de **≤ 2 ms por mensaje** (pico) y **≤ 1 ms por
@@ -359,7 +359,7 @@ Ver `docs/adr/0011-presupuesto-render-vita.md`.
 | T-W8-1 | Añadir los ajustes de §5.4 a los proyectos Godot de la Vita | `godot/*/project.godot` | P0 | S |
 | T-W8-2 | Proyecto `w8-bench` con E-W8-0…5 | `godot/w8-bench/` | P0 | M (1–2 días) |
 | T-W8-3 | Arreglos de §4.4 (LUT de teselas, sub-texturas, tabla del scan, redibujado por cambio, caché de joints) | `godot/plantillas/`, `godot/g1-unitree/` | P0 | S–M |
-| T-W8-4 | Biblioteca de visualización: paleta, ejes, flecha, cinta, primitivas unidad, lote 2D | `godot/plantillas/viz/` | P1 | M |
+| T-W8-4 | Biblioteca de visualización: paleta, ejes, flecha, cinta, primitivas unidad, lote 2D | `godot/plantillas/viz/` | P1 | M — **absorbida por W13** (ADR 0013, doc 36 V2): hecha en `godot/plantillas/visor/{paleta_viz,primitivas_viz,texto_superpuesto}.gd`, no en `viz/` |
 | T-W8-5 | Hornear la casa en una malla con paleta | `docker/g1/casa.py` | P1 | S |
 | T-W8-6 | Módulos del relay que faltan: marcadores, nube, cámara | `docker/scripts/vita_relay.py` | P1 | M |
 | T-W8-7 | Módulo dual `viz-decode` + exposición en `ros2_vita` | `modules/viz-decode/`, `godot/ros2_vita/` | P2 (con la próxima plantilla) | M |

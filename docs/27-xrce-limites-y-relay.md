@@ -8,7 +8,8 @@
 ## Resumen
 
 - **Best effort:** cabe un mensaje si su CDR ocupa ≤ **488 B** (cabecera de 24 B + MTU de 512,
-  `godot/ros2_vita/xrce_transport.cpp:411-415`). Las suscripciones best effort usan un único búfer sin fragmentar
+  `godot/ros2_vita/xrce_transport.cpp:147-148,678-681`; el transporte manda el CDR **sin** los 4 B de encapsulación,
+  que pone el agente, `:12-13`, así que son 492 B medidos con rosbags; cita corregida en V15, 2026-11-14). Las suscripciones best effort usan un único búfer sin fragmentar
   (`:384`), así que un mensaje mayor **no llega nunca** [V].
 - **Fiable:** fragmenta. Al enviar desde la Vita, `_flush` **bloquea el hilo principal**, que es el mismo del render
   (`:247, :416`). Al recibir, la ventana es de 16 huecos de 512 B, con un techo de ≈ **7,5 KiB** por mensaje
@@ -30,8 +31,8 @@
 | Límite | Valor | Fuente |
 |---|---|---|
 | MTU transporte | 512 B | `godot/ros2_vita/xrce_transport.cpp:132-140` [V] |
-| Best effort (BE) | `len + 24 ≤ 512` ⇒ **≤ 488 B CDR**; si no, `ERR_OUT_OF_MEMORY` | `xrce_transport.cpp:411-415` [V] |
-| Fiable TX | fragmenta con `_flush = uxr_run_session_time(10)` ⇒ **bloquea** el hilo principal | `xrce_transport.cpp:247-249,416` [V] |
+| Best effort (BE) | `len + 24 ≤ 512` ⇒ **≤ 488 B CDR sin encapsulación** (492 B con rosbags); si no, `ERR_OUT_OF_MEMORY` | `xrce_transport.cpp:12-13,147-148,678-681` [V] (antes `:411-415`, hoy la reconexión; corregido en V15) |
+| Fiable TX | fragmenta con `_flush = uxr_run_session_time(10)` ⇒ **bloquea** el hilo principal | `xrce_transport.cpp:420-422,574` [V] (líneas de 2026-11-14) |
 | Fiable RX | historial 16×512 B ⇒ techo ≈ 16×(512−~24) ≈ **7,5–7,8 KiB** reensamblado; `MAX_RX` 16 KiB no es el cuello | `:136-137,182,300` [V]; techo exacto [I] |
 | Fiable lleno al publicar | **ya no** desvía al BE: cola FIFO (32 msg / 64 KiB) que se vacía en bucle en cada `poll()`; descarta los más antiguos y avisa (`reliable_dropped`) | colas revisadas 2026-11-12 [V] |
 | Suscripción BE | `request_data` sobre `best_effort_in` ⇒ el agente no puede fragmentar ahí: mensaje > ~490 B **se pierde** | `:384` [V]; comportamiento del agente [I] |
