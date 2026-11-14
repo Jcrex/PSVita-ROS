@@ -3,8 +3,9 @@ extends "res://comun/visor/display_ros_3d.gd"
 ## 1 instancia de la capa «mundo»: HMI y Viz 12; D7). Defecto del PC; en la Vita el defecto es la planta 2D.
 ##   PC   : `topic` (OccupancyGrid, *latched*) → imagen con la rampa «map» de RViz en CPU (MapaTextura).
 ##   Vita : `<p>/mapa_tesela` + `<p>/mapa_meta` → imagen del relay (LUT + `blit_rect`), subida ≤ 4 Hz.
-## Sin *shader* (decisión conservadora de V3: mismo camino en PC y Vita; el *shader* de dos texturas de la ficha
-## mapas#0 queda como mejora `solo_pc`). Material propio unshaded, NEAREST y sin *culling* (H15).
+## V14 (solo PC): el *shader* de dos texturas de la ficha mapas#0 (índices R8 + paleta 256×1 de RViz,
+## `MapaTextura.material_espacial`), sin bucle por celda. En la Vita (sin *shaders*) y en el camino compacto, material
+## propio unshaded, NEAREST y sin *culling* (H15) con la textura ya en colores.
 ## El *quad* se reconstruye solo si cambia la geometría (resolución, tamaño u origen).
 
 const MapaTextura = preload("res://comun/visor/mapa_textura.gd")
@@ -39,6 +40,7 @@ func _init() -> void:
 func conectar(v) -> void:
 	canal.coalescer = false                             # teselas: entregar todas
 	mapa.esquema = esquema
+	mapa.gpu = not v.en_vita                            # V14: paleta en *shader* solo en el PC
 	if v.usa_compactos() and topic_vita != "":
 		latched = false                                 # la tesela del relay es best effort
 	super.conectar(v)
@@ -90,13 +92,17 @@ func _actualizar() -> void:
 	if _vis == null or mapa.version == _version_aplicada or mapa.textura == null or mapa.ancho <= 0:
 		return
 	_version_aplicada = mapa.version
-	if _mat.albedo_texture != mapa.textura:
+	var m: Material = _mat
+	if mapa.indices:
+		m = mapa.material_espacial(alfa)                # V14: índices + paleta en el *shader*
+	elif _mat.albedo_texture != mapa.textura:
 		_mat.albedo_texture = mapa.textura
+	if _vis.material_override != m:
+		_vis.material_override = m
 	var geo := [mapa.res, mapa.ancho, mapa.alto, mapa.origen, mapa.yaw]
 	if geo != _geo:
 		_geo = geo
 		_vis.mesh = _quad(mapa.ancho * mapa.res, mapa.alto * mapa.res)
-		_vis.material_override = _mat
 		var q := Quaternion(Vector3(0, 0, 1), mapa.yaw)
 		_vis.transform = Transform3D(Basis(rclgd.ros_to_godot_quat(q)),
 				rclgd.ros_to_godot_vector(Vector3(mapa.origen.x, mapa.origen.y, altura)))
@@ -120,6 +126,15 @@ static func _quad(w: float, h: float) -> ArrayMesh:
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
 	return m
+
+
+## Textura que pinta el quad (la del StandardMaterial3D o la de índices del *shader*). Para pruebas y HUD.
+func textura_actual() -> Texture2D:
+	if _vis == null or _vis.material_override == null:
+		return null
+	if _vis.material_override is ShaderMaterial:
+		return _vis.material_override.get_shader_parameter("datos")
+	return _mat.albedo_texture
 
 
 func _coste() -> Dictionary:

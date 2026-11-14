@@ -352,13 +352,15 @@ func _probar_pc() -> void:
 	ds.mapa3._al_mensaje(gm)
 	var tex: ImageTexture = ds.mapa.mapa.textura
 	check(tex != null and tex.get_width() == 40 and tex.get_height() == 30, "mapa 2D PC: textura 40×30")
-	var img := tex.get_image()
+	check(tex.get_format() == Image.FORMAT_R8 and ds.mapa.material is ShaderMaterial, "mapa 2D PC: índices R8 + shader de paleta (V14)")
+	var img: Image = ds.mapa.mapa.imagen_colores()
 	check(img.get_pixel(0, 29).to_rgba32() == Color8(0x70, 0x89, 0x86).to_rgba32(), "mapa 2D PC: (0,0) desconocido abajo a la izquierda")
 	check(img.get_pixel(39, 0).to_rgba32() == Color8(0, 0, 0).to_rgba32(), "mapa 2D PC: última celda ocupada arriba a la derecha")
 	check(ds.mapa.mapa.origen == Vector2(-2.0, -1.5) and is_equal_approx(ds.mapa.mapa.res, 0.1), "mapa 2D PC: origen y resolución")
 	var quad: MeshInstance3D = ds.mapa3._vis
 	check(quad.visible and quad.mesh.get_faces().size() == 6, "mapa 3D PC: un quad de 2 triángulos")
-	check(ds.mapa3._mat.albedo_texture == ds.mapa3.mapa.textura, "mapa 3D PC: textura en el material")
+	check(ds.mapa3.textura_actual() == ds.mapa3.mapa.textura and ds.mapa3._vis.material_override is ShaderMaterial,
+			"mapa 3D PC: textura de índices en el shader (V14)")
 
 	# JointState → set_joints (por loopback, de punta a punta).
 	var js = RosMsg.from_type("sensor_msgs/msg/JointState")
