@@ -10,6 +10,8 @@ extends Node
 ##     `tf` queda en null y `transformada()` supone que todo está ya en el marco fijo (D3).
 ##     → V9: sin `create_tf_listener`, `tf` es un TfLigero (pose2d, robot horneado, `tf_estaticos` y relay `tf`
 ##     opcional); mientras no conozca `marco_fijo`, `transformada()` sigue suponiendo el marco fijo.
+##     → V13a: ros2_vita ya trae `create_tf_listener` (RosTfListener sobre tf-tree); se usa solo con `tf_nativo`
+##     (`usa_tf_nativo()`); los displays no cambian (misma API de consulta).
 ##   - Transporte: argumento `transporte=` > `@export transporte` > `ros/transport` del proyecto SOLO con ros2_vita
 ##     (con rclgd «xrce» no significa nada y activaría el camino compacto en el PC por error).
 ##   - Si ROS no arranca (agente caído al abrir), se reintenta cada `reintento_s`. Las caídas posteriores las
@@ -54,6 +56,11 @@ const CUPOS := {
 @export var tf_relay := false                  # suscribir `<p>/tf`, `tf_marcos` y `tf_estatico` (módulo tf opcional)
 ## Estáticos de la escena (regla doc 35), «padre>hijo x y z yaw» en ROS (m, rad); el relay `tf_estatico` los pisa.
 @export var tf_estaticos := PackedStringArray()
+## V13a: con ros2_vita, usar su `RosTfListener` nativo (tf-tree; suscrito a `/tf` y `/tf_static` crudos) en vez de
+## TfLigero, si la plantilla lo trae; si no, TfLigero. Apagado por defecto: el camino compacto (relay) no manda `/tf`
+## crudo (no cabe: G1 ≈ 4 796 B, docs/27:73-75) y TfLigero tiene fuentes locales (pose2d, robot horneado,
+## estáticos de la escena). Con rclgd (PC) siempre se usa su listener. [decisión V13a, visor/README.md]
+@export var tf_nativo := false
 @export_group("")
 
 var contexto = Contexto.new()
@@ -126,10 +133,10 @@ func _conectar_deferred() -> void:
 		return
 	ros_listo = true
 	estado = "ok"
-	if contexto.nodo.has_method("create_tf_listener"):
+	if usa_tf_nativo():
 		tf = contexto.nodo.call("create_tf_listener", 10.0)
-	else:
-		_iniciar_tf_ligero()                     # V9
+	if tf == null:
+		_iniciar_tf_ligero()                     # V9 (y respaldo si el nativo no se pudo crear)
 	for d in get_tree().get_nodes_in_group("display_ros"):
 		if is_ancestor_of(d):
 			d.conectar(self)
@@ -203,6 +210,14 @@ func transformada(frame: String):
 
 
 # --- V9: TfLigero (doc 36 §2.9.6; sentencia W13 D3) ---------------------------------------------------------------
+
+## Qué TF crea `_conectar_deferred`: el `RosTfListener` del nodo si existe (`create_tf_listener`) y es rclgd, o es
+## ros2_vita con `tf_nativo`; si no, TfLigero. (rclgd no tiene `get_transport_info`: así se distinguen, como arriba.)
+func usa_tf_nativo() -> bool:
+	if contexto.nodo == null or not contexto.nodo.has_method("create_tf_listener"):
+		return false                             # plantilla de la Vita anterior a V13a: solo TfLigero
+	return tf_nativo or not rclgd.has_method("get_transport_info")
+
 
 ## true si `tf` es el TfLigero de GDScript (no el RosTfListener nativo).
 func es_tf_ligero() -> bool:
