@@ -46,7 +46,13 @@ fichero del mes en `docs/bitacora/`.
   exportada (no subida). **Falta (usuario):** guion único de hardware del §5 de la revisión (V1, V6, V7, V8, V9).
 - **Falta (usuario), gates de hardware:** fase V1 (con **START** para el banco E-W8-1, no Select), V6 (20 avisos/s,
   5 min), V7 (meta con ✕ hasta `/goal_pose`), V8 (G-W13-M1, M3), V9 (8 marcos a 10 Hz, `process` +≤ 0,5 ms).
-- **Siguiente:** revisión de la fase V2 (V5–V9); después fase V3 (V10 percepción ∥ V11 costmap ∥ V12 inspector).
+- **Fases V2 y V3 del visor hechas en host (2026-11-14):** revisión V2 (`7090374`) y decisiones de Fable (`7622701`:
+  gates de marcadores M1 12/M1v 32/M2 estrés 48/M3 33; escena banco V5 con L+R+START); V10 percepción (`50cf371`),
+  V11 costmap y V12 inspector/trazador (worktrees fusionadas, `5851d05`…`0b31c45`), revisión V3 (`d5b52f2`, 10 arreglos).
+  13 suites `visor*.gd` verdes, host 294/0, runner 16/16; en vivo: hmi 12,8 · viz 23,4 · percepcion 28,1 KB/s.
+  `build/visor-ros.vpk` reexportada. Desafíos V3 (gate M5, `sensores_2d`, `camara_hz`) → juez Fable.
+- **Falta (usuario):** guion único de hardware de V1–V12: `docs/ia/workshops/posts/V3-revision.md` §5 (9 fases, fish).
+- **Siguiente:** V13 paquete nativo (solo PC, al recompilar la plantilla), V14 extras solo PC, V15 documentación.
 
 ## 2026-11-13 (PC, noche) — Fase O: organización del repositorio
 
