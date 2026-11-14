@@ -241,7 +241,8 @@ func _probar_registro() -> void:
 		["/vita/nube2d", "std_msgs/msg/Int16MultiArray", true, "2d/nube.gd"],
 		["/vita/camara/compressed", "sensor_msgs/msg/CompressedImage", true, "hud/imagen.gd"],
 		["/camera/image_raw", "sensor_msgs/msg/Image", false, "hud/imagen.gd"],
-		["/points", "sensor_msgs/msg/PointCloud2", false, "2d/nube.gd"],
+		["/points", "sensor_msgs/msg/PointCloud2", false, "3d/nube_puntos.gd"],   # V14: nube en GPU (solo PC)
+		["/points", "sensor_msgs/msg/PointCloud2", true, "2d/nube.gd"],
 		["/detections", "vision_msgs/msg/Detection2DArray", false, "hud/cajas_2d.gd"],
 		["/detections_3d", "vision_msgs/msg/Detection3DArray", false, "2d/cajas_3d.gd"],
 	]

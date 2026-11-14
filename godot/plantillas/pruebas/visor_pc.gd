@@ -22,6 +22,7 @@ const VisorRos = preload("res://comun/visor/visor_ros.gd")
 const Texto = preload("res://comun/visor/texto_superpuesto.gd")
 const Registro = preload("res://comun/visor/registro_displays.gd")
 const Paleta = preload("res://comun/visor/paleta_viz.gd")
+const MapasColor = preload("res://comun/visor/mapas_color.gd")
 const D := "res://comun/visor/displays/"
 
 
@@ -67,6 +68,7 @@ func _correr() -> void:
 	gpu = DisplayServer.get_name() != "headless" and RenderingServer.get_video_adapter_name() != ""
 	print("V14: ", "con GPU (" + RenderingServer.get_video_adapter_name() + ")" if gpu else "sin GPU (headless): se saltan los píxeles")
 	await _probar_mapa()
+	await _probar_nube()
 	check(vigia.errores == 0, "sin errores de script ni de shader (%s)" % vigia.ultimo)
 	OS.remove_logger(vigia)
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
@@ -278,3 +280,138 @@ func _probar_mapa() -> void:
 	await _esperar(vv)
 	check(not mv.mapa.gpu and mv.canal.compacto and mv.material == null, "mapa en la Vita: sin shader, camino compacto")
 	await _cerrar(vv)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 2. Nube PointCloud2 en GPU
+# ---------------------------------------------------------------------------------------------------------------
+## PointCloud2 con `campos` = [[nombre, offset, datatype], …] y los bytes ya armados.
+func _nube(campos: Array, step: int, w: int, h: int, datos: PackedByteArray, big := false):
+	var m = RosMsg.from_type("sensor_msgs/msg/PointCloud2")
+	m.header.frame_id = "map"
+	var fs := []
+	for c in campos:
+		var f = RosMsg.from_type("sensor_msgs/msg/PointField")
+		f.name = c[0]
+		f.offset = c[1]
+		f.datatype = c[2]
+		f.count = 1
+		fs.append(f)
+	m.fields = fs
+	m.width = w
+	m.height = h
+	m.point_step = step
+	m.row_step = step * w
+	m.is_bigendian = big
+	m.data = datos
+	var r = RosMsg.from_type("sensor_msgs/msg/PointCloud2")
+	r.deserialize(m.serialize())
+	return r
+
+
+## Puntos de prueba (ROS): tres esquinas y un NaN.
+const PTS := [Vector3(1.5, 0.0, 0.0), Vector3(0.0, 1.5, 0.0), Vector3(-1.5, -1.5, 0.0), Vector3(NAN, 0.0, 0.0)]
+
+
+func _pixel_punto(cap: Image, cam: Camera3D, p: Vector3) -> Color:
+	return cap.get_pixelv(Vector2i(cam.unproject_position(rclgd.ros_to_godot_vector(p))))
+
+
+func _probar_nube() -> void:
+	var nb: Node3D = load(D + "3d/nube_puntos.gd").new()
+	nb.name = "NubePuntos"
+	nb.topic = "/points"
+	nb.tam_px = 12.0
+	nb.rango_auto = true
+	var v := _visor(false, [], [], [nb], Vector3.ZERO, 6.0)
+	await _esperar(v)
+	check(nb.estado == "ok" and nb.solo_pc and nb.canal.tipo_abierto == "sensor_msgs/msg/PointCloud2" and nb.cupo == 1,
+			"nube GPU: PointCloud2 directo, solo_pc, 1 instancia")
+	check(nb._vis.mesh.get_surface_count() == 1 and nb._vis.mesh.surface_get_primitive_type(0) == Mesh.PRIMITIVE_POINTS,
+			"nube GPU: malla de puntos (max_puntos vértices) creada una vez")
+	# (a) PCL XYZI: x, y, z, intensity float32, point_step 16 → ruta GPU, color por intensidad (arcoíris de RViz).
+	var b := PackedByteArray()
+	b.resize(16 * PTS.size())
+	for i in PTS.size():
+		b.encode_float(16 * i, PTS[i].x)
+		b.encode_float(16 * i + 4, PTS[i].y)
+		b.encode_float(16 * i + 8, PTS[i].z)
+		b.encode_float(16 * i + 12, [0.0, 50.0, 100.0, 7.0][i])
+	var xyzi := [["x", 0, 7], ["y", 4, 7], ["z", 8, 7], ["intensity", 12, 7]]
+	nb._al_mensaje(_nube(xyzi, 16, PTS.size(), 1, b))
+	check(nb.ruta == "gpu" and nb.puntos == 4 and nb.paso == 1 and nb.material_nube.get_shader_parameter("modo") == 1,
+			"nube XYZI: ruta GPU (bytes crudos a la textura), modo campo")
+	check(nb.rango_usado == Vector2(0, 100), "nube XYZI: rango automático 0–100 (%s)" % nb.rango_usado)
+	check(nb.textura.get_width() == 4096 and nb.textura.get_format() == Image.FORMAT_RGBA8, "nube: textura RGBA8 de 4096 palabras")
+	if gpu:
+		var cap := await _captura()
+		var c0 := _pixel_punto(cap, v.camara, PTS[0])
+		var c2 := _pixel_punto(cap, v.camara, PTS[2])
+		check(_cerca(c0, MapasColor.color(MapasColor.ARCOIRIS, 0), 6) and _cerca(c2, MapasColor.color(MapasColor.ARCOIRIS, 255), 6),
+				"GPU nube XYZI: intensidad mínima roja y máxima magenta (RViz) — %s %s" % [c0, c2])
+	# (b) XYZRGB (PCL: rgb float32 empaquetado en 16, point_step 32).
+	nb.campo_color = "rgb"
+	var rgb := [0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF]
+	var b2 := PackedByteArray()
+	b2.resize(32 * PTS.size())
+	for i in PTS.size():
+		b2.encode_float(32 * i, PTS[i].x)
+		b2.encode_float(32 * i + 4, PTS[i].y)
+		b2.encode_float(32 * i + 8, PTS[i].z)
+		b2.encode_u32(32 * i + 16, rgb[i])
+	nb._al_mensaje(_nube([["x", 0, 7], ["y", 4, 7], ["z", 8, 7], ["rgb", 16, 7]], 32, 4, 1, b2))
+	check(nb.ruta == "gpu" and nb.material_nube.get_shader_parameter("modo") == 2, "nube XYZRGB: rgb empaquetado en el shader")
+	if gpu:
+		var cap := await _captura()
+		var cs := [_pixel_punto(cap, v.camara, PTS[0]), _pixel_punto(cap, v.camara, PTS[1]), _pixel_punto(cap, v.camara, PTS[2])]
+		check(_cerca(cs[0], Color.RED, 6) and _cerca(cs[1], Color.GREEN, 6) and _cerca(cs[2], Color.BLUE, 6),
+				"GPU nube XYZRGB: rojo, verde y azul en su sitio (ROS → Godot) — %s" % [cs])
+	# (c) x/y/z FLOAT64 (point_step 28, desalineado) → ruta CPU (reempaquetado a 16 B), mismo shader.
+	nb.campo_color = "intensity"
+	var b3 := PackedByteArray()
+	b3.resize(28 * PTS.size())
+	for i in PTS.size():
+		b3.encode_double(28 * i, PTS[i].x)
+		b3.encode_double(28 * i + 8, PTS[i].y)
+		b3.encode_double(28 * i + 16, PTS[i].z)
+		b3.encode_u16(28 * i + 24, [0, 50, 100, 7][i])
+	nb._al_mensaje(_nube([["x", 0, 8], ["y", 8, 8], ["z", 16, 8], ["intensity", 24, 4]], 28, 4, 1, b3))
+	check(nb.ruta == "cpu" and nb.material_nube.get_shader_parameter("point_step") == 16 and nb.rango_usado == Vector2(0, 100),
+			"nube FLOAT64 desalineada: ruta CPU (16 B por punto) y rango 0–100")
+	if gpu:
+		var cap := await _captura()
+		check(_cerca(_pixel_punto(cap, v.camara, PTS[2]), MapasColor.color(MapasColor.ARCOIRIS, 255), 6),
+				"GPU nube ruta CPU: el punto (−1,5, −1,5) con la intensidad máxima")
+	# (d) Big endian con todos los campos de 4 B → bswap32 nativo y ruta GPU; con un campo de 2 B → rechazada.
+	nb.campo_color = ""
+	var b4 := PackedByteArray()
+	b4.resize(12 * PTS.size())
+	for i in PTS.size():
+		b4.encode_float(12 * i, PTS[i].x)
+		b4.encode_float(12 * i + 4, PTS[i].y)
+		b4.encode_float(12 * i + 8, PTS[i].z)
+	b4.bswap32()
+	nb._al_mensaje(_nube([["x", 0, 7], ["y", 4, 7], ["z", 8, 7]], 12, 4, 1, b4, true))
+	check(nb.ruta == "gpu" and nb.textura.get_image().get_data().slice(0, 4).decode_float(0) == 1.5,
+			"nube big endian (campos de 4 B): bswap32 y ruta GPU")
+	var r0: int = nb.rechazadas
+	nb._al_mensaje(_nube([["x", 0, 7], ["y", 4, 7], ["z", 8, 7], ["intensity", 12, 4]], 16, 1, 1, PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), true))
+	check(nb.rechazadas == r0 + 1, "nube big endian con un campo de 2 B: rechazada")
+	# (e) Diezmado: 100 000 puntos, max_puntos 60 000 → paso 2, 50 000 dibujados; coste sin bucle por punto.
+	var big := PackedFloat32Array()
+	big.resize(100000 * 4)
+	var bb := big.to_byte_array()
+	var nube_100k = _nube(xyzi, 16, 1000, 100, bb)
+	nb._al_mensaje(nube_100k)                           # la primera crea la textura de 98 filas
+	var t0 := Time.get_ticks_usec()
+	nb._al_mensaje(nube_100k)                           # régimen: misma textura (update)
+	var us := Time.get_ticks_usec() - t0
+	print("nube: 100 000 puntos (1,6 MB) procesados y subidos en %d µs (ruta %s; display %d µs)" % [us, nb.ruta, nb.us_ultimo])
+	check(nb.paso == 2 and nb.dibujados == 50000 and nb.ruta == "gpu" and us < 50000,
+			"nube 100 k: diezmado uniforme (paso 2, 50 000 vértices) en < 50 ms (%d µs)" % us)
+	# (f) Mapas de color: arcoíris de RViz = getRainbowColor literal; turbo y gris.
+	check(MapasColor.arcoiris_rviz(0.0) == Color(1, 0, 1) and MapasColor.arcoiris_rviz(1.0) == Color(1, 0, 0)
+			and MapasColor.arcoiris_rviz(0.5) == Color(0, 1, 0.5), "mapas de color: getRainbowColor de RViz")
+	check(MapasColor.color(MapasColor.GRIS, 255) == Color(1, 1, 1) and MapasColor.textura(MapasColor.TURBO).get_width() == 256,
+			"mapas de color: gris y turbo 256×1")
+	await _cerrar(v)
