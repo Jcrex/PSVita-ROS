@@ -210,3 +210,20 @@ nativo sobre `modules/tf-tree` (T-W4-2) se hace con la misma API cuando se recom
   contenido, mover de capa, y solo después parchear.
 - **Lo que no se puede verificar en el PC** (render GXM, *quads*, FPS, recepción XRCE real) lleva la marca «validar
   en hardware» en el código y en los README.
+
+## Enmienda 2026-11-14 (juez Fable 5.2, desafíos de la fase V2)
+
+Detalle en `docs/ia/workshops/posts/V2-juez-fable.md`; origen en `docs/ia/workshops/posts/V2-revision.md` (N3, N7).
+No cambia ninguna cifra de §4 ni de §5.
+
+1. **Marcadores: tres límites, cada uno con su papel.** Cupo de la capa (12 HMI / 32 Viz, §4) = lo que se dibuja;
+   estado completo del relay ≤ 33 (§5) = lo que viaja; `TOPE_VITA` = 48 = red de seguridad del camino directo. Los
+   gates G-W13-M1 (HMI, 12, ≥ 55 FPS) y G-W13-M1v (Viz, 32, ≥ 30 FPS) miden el cupo; el «48» queda solo como carga de
+   estrés de G-W13-M2 (doc 36 §9.1).
+2. **Escenas de prueba conmutables en la Vita.** `godot/visor-ros/` lleva tres escenas editables (doc 35):
+   `main.tscn` (HMI), `main_viz.tscn` (heredada, perfil Viz) y `banco_v5.tscn` (displays directos de V5, gate V5). El
+   nodo `SelectorEscena` (`selector_escena.gd`) cambia entre ellas con L + R + START y recuerda la elección en
+   `user://visor_escena.txt`: una sola `.vpk` para todos los gates. Validar en hardware.
+3. **HUD (§4):** los ≤ 4 *quads* de la herramienta activa cuentan dentro de la barra fija (≤ 120).
+4. **TF (§3):** con `marco_pose2d` aún sin unir al marco fijo, `pose2d` cuelga del fijo; `map → odom` llega por la
+   lista blanca del módulo `tf`. El relay no publica `pose2d` en `map`.

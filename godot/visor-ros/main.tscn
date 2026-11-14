@@ -25,6 +25,7 @@
 [ext_resource type="Script" path="res://comun/visor/displays/hud/consola.gd" id="22_consola"]
 [ext_resource type="Script" path="res://comun/visor/displays/3d/marcadores.gd" id="v8_marcadores"]
 [ext_resource type="Script" path="res://comun/visor/displays/2d/marcadores_2d.gd" id="v8_marcadores_2d"]
+[ext_resource type="Script" path="res://selector_escena.gd" id="v2_selector"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -248,3 +249,6 @@ script = ExtResource("v8_marcadores_2d")
 topic = "/visualization_marker_array"
 tipo = "visualization_msgs/msg/MarkerArray"
 gestor_3d = NodePath("../../Marcadores")
+
+[node name="SelectorEscena" type="Node" parent="."]
+script = ExtResource("v2_selector")

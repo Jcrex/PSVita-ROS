@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://main.tscn" id="1_main"]
+
+[node name="Main" instance=ExtResource("1_main")]
+
+[node name="VisorRos" parent="." index="4"]
+perfil = 1
+
+[node name="TF" parent="VisorRos" index="1"]
+max_marcos_vita = 32
