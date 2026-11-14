@@ -27,6 +27,9 @@
 [ext_resource type="Script" path="res://comun/visor/displays/2d/marcadores_2d.gd" id="v8_marcadores_2d"]
 [ext_resource type="Script" path="res://selector_escena.gd" id="v2_selector"]
 [ext_resource type="Script" path="res://comun/visor/displays/2d/costmap.gd" id="v11_costmap"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/trazador.gd" id="v12_trazador"]
+[ext_resource type="Script" path="res://comun/visor/displays/hud/inspector_texto.gd" id="v12_inspector"]
+[ext_resource type="Script" path="res://comun/visor/explorador_topics.gd" id="v12_explorador"]
 
 [sub_resource type="Environment" id="Environment_visor"]
 ambient_light_source = 2
@@ -225,6 +228,40 @@ mouse_filter = 2
 offset_right = 320.0
 offset_bottom = 90.0
 script = ExtResource("22_consola")
+
+[node name="Graficas" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Trazador" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Graficas"]
+offset_right = 320.0
+offset_bottom = 160.0
+script = ExtResource("v12_trazador")
+topic = "/odom"
+tipo = "nav_msgs/msg/Odometry"
+topic_vita = "pose2d"
+tipo_vita = "std_msgs/msg/Float32MultiArray"
+campos_vita = PackedStringArray("data[3]", "data[5]")
+
+[node name="Inspector" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas"]
+visible = false
+offset_right = 320.0
+offset_bottom = 496.0
+mouse_filter = 2
+
+[node name="Inspector" type="Control" parent="VisorRos/Hud/GestorHud/Pestanas/Inspector"]
+offset_right = 320.0
+offset_bottom = 140.0
+script = ExtResource("v12_inspector")
+topic = "/odom"
+tipo = "nav_msgs/msg/Odometry"
+topic_vita = "pose2d"
+tipo_vita = "std_msgs/msg/Float32MultiArray"
+
+[node name="ExploradorTopics" type="Node" parent="VisorRos"]
+script = ExtResource("v12_explorador")
 
 [node name="Herramientas" type="Node2D" parent="VisorRos/Hud"]
 
