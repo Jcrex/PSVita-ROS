@@ -33,6 +33,12 @@ Salidas (todas BEST_EFFORT salvo las marcadas):
                         Entradas: marcadores_in (/visualization_marker_array) y marcador_in (/visualization_marker);
                         TF al marco fijo con tf2 (`marco_fijo`, «map»); sin TF el marcador no se manda.
   Época del mapa: `version` solo sube si cambian resolución, tamaño u origen (antes, con cada OccupancyGrid).
+  --- V9 (doc 36 §5.3; parámetros pose_cov_in (/amcl_pose), poses_in (/particle_cloud), tf_lista ([odom])) ---
+  /vita/pose_cov       Float32MultiArray 2 Hz   [x, y, yaw, σxx, σxy, σyy, σyaw] (varianzas, de PoseWithCovariance) [pose_cov]
+  /vita/poses          Float32MultiArray 2 Hz   cab. + [x, y, yaw]·n, n ≤ 36 diezmado (PoseArray o ParticleCloud) [poses]
+  /vita/tf             Float32MultiArray 10 Hz  cab. + [idx, x, y, z, qx, qy, qz, qw]·n, n ≤ 8 hijos de tf_lista    [tf]
+  /vita/tf_marcos      String  FIABLE + TRANSIENT_LOCAL  «padre>hijo,…»: el `idx` de tf y tf_estatico           [tf]
+  /vita/tf_estatico    Float32MultiArray FIABLE + TRANSIENT_LOCAL  como tf, ≤ 16 de /tf_static (al cambiar)        [tf]
 
 Módulos: scan, pose, joints, mapa, path, rosout, diag, ritmo, o un perfil: hmi (= los 7 primeros), viz,
 percepcion (sus módulos extra llegan con V8–V11) y todo. TOPE DE RED (D5.7): al arrancar se suma lo declarado por
@@ -142,6 +148,38 @@ def main():
                 self.create_subscription(Path, p("path_in", "/plan").value, self._on_path, 10)
                 self.p_path = self.create_publisher(Float32MultiArray, pre + "/path_compacto", be)
                 self.create_timer(0.5, self._tx_path)
+            # --- V9: pose_cov, poses y tf (doc 36 §5.3; funciones puras en vita_relay_formatos.py)
+            if "pose_cov" in mods:
+                from geometry_msgs.msg import PoseWithCovarianceStamped
+                self.pose_cov = None
+                self.create_subscription(PoseWithCovarianceStamped, p("pose_cov_in", "/amcl_pose").value,
+                                         self._on_pose_cov, 10)
+                self.p_pose_cov = self.create_publisher(Float32MultiArray, pre + "/pose_cov", be)
+                self.create_timer(0.5, self._tx_pose_cov)                            # 2 Hz
+            if "poses" in mods:
+                # PoseArray o nav2_msgs/ParticleCloud (la nube de AMCL en Jazzy): el tipo se descubre en el grafo.
+                self.poses = None
+                self.seq_poses = 0
+                self.poses_in = p("poses_in", "/particle_cloud").value
+                self.sub_poses = None
+                self.p_poses = self.create_publisher(Float32MultiArray, pre + "/poses", be)
+                self._t_poses = self.create_timer(2.0, self._buscar_poses)
+                self._buscar_poses()
+                self.create_timer(0.5, self._tx_poses)                               # 2 Hz
+            if "tf" in mods:
+                # Lista blanca de ≤ 8 hijos dinámicos (D3); por defecto «odom» = map → odom (doc 36 §9.3.3).
+                from tf2_msgs.msg import TFMessage
+                self.tabla_tf = TablaTf(p("tf_lista", ["odom"]).value)
+                self.seq_tf = 0
+                self.create_subscription(TFMessage, "/tf", self._on_tf, 100)
+                self.create_subscription(TFMessage, "/tf_static", self._on_tf_static,
+                                         QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE,
+                                                    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                                                    history=HistoryPolicy.KEEP_LAST))
+                self.p_tf = self.create_publisher(Float32MultiArray, pre + "/tf", be)
+                self.p_tf_marcos = self.create_publisher(String, pre + "/tf_marcos", latched)
+                self.p_tf_estatico = self.create_publisher(Float32MultiArray, pre + "/tf_estatico", latched)
+                self.create_timer(0.1, self._tx_tf)                                  # 10 Hz
             if "rosout" in mods:
                 # /rosout: los emisores publican fiable + TRANSIENT_LOCAL; aquí fiable y volátil (sin historial).
                 from rcl_interfaces.msg import Log
@@ -311,6 +349,71 @@ def main():
                 return
             d = empaquetar_path(self.path)
             self._pub(self.p_path, Float32MultiArray(data=d), cdr_multiarray(len(d), 4))
+
+        # --- V9: pose_cov (2 Hz, 44 B), poses (2 Hz, ≤ 464 B) y tf (10 Hz, ≤ 288 B; tf_marcos/tf_estatico F+TL)
+        def _on_pose_cov(self, m):
+            self.pose_cov = m
+
+        def _tx_pose_cov(self):
+            m = self.pose_cov
+            if m is None:
+                return
+            p, q = m.pose.pose.position, m.pose.pose.orientation
+            d = empaquetar_pose_cov(p.x, p.y, yaw_de_quat(q.x, q.y, q.z, q.w), list(m.pose.covariance))
+            self._pub(self.p_pose_cov, Float32MultiArray(data=[float(v) for v in d]), cdr_multiarray(7, 4))
+
+        def _buscar_poses(self):
+            from rosidl_runtime_py.utilities import get_message
+            if self.sub_poses is not None:
+                return
+            t = dict(self.get_topic_names_and_types()).get(self.poses_in)
+            if not t:
+                return
+            cls = get_message(t[0])
+            self.sub_poses = self.create_subscription(cls, self.poses_in, self._on_poses, qos_profile_sensor_data)
+            self._t_poses.cancel()
+            self.get_logger().info(f"poses: {self.poses_in} ({t[0]}) → {self.pre}/poses a 2 Hz")
+
+        def _on_poses(self, m):
+            lista = m.poses if hasattr(m, "poses") else [pt.pose for pt in m.particles]   # ParticleCloud
+            self.poses = [(o.position.x, o.position.y,
+                           yaw_de_quat(o.orientation.x, o.orientation.y, o.orientation.z, o.orientation.w))
+                          for o in lista]
+
+        def _tx_poses(self):
+            if self.poses is None:
+                return
+            self.seq_poses += 1
+            d = empaquetar_poses(self.poses, self.seq_poses)
+            self._pub(self.p_poses, Float32MultiArray(data=[float(v) for v in d]), cdr_multiarray(len(d), 4))
+
+        @staticmethod
+        def _tq(ts):
+            tr = ts.transform
+            return ((tr.translation.x, tr.translation.y, tr.translation.z),
+                    (tr.rotation.x, tr.rotation.y, tr.rotation.z, tr.rotation.w))
+
+        def _on_tf(self, m):
+            for ts in m.transforms:
+                self.tabla_tf.dinamico(ts.header.frame_id, ts.child_frame_id, *self._tq(ts))
+
+        def _on_tf_static(self, m):
+            for ts in m.transforms:
+                self.tabla_tf.estatico(ts.header.frame_id, ts.child_frame_id, *self._tq(ts))
+
+        def _tx_tf(self):
+            tabla = self.tabla_tf
+            if tabla.cambio_marcos:                 # primero los nombres: el índice de tf/tf_estatico apunta aquí
+                tabla.cambio_marcos = False
+                self.p_tf_marcos.publish(String(data=tabla.texto_marcos()))
+            if tabla.cambio_estaticos:
+                tabla.cambio_estaticos = False
+                d = tabla.trozo_estatico()
+                self.p_tf_estatico.publish(Float32MultiArray(data=[float(v) for v in d]))
+            if tabla.dinamicos:
+                self.seq_tf += 1
+                d = tabla.trozo_tf(self.seq_tf)
+                self._pub(self.p_tf, Float32MultiArray(data=[float(v) for v in d]), cdr_multiarray(len(d), 4))
 
         # --- rosout: ≥ WARN, sin file/function, msg ≤ 200 car., ≤ 10/s (cola de 20: lo que sobra se descarta)
         def _on_log(self, m):

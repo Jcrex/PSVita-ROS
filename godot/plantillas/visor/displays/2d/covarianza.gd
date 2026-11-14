@@ -4,8 +4,9 @@ extends "res://comun/visor/display_ros_2d.gd"
 ## Sin elipsoide translúcido (sin orden de transparencias en el port, docs/31 §2.4). La elipse vive en los ejes del
 ## `header.frame_id` y no gira con la pose [I].
 ##   PC y Vita : `PoseWithCovarianceStamped` (364 B, cabe en directo; AMCL `/amcl_pose`) → `_procesar`.
-##   Vita (opc.): `<p>/pose_cov` = `[x, y, yaw, σxx, σxy, σyy, σyaw]` (⚖ D5.4; el módulo del relay llega con V6) →
-##              `_procesar_compacto`; activo solo si la escena pone `topic_vita = "pose_cov"`.
+##   Vita (opc.): `<p>/pose_cov` = `[x, y, yaw, σxx, σxy, σyy, σyaw]` (⚖ D5.4; módulo `pose_cov` del relay, V9: las
+##              varianzas cov[0], cov[1], cov[7], cov[35], `vc1.gd empaquetar_pose_cov`) → `_procesar_compacto`;
+##              activo solo si la escena pone `topic_vita = "pose_cov"` (decisión V9: el directo de 364 B ya cabe).
 ## Dato intermedio: `[centro m, yaw, λ1, λ2, θ, σ_yaw]`. Cupo: 30 *quads*.
 
 @export var escala_pos := 1.0
