@@ -1,4 +1,5 @@
-// ros_msg.cpp — Godot 4.x in-tree. Compilado y probado en host (G1, 2026-10-29); para la Vita: compilado con verify_runtime.py PASS (G3, 2026-10-30) y validado en hardware (G4–G6, 2026-10-30).
+// ros_msg.cpp — Godot 4.x in-tree. V13a (2026-11-14): decode_new (tipo resuelto al suscribir), sin init_idx doble y
+// asignación directa en el decodificador (sin _find_field por campo). Compilado y probado en host (G1, 2026-10-29); para la Vita: compilado con verify_runtime.py PASS (G3, 2026-10-30) y validado en hardware (G4–G6, 2026-10-30).
 #include "ros_msg.h"
 
 #include "core/object/class_db.h"
@@ -131,13 +132,16 @@ Variant RosMsg::_default_for(const msg_field_info &f) {
 	return arr;
 }
 
-void RosMsg::init_idx(uint32_t p_type_idx) {
+void RosMsg::init_idx(uint32_t p_type_idx, bool p_defaults) {
 	ERR_FAIL_COND_MSG(!schema_loaded, "RosMsg: carga primero un esquema (RosMsg.load_schema_file).");
 	const char *name = nullptr;
 	ERR_FAIL_COND_MSG(msg_schema_type_name(&schema, p_type_idx, &name) != MSG_SCHEMA_OK, "RosMsg: tipo fuera del esquema.");
 	type_idx = p_type_idx;
 	ros_name = String::utf8(name);
 	members.clear();
+	if (!p_defaults) {
+		return; // V13a: el decodificador asignará cada campo
+	}
 	uint32_t nf = 0;
 	msg_schema_field_count(&schema, type_idx, &nf);
 	for (uint32_t i = 0; i < nf; i++) {
@@ -157,6 +161,18 @@ void RosMsg::init(const String &p_ros_type) {
 	ERR_FAIL_COND_MSG(msg_schema_find_type(&schema, cs.get_data(), &idx) != MSG_SCHEMA_OK,
 			vformat("RosMsg: tipo '%s' no esta en el esquema.", p_ros_type));
 	init_idx(idx);
+}
+
+uint32_t RosMsg::find_type_index(const String &p_ros_type) {
+	uint32_t idx = MSG_SCHEMA_NO_TYPE;
+	if (!schema_loaded) {
+		return idx;
+	}
+	CharString cs = p_ros_type.utf8();
+	if (msg_schema_find_type(&schema, cs.get_data(), &idx) != MSG_SCHEMA_OK) {
+		return MSG_SCHEMA_NO_TYPE;
+	}
+	return idx;
 }
 
 Ref<RosMsg> RosMsg::from_type(const String &p_ros_type) {
@@ -388,13 +404,13 @@ static int d_begin_struct(void *c, const char *name, uint32_t type_idx) {
 	DecCtx *d = (DecCtx *)c;
 	Ref<RosMsg> m;
 	m.instantiate();
-	m->init_idx(type_idx);
+	m->init_idx(type_idx, false); // V13a: sin árbol por defecto (msg_schema_decode visita todos los campos)
 	if (d->stack.is_empty()) {
 		d->root = m;
 	} else {
 		DFrame &parent = d->stack.write[d->stack.size() - 1];
 		if (name) {
-			parent.msg->set_member(StringName(String::utf8(name)), m);
+			parent.msg->set_decoded(StringName(String::utf8(name)), m);
 		} else {
 			parent.arr.push_back(m);
 		}
@@ -413,7 +429,7 @@ static int d_end_struct(void *c) {
 
 static int d_prim(void *c, const char *name, int prim, uint64_t raw) {
 	DecCtx *d = (DecCtx *)c;
-	d->stack.write[d->stack.size() - 1].msg->set_member(StringName(String::utf8(name)), _prim_variant(prim, raw));
+	d->stack.write[d->stack.size() - 1].msg->set_decoded(StringName(String::utf8(name)), _prim_variant(prim, raw));
 	return 0;
 }
 
@@ -422,7 +438,7 @@ static int d_string(void *c, const char *name, const uint8_t *s, uint32_t len) {
 	DFrame &fr = d->stack.write[d->stack.size() - 1];
 	String str = String::utf8((const char *)s, (int)len);
 	if (name) {
-		fr.msg->set_member(StringName(String::utf8(name)), str);
+		fr.msg->set_decoded(StringName(String::utf8(name)), str);
 	} else {
 		fr.sarr.push_back(str);
 	}
@@ -483,7 +499,7 @@ static int d_prim_array(void *c, const char *name, int prim, const uint8_t *data
 			out = a;
 		} break;
 	}
-	d->stack.write[d->stack.size() - 1].msg->set_member(StringName(String::utf8(name)), out);
+	d->stack.write[d->stack.size() - 1].msg->set_decoded(StringName(String::utf8(name)), out);
 	return 0;
 }
 
@@ -492,8 +508,10 @@ static int d_begin_array(void *c, const char *name, uint32_t count, uint32_t ele
 	(void)count;
 	DFrame &fr = d->stack.write[d->stack.size() - 1];
 	fr.arr_name = String::utf8(name);
-	fr.arr.clear();
-	fr.sarr.clear();
+	// Instancias NUEVAS (no clear()): Array es por referencia y el anterior ya es el valor de otro campo
+	// (set_decoded lo guarda sin copiar; antes _coerce hacía la copia).
+	fr.arr = Array();
+	fr.sarr = PackedStringArray();
 	fr.arr_is_string = elem_type == MSG_SCHEMA_NO_TYPE;
 	return 0;
 }
@@ -502,26 +520,48 @@ static int d_end_array(void *c) {
 	DecCtx *d = (DecCtx *)c;
 	DFrame &fr = d->stack.write[d->stack.size() - 1];
 	if (fr.arr_is_string) {
-		fr.msg->set_member(StringName(fr.arr_name), fr.sarr);
+		fr.msg->set_decoded(StringName(fr.arr_name), fr.sarr);
 	} else {
-		fr.msg->set_member(StringName(fr.arr_name), fr.arr);
+		fr.msg->set_decoded(StringName(fr.arr_name), fr.arr);
 	}
 	return 0;
 }
 
 } // extern "C"
 
-Error RosMsg::deserialize(const PackedByteArray &p_payload) {
-	ERR_FAIL_COND_V_MSG(type_idx == MSG_SCHEMA_NO_TYPE, ERR_UNCONFIGURED, "RosMsg: sin tipo.");
+Ref<RosMsg> RosMsg::decode_new(uint32_t p_type_idx, const uint8_t *p_data, size_t p_len, Error *r_err) {
+	if (r_err) {
+		*r_err = OK;
+	}
+	if (!schema_loaded || p_type_idx == MSG_SCHEMA_NO_TYPE) {
+		if (r_err) {
+			*r_err = ERR_UNCONFIGURED;
+		}
+		return Ref<RosMsg>();
+	}
 	DecCtx ctx;
 	msg_visitor vis = { d_begin_struct, d_end_struct, d_prim, d_string, d_prim_array, d_begin_array, d_end_array };
-	int rc = msg_schema_decode(&schema, type_idx, p_payload.ptr(), p_payload.size(), &vis, &ctx, nullptr);
+	static const uint8_t vacio = 0; // msg_schema_decode no admite buf NULL (payload vacío)
+	int rc = msg_schema_decode(&schema, p_type_idx, p_len ? p_data : &vacio, p_len, &vis, &ctx, nullptr);
 	if (rc != MSG_SCHEMA_OK || ctx.root.is_null()) {
-		return rc == MSG_SCHEMA_ERR_TRUNCATED ? ERR_FILE_EOF : ERR_PARSE_ERROR;
+		if (r_err) {
+			*r_err = rc == MSG_SCHEMA_ERR_TRUNCATED ? ERR_FILE_EOF : ERR_PARSE_ERROR;
+		}
+		return Ref<RosMsg>();
+	}
+	return ctx.root;
+}
+
+Error RosMsg::deserialize(const PackedByteArray &p_payload) {
+	ERR_FAIL_COND_V_MSG(type_idx == MSG_SCHEMA_NO_TYPE, ERR_UNCONFIGURED, "RosMsg: sin tipo.");
+	Error err = OK;
+	Ref<RosMsg> root = decode_new(type_idx, p_payload.ptr(), p_payload.size(), &err);
+	if (root.is_null()) {
+		return err;
 	}
 	// El decoder construyó un árbol nuevo: se adopta su contenido (el RosMsg actual
 	// conserva su identidad, como exige el patrón "reutilizar el mensaje" de rclgd).
-	members = ctx.root->members;
+	members = root->members;
 	return OK;
 }
 

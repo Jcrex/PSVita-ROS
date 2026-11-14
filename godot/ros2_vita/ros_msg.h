@@ -49,7 +49,18 @@ public:
 	// --- construcción ---
 	static Ref<RosMsg> from_type(const String &p_ros_type);
 	void init(const String &p_ros_type);
-	void init_idx(uint32_t p_type_idx); // interno: construye valores por defecto
+	// interno: construye valores por defecto. Con p_defaults = false solo fija el tipo (el decodificador CDR rellena
+	// TODOS los campos: msg_schema_decode visita cada uno), sin construir el árbol por defecto que luego se tiraba
+	// (V13a: «init_idx doble», doc 36 §1.5 P1).
+	void init_idx(uint32_t p_type_idx, bool p_defaults = true);
+	// interno (V13a): asigna un valor YA canónico sin buscar el campo ni convertir (lo usa el decodificador, que
+	// produce exactamente los tipos de _coerce). Antes cada campo pasaba por _find_field (lineal) ⇒ O(campos²).
+	void set_decoded(const StringName &p_name, const Variant &p_value) { members[p_name] = p_value; }
+	// interno (V13a): decodifica un payload CDR de un tipo ya resuelto (índice del esquema) a un RosMsg NUEVO.
+	// Lo usa RosSubscriber, que resuelve el tipo una sola vez al suscribirse. null si el CDR no es válido.
+	static Ref<RosMsg> decode_new(uint32_t p_type_idx, const uint8_t *p_data, size_t p_len, Error *r_err = nullptr);
+	// interno (V13a): índice del tipo en el esquema; MSG_SCHEMA_NO_TYPE si no hay esquema o no está.
+	static uint32_t find_type_index(const String &p_ros_type);
 
 	// --- acceso (API de rclgd) ---
 	Variant get_member(const StringName &p_name) const;

@@ -5,6 +5,7 @@ extends SceneTree
 ## donde <dir> = modules/msg-schema/tests/fixtures (schema.rsch + casos .bin/.type).
 ## Cubre lo que se puede probar SIN Vita: RosMsg dinámico (CDR <-> propiedades),
 ## pub/sub con el transporte loopback, timers, resolución de topics y ejes.
+## V13a (2026-11-14): propiedades de RosQoS, latest_only y contadores por suscripción, tipo resuelto al suscribir.
 
 var fixtures := ""
 var failures := 0
@@ -40,6 +41,8 @@ func _run() -> void:
 	_test_bad_values()
 	await _test_pubsub_and_timer()
 	_test_axes()
+	_test_qos_properties()
+	await _test_v13a_subscriptions()
 
 	print("ros2_vita host tests: %d comprobaciones, %d fallos" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -222,3 +225,97 @@ func _test_axes() -> void:
 	expect(rclgd.ros_to_godot_vector(r) == v, "ros_to_godot_vector inversa")
 	var q := Quaternion(0.1, 0.2, 0.3, 0.9)
 	expect(rclgd.ros_to_godot_quat(rclgd.godot_to_ros_quat(q)).is_equal_approx(q), "quat inversa")
+
+
+# ----------------------------------------------------------------------------------------------- V13a
+func _test_qos_properties() -> void:
+	var q := RosQoS.new()
+	expect(q.reliability == RosQoS.RELIABLE and q.depth == 10 and q.history == RosQoS.KEEP_LAST
+			and q.durability == RosQoS.VOLATILE and q.liveliness == RosQoS.SYSTEM_DEFAULT, "QoS: valores por defecto de rclgd")
+	q.reliability = RosQoS.BEST_EFFORT
+	q.depth = 3
+	q.durability = RosQoS.TRANSIENT_LOCAL
+	q.history = RosQoS.KEEP_ALL
+	expect(q.get_reliability() == RosQoS.BEST_EFFORT and q.get_depth() == 3 and q.get_durability() == RosQoS.TRANSIENT_LOCAL
+			and q.get_history() == RosQoS.KEEP_ALL, "QoS: propiedades = set_*/get_* (qos.reliability = ...)")
+	q.set_reliability(RosQoS.RELIABLE)
+	expect(q.reliability == RosQoS.RELIABLE, "QoS: set_reliability() se mantiene")
+	q.deadline_seconds = 0.5
+	q.lifespan_seconds = 2.0
+	q.lease_duration_seconds = 1.5
+	q.liveliness = RosQoS.AUTOMATIC
+	expect(is_equal_approx(q.get_deadline(), 0.5) and is_equal_approx(q.get_lifespan(), 2.0)
+			and is_equal_approx(q.get_lease_duration(), 1.5) and q.get_liveliness() == RosQoS.AUTOMATIC,
+			"QoS: deadline/lifespan/liveliness/lease se guardan (XRCE los ignora)")
+	var nombres := []
+	for p in q.get_property_list():
+		nombres.append(p["name"])
+	for n in ["reliability", "history", "depth", "durability", "deadline_seconds", "lifespan_seconds", "liveliness",
+			"lease_duration_seconds"]:
+		expect(n in nombres, "QoS: propiedad " + n)
+
+
+func _twist(x: float) -> RosMsg:
+	var m := RosMsg.from_type("geometry_msgs/msg/Twist")
+	m.linear.x = x
+	return m
+
+
+func _test_v13a_subscriptions() -> void:
+	var args := PackedStringArray(["-p", "transport:=loopback", "-p", "schema:=" + fixtures.path_join("schema.rsch")])
+	expect(rclgd.init(args) == OK, "V13a: rclgd.init")
+	var node := RosNode.new()
+	node.init("v13a")
+
+	# Tipo fuera del esquema: no se suscribe (antes el callback no llegaba nunca, sin avisar)
+	var nunca := node.create_subscription("/x", "pkg_inexistente/msg/Nada", func(_m): pass)
+	expect(nunca == null, "V13a: tipo fuera del .rsch => create_subscription devuelve null")
+
+	var todos := []
+	var ultimos := []
+	var sub_todos := node.create_subscription("/v13a/cmd", "geometry_msgs/msg/Twist", func(m): todos.append(m.linear.x))
+	var sub_ult := node.create_subscription("/v13a/cmd", "geometry_msgs/msg/Twist", func(m): ultimos.append(m.linear.x))
+	expect(sub_todos != null and sub_ult != null, "V13a: suscripciones creadas")
+	expect(not sub_ult.is_latest_only(), "V13a: latest_only apagado por defecto")
+	sub_ult.set_latest_only(true)
+	expect(sub_ult.is_latest_only(), "V13a: set_latest_only(true)")
+	var pub := node.create_publisher("/v13a/cmd", "geometry_msgs/msg/Twist")
+	for i in 5:
+		pub.publish(_twist(float(i)))
+	await process_frame
+	await process_frame
+	expect(todos == [0.0, 1.0, 2.0, 3.0, 4.0], "V13a: sin latest_only llegan los 5 en orden (%s)" % [todos])
+	expect(ultimos == [4.0], "V13a: latest_only entrega solo el último (%s)" % [ultimos])
+	var st: Dictionary = sub_ult.get_stats()
+	expect(st["recibidos"] == 5 and st["descartados"] == 4 and st["decodificados"] == 1 and st["errores"] == 0
+			and st["latest_only"] and st["tipo"] == "geometry_msgs/msg/Twist", "V13a: contadores latest_only %s" % [st])
+	st = sub_todos.get_stats()
+	expect(st["recibidos"] == 5 and st["descartados"] == 0 and st["decodificados"] == 5, "V13a: contadores normales %s" % [st])
+
+	# Dos tandas separadas por un fotograma: una entrega por tanda
+	pub.publish(_twist(10.0))
+	await process_frame
+	pub.publish(_twist(11.0))
+	pub.publish(_twist(12.0))
+	await process_frame
+	await process_frame
+	expect(ultimos == [4.0, 10.0, 12.0], "V13a: latest_only por fotograma (%s)" % [ultimos])
+
+	# Apagar latest_only vuelve a entregar todo
+	sub_ult.set_latest_only(false)
+	pub.publish(_twist(20.0))
+	pub.publish(_twist(21.0))
+	await process_frame
+	await process_frame
+	expect(ultimos.slice(-2) == [20.0, 21.0], "V13a: latest_only(false) entrega todo")
+
+	# Cola llena (256): lo expulsado cuenta como descartado de SU suscripción
+	sub_ult = null
+	var antes: int = rclgd.get_dropped()
+	for i in 300:
+		pub.publish(_twist(float(i)))
+	await process_frame
+	await process_frame
+	st = sub_todos.get_stats()
+	expect(rclgd.get_dropped() - antes == 44 and st["descartados"] == 44, "V13a: cola de 256 => 44 descartados %s" % [st])
+	rclgd.shutdown()
