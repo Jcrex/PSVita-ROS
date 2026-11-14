@@ -84,6 +84,38 @@ directamente y **sin `thread_local`** (el TLS del port está a medias, `docs/18`
 | `RosTfBroadcaster`, `RosTfListener` | ⏳ / 🟡 | ver arriba. `RosTfListener`: todos los métodos de rclgd (`all_frames_as_yaml` reducido a padre y sello) + `get_stats()` y `apply_cdr()` propios (V13a) |
 | `RosLogger` (debug/info/warning/error/fatal, filtros `once`/`throttle`/`skip_first`, `get_child`) | ⏳ | sin registrar (corrección 2026-11-11) |
 
+## Reglas para código común PC ↔ Vita (visor W13; doc 36 §1.4 y §8, V15)
+
+Las aplica todo `godot/plantillas/visor/` (y vale para cualquier script que deba correr igual con rclgd y con
+`ros2_vita`). Comprobadas en host por las pruebas `godot/plantillas/pruebas/visor*.gd` (2026-11-14).
+
+1. **QoS: `set_*()` siempre; las propiedades solo si la plantilla es ≥ V13a.** rclgd expone `RosQoS` como
+   propiedades (`qos.reliability = …`) y como métodos; `ros2_vita` tenía solo `set_*/get_*` hasta V13a (P0 de doc 36
+   §1.5), y una plantilla de la Vita anterior a V13a **falla** con la forma de propiedad (trampa T3). Por eso el
+   código común crea la QoS en un único sitio con `set_history`, `set_depth`, `set_reliability` y `set_durability`
+   (`godot/plantillas/ros/contexto_ros.gd:25-31`, que usan `CanalDisplay` y las herramientas). Con V13a las ocho
+   propiedades existen (tabla «Otras clases»), pero XRCE solo traduce las cuatro de arriba; `deadline_seconds`,
+   `lifespan_seconds`, `liveliness` y `lease_duration_seconds` se guardan y se ignoran.
+2. **Campos que chocan con miembros de `Object`/`RefCounted`: `get_member`.** `msg.reference` (de
+   `control_msgs/JointTrajectoryControllerState`) devuelve el método `RefCounted.reference()`, no el campo (trampa T1,
+   doc 36 §1.1). Leer **siempre** con `msg.get_member("reference")`; el inspector y la introspección leen todo con
+   `get_member` (`godot/plantillas/visor/introspeccion_ros.gd:10-11`, `displays/hud/inspector_texto.gd:14`). La lista
+   completa de choques no está hecha [?] (doc 36 §9.3.6); en las clases tipadas de rclgd los campos que chocan
+   **solo** son accesibles con `get_member`.
+3. **`RosTfListener` nativo: opcional y detrás de `has_method`.** Con rclgd, `VisorRos.tf` es el listener de rclgd;
+   con `ros2_vita` es el `RosTfListener` de V13a solo si la escena pone `tf_nativo = true` **y** el nodo tiene
+   `create_tf_listener` (plantilla ≥ V13a); si no, `TfLigero` en GDScript con la misma API
+   (`godot/plantillas/visor/visor_ros.gd:216-224`). Las extensiones propias de la Vita (`set_latest_only`,
+   `get_stats`, `apply_cdr`) se llaman siempre tras `has_method`: rclgd no las tiene.
+4. **Tipo sin esquema ⇒ `null`, sin suscripción.** `RosMsg.from_type(tipo)` devuelve `null` si el tipo no está en el
+   `.rsch` (Vita) o no tiene typesupport (rclgd), con un `ERROR` en el log (`ros_msg.cpp:178-185`, igual que rclgd).
+   Desde V13a, `RosNode.create_subscription` con un tipo fuera del `.rsch` también devuelve `null` y explica cómo
+   arreglarlo (`ros_runtime.cpp:341-347`); antes la suscripción XRCE se creaba y cada muestra fallaba sin llamar al
+   callback (trampa T20). El código común comprueba `from_type(tipo) == null` **antes** de suscribir y deja el
+   display en el estado `sin esquema: <tipo>` (`godot/plantillas/visor/canal_display.gd:43-46`); así no gasta red en
+   la Vita ni depende de la versión de la plantilla. Los tipos del visor van en `TIPOS_VISOR`
+   (`godot/plantillas/generar_esquemas.py:45`, ⚖ D10).
+
 ## Reglas de hilos (idénticas a rclgd)
 - Suscripciones, timers y acciones: **hilo principal**.
 - Servicios servidor y aceptación de goal: **hilo de red** (no tocar el árbol de escena; `call_deferred`).
