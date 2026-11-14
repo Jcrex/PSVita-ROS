@@ -384,7 +384,7 @@ func _probar_registro() -> void:
 		["/cmd_vel", "geometry_msgs/msg/Twist", "3d/fuerza.gd"],
 		["/imu", "sensor_msgs/msg/Imu", "3d/imu.gd"],
 		["/sonar", "sensor_msgs/msg/Range", "3d/rango.gd"],
-		["/marcador", "visualization_msgs/msg/Marker", "3d/marcador_simple.gd"],
+		["/marcador", "visualization_msgs/msg/Marker", "3d/marcadores.gd"],     # V8: el gestor (antes el simple)
 		["/local_costmap/published_footprint", "geometry_msgs/msg/PolygonStamped", "2d/poligono.gd"],
 		["/amcl_pose", "geometry_msgs/msg/PoseWithCovarianceStamped", "2d/covarianza.gd"],
 		["/fix", "sensor_msgs/msg/NavSatFix", "2d/gps.gd"],

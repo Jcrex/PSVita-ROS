@@ -146,3 +146,62 @@ static func leer_relay_info(s: String) -> Dictionary:
 	for m in s.substr(k + 1).split(",", false):
 		mods.append(m)
 	return {"version": s.left(k), "modulos": mods}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Marcadores (V8; doc 36 §5.3, 36a §4.7.4, sentencia W13 D14). Referencia: `vita_relay_formatos.py` (bloque
+# «marcadores»); huellas cruzadas en `docker/scripts/test_vita_relay.py` y `pruebas/visor_marcadores.gd`.
+##   marcadores       Float32MultiArray BE 5 Hz, ESTADO COMPLETO: cab. común + [clave, tipo, x, y, z, yaw, sx, sy,
+##                    sz, color]·n, n ≤ 11 por trozo, ≤ 33 marcadores (3 trozos de ≤ 472 B); pose en el marco fijo
+##                    (ejes ROS). Al completar un seq, la Vita recicla lo que no llegó (sin fantasmas).
+##   marcador_puntos  Float32MultiArray BE ≤ 4/s: cab. común + [clave, tipo, color, ancho] + xyz·n, n ≤ 36 por trozo
+##   marcador_texto   String fiable ≤ 2/s: «clave|x|y|z|texto» (≤ 80 car.)
+##   clave = (id ⊕ fnv1a32(ns)) & 0xFFFFFF; color = índice de PaletaViz + 256 · alfa (0–15)
+# ---------------------------------------------------------------------------------------------------------------
+const POR_MARCADOR := 10
+const MAX_MARCADORES := 33
+const EXTRA_PUNTOS := 4
+const MAX_CAR_TEXTO_MARCADOR := 80
+
+
+## FNV-1a de 32 bit del ns en UTF-8 (= `hash_ns` de Python).
+static func hash_ns(ns: String) -> int:
+	var h := 0x811C9DC5
+	for b in ns.to_utf8_buffer():
+		h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+	return h
+
+
+static func clave_marcador(ns: String, id: int) -> int:
+	return (id ^ hash_ns(ns)) & 0xFFFFFF
+
+
+static func color_marcador(indice: int, alfa: float) -> int:
+	return clampi(indice, 0, 255) + 256 * clampi(int(alfa * 15.0 + 0.5), 0, 15)
+
+
+## color compacto → [índice de paleta, alfa 0–1].
+static func leer_color_marcador(c: int) -> Array:
+	return [c & 0xFF, float((c >> 8) & 0xF) / 15.0]
+
+
+## Estado completo → ≤ 3 trozos (≤ 33 marcadores); vacío = un trozo con n = 0.
+static func empaquetar_marcadores(elementos: Array, seq: int) -> Array:
+	return trocear(elementos.slice(0, MAX_MARCADORES), POR_MARCADOR, [], seq, MAX_F32, 3)
+
+
+## Un marcador de líneas/puntos: puntos = Array de [x, y, z] (marco fijo, ejes ROS) → ≤ 3 trozos de ≤ 36 puntos.
+static func empaquetar_puntos(clave: int, tipo: int, color: int, ancho: float, puntos: Array, seq: int) -> Array:
+	return trocear(puntos, 3, [clave, tipo, color, ancho], seq, MAX_F32, 3)
+
+
+static func texto_marcador(clave: int, x: float, y: float, z: float, texto: String) -> String:
+	return "%d|%.3f|%.3f|%.3f|%s" % [clave, x, y, z, texto.left(MAX_CAR_TEXTO_MARCADOR)]
+
+
+## «clave|x|y|z|texto» → {clave, pos (Vector3 ROS), texto}; {} si no vale.
+static func leer_texto_marcador(s: String) -> Dictionary:
+	var p := s.split("|", true, 4)
+	if p.size() != 5 or not p[0].is_valid_int():
+		return {}
+	return {"clave": p[0].to_int(), "pos": Vector3(p[1].to_float(), p[2].to_float(), p[3].to_float()), "texto": p[4]}

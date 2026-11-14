@@ -130,12 +130,12 @@ def test_presupuesto():
     mods, kb, dgr = vf.resolver_modulos(["hmi"])
     assert mods == ["scan", "pose", "joints", "mapa", "path", "rosout", "diag"] and kb < 20.0
     assert vf.resolver_modulos(["scan,pose"[0:4], "pose", "scan"])[0] == ["scan", "pose"]   # sin repetidos
-    for malo in (["viz"], ["marcadores"]):                                       # cabe, pero llega con V8–V11
+    for malo in (["viz"], ["costmap"]):                                          # cabe, pero llega con V9–V11
         try:
             vf.resolver_modulos(malo)
             assert False
         except ValueError as e:
-            assert "sin implementar" in str(e) and "V8" in str(e), e
+            assert "sin implementar" in str(e) and "V11" in str(e), e
     for malo in (["nada"], ["nucleo"], []):
         try:
             vf.resolver_modulos(malo)
@@ -230,7 +230,149 @@ def test_ritmo():
     print("ritmo ok")
 
 
+# ============================================================================= marcadores (V8)
+
+# Huellas cruzadas con godot/plantillas/pruebas/visor_marcadores.gd (`_probar_bytes`): mismos vectores, mismos bytes
+# float32 (PackedFloat32Array.to_byte_array().hex_encode().md5_text()) y el mismo texto.
+HUELLA_MARCADORES = "a2f417e25439969dec1637dd4cd66bdd"
+HUELLA_PUNTOS = "170eed3a87485e2bf9c13e4ccc2e400a"
+HUELLA_TEXTO = "32eb49e4a031452af4e90ddeff303c72"
+CLAVE_VISOR_3 = 14529283
+
+
+def vector_marcadores():
+    """(ns, id, tipo, x, y, z, yaw, sx, sy, sz, r, g, b, a) × 33: los mismos en visor_marcadores.gd."""
+    cols = [(0.9, 0.1, 0.1), (0.1, 0.8, 0.2), (0.15, 0.35, 1.0), (1.0, 1.0, 0.0), (0.5, 0.25, 0.75), (0.3, 0.3, 0.3)]
+    out = []
+    for i in range(33):
+        r, g, b = cols[i % len(cols)]
+        out.append(("ns%d" % (i % 4), i * 7 - 20, i % 4, i * 0.25 - 3.0, 1.5 - i * 0.125, 0.0625 * (i % 5),
+                    -1.5 + i * 0.09375, 0.5 + (i % 3) * 0.25, 0.25, 0.75, r, g, b, (i % 4) / 3.0))
+    return out
+
+
+def elementos_marcadores():
+    return [[vf.clave_marcador(ns, i), t, x, y, z, yaw, sx, sy, sz, vf.color_marcador(vf.indice_paleta(r, g, b), a)]
+            for (ns, i, t, x, y, z, yaw, sx, sy, sz, r, g, b, a) in vector_marcadores()]
+
+
+def puntos_prueba():
+    return [(i * 0.5 - 4.0, (i % 6) * 0.25, 0.125 * (i % 3)) for i in range(50)]
+
+
+def _Ns(**k):
+    from types import SimpleNamespace
+    return SimpleNamespace(**k)
+
+
+def marker(ns="a", ident=0, tipo=1, accion=0, frame="map", pos=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0),
+           escala=(1.0, 1.0, 1.0), color=(1.0, 0.0, 0.0, 1.0), puntos=(), texto="", vida=0.0, locked=False):
+    P = lambda x, y, z: _Ns(x=x, y=y, z=z)  # noqa: E731
+    return _Ns(ns=ns, id=ident, type=tipo, action=accion, header=_Ns(frame_id=frame),
+               pose=_Ns(position=P(*pos), orientation=_Ns(x=q[0], y=q[1], z=q[2], w=q[3])), scale=P(*escala),
+               color=_Ns(r=color[0], g=color[1], b=color[2], a=color[3]), points=[P(*p) for p in puntos],
+               text=texto, lifetime=_Ns(sec=int(vida), nanosec=int((vida % 1) * 1e9)), frame_locked=locked)
+
+
+def test_marcadores():
+    # Formato y tamaños: 33 marcadores = 3 trozos de ≤ 472 B; puntos ≤ 480 B; textos ≤ 80 car.
+    el = elementos_marcadores()
+    t = vf.empaquetar_marcadores(el, seq=70000)
+    assert len(t) == 3 and [x[3] for x in t] == [11, 11, 11] and t[0][0] == 70000 & 0x7FFF
+    assert all(vf.cdr_multiarray(len(x), 4) <= 472 for x in t) and vf.cdr_multiarray(len(t[0]), 4) == 472
+    assert len(vf.empaquetar_marcadores(el + el, 1)) == 3                        # tope 33 (estado completo)
+    assert vf.empaquetar_marcadores([], 5) == [[5, 0, 1, 0]]                     # vacío: borra todo en la Vita
+    pts = vf.empaquetar_puntos(vf.clave_marcador("lineas", 2), 4, vf.color_marcador(2, 1.0), 0.05, puntos_prueba(), 9)
+    assert [x[3] for x in pts] == [36, 14] and all(vf.cdr_multiarray(len(x), 4) <= 480 for x in pts)
+    assert pts[0][4:8] == [vf.clave_marcador("lineas", 2), 4, 2 + 256 * 15, 0.05]
+    assert sum(x[3] for x in vf.empaquetar_puntos(1, 8, 0, 0.1, [(0, 0, 0)] * 500, 1)) == 108   # tope 3 trozos
+    tx = vf.texto_marcador(vf.clave_marcador("txt", 1), 1.25, -2.5, 0.125, "hola|mundo " + "x" * 100)
+    assert len(tx.split("|", 4)[4]) == 80 and vf.leer_texto_marcador(tx)[4].startswith("hola|mundo")
+    assert vf.leer_texto_marcador("1|2|3") is None
+    # Claves y colores exactos en float32
+    assert all(0 <= vf.clave_marcador("n" * k, i) <= 0xFFFFFF for k in range(5) for i in (-5, 0, 2 ** 31 - 1))
+    assert vf.clave_marcador("visor", 3) != vf.clave_marcador("visor", 4) != vf.clave_marcador("otro", 3)
+    assert vf.color_marcador(255, 1.0) == 4095 and vf.color_marcador(7, 0.0) == 7 and vf.color_marcador(3, 0.5) == 3 + 256 * 8
+    assert vf.indice_paleta(1, 1, 1) == 0 and vf.indice_paleta(0.9, 0.1, 0.1) == 2 and vf.indice_paleta(1, 0.647059, 0) == 8
+    plano = [v for x in t for v in x]
+    plano_p = [v for x in pts for v in x]
+    assert vf.huella_f32(plano) == HUELLA_MARCADORES
+    assert vf.huella_f32(plano_p) == HUELLA_PUNTOS and _md5(tx) == HUELLA_TEXTO
+    assert vf.clave_marcador("visor", 3) == CLAVE_VISOR_3
+    # Semántica (marker_common.cpp): ADD/MODIFY, DELETE, DELETEALL por ns, recrear, NaN, lifetime, frame_locked.
+    e = vf.EstadoMarcadores()
+    fijo = lambda f: vf.IDENTIDAD if f in ("", "map") else None  # noqa: E731
+    for i in range(3):
+        e.aplicar(marker("a", i, 1, pos=(i, 0, 0)), 0.0)
+    e.aplicar(marker("b", 0, 2), 0.0)
+    m, p, x = e.ciclo(0.0, fijo)
+    assert len(m) == 4 and m[0][2] == 0.0 and m[2][2] == 2.0
+    e.aplicar(marker("a", 1, 1, pos=(5, 0, 0)), 0.1)                             # MODIFY: misma entrada
+    e.aplicar(marker("a", 1, 3, accion=1, pos=(6, 0, 0)), 0.1)                   # cambia el tipo: se recrea al final
+    m, _, _ = e.ciclo(0.1, fijo)
+    assert [r[1] for r in m] == [1, 1, 2, 3] and m[-1][2] == 6.0
+    e.aplicar(marker("a", 0, accion=2), 0.2)                                     # DELETE
+    assert len(e.ciclo(0.2, fijo)[0]) == 3
+    e.aplicar(marker("a", accion=3), 0.3)                                        # DELETEALL de «a»
+    m, _, _ = e.ciclo(0.3, fijo)
+    assert len(m) == 1 and m[0][1] == 2
+    e.aplicar(marker("c", 0, 1, pos=(float("nan"), 0, 0)), 0.3)
+    assert e.rechazados == 1 and len(e.ciclo(0.3, fijo)[0]) == 1
+    e.aplicar(marker("v", 0, 1, vida=0.5), 1.0)
+    assert len(e.ciclo(1.4, fijo)[0]) == 2 and len(e.ciclo(1.6, fijo)[0]) == 1    # reloj de recepción
+    e.aplicar(marker("", 0, accion=3), 2.0)                                      # DELETEALL sin ns: todo
+    assert e.ciclo(2.0, fijo)[0] == []
+    # Marco: yaw y TF; sin TF no se manda; frame_locked se resuelve cada ciclo, sin él una sola vez.
+    tf = {"base": ((1.0, 2.0, 0.0), (0.0, 0.0, math.sin(math.pi / 4), math.cos(math.pi / 4)))}
+    res = lambda f: vf.IDENTIDAD if f == "map" else tf.get(f)  # noqa: E731
+    e.aplicar(marker("t", 0, 0, frame="base", pos=(1, 0, 0), escala=(1, 0.1, 0.1)), 3.0)
+    e.aplicar(marker("t", 1, 1, frame="base", locked=True), 3.0)
+    e.aplicar(marker("t", 2, 1, frame="sin_tf"), 3.0)
+    m, _, _ = e.ciclo(3.0, res)
+    assert len(m) == 2 and e.sin_tf == 1
+    assert abs(m[0][2] - 1.0) < 1e-9 and abs(m[0][3] - 3.0) < 1e-9 and abs(m[0][5] - math.pi / 2) < 1e-9
+    tf["base"] = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    m, _, _ = e.ciclo(3.2, res)
+    assert abs(m[0][3] - 3.0) < 1e-9 and abs(m[1][2]) < 1e-9 and abs(m[1][3]) < 1e-9   # sin locked / locked
+    # Puntos, listas, textos y flecha por 2 puntos
+    e = vf.EstadoMarcadores()
+    e.aplicar(marker("l", 0, 4, pos=(1, 0, 0), escala=(0.05, 0, 0), puntos=[(0, 0, 0), (1, 1, 0)]), 0.0)
+    e.aplicar(marker("l", 1, 9, pos=(0, 0, 2), texto="hola"), 0.0)
+    e.aplicar(marker("l", 2, 0, puntos=[(0, 0, 0), (0, 2, 0)], escala=(0.05, 0.1, 0.0)), 0.0)
+    e.aplicar(marker("l", 3, 11, puntos=[(0, 0, 0)] * 3), 0.0)
+    m, p, x = e.ciclo(0.0, fijo)
+    k0, k1 = vf.clave_marcador("l", 0), vf.clave_marcador("l", 1)
+    assert [r[1] for r in m] == [4, 9, 0] and e.ignorados == 1                   # TRIANGLE_LIST no viaja
+    assert p[k0] == (4, vf.color_marcador(vf.indice_paleta(1, 0, 0), 1.0), 0.05, [(1, 0, 0), (2, 1, 0)])
+    assert x[k1] == (0, 0, 2, "hola")
+    assert abs(m[2][5] - math.pi / 2) < 1e-9 and abs(m[2][6] - 2.0) < 1e-9 and abs(m[2][7] - 0.05) < 1e-9
+    e = vf.EstadoMarcadores()
+    for i in range(40):
+        e.aplicar(marker("n", i, 1), 0.0)
+    assert len(e.ciclo(0.0, fijo)[0]) == 33 and e.cortados == 7
+    # Ronda: primero lo que cambia, después repaso; lo que desaparece se olvida.
+    r = vf.PlanRonda()
+    r.actualizar({1: "a", 2: "b"})
+    assert [r.siguiente()[0] for _ in range(4)] == [1, 2, 1, 2]
+    r.actualizar({1: "a", 2: "B", 3: "c"})
+    assert [r.siguiente()[0] for _ in range(2)] == [2, 3]
+    r.actualizar({3: "c"})
+    assert r.siguiente()[0] == 3 and r.siguiente()[0] == 3
+    r.actualizar({})
+    assert r.siguiente() is None
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vita_relay.py")
+    rr = subprocess.run([sys.executable, script, "--comprobar", "hmi,marcadores"], capture_output=True, text=True)
+    assert rr.returncode == 0 and "marcadores" in rr.stdout, rr.stdout
+    print("marcadores ok")
+
+
+def _md5(s):
+    import hashlib
+    return hashlib.md5(s.encode()).hexdigest()
+
+
 if __name__ == "__main__":
     test_scan(); test_tesela(); test_path(); test_limites()
     test_trocear(); test_presupuesto(); test_relay_info_y_epoca(); test_rosout_y_diag(); test_ritmo()
+    test_marcadores()
     print("TODO OK")

@@ -407,3 +407,274 @@ class CuboBytes:
             return False
         self._usado += nbytes
         return True
+
+
+# ============================================================================= marcadores (V8)
+# Doc 36 §5.3 y 36a §4.7.4; sentencia W13 D14. El relay aplica él la semántica de RViz (ADD/MODIFY, DELETE,
+# DELETEALL por ns, lifetime con el reloj de recepción, recrear si cambia el tipo, frame_locked, rechazo de NaN) y
+# publica el ESTADO COMPLETO (un DELETE perdido en best effort no deja fantasmas en la Vita):
+#   <p>/marcadores       Float32MultiArray BE 5 Hz  cab. común + [clave, tipo, x, y, z, yaw, sx, sy, sz, color]·n,
+#                        n ≤ 11 por trozo, ≤ 33 marcadores (3 trozos de ≤ 472 B). Pose en el marco fijo (ejes ROS).
+#   <p>/marcador_puntos  Float32MultiArray BE ≤ 4/s cab. común + [clave, tipo, color, ancho] + xyz·n, n ≤ 36 por
+#                        trozo (≤ 480 B); un marcador de líneas/puntos/listas por ciclo de trozos.
+#   <p>/marcador_texto   String FIABLE ≤ 2/s  «clave|x|y|z|texto» (texto ≤ 80 car.).
+# clave = (id ⊕ fnv1a32(ns)) & 0xFFFFFF (exacta en float32); color = índice de PaletaViz + 256 · alfa (0–15).
+# Copia en GDScript: `godot/plantillas/ros/vc1.gd` (bloque «marcadores»); prueba de bytes cruzada en
+# `test_vita_relay.py` (test_marcadores) y `godot/plantillas/pruebas/visor_marcadores.gd`.
+
+POR_MARCADOR = 10
+MAX_MARCADORES = 33               # 3 trozos × 11
+MAX_TROZOS_MARCADORES = 3
+EXTRA_PUNTOS = 4                  # [clave, tipo, color, ancho]
+MAX_TROZOS_PUNTOS = 3             # [decisión V8] ≤ 3 × 36 = 108 puntos por marcador; el resto se corta
+MAX_CAR_TEXTO_MARCADOR = 80
+# Marker.type (visualization_msgs Jazzy)
+M_ARROW, M_CUBE, M_SPHERE, M_CYLINDER, M_LINE_STRIP, M_LINE_LIST, M_CUBE_LIST, M_SPHERE_LIST, M_POINTS, \
+    M_TEXT, M_MESH, M_TRIANGLE_LIST, M_ARROW_STRIP = range(13)
+SOLIDOS_COMPACTOS = (M_ARROW, M_CUBE, M_SPHERE, M_CYLINDER, M_MESH)   # la Vita los dibuja en 3D (MESH = cubo)
+TIPOS_PUNTOS = (M_LINE_STRIP, M_LINE_LIST, M_CUBE_LIST, M_SPHERE_LIST, M_POINTS, M_ARROW_STRIP)   # 2D en la Vita
+
+
+def hash_ns(ns):
+    """FNV-1a de 32 bit del ns en UTF-8 (determinista: el `hash()` de Python cambia en cada proceso)."""
+    h = 0x811C9DC5
+    for b in ns.encode("utf-8"):
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def clave_marcador(ns, ident):
+    """Clave compacta de (ns, id): 24 bit, exacta en float32. Dos pares pueden chocar (raro; se pisan)."""
+    return (int(ident) ^ hash_ns(ns)) & 0xFFFFFF
+
+
+def color_marcador(indice, alfa):
+    """Índice de PaletaViz (0–255) + 256 · alfa cuantizado a 0–15 (≤ 4 095: exacto en float32)."""
+    return max(0, min(255, int(indice))) + 256 * max(0, min(15, int(alfa * 15 + 0.5)))
+
+
+# --- PaletaViz (copia de `_calcular` de godot/plantillas/visor/paleta_viz.gd): índice del color más cercano en RGB
+
+def _c8(r, g, b):
+    return (r / 255.0, g / 255.0, b / 255.0)
+
+
+_NOMBRADOS = [(1.0, 1.0, 1.0), (0.0, 0.0, 0.0), (0.9, 0.1, 0.1), (0.1, 0.8, 0.2), (0.15, 0.35, 1.0),
+              (1.0, 1.0, 0.0), (0.0, 1.0, 1.0), (1.0, 0.0, 1.0), (1.0, 0.647059, 0.0), (0.745098, 0.745098, 0.745098),
+              _c8(85, 178, 76), _c8(222, 213, 17), _c8(178, 23, 46), _c8(40, 23, 176),
+              (1.0, 0.1, 0.0), (0.1, 1.0, 0.0)]
+
+
+def color_paleta(i):
+    if i < 16:
+        return _NOMBRADOS[i]
+    if i < 232:
+        k = i - 16
+        return ((k // 36) / 5.0, ((k // 6) % 6) / 5.0, (k % 6) / 5.0)
+    v = (i - 232) / 22.0
+    return (v, v, v)
+
+
+_PALETA = [color_paleta(i) for i in range(255)]   # sin el 255 (transparente), como PaletaViz.indice
+
+
+def indice_paleta(r, g, b):
+    """= PaletaViz.indice(Color(r, g, b)): el primero de distancia mínima (el alfa se ignora)."""
+    mejor, dmin = 0, float("inf")
+    for i, (pr, pg, pb) in enumerate(_PALETA):
+        d = (pr - r) ** 2 + (pg - g) ** 2 + (pb - b) ** 2
+        if d < dmin:
+            mejor, dmin = i, d
+    return mejor
+
+
+# --- formatos
+
+def empaquetar_marcadores(elementos, seq):
+    """Estado completo: lista de [clave, tipo, x, y, z, yaw, sx, sy, sz, color] → ≤ 3 trozos (≤ 33 marcadores).
+    Sin marcadores sale UN trozo con n = 0 (la Vita borra todo)."""
+    return trocear(elementos[:MAX_MARCADORES], POR_MARCADOR, (), seq, MAX_F32, MAX_TROZOS_MARCADORES)
+
+
+def empaquetar_puntos(clave, tipo, color, ancho, puntos, seq):
+    """Un marcador de líneas/puntos: puntos [x, y, z] (marco fijo, ejes ROS) → ≤ 3 trozos de ≤ 36 puntos."""
+    return trocear([list(p) for p in puntos], 3, (clave, tipo, color, ancho), seq, MAX_F32, MAX_TROZOS_PUNTOS)
+
+
+def texto_marcador(clave, x, y, z, texto):
+    """«clave|x|y|z|texto», posiciones con 3 decimales (mm) y texto ≤ 80 caracteres (puede llevar «|»)."""
+    return f"{int(clave)}|{x:.3f}|{y:.3f}|{z:.3f}|{texto[:MAX_CAR_TEXTO_MARCADOR]}"
+
+
+def leer_texto_marcador(s):
+    p = s.split("|", 4)
+    if len(p) != 5:
+        return None
+    try:
+        return int(p[0]), float(p[1]), float(p[2]), float(p[3]), p[4]
+    except ValueError:
+        return None
+
+
+def huella_f32(valores):
+    """Huella de bytes Python = GDScript: MD5 del hex de los float32 little-endian (PackedFloat32Array)."""
+    import hashlib
+    import struct
+    return hashlib.md5(struct.pack(f"<{len(valores)}f", *valores).hex().encode()).hexdigest()
+
+
+# --- transformaciones (ejes ROS): t = ((x, y, z), (qx, qy, qz, qw))
+
+def _qmul(a, b):
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx,
+            aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz)
+
+
+def _qrot(q, v):
+    x, y, z, w = q
+    r = _qmul(_qmul(q, (v[0], v[1], v[2], 0.0)), (-x, -y, -z, w))
+    return (r[0], r[1], r[2])
+
+
+def _qnorm(q):
+    n = math.sqrt(sum(c * c for c in q))
+    return tuple(c / n for c in q) if n > 1e-6 else (0.0, 0.0, 0.0, 1.0)   # cuaternión nulo = identidad (T14)
+
+
+def componer(t1, t2):
+    """t1 ∘ t2 (t2 expresado en el marco de t1)."""
+    p = _qrot(t1[1], t2[0])
+    return ((t1[0][0] + p[0], t1[0][1] + p[1], t1[0][2] + p[2]), _qnorm(_qmul(t1[1], t2[1])))
+
+
+def aplicar_t(t, p):
+    q = _qrot(t[1], p)
+    return (t[0][0] + q[0], t[0][1] + q[1], t[0][2] + q[2])
+
+
+IDENTIDAD = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+
+
+def _finitos(*vals):
+    return all(isinstance(v, (int, float)) and math.isfinite(v) for v in vals)
+
+
+class EstadoMarcadores:
+    """Semántica de RViz2 Jazzy (`marker_common.cpp:195-310`, `marker_base.cpp:84-115`) sin ROS. `m` es un
+    visualization_msgs/Marker (o algo con los mismos atributos). `resolver(frame)` → t del marco en el fijo o None.
+    `ciclo()` da el estado completo (≤ max_marcadores, por orden de llegada) para los tres formatos."""
+
+    def __init__(self, max_marcadores=MAX_MARCADORES):
+        self.max = max_marcadores
+        self.tabla = {}           # (ns, id) -> entrada
+        self.rechazados = 0       # NaN/Inf (marker_common.cpp:195-213)
+        self.sin_tf = 0           # marcadores omitidos en el último ciclo por no tener TF
+        self.cortados = 0         # marcadores que no cupieron en el último ciclo (> max)
+        self.ignorados = 0        # TRIANGLE_LIST: no viaja a la Vita [decisión V8]
+
+    def aplicar(self, m, ahora):
+        accion = int(m.action)
+        if accion == 3:                                                  # DELETEALL (con ns: solo ese ns)
+            for k in [k for k in self.tabla if not m.ns or k[0] == m.ns]:
+                del self.tabla[k]
+            return
+        k = (m.ns, int(m.id))
+        if accion == 2:                                                  # DELETE
+            self.tabla.pop(k, None)
+            return
+        if accion not in (0, 1):                                         # 0 ADD = 1 MODIFY
+            return
+        p, o, s = m.pose.position, m.pose.orientation, m.scale
+        pts = [(q.x, q.y, q.z) for q in m.points]
+        if not (_finitos(p.x, p.y, p.z, o.x, o.y, o.z, o.w, s.x, s.y, s.z)
+                and all(_finitos(*q) for q in pts)):
+            self.rechazados += 1
+            return
+        viejo = self.tabla.get(k)
+        if viejo is not None and viejo["tipo"] != int(m.type):          # cambia el tipo: se recrea (:282-287)
+            del self.tabla[k]
+        vida = m.lifetime.sec + m.lifetime.nanosec * 1e-9
+        c = m.color
+        self.tabla[k] = {
+            "tipo": int(m.type), "frame": m.header.frame_id.lstrip("/"), "locked": bool(m.frame_locked),
+            "pose": ((p.x, p.y, p.z), _qnorm((o.x, o.y, o.z, o.w))), "escala": (s.x, s.y, s.z),
+            "color": (c.r, c.g, c.b, c.a), "puntos": pts, "texto": m.text,
+            "expira": ahora + vida if vida > 1e-4 else None, "fijo": None}
+
+    def caducar(self, ahora):
+        for k in [k for k, e in self.tabla.items() if e["expira"] is not None and ahora > e["expira"]]:
+            del self.tabla[k]
+
+    def ciclo(self, ahora, resolver):
+        """→ (elementos de <p>/marcadores, {clave: (tipo, color, ancho, puntos)}, {clave: (x, y, z, texto)})."""
+        self.caducar(ahora)
+        marc, puntos, textos = [], {}, {}
+        self.sin_tf = self.cortados = self.ignorados = 0
+        for (ns, ident), e in self.tabla.items():
+            if e["tipo"] == M_TRIANGLE_LIST or e["tipo"] > M_ARROW_STRIP:
+                self.ignorados += 1
+                continue
+            if e["fijo"] is None or e["locked"]:                         # sin frame_locked: se resuelve UNA vez
+                t = resolver(e["frame"])
+                if t is None:
+                    self.sin_tf += 1
+                    continue
+                e["fijo"] = t
+            if len(marc) >= self.max:
+                self.cortados += 1
+                continue
+            t = componer(e["fijo"], e["pose"])
+            clave = clave_marcador(ns, ident)
+            r, g, b, a = e["color"]
+            col = color_marcador(indice_paleta(r, g, b), a)
+            (x, y, z), q = t
+            yaw = yaw_de_quat(*q)
+            sx, sy, sz = e["escala"]
+            tipo = e["tipo"]
+            if tipo == M_ARROW and len(e["puntos"]) >= 2:               # flecha por 2 puntos → flecha por pose (yaw)
+                a0, a1 = aplicar_t(t, e["puntos"][0]), aplicar_t(t, e["puntos"][1])
+                d = (a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2])
+                x, y, z = a0
+                yaw = math.atan2(d[1], d[0])
+                sx, sy, sz = math.sqrt(d[0] ** 2 + d[1] ** 2 + d[2] ** 2), sy / 2.0, sy / 2.0
+            elif tipo in TIPOS_PUNTOS:
+                puntos[clave] = (tipo, col, float(sx), [aplicar_t(t, p) for p in e["puntos"]])
+            elif tipo == M_TEXT:
+                textos[clave] = (x, y, z, e["texto"])
+            marc.append([clave, tipo, x, y, z, yaw, sx, sy, sz, col])
+        return marc, puntos, textos
+
+
+class PlanRonda:
+    """Reparto de un canal lento (puntos a 4/s, textos a 2/s): primero lo que CAMBIA, después un repaso circular.
+    `actualizar({clave: valor})` (lo ausente se olvida); `siguiente()` → (clave, valor) o None."""
+
+    def __init__(self):
+        self.datos = {}
+        self.cambiados = []
+        self._giro = 0
+
+    def actualizar(self, nuevos):
+        for k in [k for k in self.datos if k not in nuevos]:
+            del self.datos[k]
+        self.cambiados = [k for k in self.cambiados if k in nuevos]
+        for k, v in nuevos.items():
+            if self.datos.get(k) != v and k not in self.cambiados:
+                self.cambiados.append(k)
+            self.datos[k] = v
+
+    def siguiente(self):
+        if self.cambiados:
+            k = self.cambiados.pop(0)
+            return k, self.datos[k]
+        if not self.datos:
+            return None
+        claves = list(self.datos)
+        k = claves[self._giro % len(claves)]
+        self._giro = (self._giro + 1) % len(claves)
+        return k, self.datos[k]
+
+
+IMPLEMENTADOS |= {"marcadores"}    # V8

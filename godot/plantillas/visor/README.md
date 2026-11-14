@@ -481,3 +481,74 @@ python3 docker/scripts/test_vita_relay.py                                       
 toolchains/rosbags-venv/bin/python docker/scripts/test_vita_relay.py               # + tamaños CDR = rosbags
 $GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_relay.gd  # RESULTADO: 80/80
 ```
+
+## Marcadores (V8)
+
+Estado: **hecho y verde en host** (`pruebas/visor_marcadores.gd`, 62/62; `python3 docker/scripts/test_vita_relay.py`)
+y **probado en vivo en el host** contra la estación (`docker/vita-ros.sh up` + relay `marcadores` + un publicador de
+`MarkerArray` a 5 Hz con 5 sólidos, un LINE_STRIP de 50 puntos y un texto; `main.tscn` con `transporte=xrce
+compacto=1`): `/vita/marcadores` a 5,0 Hz (≈ 0,31 KB por estado), `/vita/marcador_puntos` a 4 Hz, el texto llega
+fiable; en Godot 5 sólidos, la línea (49 *quads*) y el texto, y al borrar el cubo con DELETE el siguiente estado
+completo lo quita (5 → 4 vivos). **Sin validar en hardware**: gates **G-W13-M1** (pool lleno a 10 Hz: `drawn` + cupo,
+`avg_submit_us` ≤ 9 000, ≥ 30 FPS), **G-W13-M2** (48 marcadores con `lifetime` 2 s y DELETEALL por ns, 5 min: nº de
+hijos constante) y **G-W13-M3** (10 % de pérdida con netem: sin fantasmas > 0,4 s, `process` ≤ 4 ms, ≤ 15 KB/s).
+
+| Archivo | Pieza | Papel |
+|---|---|---|
+| `fabrica_marcadores.gd` | FabricaMarcadores (estático) | `Marker.type` → PrimitivasViz + PaletaViz; `capa()` decide quién dibuja (SOLIDO / PLANO / TEXTO); `valido` (NaN), `expira_ms` (reloj de recepción), `aplicar` (pose × escala), ARROW por 2 puntos, horneado de listas ≤ 64 y TRIANGLE_LIST ≤ 1 000 tri, `malla_recurso` (tabla `package://` → `res://`) |
+| `displays/3d/marcadores.gd` | Marcadores (`Marker`, `MarkerArray`; relay `<p>/marcadores`) | gestor ns/id de los SÓLIDOS: ADD = MODIFY, DELETE, DELETEALL por ns, recrear si cambia el tipo, NaN rechazado, `lifetime`, `frame_locked`, pool por tipo; estado completo por trozos en la Vita |
+| `displays/2d/marcadores_2d.gd` | Marcadores2D (mismos tipos; relay `<p>/marcador_puntos` + `<p>/marcador_texto`) | LINE_STRIP, LINE_LIST, POINTS, ARROW_STRIP, listas > 64 y TEXT_VIEW_FACING superpuestos al 3D (reproyección ≤ 20 Hz), cupo `resto_2d` en *quads* |
+
+**Relay** (`docker/scripts/`): módulo `marcadores` (`docker/vita-ros.sh relay hmi,marcadores`; entra en el perfil
+`viz`, que sigue esperando a V9–V11). `vita_relay_formatos.py` gana `EstadoMarcadores` (la semántica de RViz sin
+ROS), `PlanRonda` (puntos y textos: primero lo que cambia, después un repaso), `empaquetar_marcadores`,
+`empaquetar_puntos`, `texto_marcador`, `clave_marcador` (FNV-1a), `color_marcador` e `indice_paleta` (copia de
+`PaletaViz`). Parámetros nuevos del nodo: `marcadores_in` (`/visualization_marker_array`), `marcador_in`
+(`/visualization_marker`) y `marco_fijo` (`map`, TF con tf2). **`vc1.gd`** gana el bloque «marcadores» (mismas
+funciones; huellas de bytes float32 cruzadas en `test_vita_relay.py` y `pruebas/visor_marcadores.gd`).
+
+**En la escena** (`godot/visor-ros/main.tscn`): `VisorRos/Marcadores` (3D) y `VisorRos/Marcas2D/Marcadores2D`
+(`gestor_3d` → `../../Marcadores`), los dos sobre `/visualization_marker_array`. `RegistroDisplays`: `Marker` y
+`MarkerArray` → el gestor (antes el marcador simple de V5) y `*/marcador_puntos` → `marcadores_2d.gd`.
+
+### Decisiones de V8 no cubiertas (las más conservadoras)
+
+1. **Dos displays, un reparto:** sólidos en 3D y líneas/puntos/texto en 2D, en el PC y en la Vita (un solo camino de
+   código): los prismas 3D de LINE_STRIP del PC (doc 36a §4.7.2) y el `Label3D` no entran. Cada display lleva su
+   propia tabla ns/id y `FabricaMarcadores.capa()` decide; si un id pasa de sólido a línea (o al revés), el que lo
+   tenía lo borra y el otro lo crea.
+2. **Clave compacta con FNV-1a de 32 bit** del ns en UTF-8 (`hash()` de Python cambia en cada proceso). Dos pares
+   (ns, id) pueden dar la misma clave de 24 bit (se pisan; raro).
+3. **Estado completo con cupo lleno:** las claves nuevas de un `seq` que no encuentran nodo libre se colocan al
+   completarse el `seq`, después de reciclar las que no llegaron (sin eso, sustituir 12 marcadores por otros 12
+   dejaba la pantalla vacía un ciclo). Un trozo perdido = ese `seq` no purga (lo hace el siguiente completo).
+4. **Tope de nodos:** `max_marcadores` (256 en el PC), y en la Vita `min(cupo, 48)` (HMI 12, Viz 32). Con el pool de un
+   tipo vacío y el tope alcanzado se reutiliza un nodo libre de otro tipo: nunca se crean más nodos que el tope.
+5. **Relay:** el orden del estado es el de llegada y se cortan los que pasan de 33 (`cortados`); sin TF al
+   `marco_fijo` el marcador no se manda ese ciclo (`sin_tf`), como RViz que no lo dibuja; sin `frame_locked` el TF se
+   resuelve una vez. TRIANGLE_LIST **no viaja** a la Vita (`ignorados`); MESH_RESOURCE viaja como tipo 10 y la Vita
+   dibuja un CUBO con su escala; ARROW por 2 puntos viaja como flecha por pose (yaw y largo; pierde el cabeceo, D14).
+   Los colores por punto y el color del texto no viajan (un color por marcador; texto en blanco).
+6. **Puntos del relay:** `[clave, tipo, color, ancho]` + ≤ 3 trozos de 36 = **108 puntos por marcador** (el resto se
+   corta); un marcador por ronda a 4 trozos/s. La Vita monta la línea al tener todos los trozos de su `seq`.
+7. **Purga 2D en la Vita:** las claves de puntos y textos que ya no están en el último estado completo de
+   `<p>/marcadores` (lo recibe el gestor 3D: `gestor_3d`, o el primer display del visor con `retener_solo`); sin
+   gestor, una entrada compacta caduca a los `caducidad_compacta_s` (10 s) sin refrescarse.
+8. **ARROW por 2 puntos (3D):** `CILINDRO` girado 90° (no se añade `CILINDRO_Z` a PrimitivasViz: sin variantes nuevas)
+   y `CONO` con el vértice en la punta. **ARROW_STRIP (12):** polilínea 2D + triángulo 2D en el último tramo (RViz no
+   lo dibuja: semántica [?]).
+9. **Listas y triángulos horneados:** se re-hornean solo si cambian los datos (firma) y en la Vita como mucho 1 vez/s
+   (si no, se conserva la malla anterior: cada malla nueva gasta arena, H9). Más de 64 elementos → puntos 2D.
+10. **MESH_RESOURCE:** solo mallas ya horneadas (`mallas` = tabla `package://…` → `res://…`, o una uri `res://`), Mesh o
+    la primera malla de una escena; sin ella, CUBO y un aviso por uri. El GLTF en caliente del PC no entra en V8.
+11. **Prueba de bytes en `pruebas/visor_marcadores.gd`** (proyecto `visor-ros`, que trae el esquema de `Marker`), no
+    en `pruebas/runner.gd`: así `runner.gd` (g1-sensores 16/16) no cambia. Huella = MD5 del hex de los float32.
+12. `MarkerArray` **no** entra en `TIPOS_VISOR` (D10): en la Vita llega solo por el relay; en el PC lo resuelve rclgd.
+
+```fish
+python3 docker/scripts/test_vita_relay.py                                              # … marcadores ok, TODO OK
+$GH --headless --path godot/visor-ros --script res://comun/pruebas/visor_marcadores.gd # RESULTADO: 62/62
+docker/vita-ros.sh relay hmi,marcadores                                                # 28,3 KB/s, 129 dgr/s
+```
+
+El aviso «MESH_RESOURCE … sin malla horneada» y «Marcadores pide 48 … y recibe 12» del log son casos de la prueba.
