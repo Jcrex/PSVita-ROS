@@ -82,6 +82,8 @@ const REGLAS := [
 	{"tipo": "sensor_msgs/msg/PointCloud2", "script": D + "2d/nube.gd", "capa": "sensores_2d"},
 	{"tipo": "vision_msgs/msg/Detection2DArray", "script": D + "hud/cajas_2d.gd", "capa": "hud", "solo_pc": true},
 	{"tipo": "vision_msgs/msg/Detection3DArray", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d", "solo_pc": true},
+	# V14 (solo PC): cliente de marcadores interactivos (`<ns>/update`; la herramienta Interactuar publica el feedback).
+	{"tipo": "visualization_msgs/msg/InteractiveMarkerUpdate", "script": D + "3d/im_cliente.gd", "capa": "marcadores", "solo_pc": true},
 	# V6: widgets HUD de eventos y estado (tipos estándar; en la Vita llegan por el relay `<p>/rosout` y `<p>/diagnostics`).
 	{"tipo": "rcl_interfaces/msg/Log", "script": D + "hud/consola.gd", "capa": "hud"},
 	{"tipo": "diagnostic_msgs/msg/DiagnosticArray", "script": D + "hud/diagnostico.gd", "capa": "hud"},
