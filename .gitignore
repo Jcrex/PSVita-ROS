@@ -60,3 +60,6 @@ respaldo-chat-claude/
 
 # Foto generada de referencias (Fase O); caduca con cada movimiento
 docs/ia/organizacion/O1a-mapa-rutas.json
+
+# Estado local de Claude Code (worktrees de subagentes, ajustes): no se versiona
+/.claude/

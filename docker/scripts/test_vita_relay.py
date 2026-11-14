@@ -233,20 +233,20 @@ def test_tf_poses():
     cov, poses, items = vectores_v9()
     pc = vf.empaquetar_pose_cov(1.5, -2.25, 0.3, cov)
     assert len(pc) == 7 and vf.cdr_multiarray(7, 4) == 44 and pc[3] == cov[0] and pc[6] == cov[35]
-    assert vf.huella_f32(pc) == HUELLA_POSE_COV
+    assert vf.huella_f32_bits(pc) == HUELLA_POSE_COV
     tp = vf.empaquetar_poses(poses, 40000)
     c = vf.cabecera(tp)
     assert c == {"seq": 7232, "trozo": 0, "n_trozos": 1, "n": 34}            # 100 poses, paso 3 → 34
     assert vf.cdr_multiarray(len(tp), 4) <= vf.cdr_multiarray(4 + 3 * vf.MAX_POSES, 4) == 464 <= vf.MAX_BE
-    assert vf.huella_f32(tp) == HUELLA_POSES
+    assert vf.huella_f32_bits(tp) == HUELLA_POSES
     assert vf.leer_poses(tp)[1] == tuple(float(v) for v in poses[3])
     assert len(vf.diezmar(list(range(36)), 36)) == 36 and vf.diezmar(list(range(37)), 36) == list(range(0, 37, 2))
     tt = vf.empaquetar_tf(items, 7)
     assert vf.cabecera(tt)["n"] == 8 and vf.cdr_multiarray(len(tt), 4) == 288 <= vf.MAX_BE
-    assert vf.huella_f32(tt) == HUELLA_TF
+    assert vf.huella_f32_bits(tt) == HUELLA_TF
     te = vf.empaquetar_tf(items * 2, 3, vf.MAX_TF_ESTATICOS)
     assert vf.cabecera(te)["n"] == 16 and vf.cdr_multiarray(len(te), 4) == 544 <= 1100
-    assert vf.huella_f32(te) == HUELLA_TF_ESTATICO
+    assert vf.huella_f32_bits(te) == HUELLA_TF_ESTATICO
     # TablaTf: lista blanca, índices estables, tope de 8 dinámicos y estáticos «al cambiar».
     tabla = vf.TablaTf(["odom", "/base_link"] + [f"f{i}" for i in range(10)])
     assert tabla.dinamico("map", "odom", (1, 2, 0), (0, 0, 0, 1))
