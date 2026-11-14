@@ -445,7 +445,8 @@ func _probar_pc() -> void:
 	var r = RosMsg.from_type("nav_msgs/msg/OccupancyGrid")
 	r.deserialize(b)
 	cm._al_mensaje(r)
-	var img: Image = cm.mapa.textura.get_image()
+	check(cm.mapa.indices and cm.material is ShaderMaterial, "PC: índices + shader de paleta costmap (V14)")
+	var img: Image = cm.mapa.imagen_colores()
 	check(img.get_pixel(0, 1).a8 == 0, "PC: 0 libre transparente")
 	check(img.get_pixel(2, 1).to_rgba32() == Color8(0, 255, 255).to_rgba32() and img.get_pixel(3, 1).to_rgba32() == Color8(255, 0, 255).to_rgba32(),
 			"PC: 99 inscrito cian, 100 letal magenta (paleta costmap de RViz)")

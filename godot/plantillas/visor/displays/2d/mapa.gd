@@ -1,7 +1,8 @@
 extends "res://comun/visor/display_ros_2d.gd"
 ## Mapa en planta (V3; doc 36a §4.6.1): `nav_msgs/OccupancyGrid` como UNA textura (`draw_texture_rect`), norte
 ## arriba. Defecto en la Vita (D7); el 3D (`displays/3d/mapa.gd`) es el defecto del PC.
-##   PC   : `topic` (OccupancyGrid, *latched*) → `_procesar` → imagen con la rampa «map» de RViz (MapaTextura).
+##   PC   : `topic` (OccupancyGrid, *latched*) → `_procesar` → índices R8 + rampa «map» de RViz en un *shader*
+##          `canvas_item` (V14, `MapaTextura.material_canvas`; sin bucle por celda).
 ##   Vita : `<p>/mapa_tesela` (UInt8MultiArray, 32×32 a 2 bit, ≤ 20/s) + `<p>/mapa_meta` (F+TL) → teselas en la
 ##          imagen del relay con LUT + `blit_rect` (docs/31 §4.4); textura subida ≤ 4 Hz y redibujo solo si cambia.
 ## Dato intermedio común: el diccionario de MapaTextura (`img`, `res`, `ancho`, `alto`, `origen`, `yaw`).
@@ -40,6 +41,7 @@ func _init() -> void:
 func conectar(v) -> void:
 	canal.coalescer = false                             # «el último gana» perdería teselas
 	mapa.esquema = esquema
+	mapa.gpu = not v.en_vita                            # V14: índices + paleta en *shader* solo en el PC
 	if v.usa_compactos() and topic_vita != "":
 		latched = false                                 # la tesela del relay es best effort (fiable no casaría)
 	super.conectar(v)
@@ -89,6 +91,10 @@ func _compone() -> bool:
 func _redibujar_si_cambia() -> void:
 	if mapa.version != _version_dibujada:
 		_version_dibujada = mapa.version
+		# V14: con la textura de índices (PC) el color lo pone el *shader*; con la compuesta o la del relay, nada.
+		var m: Material = mapa.material_canvas() if (mapa.indices and not (canal.compacto and _compone())) else null
+		if material != m:
+			material = m
 		queue_redraw()
 
 

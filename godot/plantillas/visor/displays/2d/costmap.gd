@@ -1,8 +1,8 @@
 extends "res://comun/visor/display_ros_2d.gd"
 ## Costmap en planta (V11; doc 36a §4.6.2, doc 36 §5.3): `nav_msgs/OccupancyGrid` de un costmap de Nav2 con la
 ## paleta «costmap» de RViz (0 transparente, 1–98 azul → rojo, 99 cian inscrito, 100 magenta letal, −1 0x708986).
-##   PC   : `topic` (OccupancyGrid, *latched*, p. ej. `/global_costmap/costmap`) → imagen con la rampa costmap
-##          (MapaTextura, esquema costmap) dibujada ENCIMA del mapa (orden del árbol) con `alfa`.
+##   PC   : `topic` (OccupancyGrid, *latched*, p. ej. `/global_costmap/costmap`) → índices R8 + rampa costmap en un
+##          *shader* (V14, MapaTextura con `gpu`) dibujada ENCIMA del mapa (orden del árbol) con `alfa`.
 ##   Vita : `<p>/costmap_tesela` (UInt8MultiArray, 32×16 a 4 bit, ≤ 10/s) + `<p>/costmap_meta` (F+TL) →
 ##          CostmapTextura. Si `sobre_mapa` apunta a un display Mapa con mapa, el costmap se COMPONE EN CPU sobre
 ##          la imagen del mapa (una textura, 1 *quad*: la dibuja el Mapa y este display no dibuja nada); si no, dibuja
@@ -44,6 +44,7 @@ func _init() -> void:
 func conectar(v) -> void:
 	canal.coalescer = false
 	mapa.esquema = Paleta.ESQUEMA_COSTMAP
+	mapa.gpu = not v.en_vita                             # V14: índices + paleta costmap en *shader* solo en el PC
 	costmap.alfa = alfa
 	if v.usa_compactos() and topic_vita != "":
 		latched = false                                  # la tesela del relay es best effort
@@ -101,6 +102,9 @@ func _redibujar_si_cambia() -> void:
 	var v: int = costmap.version + mapa.version
 	if v != _version_dibujada:
 		_version_dibujada = v
+		var m: Material = mapa.material_canvas() if (mapa.indices and not canal.compacto) else null   # V14
+		if material != m:
+			material = m
 		queue_redraw()
 
 
