@@ -74,6 +74,8 @@ const REGLAS := [
 	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/detecciones", "script": D + "hud/cajas_2d.gd", "capa": "hud"},
 	{"tipo": "std_msgs/msg/Float32MultiArray", "topic": "*/detecciones3d", "script": D + "2d/cajas_3d.gd", "capa": "resto_2d"},
 	{"tipo": "sensor_msgs/msg/CompressedImage", "script": D + "hud/imagen.gd", "capa": "hud"},
+	# V14 (solo PC): imagen cruda con shader (profundidad, bayer, YUV, filas con relleno); si no, la de V10.
+	{"tipo": "sensor_msgs/msg/Image", "script": D + "hud/imagen_pc.gd", "capa": "hud", "solo_pc": true},
 	{"tipo": "sensor_msgs/msg/Image", "script": D + "hud/imagen.gd", "capa": "hud", "solo_pc": true},
 	# V14 (solo PC): nube en GPU en la vista orbital (defecto del PC, como el mapa 3D); en la Vita, la planta 2D.
 	{"tipo": "sensor_msgs/msg/PointCloud2", "script": D + "3d/nube_puntos.gd", "capa": "mundo", "solo_pc": true, "orbital": true},

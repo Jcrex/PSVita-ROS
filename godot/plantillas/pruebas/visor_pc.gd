@@ -33,7 +33,7 @@ class Vigia:
 
 	func _log_error(_f: String, file: String, _l: int, code: String, rationale: String, _e: bool, tipo: int,
 			_b: Array[ScriptBacktrace]) -> void:
-		if tipo == ERROR_TYPE_SCRIPT or tipo == ERROR_TYPE_SHADER or (tipo == ERROR_TYPE_ERROR and file.contains("/visor/")):
+		if tipo == ERROR_TYPE_SCRIPT or tipo == ERROR_TYPE_SHADER or (tipo == ERROR_TYPE_ERROR and (file.contains("/visor/") or file.contains("shader"))):
 			errores += 1
 			ultimo = "%s: %s %s" % [file, code, rationale]
 
@@ -69,6 +69,7 @@ func _correr() -> void:
 	print("V14: ", "con GPU (" + RenderingServer.get_video_adapter_name() + ")" if gpu else "sin GPU (headless): se saltan los píxeles")
 	await _probar_mapa()
 	await _probar_nube()
+	await _probar_imagen()
 	check(vigia.errores == 0, "sin errores de script ni de shader (%s)" % vigia.ultimo)
 	OS.remove_logger(vigia)
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
@@ -414,4 +415,138 @@ func _probar_nube() -> void:
 			and MapasColor.arcoiris_rviz(0.5) == Color(0, 1, 0.5), "mapas de color: getRainbowColor de RViz")
 	check(MapasColor.color(MapasColor.GRIS, 255) == Color(1, 1, 1) and MapasColor.textura(MapasColor.TURBO).get_width() == 256,
 			"mapas de color: gris y turbo 256×1")
+	await _cerrar(v)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 3. Imagen cruda con shader: profundidad (16UC1, 32FC1) con mapa de color, bayer, YUV y filas con relleno
+# ---------------------------------------------------------------------------------------------------------------
+func _cruda(enc: String, w: int, h: int, step: int, datos: PackedByteArray):
+	var m = RosMsg.from_type("sensor_msgs/msg/Image")
+	m.header.frame_id = "camara"
+	m.encoding = enc
+	m.width = w
+	m.height = h
+	m.step = step
+	m.data = datos
+	return m
+
+
+## Centro del píxel (i, j) de la imagen en pantalla.
+func _px_imagen(im: Control, i: int, j: int) -> Vector2i:
+	var r: Rect2 = im.rect_imagen()
+	var k: float = r.size.x / im.tam_imagen.x
+	return Vector2i(im.get_global_rect().position + r.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * k)
+
+
+static func _yuv(y: int, u: int, v: int) -> Color:
+	var yy := y / 255.0
+	var uu := u / 255.0 - 0.5
+	var vv := v / 255.0 - 0.5
+	return Color(clampf(yy + 1.402 * vv, 0, 1), clampf(yy - 0.344136 * uu - 0.714136 * vv, 0, 1), clampf(yy + 1.772 * uu, 0, 1))
+
+
+func _probar_imagen() -> void:
+	var im: Control = load(D + "hud/imagen_pc.gd").new()
+	im.name = "ImagenPC"
+	im.topic = "/camera/depth/image_raw"
+	im.position = Vector2(560, 20)
+	im.size = Vector2(320, 300)                         # 32×24 → 320×240 con bandas de fondo arriba y abajo
+	var v := _visor(false, [], [im], [])
+	await _esperar(v)
+	check(im.estado == "ok" and im.solo_pc and im.canal.tipo_abierto == "sensor_msgs/msg/Image" and im.lienzo != null,
+			"imagen PC: sensor_msgs/Image directo, solo_pc, lienzo con material")
+	# 16UC1 en mm: columna i = i·100 mm (la 0 = sin dato → transparente).
+	var d16 := PackedByteArray()
+	d16.resize(32 * 24 * 2)
+	for j in 24:
+		for i in 32:
+			d16.encode_u16(2 * (j * 32 + i), i * 100)
+	im._al_mensaje(_cruda("16UC1", 32, 24, 64, d16))
+	await _fotogramas(2)
+	check(im.modo == im.ESCALAR16 and im.textura.get_format() == Image.FORMAT_RG8 and im.tam_imagen == Vector2i(32, 24),
+			"16UC1: textura RG8 sin conversión, modo escalar")
+	check(im.rango_usado.is_equal_approx(Vector2(0.1, 3.1)) and is_equal_approx(im.material_imagen.get_shader_parameter("escala"), 0.001),
+			"16UC1: rango automático 0,1–3,1 m (mm × 0,001), 0 fuera (%s)" % im.rango_usado)
+	check(im.material == null and im.lienzo.material == im.material_imagen, "imagen PC: el fondo sin shader, la imagen en el lienzo")
+	if gpu:
+		var cap := await _captura()
+		var fondo := cap.get_pixelv(Vector2i(im.get_global_rect().position + Vector2(5, 5)))
+		var c31 := cap.get_pixelv(_px_imagen(im, 31, 10))
+		var c1 := cap.get_pixelv(_px_imagen(im, 1, 10))
+		var c0 := cap.get_pixelv(_px_imagen(im, 0, 10))
+		var c16 := cap.get_pixelv(_px_imagen(im, 16, 10))
+		check(_cerca(c31, im.color_escalar(3.1)) and _cerca(c1, im.color_escalar(0.1)) and _cerca(c16, im.color_escalar(1.6)),
+				"GPU 16UC1: mapa turbo (mín., medio y máx.) — %s %s %s" % [c1, c16, c31])
+		check(_cerca(c0, fondo), "GPU 16UC1: 0 mm transparente (se ve el fondo)")
+	# 32FC1 en m con NaN e Inf.
+	var f32 := PackedFloat32Array()
+	f32.resize(32 * 24)
+	for k in f32.size():
+		f32[k] = (k % 32) * 0.1
+	f32[10 * 32 + 5] = NAN
+	f32[10 * 32 + 6] = INF
+	im.rango_auto = false
+	im.rango = Vector2(0.0, 3.1)
+	im._al_mensaje(_cruda("32FC1", 32, 24, 128, f32.to_byte_array()))
+	await _fotogramas(2)
+	check(im.modo == im.ESCALAR32 and im.textura.get_format() == Image.FORMAT_RF and im.rango_usado == Vector2(0.0, 3.1),
+			"32FC1: textura RF, rango fijo")
+	if gpu:
+		var cap := await _captura()
+		var fondo := cap.get_pixelv(Vector2i(im.get_global_rect().position + Vector2(5, 5)))
+		check(_cerca(cap.get_pixelv(_px_imagen(im, 20, 10)), im.color_escalar(2.0)) and _cerca(cap.get_pixelv(_px_imagen(im, 5, 10)), fondo)
+				and _cerca(cap.get_pixelv(_px_imagen(im, 6, 10)), fondo), "GPU 32FC1: color por profundidad; NaN e Inf transparentes")
+	# Bayer RGGB: superpíxel (R=200, G=100/100, B=50) → Color8(200, 100, 50).
+	var bay := PackedByteArray()
+	bay.resize(32 * 24)
+	for j in 24:
+		for i in 32:
+			bay[j * 32 + i] = [[200, 100], [100, 50]][j % 2][i % 2]
+	im._al_mensaje(_cruda("bayer_rggb8", 32, 24, 32, bay))
+	await _fotogramas(2)
+	check(im.modo == im.BAYER and im.patron == 0 and im.textura.get_format() == Image.FORMAT_L8, "bayer_rggb8: L8 + demosaico en el shader")
+	if gpu:
+		var cap := await _captura()
+		check(_cerca(cap.get_pixelv(_px_imagen(im, 9, 9)), Color8(200, 100, 50)) and _cerca(cap.get_pixelv(_px_imagen(im, 10, 10)), Color8(200, 100, 50)),
+				"GPU bayer_rggb8: superpíxel → (200, 100, 50)")
+	# YUYV (Y0 U Y1 V): mitad izquierda gris, mitad derecha rojiza.
+	var yu := PackedByteArray()
+	for j in 24:
+		for i in 16:
+			yu.append_array(PackedByteArray([128, 128, 128, 128]) if i < 8 else PackedByteArray([76, 85, 90, 255]))
+	im._al_mensaje(_cruda("yuyv", 32, 24, 64, yu))
+	await _fotogramas(2)
+	check(im.modo == im.YUYV and im.textura.get_width() == 16 and im.tam_imagen == Vector2i(32, 24), "yuyv: RGBA8 de ancho/2")
+	if gpu:
+		var cap := await _captura()
+		check(_cerca(cap.get_pixelv(_px_imagen(im, 3, 5)), _yuv(128, 128, 128)) and _cerca(cap.get_pixelv(_px_imagen(im, 20, 5)), _yuv(76, 85, 255))
+				and _cerca(cap.get_pixelv(_px_imagen(im, 21, 5)), _yuv(90, 85, 255)), "GPU yuyv: BT.601 (Y0 y Y1 de cada par)")
+	# uyvy (= yuv422 de ROS).
+	var uy := PackedByteArray()
+	for k in 32 * 24 / 2:
+		uy.append_array(PackedByteArray([85, 76, 255, 90]))
+	im._al_mensaje(_cruda("yuv422", 32, 24, 64, uy))
+	await _fotogramas(2)
+	if gpu:
+		var cap := await _captura()
+		check(_cerca(cap.get_pixelv(_px_imagen(im, 4, 5)), _yuv(76, 85, 255)) and _cerca(cap.get_pixelv(_px_imagen(im, 5, 5)), _yuv(90, 85, 255)),
+				"GPU yuv422 (uyvy): BT.601")
+	check(im.modo == im.UYVY, "yuv422: modo UYVY")
+	# rgb8 con relleno de fila (step 102 = 34 px): región útil 32×24, sin copia por fila.
+	var rel := PackedByteArray()
+	for j in 24:
+		for i in 34:
+			rel.append_array(PackedByteArray([0, 0, 255]) if i < 32 else PackedByteArray([255, 255, 0]))
+	im._al_mensaje(_cruda("rgb8", 32, 24, 102, rel))
+	await _fotogramas(2)
+	check(im.textura.get_width() == 34 and im.tam_imagen == Vector2i(32, 24) and im.modo == im.DIRECTO,
+			"rgb8 con relleno (step 102): textura de 34 px, se dibujan 32")
+	if gpu:
+		var cap := await _captura()
+		check(_cerca(cap.get_pixelv(_px_imagen(im, 31, 5)), Color.BLUE), "GPU rgb8 con relleno: la última columna útil es azul (el relleno amarillo no se ve)")
+	var r0: int = im.rechazadas
+	im._al_mensaje(_cruda("16SC1", 32, 24, 64, d16))
+	im._al_mensaje(_cruda("rgb8", 32, 24, 100, rel))    # 100 no es múltiplo de 3
+	check(im.rechazadas == r0 + 2, "16SC1 y step no múltiplo de bpp: rechazados")
 	await _cerrar(v)
