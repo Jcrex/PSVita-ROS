@@ -72,6 +72,7 @@ func _correr() -> void:
 	_probar_registro()
 	await _probar_vita()
 	await _probar_pc()
+	await _probar_tf_nativo()
 	check(vigia.errores == 0, "sin errores de script en visor/ (%s)" % vigia.ultimo)
 	OS.remove_logger(vigia)
 	print("RESULTADO: ", pruebas - fallos, "/", pruebas)
@@ -511,5 +512,56 @@ func _probar_pc() -> void:
 	tf3.refrescar()
 	check(tf3.marcos_dibujados == 3 and tf3._flechas["base_scan"].visible and not tf3._flechas["map"].visible,
 			"PC: flecha hijo → padre (la raíz no tiene)")
+	raiz.queue_free()
+	await _fotogramas(2)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 7. V13a: RosTfListener nativo de ros2_vita (tf-tree) en lugar de TfLigero, con los MISMOS displays
+# ---------------------------------------------------------------------------------------------------------------
+func _ts_ros(padre: String, hijo: String, t: Vector3) -> RosMsg:
+	var ts := RosMsg.from_type("geometry_msgs/msg/TransformStamped")
+	ts.header.frame_id = padre
+	ts.child_frame_id = hijo
+	ts.transform.translation.x = t.x
+	ts.transform.translation.y = t.y
+	ts.transform.translation.z = t.z
+	ts.transform.rotation.w = 1.0
+	return ts
+
+
+func _probar_tf_nativo() -> void:
+	var v := _visor(false)
+	check(not v.tf_nativo, "V13a: tf_nativo apagado por defecto (TfLigero, como hasta V12)")
+	v.tf_nativo = true
+	var tf3 = _display(D + "3d/tf.gd", "TF", {"mostrar_nombres": false})
+	v.add_child(tf3)
+	var raiz := Node3D.new()
+	raiz.add_child(v)
+	root.add_child(raiz)
+	for _i in 60:
+		if v.estado != "sin conectar":
+			break
+		await process_frame
+	if not ClassDB.class_exists("RosTfListener"):
+		# Editor anterior a V13a: la selección cae en TfLigero sin errores.
+		check(v.es_tf_ligero(), "V13a: sin RosTfListener en el motor, TfLigero (editor anterior a V13a)")
+		raiz.queue_free()
+		await _fotogramas(2)
+		return
+	check(v.usa_tf_nativo() and v.tf != null and v.tf.get_class() == "RosTfListener" and not v.es_tf_ligero(),
+			"V13a: tf_nativo + ros2_vita con RosTfListener => listener nativo")
+	var pub = v.contexto.nodo.create_publisher("/tf", "tf2_msgs/msg/TFMessage")
+	var m := RosMsg.from_type("tf2_msgs/msg/TFMessage")
+	m.transforms = [_ts_ros("map", "base_link", Vector3(2, 0, 0)), _ts_ros("base_link", "base_scan", Vector3(-0.032, 0, 0.172))]
+	pub.publish(m)
+	await _fotogramas(2)
+	check(v.transformada("base_scan").origin.distance_to(C * Vector3(1.968, 0, 0.172)) < MM,
+			"V13a nativo: base_scan en map = (2 − 0.032, 0, 0.172), igual que con TfLigero")
+	check(v.transformada("nada") == null, "V13a nativo: marco desconocido => null (los displays dicen «sin TF»)")
+	tf3.refrescar()
+	check(tf3.marcos_dibujados == 3 and tf3._flechas["base_scan"].visible and not tf3._flechas["map"].visible,
+			"V13a nativo: el display TF dibuja los mismos 3 marcos y flechas sin cambios")
+	pub = null
 	raiz.queue_free()
 	await _fotogramas(2)
