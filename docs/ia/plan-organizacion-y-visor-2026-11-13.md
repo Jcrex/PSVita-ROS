@@ -91,7 +91,15 @@ Push y PR → **preguntar al usuario** (T3).
 
 ---
 
-## 3. Plan de subagentes — Fase V (visor W13), DESPUÉS de la Fase O
+## 3. Plan de subagentes — Fase V (visor W13), DESPUÉS de la Fase O — **CERRADA EN HOST 2026-11-14** (V1–V15; doc 36 §13; pruebas de hardware pendientes)
+
+> **Cierre (V15, 2026-11-14):** V1–V12 y V14 hechos y verdes en host (39 commits desde `015f350`); V13 partida en V13a
+> (paquete nativo de `ros2_vita`, hecho) y V13b (`viz-decode` no se crea, `posts/V13b-juez-fable.md`, gate G-V13b);
+> V15 hecho (doc 36 §9.0 y §13, doc 36a §4.0.1, `API_PARITY.md`, citas de docs 27 y 31, README de `visor/`).
+> Revisiones `posts/V{1,2,3}-revision.md` y juez Fable `posts/{V2,V3,V13b}-juez-fable.md`. **Abierto:** las olas
+> V1-hw, V2-hw y V3-hw se hacen en **una** sesión del usuario (guion único `posts/V3-revision.md` §5 + G-V13b); después,
+> push y PR **preguntando al usuario** (§4.4). Desviación del plan: las fases de host se hicieron seguidas, sin esperar
+> a las de hardware (los gates están en el guion único).
 
 Fuente: `docs/36` §10 y `docs/ia/workshops/posts/W13-juez-fable.md` §4 (tareas V1–V15). Rutas según quede la Fase O.
 Regla común a todos: `--check-only` de cada `.gd` con el editor de host

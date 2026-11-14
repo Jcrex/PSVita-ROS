@@ -4,3 +4,4 @@
 2026-11-12 · W3,W8,W9,W12 cerrados; W10,W11 por el orquestador (sustitución documentada); docs 24–28, 31–33; ADRs 0009–0012
 2026-11-13 · W13 · ronda 1 (107 fichas, 5 investigadores), revisión (76 V / 18 DESAFÍO / 7 ALT / 6 Por medir), sentencia del juez Fable 5.2 (D1–D15, C1–C10; decide Fable por regla del usuario) · ADR 0013 · doc 36 · tareas V1–V15
 2026-11-13 · Fase O · organización del repo ejecutada (ADR 0014): O1 diagnóstico (4 agentes), juez Fable, O2.0–O2d, O3 VERIFICADO
+2026-11-14 · Fase V · visor W13 cerrado en host: V1–V14 (V13a nativo; V13b sin viz-decode, gate G-V13b, juez Fable) y V15 documentación (doc 36 §9.0/§13, 36a §4.0.1, API_PARITY, citas docs 27/31) · hardware pendiente: guion único V3-revision §5

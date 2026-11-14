@@ -84,3 +84,10 @@ de arquitectura, a un ADR nuevo.
   `posts/W13-juez-fable.md` y [`docs/adr/0013-visualizacion-topics-godot.md`](../../adr/0013-visualizacion-topics-godot.md)
   (arquitectura propia en `godot/plantillas/visor/`, gdviz solo como modelo; relay VC/1 rev. 2; tareas V1–V15).
 - **Integración:** `docs/36-visualizacion-topics-godot.md`.
+- **Implementación (Fase V, 2026-11-13 → 2026-11-14): hecha en host.** V1–V12 y V14 en `godot/plantillas/visor/` y el
+  relay VC/1 rev. 2 (`docker/scripts/vita_relay*.py`); V13a (paquete nativo de `ros2_vita`); V13b sin `viz-decode`
+  (juez Fable, `posts/V13b-juez-fable.md`, gate G-V13b); V15 documentación. Revisiones por fase `posts/V{1,2,3}-revision.md`
+  y juez `posts/{V2,V3}-juez-fable.md`. Estado por tipo: `docs/36a-catalogo-displays.md` §4.0.1; estado de gates y
+  resumen: `docs/36-visualizacion-topics-godot.md` §9.0 y §13.
+- **Pendiente:** pruebas de hardware del usuario (guion único `posts/V3-revision.md` §5 + G-V13b) y probar el visor con
+  rclgd (no instalado). El workshop queda cerrado; lo que salga de la Vita se anota en doc 36 §9.0 y en la bitácora.

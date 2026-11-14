@@ -51,8 +51,8 @@ citado como fuente técnica; lleva una línea de estado bajo el título) · **Su
 | 33 | [Estación robótica (maestro)](33-investigacion-estacion-robotica.md) | Vigente | — | 2026-11-12 |
 | 34 | [Perfil Vita ligero](34-perfil-vita-ligero.md) | Vigente (en curso) | — | 2026-11-13 |
 | 35 | [Regla de escenas editables](35-regla-escenas-editables.md) | Vigente (regla) | — | 2026-11-13 |
-| 36 | [Visualizar topics en Godot](36-visualizacion-topics-godot.md) | Vigente (sin código) | Arquitectura, relay, QoS, presupuesto, tareas V1–V15 (§0–§3, §5–§12) | 2026-11-13 |
-| 36a | [Catálogo de displays por tipo](36a-catalogo-displays.md) | Vigente (sin código) | La §4 del doc 36 («doc 36 §4.x» = 36a) | 2026-11-13 |
+| 36 | [Visualizar topics en Godot](36-visualizacion-topics-godot.md) | Vigente (implementado en host; el código manda) | Arquitectura, relay, QoS, presupuesto, tareas V1–V15 (§0–§3, §5–§12); estado de gates §9.0 y de la implementación §13 | 2026-11-14 |
+| 36a | [Catálogo de displays por tipo](36a-catalogo-displays.md) | Vigente (implementado en host; el código manda) | La §4 del doc 36 («doc 36 §4.x» = 36a); estado por tipo con la ruta real §4.0.1 | 2026-11-14 |
 
 ## Decisiones (`adr/`)
 
